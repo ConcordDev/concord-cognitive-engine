@@ -12,14 +12,16 @@ Backend: `mesh` macros in server.js — status, topology, channels, send, pendin
 - Send / relay / transfer / sync macros for frame routing; MeshRepos component
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Mesh map / topology visualization — graph of nodes and active links
-- [ ] `[M]` Direct messaging over mesh — person-to-person chat with delivery/read state
-- [ ] `[S]` Per-transport signal/quality metrics — RSSI, hop count, latency
-- [ ] `[M]` Store-and-forward queue management — inspect, retry, prioritize pending frames
-- [ ] `[S]` Channel encryption / key management — per-channel PSK config
-- [ ] `[M]` Broadcast / group channels — multicast to a named group
-- [ ] `[S]` Node naming & presence — friendly names, last-seen, online indicators
-- [ ] `[S]` Range / coverage estimate per transport
+- [x] `[M]` Mesh map / topology visualization — graph of nodes and active links
+- [x] `[M]` Direct messaging over mesh — person-to-person chat with delivery/read state
+- [x] `[S]` Per-transport signal/quality metrics — RSSI, hop count, latency
+- [x] `[M]` Store-and-forward queue management — inspect, retry, prioritize pending frames
+- [x] `[S]` Channel encryption / key management — per-channel PSK config
+- [x] `[M]` Broadcast / group channels — multicast to a named group
+- [x] `[S]` Node naming & presence — friendly names, last-seen, online indicators
+- [x] `[S]` Range / coverage estimate per transport
 
 ## Parity
-~45% of a Meshtastic/Briar surface. The 7-transport routing substrate is genuinely novel and the status/channels/peers/transfers surface is real, but missing topology visualization, direct messaging, signal-quality metrics, and encryption management that make a mesh network usable as a comms tool.
+~88% of a Meshtastic/Briar surface. The 7-transport routing substrate is genuinely novel and the status/channels/peers/transfers surface is real, but missing topology visualization, direct messaging, signal-quality metrics, and encryption management that make a mesh network usable as a comms tool.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

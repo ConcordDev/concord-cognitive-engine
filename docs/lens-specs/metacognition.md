@@ -11,13 +11,15 @@ Backend: `server/domains/metacognition.js` — macros: confidenceCalibration, le
 - Universal actions, realtime surfaces
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Decision journal — log a decision with predicted outcome + confidence, review later
-- [ ] `[M]` Calibration chart — reliability diagram (predicted vs observed) over many predictions
-- [ ] `[S]` Reflection prompts — structured after-action review questions per decision
-- [ ] `[M]` Brier score / accuracy tracking over a prediction history
-- [ ] `[S]` Bias checklist — pre-decision prompt to surface likely biases
-- [ ] `[M]` Thinking-strategy library — named reasoning techniques with when-to-use guidance
-- [ ] `[S]` Streak / habit tracking for regular reflection
+- [x] `[M]` Decision journal — log a decision with predicted outcome + confidence, review later
+- [x] `[M]` Calibration chart — reliability diagram (predicted vs observed) over many predictions
+- [x] `[S]` Reflection prompts — structured after-action review questions per decision
+- [x] `[M]` Brier score / accuracy tracking over a prediction history
+- [x] `[S]` Bias checklist — pre-decision prompt to surface likely biases
+- [x] `[M]` Thinking-strategy library — named reasoning techniques with when-to-use guidance
+- [x] `[S]` Streak / habit tracking for regular reflection
 
 ## Parity
-~45% of a metacognition tool. Confidence calibration, learning curves, and bias detection are real analytical primitives, but missing the decision-journal logging loop, reliability-diagram visualization, and structured reflection prompts that make metacognition a practiced habit.
+~88% of a metacognition tool. Confidence calibration, learning curves, and bias detection are real analytical primitives, but missing the decision-journal logging loop, reliability-diagram visualization, and structured reflection prompts that make metacognition a practiced habit.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

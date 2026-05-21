@@ -336,6 +336,284 @@ export default function registerOfflineActions(registerLensAction) {
    * artifact.data.currentState = { key: value, ... }
    * params.compressionRatio = estimated compression (default 0.6)
    */
+  // -------------------------------------------------------------------------
+  // Stateful replication substrate — PouchDB/CouchDB-style changes feed.
+  // Per-user document store + monotonic update_seq so a client can do
+  // incremental, bidirectional, continuous replication against the server.
+  // -------------------------------------------------------------------------
+  function getOfflineState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.offlineLens) STATE.offlineLens = {};
+    const o = STATE.offlineLens;
+    if (!(o.docs instanceof Map)) o.docs = new Map();        // userId -> Map(docId -> doc)
+    if (!(o.seq instanceof Map)) o.seq = new Map();          // userId -> number
+    if (!(o.changes instanceof Map)) o.changes = new Map();  // userId -> Array(change)
+    if (!(o.checkpoints instanceof Map)) o.checkpoints = new Map(); // userId -> Map(replicationId -> {seq,at})
+    return o;
+  }
+  function saveOffline() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const ofActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const ofClean = (v, max = 4000) => String(v == null ? "" : v).trim().slice(0, max);
+  function ofUserDocs(o, uid) { if (!o.docs.has(uid)) o.docs.set(uid, new Map()); return o.docs.get(uid); }
+  function ofUserChanges(o, uid) { if (!o.changes.has(uid)) o.changes.set(uid, []); return o.changes.get(uid); }
+  function ofNextSeq(o, uid) { const n = (o.seq.get(uid) || 0) + 1; o.seq.set(uid, n); return n; }
+  // Rev = "<generation>-<8hex hash of body>"
+  function ofRev(generation, body) {
+    let h = 0;
+    const s = JSON.stringify(body == null ? null : body);
+    for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; }
+    return `${generation}-${(h >>> 0).toString(16).padStart(8, "0")}`;
+  }
+
+  /**
+   * replicationPull — return all changes after `since` (continuous changes feed).
+   * params.since = last-seen update_seq (default 0); params.limit = max docs (default 200)
+   */
+  registerLensAction("offline", "replicationPull", (ctx, _artifact, params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const since = Math.max(0, Math.round(Number(params.since) || 0));
+      const limit = Math.max(1, Math.min(1000, Math.round(Number(params.limit) || 200)));
+      const all = ofUserChanges(o, uid).filter((c) => c.seq > since);
+      const slice = all.slice(0, limit);
+      return {
+        ok: true,
+        result: {
+          changes: slice.map((c) => ({
+            seq: c.seq, id: c.id, rev: c.rev, deleted: !!c.deleted,
+            doc: c.deleted ? null : (ofUserDocs(o, uid).get(c.id)?.body ?? null),
+            updatedAt: c.at,
+          })),
+          lastSeq: slice.length ? slice[slice.length - 1].seq : since,
+          pending: Math.max(0, all.length - slice.length),
+          updateSeq: o.seq.get(uid) || 0,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * replicationPush — accept a batch of client docs into the server store.
+   * Detects conflicts via rev-generation comparison and records both branches.
+   * params.docs = [{ id, body, rev?, baseRev?, deleted? }]
+   */
+  registerLensAction("offline", "replicationPush", (ctx, _artifact, params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const incoming = Array.isArray(params.docs) ? params.docs : [];
+      if (incoming.length === 0) return { ok: false, error: "no docs to push" };
+      if (incoming.length > 500) return { ok: false, error: "batch too large (max 500)" };
+      const store = ofUserDocs(o, uid);
+      const feed = ofUserChanges(o, uid);
+      const applied = [];
+      const conflicts = [];
+      for (const raw of incoming) {
+        if (!raw || typeof raw !== "object") continue;
+        const id = ofClean(raw.id, 200);
+        if (!id) continue;
+        const existing = store.get(id);
+        const baseRev = raw.baseRev ? ofClean(raw.baseRev, 64) : null;
+        // Conflict: server has a doc and the client did not branch from its current rev.
+        if (existing && baseRev && baseRev !== existing.rev) {
+          conflicts.push({
+            id,
+            serverRev: existing.rev, serverBody: existing.body,
+            clientRev: raw.rev || null, clientBody: raw.deleted ? null : (raw.body ?? null),
+            reason: "rev_mismatch",
+          });
+          continue;
+        }
+        const generation = (existing ? parseInt(existing.rev, 10) || 1 : 0) + 1;
+        const body = raw.deleted ? null : (raw.body ?? {});
+        const rev = ofRev(generation, body);
+        const seq = ofNextSeq(o, uid);
+        const at = new Date().toISOString();
+        if (raw.deleted) { store.delete(id); }
+        else { store.set(id, { id, body, rev, updatedAt: at }); }
+        feed.push({ seq, id, rev, deleted: !!raw.deleted, at });
+        applied.push({ id, rev, seq, deleted: !!raw.deleted });
+      }
+      // Cap the changes feed to the last 5000 entries per user.
+      if (feed.length > 5000) feed.splice(0, feed.length - 5000);
+      if (applied.length) saveOffline();
+      return {
+        ok: true,
+        result: {
+          applied, conflicts,
+          appliedCount: applied.length,
+          conflictCount: conflicts.length,
+          updateSeq: o.seq.get(uid) || 0,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * replicationStatus — current store summary for the user.
+   */
+  registerLensAction("offline", "replicationStatus", (ctx, _artifact, _params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const store = ofUserDocs(o, uid);
+      const feed = ofUserChanges(o, uid);
+      const cps = o.checkpoints.get(uid);
+      let bytes = 0;
+      for (const d of store.values()) bytes += JSON.stringify(d.body || {}).length;
+      return {
+        ok: true,
+        result: {
+          docCount: store.size,
+          updateSeq: o.seq.get(uid) || 0,
+          changeCount: feed.length,
+          approxBytes: bytes,
+          docs: [...store.values()].slice(0, 50).map((d) => ({ id: d.id, rev: d.rev, updatedAt: d.updatedAt })),
+          checkpoints: cps ? [...cps.entries()].map(([rid, v]) => ({ replicationId: rid, seq: v.seq, at: v.at })) : [],
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * syncCheckpoint — save (params.seq present) or read a replication checkpoint.
+   * params.replicationId, params.seq?
+   */
+  registerLensAction("offline", "syncCheckpoint", (ctx, _artifact, params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const rid = ofClean(params.replicationId, 120) || "default";
+      if (!o.checkpoints.has(uid)) o.checkpoints.set(uid, new Map());
+      const cps = o.checkpoints.get(uid);
+      if (params.seq !== undefined && params.seq !== null) {
+        const seq = Math.max(0, Math.round(Number(params.seq) || 0));
+        const at = new Date().toISOString();
+        cps.set(rid, { seq, at });
+        saveOffline();
+        return { ok: true, result: { replicationId: rid, seq, at, saved: true } };
+      }
+      const cp = cps.get(rid);
+      return { ok: true, result: { replicationId: rid, seq: cp?.seq || 0, at: cp?.at || null, saved: false } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * backoffSchedule — exponential-backoff retry plan for the offline queue.
+   * params.attempt = current attempt count; params.baseMs, params.capMs, params.maxAttempts
+   */
+  registerLensAction("offline", "backoffSchedule", (_ctx, _artifact, params = {}) => {
+    try {
+      const baseMs = Math.max(100, Math.round(Number(params.baseMs) || 1000));
+      const capMs = Math.max(baseMs, Math.round(Number(params.capMs) || 60000));
+      const maxAttempts = Math.max(1, Math.min(20, Math.round(Number(params.maxAttempts) || 8)));
+      const jitter = params.jitter === false ? 0 : 0.2; // ±20% full jitter
+      // Deterministic seed so the schedule preview is stable per attempt.
+      const schedule = [];
+      for (let n = 0; n < maxAttempts; n++) {
+        const raw = Math.min(capMs, baseMs * Math.pow(2, n));
+        const lo = Math.round(raw * (1 - jitter));
+        const hi = Math.round(raw * (1 + jitter));
+        schedule.push({ attempt: n + 1, baseDelayMs: raw, minDelayMs: lo, maxDelayMs: hi });
+      }
+      const attempt = Math.max(0, Math.round(Number(params.attempt) || 0));
+      const totalWaitMs = schedule.reduce((s, x) => s + x.baseDelayMs, 0);
+      const nextEntry = schedule[Math.min(attempt, maxAttempts - 1)];
+      // Pick a concrete jittered delay for the *current* attempt.
+      const nextDelayMs = nextEntry
+        ? Math.round(nextEntry.minDelayMs + Math.random() * (nextEntry.maxDelayMs - nextEntry.minDelayMs))
+        : capMs;
+      return {
+        ok: true,
+        result: {
+          schedule,
+          attempt,
+          exhausted: attempt >= maxAttempts,
+          nextDelayMs,
+          nextAttempt: Math.min(attempt + 1, maxAttempts),
+          totalWaitMs,
+          totalWaitSeconds: Math.round(totalWaitMs / 1000),
+          policy: { baseMs, capMs, maxAttempts, jitter },
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * mergeResolve — apply a human conflict-resolution decision and persist the
+   * winning body back into the replicated store as a new revision.
+   * params.id, params.winner = "server" | "client" | "merged", params.mergedBody?
+   */
+  registerLensAction("offline", "mergeResolve", (ctx, _artifact, params = {}) => {
+    try {
+      const o = getOfflineState();
+      if (!o) return { ok: false, error: "STATE unavailable" };
+      const uid = ofActor(ctx);
+      const id = ofClean(params.id, 200);
+      if (!id) return { ok: false, error: "doc id required" };
+      const winner = ["server", "client", "merged"].includes(params.winner) ? params.winner : "merged";
+      const store = ofUserDocs(o, uid);
+      const feed = ofUserChanges(o, uid);
+      const existing = store.get(id);
+      let body;
+      if (winner === "server") body = existing?.body ?? null;
+      else if (winner === "client") body = params.clientBody ?? null;
+      else body = params.mergedBody ?? params.clientBody ?? existing?.body ?? null;
+      const generation = (existing ? parseInt(existing.rev, 10) || 1 : 0) + 1;
+      const rev = ofRev(generation, body);
+      const seq = ofNextSeq(o, uid);
+      const at = new Date().toISOString();
+      if (body == null) { store.delete(id); }
+      else { store.set(id, { id, body, rev, updatedAt: at }); }
+      feed.push({ seq, id, rev, deleted: body == null, at });
+      if (feed.length > 5000) feed.splice(0, feed.length - 5000);
+      saveOffline();
+      return { ok: true, result: { id, rev, seq, winner, resolvedBody: body } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * swManifest — return the offline-shell asset manifest the service worker
+   * should pre-cache. Drives the Workbox-style precache UI in the lens.
+   */
+  registerLensAction("offline", "swManifest", (_ctx, _artifact, _params = {}) => {
+    try {
+      const shell = [
+        { url: "/", role: "app-shell", strategy: "cache-first" },
+        { url: "/hub", role: "app-shell", strategy: "cache-first" },
+        { url: "/lenses/offline", role: "lens", strategy: "stale-while-revalidate" },
+        { url: "/login", role: "auth", strategy: "cache-first" },
+      ];
+      const runtime = [
+        { pattern: "/api/*", strategy: "network-first", note: "GET responses cached for offline fallback" },
+        { pattern: "/api/lens/run", strategy: "network-first-queue", note: "mutations queued for background sync" },
+        { pattern: "static assets", strategy: "cache-first", note: "JS/CSS/fonts" },
+      ];
+      return {
+        ok: true,
+        result: {
+          cacheName: "concord-v2",
+          precache: shell,
+          runtimeCaching: runtime,
+          backgroundSyncTag: "concord-mutation-sync",
+          maxCacheEntries: 200,
+          maxCacheAgeHours: 24,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("offline", "deltaCompute", (ctx, artifact, params) => {
     const baseState = artifact.data?.baseState || {};
     const currentState = artifact.data?.currentState || {};

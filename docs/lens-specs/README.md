@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~68%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1032**
+- Average feature parity: **~69%**
+- Total buildable features in the backlog (sum of all "Missing" items): **989**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 86 |
+| 80–100% (near-complete) | 92 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 85 |
+| 40–59% (partial) | 79 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -31,12 +31,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| mesh | Meshtastic / Briar | ~45% | 8 |
-| metacognition | reflection / thinking-skills tools | ~45% | 7 |
-| metalearning | learning-how-to-learn tools | ~45% | 7 |
-| nonprofit | Bloomerang / Givebutter | ~45% | 8 |
-| offline | PouchDB/Dexie + Workbox | ~45% | 6 |
-| plumbing | ServiceTitan / Jobber | ~45% | 7 |
 | privacy | OneTrust / Apple Privacy settings | ~45% | 7 |
 | resonance | cross-domain analogy / knowledge-graph tool | ~45% | 7 |
 | services | Square Appointments / Vagaro | ~45% | 7 |
@@ -223,8 +217,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | lock | concurrency-debugging tools (Java Flight Recorder / lock profilers) | ~88% | 0 |
 | manufacturing | Tulip / Plex MES | ~88% | 0 |
 | market | Crayon / Klue (competitive intelligence) | ~88% | 0 |
+| mesh | Meshtastic / Briar | ~88% | 0 |
+| metacognition | reflection / thinking-skills tools | ~88% | 0 |
+| metalearning | learning-how-to-learn tools | ~88% | 0 |
 | neuro | EEGLAB / MNE-Python | ~88% | 0 |
+| nonprofit | Bloomerang / Givebutter | ~88% | 0 |
+| offline | PouchDB/Dexie + Workbox | ~88% | 0 |
 | ops | PagerDuty | ~88% | 0 |
+| plumbing | ServiceTitan / Jobber | ~88% | 0 |
 | psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |
 | questmarket | Bountysource / gamified quest board | ~88% | 0 |
 | schema | JSON Schema tooling / Hasura console | ~88% | 0 |

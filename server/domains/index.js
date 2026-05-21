@@ -208,6 +208,7 @@ import bounties from './bounties.js';
 import subWorlds from './sub-worlds.js';
 import sentinelLens from './sentinel.js';
 import tournamentsLens from './tournaments.js';
+import meshLens from './mesh.js';
 import worldmodelLens from './worldmodel.js';
 import savedLens from './saved.js';
 import inheritance from './inheritance.js';
@@ -421,4 +422,5 @@ export default [
   sentinelLens,
   tournamentsLens,
   worldmodelLens,
+  meshLens,
 ];

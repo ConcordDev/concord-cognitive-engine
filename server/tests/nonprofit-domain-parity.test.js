@@ -120,6 +120,162 @@ describe("nonprofit.lookup-org-by-ein (ProPublica Nonprofit Explorer)", () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────
+// Backlog-feature macros (donor CRM, segmentation, comms, receipts,
+// recurring giving, donation pages, volunteers, events / P2P).
+// These need a STATE-backed harness — install one before each block.
+// ─────────────────────────────────────────────────────────────────────
+function withState() {
+  globalThis._concordSTATE = { dtus: new Map() };
+  globalThis._concordSaveStateDebounced = () => {};
+}
+
+describe("nonprofit donor CRM", () => {
+  beforeEach(withState);
+  it("creates, lists, updates, deletes donors scoped per user", () => {
+    const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
+    assert.ok(d.id);
+    assert.equal(call("donor-list", ctxA, {}).result.count, 1);
+    assert.equal(call("donor-list", { actor: { userId: "u_b" }, userId: "u_b" }, {}).result.count, 0);
+    const upd = call("donor-update", ctxA, { id: d.id, phone: "555-1234" });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.donor.phone, "555-1234");
+    assert.equal(call("donor-delete", ctxA, { id: d.id }).ok, true);
+    assert.equal(call("donor-list", ctxA, {}).result.count, 0);
+  });
+  it("rejects a nameless donor", () => {
+    assert.equal(call("donor-create", ctxA, {}).ok, false);
+  });
+  it("logs gifts to a donor and computes stats", () => {
+    const d = call("donor-create", ctxA, { name: "Grace" }).result.donor;
+    call("donor-gift-log", ctxA, { donorId: d.id, amount: 200, fund: "General" });
+    const r = call("donor-gift-log", ctxA, { donorId: d.id, amount: 300 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.donor.totalGiven, 500);
+    assert.equal(r.result.donor.giftCount, 2);
+    assert.equal(call("donor-gift-log", ctxA, { donorId: d.id, amount: 0 }).ok, false);
+    assert.equal(call("donor-gift-log", ctxA, { donorId: "nope", amount: 5 }).ok, false);
+  });
+});
+
+describe("nonprofit donor segmentation", () => {
+  beforeEach(withState);
+  it("buckets donors into major / first-time / prospect", () => {
+    const big = call("donor-create", ctxA, { name: "Big" }).result.donor;
+    call("donor-gift-log", ctxA, { donorId: big.id, amount: 5000 });
+    const once = call("donor-create", ctxA, { name: "Once" }).result.donor;
+    call("donor-gift-log", ctxA, { donorId: once.id, amount: 50 });
+    call("donor-create", ctxA, { name: "Cold Lead" });
+    const r = call("donor-segment", ctxA, { majorThreshold: 1000 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.summary.major, 1);
+    assert.equal(r.result.summary.firstTime, 2);
+    assert.equal(r.result.summary.prospect, 1);
+  });
+});
+
+describe("nonprofit communications", () => {
+  beforeEach(withState);
+  it("composes a thank-you preview without sending", () => {
+    const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
+    const r = call("comm-compose", ctxA, { donorId: d.id, kind: "thank_you" });
+    assert.equal(r.ok, true);
+    assert.match(r.result.subject, /Thank you/);
+  });
+  it("sends a comm and appends it to the donor log", () => {
+    const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
+    assert.equal(call("comm-send", ctxA, { donorId: d.id, kind: "appeal", cause: "clean water" }).ok, true);
+    assert.equal(call("comm-log", ctxA, { donorId: d.id }).result.count, 1);
+  });
+  it("thank-you automation acknowledges every pending gift", () => {
+    const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
+    call("donor-gift-log", ctxA, { donorId: d.id, amount: 100 });
+    const r = call("thankyou-run", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.sent, 1);
+    assert.equal(call("thankyou-run", ctxA, {}).result.sent, 0);
+  });
+});
+
+describe("nonprofit tax receipts", () => {
+  beforeEach(withState);
+  it("generates a per-gift receipt and an annual statement", () => {
+    const d = call("donor-create", ctxA, { name: "Pat", address: "1 Main St" }).result.donor;
+    const g = call("donor-gift-log", ctxA, { donorId: d.id, amount: 250 }).result.gift;
+    const r = call("receipt-generate", ctxA, { donorId: d.id, giftId: g.id });
+    assert.equal(r.ok, true);
+    assert.match(r.result.receipt.receiptNo, /^R-/);
+    assert.equal(r.result.receipt.amount, 250);
+    const ann = call("receipt-annual", ctxA, { donorId: d.id, year: new Date().getFullYear() });
+    assert.equal(ann.ok, true);
+    assert.equal(ann.result.statement.totalDeductible, 250);
+  });
+});
+
+describe("nonprofit recurring giving", () => {
+  beforeEach(withState);
+  it("creates, lists, charges, and cancels a pledge", () => {
+    const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
+    const p = call("pledge-create", ctxA, { donorId: d.id, amount: 25, frequency: "monthly" }).result.pledge;
+    assert.equal(call("pledge-list", ctxA, {}).result.active, 1);
+    const charged = call("pledge-charge", ctxA, { donorId: d.id, pledgeId: p.id });
+    assert.equal(charged.ok, true);
+    assert.equal(charged.result.pledge.paid, 25);
+    assert.equal(call("pledge-update", ctxA, { donorId: d.id, pledgeId: p.id, status: "paused" }).result.pledge.status, "paused");
+    assert.equal(call("pledge-cancel", ctxA, { donorId: d.id, pledgeId: p.id }).result.pledge.status, "cancelled");
+  });
+  it("rejects a non-positive pledge", () => {
+    const d = call("donor-create", ctxA, { name: "Pat" }).result.donor;
+    assert.equal(call("pledge-create", ctxA, { donorId: d.id, amount: 0 }).ok, false);
+  });
+});
+
+describe("nonprofit donation pages", () => {
+  beforeEach(withState);
+  it("creates a page, publishes it, and accepts a gift", () => {
+    const p = call("donation-page-create", ctxA, { title: "Save the Reef", goal: 1000 }).result.page;
+    assert.ok(p.slug);
+    assert.equal(call("donation-page-give", ctxA, { pageId: p.id, amount: 50 }).ok, false); // unpublished
+    call("donation-page-update", ctxA, { id: p.id, published: true });
+    const g = call("donation-page-give", ctxA, { pageId: p.id, amount: 200, donor: "Sam" });
+    assert.equal(g.ok, true);
+    assert.equal(g.result.raised, 200);
+    assert.equal(call("donation-page-list", ctxA, {}).result.pages[0].progressPct, 20);
+    assert.equal(call("donation-page-delete", ctxA, { id: p.id }).ok, true);
+  });
+});
+
+describe("nonprofit volunteer management", () => {
+  beforeEach(withState);
+  it("signs up a volunteer, schedules a shift, logs hours", () => {
+    const v = call("volunteer-signup", ctxA, { name: "Lee", skills: "driving,cooking" }).result.volunteer;
+    assert.equal(v.skills.length, 2);
+    const sh = call("shift-schedule", ctxA, { volunteerId: v.id, role: "Kitchen", hours: 4 }).result.shift;
+    const logged = call("shift-log-hours", ctxA, { volunteerId: v.id, shiftId: sh.id, hours: 3.5 });
+    assert.equal(logged.ok, true);
+    assert.equal(logged.result.totalHours, 3.5);
+    assert.equal(call("volunteer-list", ctxA, {}).result.totalHours, 3.5);
+    assert.equal(call("volunteer-delete", ctxA, { id: v.id }).ok, true);
+  });
+});
+
+describe("nonprofit events + peer-to-peer", () => {
+  beforeEach(withState);
+  it("creates an event, p2p team, donation, and leaderboard", () => {
+    const ev = call("event-create", ctxA, { name: "Charity Walk", goal: 5000 }).result.event;
+    const team = call("p2p-team-create", ctxA, { eventId: ev.id, captain: "Jordan" }).result.team;
+    const don = call("p2p-donate", ctxA, { eventId: ev.id, teamId: team.id, amount: 150, donor: "Fan" });
+    assert.equal(don.ok, true);
+    assert.equal(don.result.teamRaised, 150);
+    const board = call("p2p-leaderboard", ctxA, { eventId: ev.id });
+    assert.equal(board.ok, true);
+    assert.equal(board.result.leaderboard[0].rank, 1);
+    assert.equal(board.result.totalRaised, 150);
+    assert.equal(call("event-list", ctxA, {}).result.events[0].raised, 150);
+    assert.equal(call("event-delete", ctxA, { id: ev.id }).ok, true);
+  });
+});
+
 describe("nonprofit.search-orgs (ProPublica search)", () => {
   it("rejects short queries", async () => {
     assert.equal((await call("search-orgs", ctxA, { query: "a" })).ok, false);

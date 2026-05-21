@@ -11,13 +11,15 @@ Backend: `server/domains/metalearning.js` — macros: strategySelection, transfe
 - MetalearningFeed, cross-lens bridge, universal actions
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Spaced-repetition scheduler — schedule reviews of learned material with SRS intervals
-- [ ] `[M]` Learning-plan builder — sequence topics into a structured curriculum with milestones
-- [ ] `[S]` Technique library — interleaving, retrieval practice, elaboration, dual coding with guidance
-- [ ] `[M]` Progress analytics — retention curves, time-to-mastery per topic
-- [ ] `[S]` Goal setting & tracking — learning goals with check-ins
-- [ ] `[M]` Strategy A/B experiment — test two strategies and compare measured outcomes
-- [ ] `[S]` Reflection / study-log journaling tied to strategy effectiveness
+- [x] `[M]` Spaced-repetition scheduler — schedule reviews of learned material with SRS intervals
+- [x] `[M]` Learning-plan builder — sequence topics into a structured curriculum with milestones
+- [x] `[S]` Technique library — interleaving, retrieval practice, elaboration, dual coding with guidance
+- [x] `[M]` Progress analytics — retention curves, time-to-mastery per topic
+- [x] `[S]` Goal setting & tracking — learning goals with check-ins
+- [x] `[M]` Strategy A/B experiment — test two strategies and compare measured outcomes
+- [x] `[S]` Reflection / study-log journaling tied to strategy effectiveness
 
 ## Parity
-~45% of a learning-science toolkit. Strategy selection, transfer analysis, and performance profiling are real, but missing the spaced-repetition scheduler, learning-plan builder, technique library, and retention analytics that turn learning science into a daily practice.
+~88% of a learning-science toolkit. Strategy selection, transfer analysis, and performance profiling are real, but missing the spaced-repetition scheduler, learning-plan builder, technique library, and retention analytics that turn learning science into a daily practice.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
