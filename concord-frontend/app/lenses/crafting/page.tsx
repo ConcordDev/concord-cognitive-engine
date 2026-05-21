@@ -31,17 +31,18 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeLedger } from '@/components/crafting/RecipeLedger';
+import { CraftingWorkbench } from '@/components/crafting/CraftingWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import {
   useArtifacts,
   useCreateArtifact,
 } from '@/lib/hooks/use-lens-artifacts';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import {
   Hammer, ShoppingBag, Plus, Loader2, Flame, Sparkles, Search,
   X, Coins, ShieldCheck, Package, Beaker, Sword, Wand2, BookOpen,
-  ChevronRight, AlertCircle, ArrowUpCircle, Award, RefreshCw,
+  ChevronRight, AlertCircle, ArrowUpCircle, Award, RefreshCw, Star, Wrench,
 } from 'lucide-react';
 
 const RecipeAuthorPanel = dynamic(
@@ -131,7 +132,7 @@ interface CraftingRecipe {
   } | string;
 }
 
-type Tab = 'mine' | 'forge' | 'browse' | 'skills' | 'author';
+type Tab = 'mine' | 'forge' | 'browse' | 'skills' | 'workbench' | 'author';
 
 const TYPE_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   food_recipe:           { label: 'Food',    icon: <Flame className="w-3.5 h-3.5" />,    color: 'text-orange-300' },
@@ -160,6 +161,7 @@ export default function CraftingPage() {
       { id: 'tab-forge',  keys: 'f', description: 'Forge',    category: 'navigation', action: () => setTab('forge') },
       { id: 'tab-browse', keys: 'b', description: 'Browse',   category: 'navigation', action: () => setTab('browse') },
       { id: 'tab-skills', keys: 's', description: 'Skills',   category: 'navigation', action: () => setTab('skills') },
+      { id: 'tab-workbench', keys: 'w', description: 'Workbench', category: 'navigation', action: () => setTab('workbench') },
       { id: 'tab-author', keys: 'a', description: 'Author',   category: 'navigation', action: () => setTab('author') },
     ],
     { lensId: 'crafting' }
@@ -269,6 +271,7 @@ export default function CraftingPage() {
           <TabButton current={tab} value="forge"  label="Forge"               onClick={() => setTab('forge')}  icon={<Beaker className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="browse" label="Browse Marketplace"  onClick={() => setTab('browse')} icon={<ShoppingBag className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="skills" label="Skills"              onClick={() => setTab('skills')} icon={<Award className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="workbench" label="Workbench"        onClick={() => setTab('workbench')} icon={<Wrench className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="author" label="Author New"          onClick={() => setTab('author')} icon={<Plus className="w-3.5 h-3.5" />} />
         </nav>
 
@@ -276,6 +279,7 @@ export default function CraftingPage() {
         {tab === 'forge'  && <ForgeTab onCrafted={refreshHeader} />}
         {tab === 'browse' && <BrowseTab onPurchased={refreshHeader} />}
         {tab === 'skills' && <SkillsTab onChanged={refreshHeader} />}
+        {tab === 'workbench' && <CraftingWorkbench />}
         {tab === 'author' && (
           <section className="flex justify-center">
             <RecipeAuthorPanel onPublished={() => { setTab('mine'); refreshHeader(); }} />
@@ -431,6 +435,15 @@ function MineTab({ onChanged }: { onChanged: () => void }) {
   const [cookResults, setCookResults] = useState<Record<string, string>>({});
   const [detail, setDetail] = useState<RecipeRow | null>(null);
   const [listing, setListing] = useState<{ dtuId: string } | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  const loadFavorites = useCallback(async () => {
+    const r = await lensRun('crafting', 'favorite_list', {});
+    if (r.data?.ok) {
+      const favs = (r.data.result as { favorites: Array<{ recipeId: string }> }).favorites;
+      setFavorites(new Set(favs.map((f) => f.recipeId)));
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -452,7 +465,23 @@ function MineTab({ onChanged }: { onChanged: () => void }) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  async function toggleFavorite(r: RecipeRow) {
+    const res = await lensRun('crafting', 'favorite_toggle', {
+      recipeId: r.id,
+      recipeName: r.title,
+      recipeType: r.meta?.type ?? r.type ?? '',
+    });
+    if (res.data?.ok) {
+      const { favorited } = res.data.result as { favorited: boolean };
+      setFavorites((prev) => {
+        const next = new Set(prev);
+        if (favorited) next.add(r.id); else next.delete(r.id);
+        return next;
+      });
+    }
+  }
+
+  useEffect(() => { load(); loadFavorites(); }, [load, loadFavorites]);
   useEffect(() => {
     const h = () => load();
     window.addEventListener('concordia:avatar-changed', h);
@@ -553,6 +582,14 @@ function MineTab({ onChanged }: { onChanged: () => void }) {
                   )}
                 </button>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => toggleFavorite(r)}
+                    className={`p-1 rounded ${favorites.has(r.id) ? 'text-amber-300' : 'text-white/30 hover:text-amber-300'}`}
+                    title={favorites.has(r.id) ? 'Unfavorite' : 'Favorite'}
+                    aria-label="Toggle favorite"
+                  >
+                    <Star className={`w-4 h-4 ${favorites.has(r.id) ? 'fill-current' : ''}`} />
+                  </button>
                   {isFood && (
                     <button
                       onClick={() => cookRecipe(r.id)}

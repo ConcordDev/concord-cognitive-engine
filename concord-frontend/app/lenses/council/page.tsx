@@ -12,6 +12,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CouncilVoices } from '@/components/council/CouncilVoices';
 import { CouncilActionPanel } from '@/components/council/CouncilActionPanel';
+import { MeetingsWorkspace } from '@/components/council/MeetingsWorkspace';
+import { DecisionArchive } from '@/components/council/DecisionArchive';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -63,6 +65,8 @@ import {
   Layers,
   CircleDot,
   ClipboardCheck,
+  CalendarClock,
+  Archive,
   HeartHandshake as HandshakeIcon,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -73,13 +77,21 @@ import { GovernanceVotingPanel } from '@/components/emergent/GovernanceVotingPan
 import CouncilTheaterPanel from '@/components/council/CouncilTheaterPanel';
 import { EntityCard } from '@/components/entity/EntityCard';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
-import { FileText as MobileTabFileText, Vote as MobileTabVote, MessageSquare as MobileTabMessage, DollarSign as MobileTabDollar, ScrollText as MobileTabScroll, UsersRound as MobileTabPeople } from 'lucide-react';
+import { FileText as MobileTabFileText, Vote as MobileTabVote, MessageSquare as MobileTabMessage, DollarSign as MobileTabDollar, ScrollText as MobileTabScroll, UsersRound as MobileTabPeople, CalendarClock as MobileTabMeetings, Archive as MobileTabArchive } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type CouncilTab = 'proposals' | 'voting' | 'debates' | 'budget' | 'audit' | 'stakeholders';
+type CouncilTab =
+  | 'proposals'
+  | 'voting'
+  | 'meetings'
+  | 'debates'
+  | 'budget'
+  | 'archive'
+  | 'audit'
+  | 'stakeholders';
 
 type ProposalType = 'policy' | 'budget' | 'amendment' | 'resolution' | 'motion';
 type ProposalStatus = 'draft' | 'discussion' | 'voting' | 'decided' | 'implemented' | 'rejected';
@@ -206,8 +218,10 @@ interface DTU {
 const TABS: { id: CouncilTab; label: string; icon: typeof FileText }[] = [
   { id: 'proposals', label: 'Proposals', icon: FileText },
   { id: 'voting', label: 'Voting', icon: Vote },
+  { id: 'meetings', label: 'Meetings', icon: CalendarClock },
   { id: 'debates', label: 'Debates', icon: MessageSquare },
   { id: 'budget', label: 'Budget', icon: DollarSign },
+  { id: 'archive', label: 'Archive', icon: Archive },
   { id: 'audit', label: 'Audit', icon: Shield },
   { id: 'stakeholders', label: 'Stakeholders', icon: Users },
 ];
@@ -2668,8 +2682,10 @@ export default function CouncilLensPage() {
       <div className="min-h-[400px]">
         {activeTab === 'proposals' && renderProposalsTab()}
         {activeTab === 'voting' && renderVotingTab()}
+        {activeTab === 'meetings' && <MeetingsWorkspace />}
         {activeTab === 'debates' && renderDebatesTab()}
         {activeTab === 'budget' && renderBudgetTab()}
+        {activeTab === 'archive' && <DecisionArchive />}
         {activeTab === 'audit' && renderAuditTab()}
         {activeTab === 'stakeholders' && renderStakeholdersTab()}
       </div>
@@ -3472,8 +3488,10 @@ export default function CouncilLensPage() {
             tabs={[
               { id: 'proposals',    label: 'Props',    icon: MobileTabFileText },
               { id: 'voting',       label: 'Vote',     icon: MobileTabVote },
+              { id: 'meetings',     label: 'Meet',     icon: MobileTabMeetings },
               { id: 'debates',      label: 'Debate',   icon: MobileTabMessage },
               { id: 'budget',       label: 'Budget',   icon: MobileTabDollar },
+              { id: 'archive',      label: 'Archive',  icon: MobileTabArchive },
               { id: 'audit',        label: 'Audit',    icon: MobileTabScroll },
               { id: 'stakeholders', label: 'People',   icon: MobileTabPeople },
             ]}

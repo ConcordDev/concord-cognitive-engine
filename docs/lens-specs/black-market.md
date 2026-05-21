@@ -11,12 +11,14 @@ Backend: `server/domains/black-market.js` — macros `listings`, `tiers`; backed
 - Listing expiry (created_at / expires_at)
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Bidding / auction on rare intercepts instead of fixed price
-- [ ] `[M]` Reputation-gated inventory (higher rep unlocks shadow-tier listings)
-- [ ] `[S]` Haggle / negotiate dialogue with the fence NPC
-- [ ] `[M]` Player-to-player resale of purchased intercepts
-- [ ] `[S]` Watchlist / alert when a matching intercept appears
-- [ ] `[S]` Decryption mini-game for shadow-tier messages
+- [x] `[S]` Bidding / auction on rare intercepts instead of fixed price
+- [x] `[M]` Reputation-gated inventory (higher rep unlocks shadow-tier listings)
+- [x] `[S]` Haggle / negotiate dialogue with the fence NPC
+- [x] `[M]` Player-to-player resale of purchased intercepts
+- [x] `[S]` Watchlist / alert when a matching intercept appears
+- [x] `[S]` Decryption mini-game for shadow-tier messages
 
 ## Parity
-~60% of an in-game grey-market stall. Functionally complete for its narrow purpose — browse, tier-price, buy, reveal, reputation — but lacks the auction/haggle/resale depth that would make the economy feel alive.
+~95% of an in-game grey-market stall. Browse, tier-price, buy, reveal, reputation, plus live auctions with bidding, reputation-gated inventory, haggle dialogue, player resale, watchlist alerts, and a decryption mini-game all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -222,6 +222,7 @@ import personas from './personas.js';
 import psyops from './psyops.js';
 import tools from './tools.js';
 import goddessLens from './goddess.js';
+import cognitionLens from './cognition.js';
 
 export default [
   healthcare,
@@ -437,4 +438,5 @@ export default [
   understandingLens,
   dxPlatform,
   goddessLens,
+  cognitionLens,
 ];

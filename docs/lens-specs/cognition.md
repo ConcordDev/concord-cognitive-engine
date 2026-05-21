@@ -10,12 +10,14 @@ Backend: macros `hlr.run/trace/list_traces/metrics/findings` (7 reasoning modes)
 - BrainPoolStatus; understanding evolution; live-understanding view
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Visual reasoning-trace tree (expand/collapse each inference step)
-- [ ] `[S]` Compare two reasoning modes side-by-side on the same prompt
-- [ ] `[M]` Interactive lattice-topology graph (nodes = clusters, edges = relations)
-- [ ] `[S]` Drift-alert timeline with severity filter
-- [ ] `[M]` Reasoning-mode recommendation given a question type
-- [ ] `[S]` Export a reasoning trace as a shareable artifact
+- [x] `[M]` Visual reasoning-trace tree (expand/collapse each inference step)
+- [x] `[S]` Compare two reasoning modes side-by-side on the same prompt
+- [x] `[M]` Interactive lattice-topology graph (nodes = clusters, edges = relations)
+- [x] `[S]` Drift-alert timeline with severity filter
+- [x] `[M]` Reasoning-mode recommendation given a question type
+- [x] `[S]` Export a reasoning trace as a shareable artifact
 
 ## Parity
-~60% of a reasoning-inspector's surface. The substrate is genuinely deep (7 HLR modes, full HLM topology, breakthrough synthesis, drift), but it is mostly tabular — the visual trace tree and topology graph that would make it explorable are missing.
+~95% of a reasoning-inspector's surface. The deep substrate (7 HLR modes, full HLM topology, breakthrough synthesis, drift) plus a visual reasoning-trace tree, an interactive topology graph, a drift-alert timeline, a mode recommender, side-by-side mode comparison, and trace export all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

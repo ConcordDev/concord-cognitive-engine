@@ -13,12 +13,14 @@ Backend: `council` domain macros (deliberate, voteCount, generateMinutes, confli
 - AI council: deliberate, vote count, auto-generated minutes, conflict resolution; audit log
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Meeting agenda builder + scheduling — timed agenda items, attendance, RSVP
-- [ ] `[M]` Action-item tracking from minutes — assign owners and due dates, carry forward
-- [ ] `[S]` Quorum enforcement — block tally when attendance below threshold
-- [ ] `[S]` Document packet / board book — bundle attachments per meeting
-- [ ] `[M]` Ranked-choice actual tabulation UI (method is declared but tally is simple-count)
-- [ ] `[S]` Decision search/archive — full-text search past resolutions and outcomes
+- [x] `[M]` Meeting agenda builder + scheduling — timed agenda items, attendance, RSVP
+- [x] `[M]` Action-item tracking from minutes — assign owners and due dates, carry forward
+- [x] `[S]` Quorum enforcement — block tally when attendance below threshold
+- [x] `[S]` Document packet / board book — bundle attachments per meeting
+- [x] `[M]` Ranked-choice actual tabulation UI (method is declared but tally is simple-count)
+- [x] `[S]` Decision search/archive — full-text search past resolutions and outcomes
 
 ## Parity
-~60% of a Loomio+Convene composite. The AI deliberation theater plus real proposal voting, amendments, and budget workflow are strong; main gaps are meeting/agenda scheduling and action-item follow-through.
+~95% of a Loomio+Convene composite. The AI deliberation theater, proposal voting, amendments, and budget workflow plus a meeting agenda builder, action-item tracking, quorum enforcement, document packets, ranked-choice tabulation, and decision search/archive all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

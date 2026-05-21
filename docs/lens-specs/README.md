@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~83%**
-- Total buildable features in the backlog (sum of all "Missing" items): **423**
+- Average feature parity: **~84%**
+- Total buildable features in the backlog (sum of all "Missing" items): **385**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 175 |
-| 60–79% (strong) | 59 |
-| 40–59% (partial) | 1 |
+| 80–100% (near-complete) | 181 |
+| 60–79% (strong) | 54 |
+| 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| byo-keys | OpenRouter / LiteLLM key management | ~58% | 6 |
-| animation | FlipaClip / Pencil2D | ~60% | 7 |
-| black-market | (in-game grey-market stall) | ~60% | 6 |
-| cognition | (reasoning-substrate console) | ~60% | 6 |
-| council | Loomio / Convene | ~60% | 6 |
-| crafting | MMO crafting systems | ~60% | 7 |
 | creative-writing | Scrivener | ~60% | 7 |
 | creator | YouTube Studio / Patreon | ~60% | 7 |
 | death-insurance | in-game inheritance pact (no consumer rival) | ~60% | 6 |
@@ -233,9 +227,15 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | welding | Jobber / contractor field-service (welding trade) | ~90% | 0 |
 | wellness | Whoop / Calm / CBT apps | ~90% | 0 |
 | analytics | Mixpanel / Amplitude | ~95% | 0 |
+| animation | FlipaClip / Pencil2D | ~95% | 0 |
 | astronomy | SkySafari / Stellarium | ~95% | 0 |
 | atlas | Google Maps | ~95% | 0 |
+| black-market | (in-game grey-market stall) | ~95% | 0 |
 | board | Trello | ~95% | 0 |
+| byo-keys | OpenRouter / LiteLLM key management | ~95% | 0 |
+| cognition | (reasoning-substrate console) | ~95% | 0 |
+| council | Loomio / Convene | ~95% | 0 |
+| crafting | MMO crafting systems | ~95% | 0 |
 | daily | Day One / Reflectly | ~95% | 0 |
 | debate | Kialo | ~95% | 0 |
 | dx-platform | Sourcegraph Cody / GitHub Copilot platform | ~95% | 0 |

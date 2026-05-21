@@ -26,6 +26,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { SaelStall } from '@/components/black-market/SaelStall';
+import { UndergroundExchange } from '@/components/black-market/UndergroundExchange';
 interface Listing {
   id: string;
   message_id: string;
@@ -298,6 +299,9 @@ export default function BlackMarketPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SaelStall />
+      </section>
+      <section className="mx-auto mt-6 max-w-4xl rounded-xl border border-rose-500/20 bg-zinc-950/40 p-4">
+        <UndergroundExchange />
       </section>
     </main>
 

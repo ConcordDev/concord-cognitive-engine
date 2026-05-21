@@ -31,6 +31,12 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpenRouterCatalog } from '@/components/byo-keys/OpenRouterCatalog';
+import { UsageSpendPanel } from '@/components/byo-keys/UsageSpendPanel';
+import { BudgetPanel } from '@/components/byo-keys/BudgetPanel';
+import { FallbackChainPanel } from '@/components/byo-keys/FallbackChainPanel';
+import { KeyHealthPanel } from '@/components/byo-keys/KeyHealthPanel';
+import { OrgKeysPanel } from '@/components/byo-keys/OrgKeysPanel';
+import { ModelPickerModal } from '@/components/byo-keys/ModelPickerModal';
 
 interface OverrideRow {
   slot: string;
@@ -87,6 +93,7 @@ export default function ByoKeysLens() {
   const [form, setForm] = useState({ provider: 'anthropic', modelId: '', apiKey: '' });
   const [testResult, setTestResult] = useState<{ slot: string; ok: boolean; error?: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [modelPicker, setModelPicker] = useState<{ slot: string; provider: string; modelId: string | null } | null>(null);
 
   const refresh = useCallback(async () => {
     const [list, prov] = await Promise.all([
@@ -229,6 +236,15 @@ export default function ByoKeysLens() {
                           >
                             test
                           </button>
+                          {existing.provider !== 'concord_default' && existing.provider !== 'ollama' && (
+                            <button
+                              onClick={() => setModelPicker({ slot, provider: existing.provider, modelId: existing.model_id })}
+                              className="px-2.5 py-1 rounded-md text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                              title="Pick a model from the provider's live catalog"
+                            >
+                              model
+                            </button>
+                          )}
                         </>
                       )}
                       <button
@@ -337,10 +353,30 @@ export default function ByoKeysLens() {
             </p>
           </footer>
         </div>
+        <div className="mx-auto max-w-4xl mt-6 space-y-6">
+          <UsageSpendPanel />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <BudgetPanel />
+            <KeyHealthPanel />
+          </div>
+          <FallbackChainPanel />
+          <OrgKeysPanel />
+        </div>
+
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <OpenRouterCatalog />
         </section>
       </div>
+
+      {modelPicker && (
+        <ModelPickerModal
+          slot={modelPicker.slot}
+          provider={modelPicker.provider}
+          currentModel={modelPicker.modelId}
+          onClose={() => setModelPicker(null)}
+          onSaved={refresh}
+        />
+      )}
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>

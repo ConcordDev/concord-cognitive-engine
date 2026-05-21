@@ -12,12 +12,14 @@ Backend: `server/domains/byo-keys.js` — macros `list`, `set`, `remove`, `set_a
 - Last-used timestamp per override
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Per-key usage + spend tracking (tokens, cost estimate)
-- [ ] `[S]` Per-key rate limit / monthly budget cap with enforcement
-- [ ] `[M]` Model picker per slot from the provider's live model list
-- [ ] `[S]` Fallback chain — if key A fails, route to key B
-- [ ] `[S]` Key health/last-error surfaced in the list
-- [ ] `[M]` Org-shared keys with member-level access control
+- [x] `[M]` Per-key usage + spend tracking (tokens, cost estimate)
+- [x] `[S]` Per-key rate limit / monthly budget cap with enforcement
+- [x] `[M]` Model picker per slot from the provider's live model list
+- [x] `[S]` Fallback chain — if key A fails, route to key B
+- [x] `[S]` Key health/last-error surfaced in the list
+- [x] `[M]` Org-shared keys with member-level access control
 
 ## Parity
-~58% of an OpenRouter-style key console. Secure storage, per-slot routing, test ping, and provider catalog are all real; gaps are usage/spend tracking, budgets, and model selection per slot.
+~95% of an OpenRouter-style key console. Secure storage, per-slot routing, test ping, provider catalog, per-key usage + spend tracking, monthly budget caps with enforcement, per-slot model selection, fallback-chain routing, key health surfacing, and org-shared keys with access control all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

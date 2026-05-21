@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -19,7 +19,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Clapperboard, Plus, Play, Pause, Layers,
+  Clapperboard, Plus, Layers,
   Clock, X, Upload, Film,
   BarChart3, Sparkles, RotateCcw, Zap,
   Loader2, XCircle, Spline, Timer, Monitor, BookOpen, AlertTriangle,
@@ -111,162 +111,6 @@ export default function AnimationPage() {
   const [newFps, setNewFps] = useState('24');
   const [newWidth, setNewWidth] = useState('1920');
   const [newHeight, setNewHeight] = useState('1080');
-
-  // Canvas animation engine
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animFrameRef = useRef<number>(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const currentFrameRef = useRef(0);
-  const isPlayingRef = useRef(false);
-
-  // Keep refs in sync with state
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  useEffect(() => { currentFrameRef.current = currentFrame; }, [currentFrame]);
-
-  // Animation rendering engine
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !selectedProject) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const proj = selectedProject;
-    const fps = proj.fps || 24;
-    const w = canvas.width;
-    const h = canvas.height;
-    const frameDuration = 1000 / fps;
-    let lastFrameTime = 0;
-
-    // Bouncing shapes state
-    const shapes = [
-      { type: 'circle' as const, x: w * 0.25, y: h * 0.4, vx: 2.5, vy: 1.8, r: 22, color: 'rgba(251,146,60,0.85)' },
-      { type: 'circle' as const, x: w * 0.6, y: h * 0.6, vx: -1.8, vy: 2.2, r: 16, color: 'rgba(34,211,238,0.8)' },
-      { type: 'rect' as const, x: w * 0.5, y: h * 0.3, vx: 1.5, vy: -2.0, r: 28, color: 'rgba(168,85,247,0.7)' },
-      { type: 'rect' as const, x: w * 0.75, y: h * 0.7, vx: -2.2, vy: 1.5, r: 18, color: 'rgba(74,222,128,0.7)' },
-      { type: 'circle' as const, x: w * 0.15, y: h * 0.8, vx: 3.0, vy: -1.2, r: 12, color: 'rgba(251,191,36,0.8)' },
-    ];
-
-    function stepShapes() {
-      for (const s of shapes) {
-        s.x += s.vx;
-        s.y += s.vy;
-        if (s.x - s.r < 0) { s.x = s.r; s.vx = Math.abs(s.vx); }
-        if (s.x + s.r > w) { s.x = w - s.r; s.vx = -Math.abs(s.vx); }
-        if (s.y - s.r < 0) { s.y = s.r; s.vy = Math.abs(s.vy); }
-        if (s.y + s.r > h) { s.y = h - s.r; s.vy = -Math.abs(s.vy); }
-      }
-    }
-
-    function drawFrame(frame: number) {
-      if (!ctx) return;
-      // Background
-      ctx.fillStyle = '#0a0a0f';
-      ctx.fillRect(0, 0, w, h);
-
-      // Grid lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-      ctx.lineWidth = 1;
-      for (let gx = 0; gx < w; gx += 40) {
-        ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke();
-      }
-      for (let gy = 0; gy < h; gy += 40) {
-        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
-      }
-
-      // Shapes
-      for (const s of shapes) {
-        ctx.fillStyle = s.color;
-        ctx.shadowColor = s.color;
-        ctx.shadowBlur = 12;
-        if (s.type === 'circle') {
-          ctx.beginPath();
-          ctx.arc(s.x, s.y, s.r + Math.sin(frame * 0.1) * 3, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          const pulse = Math.sin(frame * 0.08) * 4;
-          const halfR = s.r + pulse;
-          ctx.save();
-          ctx.translate(s.x, s.y);
-          ctx.rotate(frame * 0.02);
-          ctx.fillRect(-halfR / 2, -halfR / 2, halfR, halfR);
-          ctx.restore();
-        }
-        ctx.shadowBlur = 0;
-      }
-
-      // Motion trail lines connecting shapes
-      ctx.strokeStyle = 'rgba(251,146,60,0.12)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(shapes[0].x, shapes[0].y);
-      for (let i = 1; i < shapes.length; i++) {
-        ctx.lineTo(shapes[i].x, shapes[i].y);
-      }
-      ctx.stroke();
-
-      // Frame counter overlay
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(8, 8, 130, 44);
-      ctx.strokeStyle = 'rgba(251,146,60,0.4)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(8, 8, 130, 44);
-      ctx.fillStyle = 'rgba(251,146,60,0.9)';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(`Frame: ${frame}`, 16, 26);
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.font = '10px monospace';
-      ctx.fillText(`${fps} fps | ${proj.type}`, 16, 42);
-    }
-
-    // Draw initial frame immediately
-    drawFrame(currentFrameRef.current);
-
-    function tick(timestamp: number) {
-      if (!isPlayingRef.current) {
-        animFrameRef.current = requestAnimationFrame(tick);
-        return;
-      }
-      if (timestamp - lastFrameTime >= frameDuration) {
-        lastFrameTime = timestamp;
-        stepShapes();
-        const next = currentFrameRef.current + 1;
-        currentFrameRef.current = next;
-        setCurrentFrame(next);
-        drawFrame(next);
-      }
-      animFrameRef.current = requestAnimationFrame(tick);
-    }
-
-    animFrameRef.current = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [selectedProject]);
-
-  const handlePlayPause = useCallback(() => {
-    setIsPlaying(prev => !prev);
-  }, []);
-
-  const handleResetTimeline = useCallback(() => {
-    setIsPlaying(false);
-    setCurrentFrame(0);
-    currentFrameRef.current = 0;
-    // Redraw at frame 0
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#0a0a0f';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = 'bold 11px monospace';
-        ctx.fillText('Frame: 0 (Reset)', 16, 26);
-      }
-    }
-  }, []);
 
   // Upload asset via media API — with actual file data
   const assetFileRef = useRef<HTMLInputElement>(null);
@@ -451,45 +295,16 @@ export default function AnimationPage() {
         {/* Timeline */}
         {tab === 'timeline' && (
           <div className="space-y-4">
-            {selectedProject ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">{selectedProject.title}</h2>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500 font-mono tabular-nums">
-                      Frame {currentFrame} | {selectedProject.fps || 24} fps | {selectedProject.resolution?.width}x{selectedProject.resolution?.height}
-                    </span>
-                    <div className="flex gap-1">
-                      <button onClick={handlePlayPause} className={cn('p-2 rounded transition-colors', isPlaying ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-white/5 text-white hover:bg-white/10')}>
-                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      </button>
-                      <button onClick={handleResetTimeline} className="p-2 bg-white/5 rounded hover:bg-white/10" aria-label="Rotate ccw"><RotateCcw className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <canvas
-                    ref={canvasRef}
-                    width={640}
-                    height={320}
-                    className="w-full rounded border border-white/5"
-                    style={{ imageRendering: 'auto', background: '#0a0a0f' }}
-                  />
-                  {/* Scrub bar */}
-                  <div className="mt-3 flex items-center gap-3">
-                    <span className="text-[10px] text-gray-500 font-mono w-16 tabular-nums">F {currentFrame}</span>
-                    <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-orange-500/50 rounded-full transition-[width] duration-100" style={{ width: `${Math.min(100, (currentFrame % 240) / 2.4)}%` }} />
-                    </div>
-                    <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded', isPlaying ? 'text-orange-400 bg-orange-500/10' : 'text-gray-500 bg-white/5')}>
-                      {isPlaying ? 'PLAYING' : 'PAUSED'}
-                    </span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-16 text-gray-500 text-sm">Select a project to open its timeline.</div>
-            )}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-sm text-gray-400">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Clock className="w-4 h-4 text-orange-400" />
+                <span className="font-medium text-gray-200">Frame-by-frame timeline</span>
+              </div>
+              <p className="text-xs">
+                Open a project in the Animation Studio above to draw frames, set per-frame
+                exposure, manage layers, tween shapes, and play back at the project FPS.
+              </p>
+            </div>
           </div>
         )}
 

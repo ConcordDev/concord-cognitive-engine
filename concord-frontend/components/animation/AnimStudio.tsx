@@ -9,15 +9,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, ArrowLeft, Undo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
+  Wrench,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AnimToolsPanel } from './AnimToolsPanel';
 
-interface Stroke { tool: string; color: string; size: number; opacity: number; points: number[][] }
+interface Stroke {
+  tool: string; color: string; size: number; opacity: number; points: number[][];
+  widths?: number[]; pressureSize?: number;
+}
 interface FLayer { id: string; name: string; visible: boolean; opacity: number; strokes: Stroke[] }
 interface Frame { id: string; exposure: number; layers: FLayer[]; strokes?: Stroke[] }
 interface AudioTrack { id: string; name: string; url: string | null; startSec: number }
-interface Anim { id: string; title: string; width: number; height: number; fps: number; background: string; frames: Frame[]; audio?: AudioTrack[] }
+interface CanvasGuides {
+  grid: boolean; gridSize: number; thirds: boolean; safeArea: boolean;
+  symmetry: 'none' | 'vertical' | 'horizontal' | 'both';
+}
+interface CustomBrush {
+  id: string; name: string; tool: string; size: number; opacity: number;
+  color: string; pressureSize: number;
+}
+interface Anim {
+  id: string; title: string; width: number; height: number; fps: number; background: string;
+  frames: Frame[]; audio?: AudioTrack[]; guides?: CanvasGuides;
+}
 
 // Flatten a frame's visible layers (tolerates legacy single-layer frames).
 function visibleStrokes(frame: Frame | undefined): Stroke[] {
@@ -64,6 +80,51 @@ function drawStroke(c: CanvasRenderingContext2D, st: Stroke, alpha = 1) {
   c.restore();
 }
 
+// Draw the onscreen grid / thirds / safe-area / symmetry guides.
+function drawGuides(
+  c: CanvasRenderingContext2D, w: number, h: number, g?: CanvasGuides,
+) {
+  if (!g) return;
+  c.save();
+  c.globalCompositeOperation = 'source-over';
+  if (g.grid && g.gridSize >= 4) {
+    c.strokeStyle = 'rgba(34,211,238,0.18)';
+    c.lineWidth = 1;
+    for (let x = g.gridSize; x < w; x += g.gridSize) {
+      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
+    }
+    for (let y = g.gridSize; y < h; y += g.gridSize) {
+      c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+    }
+  }
+  if (g.thirds) {
+    c.strokeStyle = 'rgba(251,146,60,0.45)';
+    c.lineWidth = 1.2;
+    for (const f of [1 / 3, 2 / 3]) {
+      c.beginPath(); c.moveTo(w * f, 0); c.lineTo(w * f, h); c.stroke();
+      c.beginPath(); c.moveTo(0, h * f); c.lineTo(w, h * f); c.stroke();
+    }
+  }
+  if (g.safeArea) {
+    c.strokeStyle = 'rgba(255,255,255,0.4)';
+    c.setLineDash([6, 4]);
+    c.lineWidth = 1;
+    c.strokeRect(w * 0.05, h * 0.05, w * 0.9, h * 0.9);
+    c.setLineDash([]);
+  }
+  if (g.symmetry === 'vertical' || g.symmetry === 'both') {
+    c.strokeStyle = 'rgba(168,85,247,0.5)';
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke();
+  }
+  if (g.symmetry === 'horizontal' || g.symmetry === 'both') {
+    c.strokeStyle = 'rgba(168,85,247,0.5)';
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.stroke();
+  }
+  c.restore();
+}
+
 export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => void }) {
   const [anim, setAnim] = useState<Anim | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +136,10 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   const [color, setColor] = useState('#10242e');
   const [size, setSize] = useState(7);
   const [opacity, setOpacity] = useState(1);
+  const [showTools, setShowTools] = useState(false);
+  const [customBrushes, setCustomBrushes] = useState<CustomBrush[]>([]);
+  // Pressure dynamics for the active brush (how stylus pressure maps to size).
+  const [pressureSize, setPressureSize] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
@@ -111,7 +176,28 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
       for (const st of visibleStrokes(anim.frames[idx + 1])) drawStroke(ctx, st, 0.18);
     }
     for (const st of visibleStrokes(anim.frames[idx])) drawStroke(ctx, st, 1);
+    // Onscreen grid / guides overlay (non-destructive, drawn last).
+    drawGuides(ctx, cv.width, cv.height, anim.guides);
   }, [anim]);
+
+  // Custom brush library — saved brushes from the tools panel.
+  const loadBrushes = useCallback(async () => {
+    const r = await lensRun('animation', 'brush-list', {});
+    if (r.data?.ok) setCustomBrushes((r.data.result as { brushes: CustomBrush[] }).brushes || []);
+  }, []);
+  useEffect(() => { void loadBrushes(); }, [loadBrushes]);
+
+  // Live guide updates from the Canvas tools tab.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ animId: string; guides: CanvasGuides }>).detail;
+      if (detail?.animId === animId) {
+        setAnim((prev) => prev && { ...prev, guides: detail.guides });
+      }
+    };
+    window.addEventListener('anim:guides', handler);
+    return () => window.removeEventListener('anim:guides', handler);
+  }, [animId]);
 
   useEffect(() => {
     if (!playing) renderFrame(frameIdx, onion);
@@ -166,12 +252,15 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     ctx.restore();
   };
 
+  // A stylus reports pressure in 0..1; a mouse reports 0.5. Pressure is the
+  // 3rd component of each sampled point when pressure dynamics are active.
   const onPointerDown = (e: React.PointerEvent) => {
     if (playing || !anim) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     drawingRef.current = true;
     const p = toPoint(e);
-    pointsRef.current = [p];
+    const sample = pressureSize > 0 ? [...p, e.pressure || 0.5] : p;
+    pointsRef.current = [sample];
     lastRef.current = p;
   };
   const onPointerMove = (e: React.PointerEvent) => {
@@ -180,7 +269,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     const last = lastRef.current;
     if (last && Math.hypot(p[0] - last[0], p[1] - last[1]) < 1.4) return;
     if (last) liveSegment(last, p);
-    pointsRef.current.push(p);
+    pointsRef.current.push(pressureSize > 0 ? [...p, e.pressure || 0.5] : p);
     lastRef.current = p;
   };
   const onPointerUp = async () => {
@@ -190,15 +279,24 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     pointsRef.current = [];
     lastRef.current = null;
     if (!points.length) return;
-    const stroke: Stroke = { tool, color, size, opacity, points };
     const fid = anim.frames[frameIdx].id;
     const lid = activeLayer;
+    // 2D point list for optimistic local render (drop the pressure component).
+    const flat = points.map((p) => [p[0], p[1]]);
+    const stroke: Stroke = { tool, color, size, opacity, points: flat };
     setAnim((prev) => prev && ({
       ...prev,
       frames: prev.frames.map((f, i) => (i === frameIdx
         ? { ...f, layers: f.layers.map((l) => (l.id === lid ? { ...l, strokes: [...l.strokes, stroke] } : l)) } : f)),
     }));
-    await lensRun('animation', 'anim-stroke-commit', { animId: anim.id, frameId: fid, layerId: lid, stroke });
+    if (pressureSize > 0) {
+      await lensRun('animation', 'stroke-commit-pressure', {
+        animId: anim.id, frameId: fid, layerId: lid,
+        stroke: { tool, color, size, opacity, pressureSize, points },
+      });
+    } else {
+      await lensRun('animation', 'anim-stroke-commit', { animId: anim.id, frameId: fid, layerId: lid, stroke });
+    }
   };
 
   const undo = async () => {
@@ -321,6 +419,11 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-40">
           <Undo2 className="w-3.5 h-3.5" /> Undo
         </button>
+        <button type="button" onClick={() => setShowTools((v) => !v)}
+          className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
+            showTools ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+          <Wrench className="w-3.5 h-3.5" /> Tools
+        </button>
       </div>
 
       {/* Canvas */}
@@ -337,6 +440,9 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           style={{ maxWidth: '100%', maxHeight: '52vh', touchAction: 'none' }}
         />
       </div>
+
+      {/* FlipaClip / Pencil2D parity tools */}
+      {showTools && <AnimToolsPanel anim={anim} onChange={reloadAnim} />}
 
       {/* Frame timeline */}
       <div className="space-y-1.5">
@@ -384,13 +490,29 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         <div className="flex flex-wrap gap-1.5">
           {BRUSHES.map((b) => (
             <button key={b.id} type="button"
-              onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); }}
+              onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setPressureSize(0); }}
               className={cn('flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg',
                 tool === b.tool ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
               {b.tool === 'eraser' && <Eraser className="w-3 h-3" />}{b.name}
             </button>
           ))}
         </div>
+        {customBrushes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-[10px] text-zinc-500 self-center">Custom:</span>
+            {customBrushes.map((b) => (
+              <button key={b.id} type="button"
+                onClick={() => {
+                  setTool(b.tool); setSize(b.size); setOpacity(b.opacity);
+                  setColor(b.color); setPressureSize(b.pressureSize);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: b.color }} />
+                {b.name}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
             Color
@@ -406,6 +528,11 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
             Opacity {Math.round(opacity * 100)}%
             <input type="range" min={0.05} max={1} step={0.05} value={opacity}
               onChange={(e) => setOpacity(Number(e.target.value))} className="w-24 accent-cyan-500" />
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+            Pressure {Math.round(pressureSize * 100)}%
+            <input type="range" min={0} max={1} step={0.05} value={pressureSize}
+              onChange={(e) => setPressureSize(Number(e.target.value))} className="w-24 accent-cyan-500" />
           </label>
         </div>
       </div>
