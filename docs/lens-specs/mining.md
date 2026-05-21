@@ -1,35 +1,25 @@
-# mining — Feature Completeness Spec
+# mining — Feature Gap vs MineHub / Micromine
 
-Rival app(s): mine-management / MineHub, MSHA Mine Data Retrieval, USGS (2026)
-Sources:
-- https://datamine.msha.gov/ (MSHA open mine + violation data — live)
-- mine-operations / safety record-keeping
+Category leader (2026): Micromine / MineHub (mine planning & operations). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/mining.js` — 12 macros: oreGradeCalc, blastDesign, safetyMetrics, resourceEstimate, live MSHA mine-lookup + violations, site CRUD, incident-log, mining-dashboard.
 
-## Features
+## Has (verified in code)
+- Mine-site management — track sites (kind, commodity, production tonnes, status), CRUD
+- Safety incident logging — near-miss/minor/serious/fatal; TRIR/LTIR safety metrics
+- Operations dashboard — sites, active, total production, serious incidents
+- Calculators — ore grade (cutoff, economic %, classification), blast design (burden/spacing/powder factor), resource estimate (tonnage, contained/recoverable metal, gross value)
+- Live MSHA mine + violation lookup → DTUs
+- Dashboard/cases/incidents tabs, MapView, MineSiteManager
 
-### Mine-operations management
-- [x] Track managed sites — kind, commodity, production tonnes, status (macro: mining.site-add)
-- [x] List sites with derived incident count (macro: mining.site-list)
-- [x] Update site status / production (macro: mining.site-update)
-- [x] Delete a site (macro: mining.site-delete)
-- [x] Log safety incidents — near_miss / minor / serious / fatal (macro: mining.incident-log)
-- [x] Operations dashboard — sites, active, total production, serious incidents (macro: mining.mining-dashboard)
+## Missing — buildable feature backlog
+- [ ] `[L]` Block model / orebody visualization — 3D grade model from drill samples
+- [ ] `[M]` Mine plan / pit design — bench layout, pit shells, scheduling
+- [ ] `[M]` Drill-hole database — log holes with intervals, assays, lithology
+- [ ] `[M]` Production scheduling — haul cycles, equipment dispatch, daily targets
+- [ ] `[S]` Grade-tonnage curve from sample data
+- [ ] `[M]` Equipment / fleet management — utilization, maintenance, fuel
+- [ ] `[S]` Reserve/resource reporting per JORC/NI 43-101 categories
+- [ ] `[S]` GIS pit/bench mapping layer
 
-### Live data & calculators
-- [x] MSHA mine + violation lookup (macro: mining.msha-* — ingested as DTUs)
-- [x] Grade / blast / safety / resource calculators (MiningActionPanel)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| GIS pit / bench mapping | a GIS layer engine | lat-lon-free site records + the `atlas` lens carries mapping |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/mining.js` clean. Site
-  substrate (6 macros) appended to the MSHA lookup domain.
-- 2026-05-20: Tests — `tests/mining-site-domain-parity.test.js` 5/5 green
-  (site CRUD + per-user scope + kind fallback / incident log / dashboard
-  serious-incident aggregation).
-- 2026-05-20: Frontend — new `MineSiteManager` (site list with incident
-  logging + dashboard) mounted in the mining lens page. `npx tsc --noEmit`
-  exit 0.
+## Parity
+~40% of a mine-management suite. Real domain calculators (grade, blast, resource, safety) plus site records and live MSHA data, but missing block modeling, mine planning, drill-hole databases, and production scheduling that define mine-operations software.

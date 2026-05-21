@@ -1,26 +1,24 @@
-# pharmacy — Feature Completeness Spec
+# pharmacy — Feature Gap vs Medisafe / GoodRx
 
-Rival app(s): GoodRx, Medisafe, CVS / Walgreens apps (2026)
-Sources:
-- https://open.fda.gov/apis/drug/enforcement/ — openFDA drug enforcement / recalls (free, no key)
+Category leader (2026): Medisafe (medication management) + GoodRx (drug pricing). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/pharmacy.js` — ~33 macros: medication CRUD, dosing schedules, dose log + history, adherence report, refill requests, pharmacy directory, price record/compare, coupons, health measurements, journal, dashboard, drug-label + adverse-events (openFDA), drug-recall feed.
 
-## Features
+## Has (verified in code)
+- Medication CRUD with dosing schedules; today's doses, dose logging + history
+- Adherence report scoring; refill requests + refills-due tracking
+- Drug interaction check, dosage calculator, formulary search, inventory alert
+- Pharmacy directory; price record + compare across pharmacies; coupon save/list
+- Health measurement logging + history; medication journal; pharmacy dashboard
+- Real openFDA drug labels + adverse-event reports; live drug-recall feed as DTUs; 4 tabs (meds/interactions/refills/FDA)
 
-### Medication-management substrate
-- [x] Medications, dosing schedules, dose log, refill requests
-- [x] Pharmacies, price comparison, coupons, health measurements, journal
-- [x] Adherence scoring + pharmacy dashboard
-- (33 macros)
+## Missing — buildable feature backlog
+- [ ] `[M]` Dose reminders with notifications — scheduled push alerts at dosing times (Medisafe's core loop)
+- [ ] `[S]` Medfriend / caregiver alerts — notify a family member on missed doses
+- [ ] `[M]` Live drug price lookup — query real pharmacy pricing for a drug + dosage (GoodRx core)
+- [ ] `[S]` Pill identifier — match a pill by imprint/shape/color via openFDA
+- [ ] `[S]` Refill auto-reorder — trigger refill request when supply runs low
+- [ ] `[M]` Drug interaction severity grading with sources — clinical-grade interaction explanations
+- [ ] `[S]` Streak / adherence gamification — visual adherence calendar and rewards
 
-### Live data & feed
-- [x] Live drug-recall feed — openFDA drug enforcement reports ingested as DTUs (macro: pharmacy.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| e-Prescription routing | a Surescripts-style network licence | manual refill requests + pharmacy records |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (openFDA recalls → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` pharmacy feed green; `tests/pharmacy-domain-parity.test.js` + `tests/pharmacy-rx-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="pharmacy"` mounted in the lens page.
+## Parity
+~60% of Medisafe+GoodRx's feature surface. The medication + adherence + refill substrate is strong and the openFDA integration is real, but it lacks scheduled dose reminders, live price lookup, and a pill identifier — the features users actually open those apps for.

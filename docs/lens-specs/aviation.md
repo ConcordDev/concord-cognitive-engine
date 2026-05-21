@@ -1,25 +1,24 @@
-# aviation — Feature Completeness Spec
+# aviation — Feature Gap vs ForeFlight
 
-Rival app(s): ForeFlight, FlightAware, Garmin Pilot (2026)
-Sources:
-- https://api.aviationapi.com/ — airport / frequency / runway data (free, no key)
-- https://opensky-network.org/ — live aircraft states (free, no key)
+Category leader (2026): ForeFlight (pilot flight-planning + EFB). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/aviation.js` — 42 macros: aircraft CRUD, logbook + totals, flight plans, airport lookup, METAR/TAF weather, NOTAMs, weight & balance calc + validate, takeoff/landing perf, currency tracking, track logs, route advisor, live flights (OpenSky), fuel-stops calc, duty-time check, dashboard, feed.
 
-## Features
+## Has (verified in code)
+- Aircraft fleet, pilot logbook with totals, flight plans
+- Airport directory lookup; live METAR + TAF weather; NOTAMs fetch; graphical briefing
+- Weight & balance calculator + validation; takeoff/landing performance
+- Pilot currency tracking (events + status); duty-time + Hobbs logging
+- GPS track logs (start/append/end); route advisor; fuel-stops calculator
+- Live aircraft tracking via OpenSky; watch/unwatch flights; dashboard
 
-### Flight-ops substrate
-- [x] Aircraft, logbook, flight plans, airport directory
-- [x] Weight & balance, fuel planning, weather briefing, aviation calculators
-- (42 macros)
+## Missing — buildable feature backlog
+- [ ] `[L]` Interactive moving map with sectional/IFR chart overlays
+- [ ] `[M]` Visual route plotting on the map with airspace/TFR display
+- [ ] `[M]` Weather radar + winds-aloft overlay on the map
+- [ ] `[S]` Flight plan filing to ATC (or simulated DUATS-style filing)
+- [ ] `[M]` Approach-plate / airport-diagram viewer
+- [ ] `[S]` Logbook endorsements + ratings tracking
+- [ ] `[S]` Synthetic-vision / EFIS-style attitude display
 
-### Live data & feed
-- [x] Live aircraft feed — OpenSky live aircraft states ingested as DTUs (macro: aviation.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Certified moving-map navigation | an avionics-grade chart engine | airport directory + flight-plan records |
-
-## Verification log
-- 2026-05-20: `feed` macro verified (OpenSky → DTUs) by `tests/lens-feeds-domain-parity.test.js`.
-- 2026-05-20: `tests/aviation-domain-parity.test.js` green.
+## Parity
+~62% of ForeFlight's surface. The data substrate — W&B, performance, currency, weather, live traffic — is genuinely deep; the gap is the visual core: a moving map with charts, airspace, and route plotting.

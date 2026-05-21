@@ -1,25 +1,24 @@
-# photography — Feature Completeness Spec
+# photography — Feature Gap vs Adobe Lightroom
 
-Rival app(s): Adobe Lightroom, Capture One, Photo Mechanic (2026)
-Sources:
-- https://api.artic.edu/docs/ — Art Institute of Chicago open API (free, no key)
+Category leader (2026): Adobe Lightroom (photo catalog + RAW develop). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/photography.js` — ~36 macros: photo/album/shoot CRUD, develop + export presets, pick/reject flags, edit tracking, LLaVA photo vision, exposure calc, composition analysis, gear recommend, print size, dashboard, Art Institute archive feed.
 
-## Features
+## Has (verified in code)
+- Photo catalog: photos, albums, shoots, develop presets, export presets; pick/reject flag workflow
+- 6 tabs (gallery/upload/capture/collections/editing/stats); webcam capture, file upload
+- In-browser non-destructive edit: brightness/contrast/saturation/exposure sliders (CSS filter)
+- EXIF metadata display panel; LLaVA AI vision photo analysis
+- Exposure calculator (reciprocity), composition analysis, gear recommendation, print-size calculator
+- PexelsBrowser stock-photo search; Art Institute photo-archive live feed; top-camera/lens dashboard stats
 
-### Catalog substrate
-- [x] Photos, albums, develop presets, shoots, export presets
-- [x] Pick/reject flagging, edit tracking, top-camera / top-lens dashboard
-- (36 macros)
+## Missing — buildable feature backlog
+- [ ] `[L]` RAW file develop pipeline — true non-destructive RAW decode with tone curve + white balance
+- [ ] `[M]` Histogram + tone curve editor — live histogram and per-channel curve adjustment
+- [ ] `[M]` Local adjustments / masking — brush, gradient, AI subject-select masks
+- [ ] `[S]` Star rating + color label filtering — full Lightroom-style cull workflow
+- [ ] `[S]` Keyword/face tagging + smart collections — auto-organize by metadata
+- [ ] `[M]` Preset sync + apply-to-batch — copy develop settings across many photos
+- [ ] `[S]` Lens correction / geometry — distortion, vignette, perspective fixes
 
-### Live data & feed
-- [x] Live photo-archive feed — Art Institute of Chicago photography artworks ingested as DTUs (macro: photography.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| RAW decoding / non-destructive edit pipeline | a native imaging engine | develop-preset records + edit metadata |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (Art Institute of Chicago → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` photography feed green (asserts image URL); `tests/photography-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="photography"` mounted in the lens page.
+## Parity
+~50% of Lightroom's feature surface. The catalog model (albums/shoots/presets/picks) plus real slider editing and EXIF/AI-vision is a solid base, but it lacks RAW develop, histogram/curves, and masking — the non-destructive editing core of Lightroom.

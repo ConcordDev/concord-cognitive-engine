@@ -1,34 +1,25 @@
-# nonprofit — Feature Completeness Spec
+# nonprofit — Feature Gap vs Bloomerang / Givebutter
 
-Rival app(s): Givebutter, Bloomerang, Donorbox, ProPublica Nonprofit Explorer (2026)
-Sources:
-- https://projects.propublica.org/nonprofits/api/ (IRS Form 990 data — live)
-- fundraising campaign + donor record-keeping
+Category leader (2026): Bloomerang (donor management) + Givebutter (fundraising). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/nonprofit.js` — 12 macros: donorRetention, grantReporting, volunteerMatch, campaignProgress, ProPublica EIN lookup + org search, campaign CRUD, donation-log, nonprofit-dashboard.
 
-## Features
+## Has (verified in code)
+- Campaign management — create/list/update/delete, goal/deadline/status, progress tracking
+- Donation logging — one-off or recurring, named or anonymous
+- Giving dashboard — campaigns, active, total raised, recurring donors
+- Donor retention analysis, grant reporting, volunteer matching
+- Live data — ProPublica Nonprofit Explorer (IRS Form 990) search → DTUs
+- CampaignManager, donor/grant/volunteer tabs
 
-### Fundraising management
-- [x] Run campaigns — goal, deadline, status (macro: nonprofit.campaign-create)
-- [x] List campaigns with raised / progress / donor count (macro: nonprofit.campaign-list)
-- [x] Update a campaign goal / status (macro: nonprofit.campaign-update)
-- [x] Delete a campaign (macro: nonprofit.campaign-delete)
-- [x] Log donations — one-off or recurring, named or anonymous (macro: nonprofit.donation-log)
-- [x] Giving dashboard — campaigns, active, total raised, recurring donors (macro: nonprofit.nonprofit-dashboard)
+## Missing — buildable feature backlog
+- [ ] `[M]` Donor CRM — full donor profiles with giving history, contact info, communication log
+- [ ] `[M]` Online donation pages — public branded giving page (Concord Coin can carry value transfer)
+- [ ] `[M]` Recurring-giving management — manage/edit/cancel recurring pledges
+- [ ] `[S]` Donor segmentation — major donors, lapsed, first-time, by-interest
+- [ ] `[M]` Email/communications — thank-you automation, appeal campaigns, receipts
+- [ ] `[M]` Volunteer management — sign-up, shift scheduling, hour tracking
+- [ ] `[S]` Tax-receipt generation for donations
+- [ ] `[S]` Event/peer-to-peer fundraising pages
 
-### Live data
-- [x] ProPublica Nonprofit Explorer search — IRS-registered orgs ingested as DTUs (macro: nonprofit.propublica-*)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Payment processing | a PSP (Stripe/PayPal) | donations are recorded, not charged; Concord Coin economy carries real value transfer |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/nonprofit.js` clean.
-  Campaign substrate (6 macros) appended to the ProPublica lookup domain.
-- 2026-05-20: Tests — `tests/nonprofit-campaign-domain-parity.test.js` 5/5
-  green (campaign CRUD + per-user scope / donation log + progress math /
-  dashboard recurring-donor aggregation / positive-amount guard).
-- 2026-05-20: Frontend — new `CampaignManager` (campaign list with progress
-  bars + donation logging + dashboard) mounted in the nonprofit lens page.
-  `npx tsc --noEmit` exit 0.
+## Parity
+~45% of the Bloomerang/Givebutter surface. Campaigns, donations, dashboard, retention analysis, and live ProPublica data are real, but missing a full donor CRM, online donation pages, recurring-giving management, and donor communications that define a fundraising platform.

@@ -1,46 +1,24 @@
-# philosophy — Feature Completeness Spec
+# philosophy — Feature Gap vs Are.na / IEP
 
-Rival app(s): Are.na, Internet Encyclopedia of Philosophy (2026)
-Sources:
-- https://www.are.na/ (channels of blocks; a block connectable to many channels)
-- https://iep.utm.edu/ (philosophy reference)
+Category leader (2026): Are.na (idea curation) + Internet Encyclopedia of Philosophy. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/philosophy.js` — 12 macros: argumentMap, thoughtExperiment, dialecticSynthesis, ethicalFramework (reasoning tools) + channel CRUD, channel-detail, typed block-add, block-connect/disconnect, block-delete, search, dashboard.
 
-Previously the philosophy domain was analysis-only (argument map,
-thought experiment, dialectic, ethics). This spec covers the new
-Are.na-shape idea-curation substrate.
+## Has (verified in code)
+- Argument map: premises → conclusion validity/soundness analysis
+- Thought experiment permutation generator; Hegelian dialectic synthesis
+- Ethical framework comparison across moral theories
+- Are.na-shape curation: channels with typed blocks (text/link/quote), multi-channel block membership (connect/disconnect)
+- Cross-channel search, dashboard (channels/blocks/cross-connected counts/by-kind)
+- 6 tabs (Arguments/Concepts/Thinkers/Traditions/Dialogues/Dashboard); Wikipedia search, DilemmaPanel, PhiloFeed
 
-## Features
+## Missing — buildable feature backlog
+- [ ] `[M]` Visual block grid with images — Are.na's signature image-block masonry, not just text blocks
+- [ ] `[M]` Public channel browse + discovery — explore other users' channels, not only your own
+- [ ] `[S]` Channel collaborators — multiple authors curating one channel
+- [ ] `[M]` Block embeds — rich link previews, embedded media/PDF in blocks
+- [ ] `[S]` Concept/thinker reference pages — structured entries (the IEP-style encyclopedia side)
+- [ ] `[S]` Connections graph — visualize how blocks/channels interlink
+- [ ] `[S]` Argument debate threads — collaborative premise critique
 
-### Channels & blocks
-- [x] Create / list / delete channels (macro: philosophy.channel-create / channel-list / channel-delete)
-- [x] Channel detail with its blocks (macro: philosophy.channel-detail)
-- [x] Add typed blocks — text / link / quote, optional source (macro: philosophy.block-add)
-- [x] Connect / disconnect a block to additional channels — multi-channel membership (macro: philosophy.block-connect)
-- [x] Delete a block (macro: philosophy.block-delete)
-- [x] Channel-delete detaches blocks and drops orphaned ones
-
-### Search & overview
-- [x] Search across channel titles + block content (macro: philosophy.philosophy-search)
-- [x] Dashboard — channels, blocks, cross-connected blocks, by-kind breakdown (macro: philosophy.philosophy-dashboard)
-
-### Reasoning tools (retained)
-- [x] Argument map — premises → conclusion validity/soundness (macro: philosophy.argumentMap)
-- [x] Thought experiment permutations (macro: philosophy.thoughtExperiment)
-- [x] Hegelian dialectic synthesis (macro: philosophy.dialecticSynthesis)
-- [x] Ethical framework comparison (macro: philosophy.ethicalFramework)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| The IEP encyclopedia corpus | a licensed reference dataset | the reasoning tools (argument map, dialectic, ethics) cover structured philosophy work; channels curate sources |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/philosophy.js` clean. 12
-  macros (4 reasoning tools + 8 curation substrate).
-- 2026-05-20: Tests — `tests/philosophy-domain-parity.test.js` 10/10 green
-  (channel CRUD + per-user scope + orphan-drop on delete / typed blocks +
-  unknown-kind fallback / cross-channel connect+disconnect / block delete /
-  search / dashboard cross-connected count / reasoning tools intact).
-- 2026-05-20: Frontend — new `PhilosophyChannels` (channel list, typed-block
-  grid, multi-channel membership) mounted in the philosophy lens page.
-  `npx tsc --noEmit` exit 0.
+## Parity
+~50% of Are.na+IEP's feature surface. The reasoning tools (argument map, dialectic, ethics) are a genuine differentiator and the channel/block curation model is real, but it lacks the visual image-grid, public discovery, and collaboration that make Are.na a platform.

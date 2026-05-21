@@ -1,26 +1,24 @@
-# travel — Feature Completeness Spec
+# travel — Feature Gap vs Google Travel / TripIt
 
-Rival app(s): TripIt, Google Travel, Hopper (2026)
-Sources:
-- https://restcountries.com/ — REST Countries API (free, no key)
+Category leader (2026): Google Travel + TripIt (trip planning & itinerary). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `travel` domain — 37 macros: trips, itinerary, places + reviews, bookings, price watches, budgets, travel documents, checklists, dashboard, plus a live REST Countries country-guide feed (`travel.feed`).
 
-## Features
+## Has (verified in code)
+- Trip substrate — trips, itineraries, places with reviews, booking records.
+- Price watches, per-trip budgets, travel-document storage, packing checklists.
+- Travel dashboard — next trip, price watches, saved places, total booked.
+- Live country-guide feed — REST Countries profiles ingested as DTUs.
+- LensFeedButton mounted for the feed.
 
-### Trip substrate
-- [x] Trips, itinerary, places + place reviews, bookings
-- [x] Price watches, budgets, travel documents, checklists
-- [x] Travel dashboard — next trip, price watches, saved places, total booked
-- (37 macros)
+## Missing — buildable feature backlog
+- [ ] `[M]` Map view of an itinerary — pin places and route between them on a real map.
+- [ ] `[M]` Live flight/hotel search via free APIs (e.g. OpenSky for flight status, public hotel data) for inspiration, not licensed GDS pricing.
+- [ ] `[S]` Itinerary timeline / day-by-day agenda view with times.
+- [ ] `[M]` Email-forwarding booking import (TripIt's signature — parse a confirmation email into an itinerary item).
+- [ ] `[S]` Flight-status tracking for booked flights (free OpenSky/aviation APIs).
+- [ ] `[M]` Collaborative trip planning — share a trip, co-edit with travel companions.
+- [ ] `[S]` Weather forecast for destination dates.
+- [ ] `[S]` Currency converter and per-category budget breakdown.
 
-### Live data & feed
-- [x] Live country-guide feed — REST Countries profiles ingested as DTUs (macro: travel.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Live flight / hotel pricing | a GDS or aggregator licence | manual booking records + price watches |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (REST Countries → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` travel feed green; `tests/travel-domain-parity.test.js` + `tests/travel-trips-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="travel"` mounted in the lens page.
+## Parity
+~55% of Google Travel/TripIt. The trip/itinerary/booking/budget/checklist substrate is broad and the country-guide feed is real, but it lacks a map view, live flight tracking, booking-email import, and collaboration that define the modern trip planner.

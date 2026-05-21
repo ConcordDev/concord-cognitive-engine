@@ -1,39 +1,24 @@
-# poetry — Feature Completeness Spec
+# poetry — Feature Gap vs Poetry Foundation / poetry notebook
 
-Rival app(s): Poetry Foundation, Poets.org, poetry-writing notebooks (2026)
-Sources:
-- https://poetrydb.org/ (open poetry database — live search)
-- https://www.poetryfoundation.org/ (poem discovery, forms reference)
+Category leader (2026): Poetry Foundation app + a poetry-writing notebook. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/poetry.js` — 14 macros: poem CRUD, poem-analyze (prosody), poetry-dashboard, meterAnalysis, rhymeScheme, formGuide, wordFrequency, PoetryDB search + authors, feed.
 
-## Features
+## Has (verified in code)
+- Poem workspace: write/save poems (title/body/form/tags), list + filter by form/status, detail/update/delete
+- Status workflow draft → revising → finished; serif editor (PoemWorkspace)
+- Built-in prosody analysis: syllables/line, meter consistency, rhyme scheme, detected form
+- Standalone meter analysis, rhyme-scheme detection, form guide (sonnet/haiku/limerick/villanelle/free-verse), word frequency
+- Live PoetryDB search + author browse; Datamuse rhyme/synonym panel
+- 4 tabs (collection/compose/forms/workshop); poetry dashboard (poems/finished/drafts/by-form)
 
-### Poem workspace
-- [x] Write + save poems — title, body, form, tags (macro: poetry.poem-create)
-- [x] List + filter poems by form / status (macro: poetry.poem-list)
-- [x] Poem detail / update / delete; status draft → revising → finished (macro: poetry.poem-detail / poem-update / poem-delete)
-- [x] Built-in prosody analysis on a saved poem — syllables/line, meter consistency, rhyme scheme, detected form (macro: poetry.poem-analyze)
-- [x] Poetry dashboard — poems, finished/drafts, total lines, by-form (macro: poetry.poetry-dashboard)
+## Missing — buildable feature backlog
+- [ ] `[M]` Poem-a-day / curated discovery feed — featured poems and themed collections
+- [ ] `[S]` Audio recordings — record or play poem readings
+- [ ] `[M]` Workshop / peer feedback — share a poem and collect line-level critique
+- [ ] `[S]` Rhyme + word suggestion inline in the editor — surface Datamuse picks as you type
+- [ ] `[S]` Form templates with live constraint checking — enforce syllable/line rules while composing
+- [ ] `[S]` Publish / collection export — export a chapbook as PDF/EPUB
+- [ ] `[S]` Reading history + favorites — bookmark discovered poems
 
-### Prosody tools (retained)
-- [x] Meter analysis (macro: poetry.meterAnalysis)
-- [x] Rhyme scheme detection (macro: poetry.rhymeScheme)
-- [x] Form guide — sonnet / haiku / limerick / villanelle / free-verse (macro: poetry.formGuide)
-- [x] Word frequency + key images (macro: poetry.wordFrequency)
-
-### Discovery (live)
-- [x] PoetryDB search + author browse (macro: poetry.poetrydb-search / poetrydb-authors)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Authoritative syllable/scansion dictionary | a pronunciation corpus (e.g. CMUdict) | vowel-group syllable heuristic — consistent and good enough for meter feedback |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/poetry.js` clean. 13 macros
-  (4 prosody tools + 2 PoetryDB + 7 poem-workspace substrate).
-- 2026-05-20: Tests — `tests/poetry-domain-parity.test.js` 8/8 green
-  (poem CRUD + per-user scope + form filter / poem-analyze meter+rhyme +
-  unknown-id reject / dashboard by-form / prosody macros intact).
-- 2026-05-20: Frontend — new `PoemWorkspace` (poem list, serif editor with
-  form + status, inline prosody analysis) mounted in the poetry lens page.
-  `npx tsc --noEmit` exit 0.
+## Parity
+~55% of the Poetry Foundation + notebook surface. The compose + prosody-analysis side is genuinely strong (real meter/rhyme/form detection) and PoetryDB discovery is real, but it lacks curated discovery, audio, and peer-workshop features.
