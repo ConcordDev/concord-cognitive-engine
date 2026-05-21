@@ -1,29 +1,25 @@
-# veterinary — Feature Completeness Spec
+# veterinary — Feature Gap vs ezyVet / Provet Cloud
 
-Rival app(s): Provet Cloud, ezyVet, Vetstoria (2026)
-Sources:
-- https://open.fda.gov/apis/animalandveterinary/ — openFDA Animal & Veterinary adverse events (free, no key)
+Category leader (2026): ezyVet / Provet Cloud (veterinary practice management). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `veterinary` domain — 11 macros: 4 clinical calculators + 6-macro patient-records substrate + a live openFDA Animal & Veterinary adverse-events feed.
 
-## Features
+## Has (verified in code)
+- Clinical calculators — triage assessment, weight check, vaccine schedule, cost estimate.
+- Patient records — add/list/delete patients (name, species, breed, owner, age, weight).
+- Visit log (checkup/vaccination/surgery/dental/emergency/followup with cost).
+- Vaccination records (vaccine, date, next due).
+- Vet dashboard — patients, visits, revenue, by-species breakdown.
+- Live vet-safety feed — openFDA animal & veterinary adverse events ingested as DTUs.
 
-### Clinical calculators
-- [x] Triage assessment, weight check, vaccine schedule, cost estimate
+## Missing — buildable feature backlog
+- [ ] `[M]` Appointment scheduling / calendar — booking, no-show tracking.
+- [ ] `[M]` Invoicing & payment — cost estimates exist but no billing/payment workflow.
+- [ ] `[S]` Vaccine-due reminders / overdue alerts to owners.
+- [ ] `[M]` SOAP-format medical charting per visit (subjective/objective/assessment/plan).
+- [ ] `[S]` Prescription / medication tracking and refills.
+- [ ] `[M]` Owner portal — owners view their pet's records and book appointments.
+- [ ] `[S]` Lab/imaging result attachments per visit.
+- [ ] `[S]` Inventory management for clinic supplies and meds.
 
-### Patient-records substrate (new)
-- [x] Patients — name, species, breed, owner, age, weight (macro: veterinary.patient-add / patient-list / patient-delete)
-- [x] Visit log — checkup / vaccination / surgery / dental / emergency / followup with cost (macro: veterinary.visit-log)
-- [x] Vaccination records — vaccine, date, next due (macro: veterinary.vaccine-record)
-- [x] Vet dashboard — patients, visits, revenue, by-species (macro: veterinary.vet-dashboard)
-
-### Live data & feed
-- [x] Live vet-safety feed — openFDA animal & veterinary adverse events ingested as DTUs (macro: veterinary.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Lab / imaging integration | a veterinary lab API | visit records with manual diagnosis + treatment notes |
-
-## Verification log
-- 2026-05-20: Backend — built from a 4-macro stub to a full lens: kept the 4 calculators, added a 6-macro patient-records substrate + `feed` (openFDA → DTUs). `node --check` clean.
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` veterinary substrate (per-user scope) + feed + calculator-intact cases green.
-- 2026-05-20: Frontend — `LensFeedButton domain="veterinary"` mounted in the lens page.
+## Parity
+~45% of ezyVet. The patient-records substrate, calculators, and openFDA feed are real and useful, but it lacks scheduling, billing, structured medical charting, and an owner portal that complete a practice-management system.
