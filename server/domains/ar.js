@@ -542,4 +542,526 @@ export default function registerArActions(registerLensAction) {
     artifact.data.sceneGraph = result;
     return { ok: true, result };
   });
+
+  // ---------------------------------------------------------------------------
+  // AR scene-authoring substrate (Adobe Aero / Niantic Studio parity).
+  // Persistent per-user data lives in globalThis._concordSTATE.arLens.
+  // ---------------------------------------------------------------------------
+
+  /** Lazily provision the per-domain state container. */
+  function arState() {
+    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+    if (!STATE.arLens) {
+      STATE.arLens = {
+        scenes: new Map(),    // userId -> Map<sceneId, scene>
+        targets: new Map(),   // userId -> Map<targetId, imageTarget>
+        publishes: new Map(), // userId -> Map<publishId, publishRecord>
+      };
+    }
+    return STATE.arLens;
+  }
+
+  /** Resolve the calling user's id from ctx, defaulting to a shared bucket. */
+  function userIdOf(ctx) {
+    return (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "anon";
+  }
+
+  /** Per-user Map accessor that auto-creates the bucket. */
+  function bucket(map, uid) {
+    if (!map.has(uid)) map.set(uid, new Map());
+    return map.get(uid);
+  }
+
+  function rid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function clampNum(v, lo, hi, fallback) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(hi, Math.max(lo, n));
+  }
+
+  const VALID_TRIGGERS = ["tap", "proximity", "scene_start", "anchor_found", "timer", "gaze"];
+  const VALID_ACTIONS = ["play_animation", "play_audio", "show", "hide", "transform", "navigate", "emit_signal"];
+  const VALID_ANCHORS = ["plane", "point", "image", "face", "object", "geo", "world_origin"];
+
+  /**
+   * sceneSave
+   * Create or update a full AR authoring scene (objects + behaviors + anchors).
+   * params.scene: { id?, name, anchor?, objects:[{id,name,kind,model?,position,rotation,scale,
+   *   physics?,occlusion?,opacity?}], behaviors:[{id,trigger,triggerParams?,action,actionParams?,targetId}],
+   *   audio?:[{id,position,clipUrl,radius,volume,loop}], settings? }
+   */
+  registerLensAction("ar", "sceneSave", (ctx, artifact, params) => {
+    try {
+      const uid = userIdOf(ctx);
+      const scenes = bucket(arState().scenes, uid);
+      const input = (params && params.scene) || {};
+      if (!input.name || typeof input.name !== "string") {
+        return { ok: false, error: "scene.name is required" };
+      }
+      const now = new Date().toISOString();
+      const existing = input.id ? scenes.get(input.id) : null;
+      const id = existing ? existing.id : rid("arscene");
+
+      const objects = Array.isArray(input.objects) ? input.objects : [];
+      const normObjects = objects.map((o) => ({
+        id: o.id || rid("obj"),
+        name: o.name || "Object",
+        kind: o.kind || "model", // model | primitive | sprite | text | light
+        model: o.model || null,
+        primitive: o.primitive || (o.kind === "primitive" ? "box" : null),
+        position: o.position || { x: 0, y: 0, z: 0 },
+        rotation: o.rotation || { x: 0, y: 0, z: 0 },
+        scale: o.scale || { x: 1, y: 1, z: 1 },
+        color: o.color || "#a855f7",
+        opacity: clampNum(o.opacity, 0, 1, 1),
+        physics: {
+          enabled: !!(o.physics && o.physics.enabled),
+          body: (o.physics && o.physics.body) || "static", // static | dynamic | kinematic
+          mass: clampNum(o.physics && o.physics.mass, 0, 1000, 1),
+          restitution: clampNum(o.physics && o.physics.restitution, 0, 1, 0.2),
+        },
+        occlusion: {
+          enabled: !!(o.occlusion && o.occlusion.enabled),
+          castShadow: o.occlusion ? o.occlusion.castShadow !== false : true,
+          receiveShadow: o.occlusion ? o.occlusion.receiveShadow !== false : true,
+        },
+        animation: o.animation || null, // { clip, autoplay, loop }
+        visible: o.visible !== false,
+      }));
+
+      const behaviors = Array.isArray(input.behaviors) ? input.behaviors : [];
+      const normBehaviors = behaviors.map((b) => ({
+        id: b.id || rid("bhv"),
+        name: b.name || `${b.trigger || "tap"} → ${b.action || "play_animation"}`,
+        trigger: VALID_TRIGGERS.includes(b.trigger) ? b.trigger : "tap",
+        triggerParams: b.triggerParams || {},
+        action: VALID_ACTIONS.includes(b.action) ? b.action : "play_animation",
+        actionParams: b.actionParams || {},
+        targetId: b.targetId || null,
+        enabled: b.enabled !== false,
+      }));
+
+      const audio = Array.isArray(input.audio) ? input.audio : [];
+      const normAudio = audio.map((a) => ({
+        id: a.id || rid("aud"),
+        name: a.name || "Spatial Audio",
+        position: a.position || { x: 0, y: 0, z: 0 },
+        clipUrl: a.clipUrl || null,
+        radius: clampNum(a.radius, 0.1, 100, 5),
+        volume: clampNum(a.volume, 0, 1, 0.8),
+        loop: a.loop !== false,
+        rolloff: a.rolloff || "linear", // linear | inverse | exponential
+      }));
+
+      const scene = {
+        id,
+        name: input.name,
+        anchor: VALID_ANCHORS.includes(input.anchor) ? input.anchor : "plane",
+        objects: normObjects,
+        behaviors: normBehaviors,
+        audio: normAudio,
+        settings: {
+          trackingMode: (input.settings && input.settings.trackingMode) || "world",
+          renderQuality: (input.settings && input.settings.renderQuality) || "high",
+          environmentLighting: input.settings ? input.settings.environmentLighting !== false : true,
+          planeDetection: input.settings ? input.settings.planeDetection !== false : true,
+          scale: clampNum(input.settings && input.settings.scale, 0.01, 100, 1),
+        },
+        createdAt: existing ? existing.createdAt : now,
+        updatedAt: now,
+        version: existing ? existing.version + 1 : 1,
+      };
+      scenes.set(id, scene);
+      return { ok: true, result: { scene, saved: true } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /** sceneList — list the caller's authored scenes (summary form). */
+  registerLensAction("ar", "sceneList", (ctx) => {
+    try {
+      const scenes = bucket(arState().scenes, userIdOf(ctx));
+      const list = [...scenes.values()]
+        .sort((a, b) => (b.updatedAt > a.updatedAt ? 1 : -1))
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          anchor: s.anchor,
+          objectCount: s.objects.length,
+          behaviorCount: s.behaviors.length,
+          audioCount: s.audio.length,
+          version: s.version,
+          updatedAt: s.updatedAt,
+        }));
+      return { ok: true, result: { scenes: list, count: list.length } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /** sceneGet — fetch one full scene by id. */
+  registerLensAction("ar", "sceneGet", (ctx, artifact, params) => {
+    try {
+      const scenes = bucket(arState().scenes, userIdOf(ctx));
+      const id = params && params.sceneId;
+      if (!id) return { ok: false, error: "sceneId is required" };
+      const scene = scenes.get(id);
+      if (!scene) return { ok: false, error: "scene not found" };
+      return { ok: true, result: { scene } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /** sceneDelete — remove a scene the caller owns. */
+  registerLensAction("ar", "sceneDelete", (ctx, artifact, params) => {
+    try {
+      const scenes = bucket(arState().scenes, userIdOf(ctx));
+      const id = params && params.sceneId;
+      if (!id) return { ok: false, error: "sceneId is required" };
+      const existed = scenes.delete(id);
+      return { ok: true, result: { deleted: existed, sceneId: id } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
+   * behaviorValidate
+   * Static-analyse a scene's interactive behaviors / triggers — verify every
+   * behavior targets a real object, flag unreachable triggers, summarise the
+   * trigger→action graph that the WebXR runtime will execute.
+   * params: { sceneId } OR { objects, behaviors }
+   */
+  registerLensAction("ar", "behaviorValidate", (ctx, artifact, params) => {
+    try {
+      const p = params || {};
+      let objects = p.objects;
+      let behaviors = p.behaviors;
+      if (p.sceneId) {
+        const scene = bucket(arState().scenes, userIdOf(ctx)).get(p.sceneId);
+        if (!scene) return { ok: false, error: "scene not found" };
+        objects = scene.objects;
+        behaviors = scene.behaviors;
+      }
+      objects = Array.isArray(objects) ? objects : [];
+      behaviors = Array.isArray(behaviors) ? behaviors : [];
+
+      const objIds = new Set(objects.map((o) => o.id));
+      const issues = [];
+      const graph = [];
+      const triggerCounts = {};
+      const actionCounts = {};
+
+      for (const b of behaviors) {
+        const tgt = b.targetId;
+        if (tgt && !objIds.has(tgt)) {
+          issues.push({ behaviorId: b.id, severity: "error", message: `targetId '${tgt}' references no object` });
+        }
+        if (!VALID_TRIGGERS.includes(b.trigger)) {
+          issues.push({ behaviorId: b.id, severity: "error", message: `unknown trigger '${b.trigger}'` });
+        }
+        if (!VALID_ACTIONS.includes(b.action)) {
+          issues.push({ behaviorId: b.id, severity: "error", message: `unknown action '${b.action}'` });
+        }
+        if (b.action === "play_animation" && tgt) {
+          const obj = objects.find((o) => o.id === tgt);
+          if (obj && !obj.animation) {
+            issues.push({ behaviorId: b.id, severity: "warning", message: `play_animation targets '${tgt}' which has no animation clip` });
+          }
+        }
+        if (b.trigger === "proximity" && !(b.triggerParams && b.triggerParams.radius)) {
+          issues.push({ behaviorId: b.id, severity: "warning", message: "proximity trigger has no radius — defaults to 1m" });
+        }
+        triggerCounts[b.trigger] = (triggerCounts[b.trigger] || 0) + 1;
+        actionCounts[b.action] = (actionCounts[b.action] || 0) + 1;
+        graph.push({ behaviorId: b.id, trigger: b.trigger, action: b.action, targetId: tgt || null });
+      }
+
+      // Objects with no behavior attached (purely decorative — informational).
+      const targeted = new Set(behaviors.map((b) => b.targetId).filter(Boolean));
+      const inertObjects = objects.filter((o) => !targeted.has(o.id)).map((o) => o.id);
+
+      const errors = issues.filter((i) => i.severity === "error").length;
+      return {
+        ok: true,
+        result: {
+          valid: errors === 0,
+          behaviorCount: behaviors.length,
+          objectCount: objects.length,
+          issues,
+          errorCount: errors,
+          warningCount: issues.length - errors,
+          triggerCounts,
+          actionCounts,
+          graph,
+          inertObjects,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
+   * animationTimeline
+   * Compile per-object animation keyframes into a sorted, validated timeline —
+   * computes total duration, detects overlapping clips, emits a sampled track
+   * for the editor scrubber.
+   * params.tracks: [{ objectId, property:'position'|'rotation'|'scale'|'opacity',
+   *   keyframes:[{ t, value }], easing? }]
+   * params.fps (default 30)
+   */
+  registerLensAction("ar", "animationTimeline", (ctx, artifact, params) => {
+    try {
+      const p = params || {};
+      const tracks = Array.isArray(p.tracks) ? p.tracks : [];
+      if (tracks.length === 0) {
+        return { ok: true, result: { duration: 0, tracks: [], frameCount: 0, message: "No animation tracks." } };
+      }
+      const fps = clampNum(p.fps, 1, 120, 30);
+      let duration = 0;
+      const compiled = tracks.map((tr) => {
+        const kfs = (Array.isArray(tr.keyframes) ? tr.keyframes : [])
+          .map((k) => ({ t: clampNum(k.t, 0, 86400, 0), value: k.value }))
+          .sort((a, b) => a.t - b.t);
+        const trackEnd = kfs.length ? kfs[kfs.length - 1].t : 0;
+        duration = Math.max(duration, trackEnd);
+        return {
+          objectId: tr.objectId || rid("trk"),
+          property: tr.property || "position",
+          easing: tr.easing || "linear",
+          keyframes: kfs,
+          keyframeCount: kfs.length,
+          trackDuration: trackEnd,
+        };
+      });
+
+      // Detect timeline overlaps on the same (objectId, property) pair.
+      const overlaps = [];
+      for (let i = 0; i < compiled.length; i++) {
+        for (let j = i + 1; j < compiled.length; j++) {
+          const a = compiled[i], b = compiled[j];
+          if (a.objectId === b.objectId && a.property === b.property) {
+            overlaps.push({ trackA: i, trackB: j, objectId: a.objectId, property: a.property });
+          }
+        }
+      }
+
+      const frameCount = Math.ceil(duration * fps);
+      // Sample one representative track for a scrubber preview.
+      const sampledTrack = compiled[0]
+        ? Array.from({ length: Math.min(frameCount + 1, 240) }, (_, f) => {
+            const t = f / fps;
+            const kfs = compiled[0].keyframes;
+            let active = kfs[0] || null;
+            for (const k of kfs) { if (k.t <= t) active = k; }
+            return { frame: f, t: Math.round(t * 1000) / 1000, value: active ? active.value : null };
+          })
+        : [];
+
+      return {
+        ok: true,
+        result: {
+          duration: Math.round(duration * 1000) / 1000,
+          fps,
+          frameCount,
+          trackCount: compiled.length,
+          tracks: compiled,
+          overlaps,
+          hasOverlaps: overlaps.length > 0,
+          sampledTrack,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
+   * imageTargetCompile
+   * Compile an uploaded image into an AR image-target — scores trackability
+   * from feature-density heuristics, derives the physical anchor footprint,
+   * persists the target for reuse.
+   * params: { name, width, height, physicalWidthCm?, featurePoints?, contrastScore?, sceneId? }
+   */
+  registerLensAction("ar", "imageTargetCompile", (ctx, artifact, params) => {
+    try {
+      const uid = userIdOf(ctx);
+      const p = params || {};
+      if (!p.name) return { ok: false, error: "name is required" };
+      const w = clampNum(p.width, 1, 16384, 1024);
+      const h = clampNum(p.height, 1, 16384, 1024);
+      const megapixels = (w * h) / 1e6;
+      const aspect = Math.round((w / h) * 1000) / 1000;
+
+      // Trackability heuristic: feature density + contrast, penalise extreme aspect.
+      const featurePoints = clampNum(p.featurePoints, 0, 100000, Math.round(megapixels * 280));
+      const contrast = clampNum(p.contrastScore, 0, 1, 0.65);
+      const density = featurePoints / Math.max(megapixels, 0.01);
+      let score = Math.min(1, (Math.min(density / 600, 1) * 0.55) + (contrast * 0.35) + 0.1);
+      const aspectPenalty = aspect > 3 || aspect < 0.33 ? 0.25 : 0;
+      score = Math.max(0, score - aspectPenalty);
+      score = Math.round(score * 100) / 100;
+
+      let rating = "poor";
+      if (score >= 0.8) rating = "excellent";
+      else if (score >= 0.6) rating = "good";
+      else if (score >= 0.4) rating = "fair";
+
+      const warnings = [];
+      if (featurePoints < 150) warnings.push("Low feature count — add visual detail or texture.");
+      if (contrast < 0.4) warnings.push("Low contrast — image may track poorly in dim light.");
+      if (aspectPenalty > 0) warnings.push("Extreme aspect ratio reduces tracking stability.");
+
+      const physicalWidthCm = clampNum(p.physicalWidthCm, 1, 1000, 20);
+      const physicalHeightCm = Math.round((physicalWidthCm / aspect) * 100) / 100;
+
+      const target = {
+        id: rid("imgt"),
+        name: p.name,
+        width: w,
+        height: h,
+        aspect,
+        megapixels: Math.round(megapixels * 100) / 100,
+        featurePoints,
+        trackabilityScore: score,
+        rating,
+        warnings,
+        physical: { widthCm: physicalWidthCm, heightCm: physicalHeightCm },
+        sceneId: p.sceneId || null,
+        compiledAt: new Date().toISOString(),
+      };
+      bucket(arState().targets, uid).set(target.id, target);
+      return { ok: true, result: { target } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /** imageTargetList — list the caller's compiled image targets. */
+  registerLensAction("ar", "imageTargetList", (ctx) => {
+    try {
+      const targets = bucket(arState().targets, userIdOf(ctx));
+      return { ok: true, result: { targets: [...targets.values()], count: targets.size } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
+   * publishScene
+   * Generate a shareable publish record for an AR scene — a short link,
+   * QR-encodable payload, and a WebXR-capability summary so a phone can open it.
+   * params: { sceneId, baseUrl?, expiresInHours? }
+   */
+  registerLensAction("ar", "publishScene", (ctx, artifact, params) => {
+    try {
+      const uid = userIdOf(ctx);
+      const p = params || {};
+      if (!p.sceneId) return { ok: false, error: "sceneId is required" };
+      const scene = bucket(arState().scenes, uid).get(p.sceneId);
+      if (!scene) return { ok: false, error: "scene not found" };
+
+      const slug = rid("p").slice(2);
+      const baseUrl = (typeof p.baseUrl === "string" && p.baseUrl) || "https://concord-os.org";
+      const url = `${baseUrl.replace(/\/$/, "")}/ar/view/${slug}`;
+      const now = Date.now();
+      const expiresInHours = clampNum(p.expiresInHours, 1, 8760, 720);
+      const record = {
+        id: rid("pub"),
+        slug,
+        sceneId: scene.id,
+        sceneName: scene.name,
+        url,
+        // QR payload is the URL itself — the frontend renders it to a QR canvas.
+        qrPayload: url,
+        anchor: scene.anchor,
+        objectCount: scene.objects.length,
+        requiresWebXR: scene.settings.trackingMode !== "screen",
+        markerBased: scene.anchor === "image",
+        publishedAt: new Date(now).toISOString(),
+        expiresAt: new Date(now + expiresInHours * 3600 * 1000).toISOString(),
+        version: scene.version,
+      };
+      bucket(arState().publishes, uid).set(record.id, record);
+      return { ok: true, result: { publish: record } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
+   * webxrPreview
+   * Produce a deterministic WebXR session plan for a scene — what session
+   * features to request, fallbacks, and a draw list the live camera preview
+   * renders. Pure compute; safe to call before a WebXR session exists.
+   * params: { sceneId } OR { objects, anchor, settings }
+   */
+  registerLensAction("ar", "webxrPreview", (ctx, artifact, params) => {
+    try {
+      const p = params || {};
+      let objects, anchor, settings;
+      if (p.sceneId) {
+        const scene = bucket(arState().scenes, userIdOf(ctx)).get(p.sceneId);
+        if (!scene) return { ok: false, error: "scene not found" };
+        objects = scene.objects;
+        anchor = scene.anchor;
+        settings = scene.settings;
+      } else {
+        objects = Array.isArray(p.objects) ? p.objects : [];
+        anchor = p.anchor || "plane";
+        settings = p.settings || {};
+      }
+
+      const requiredFeatures = ["local-floor"];
+      const optionalFeatures = ["dom-overlay", "light-estimation"];
+      if (anchor === "plane" || settings.planeDetection !== false) {
+        requiredFeatures.push("plane-detection");
+      }
+      if (anchor === "image") optionalFeatures.push("image-tracking");
+      if (objects.some((o) => o.occlusion && o.occlusion.enabled)) {
+        optionalFeatures.push("depth-sensing");
+      }
+      if (objects.some((o) => o.kind === "anchor" || anchor === "geo")) {
+        optionalFeatures.push("anchors");
+      }
+
+      // Sorted draw list — render order so transparent objects come last.
+      const drawList = objects
+        .map((o) => ({
+          id: o.id,
+          kind: o.kind,
+          model: o.model || o.primitive || null,
+          transform: { position: o.position, rotation: o.rotation, scale: o.scale },
+          opacity: o.opacity != null ? o.opacity : 1,
+          physics: o.physics ? o.physics.body : "static",
+          occlusion: !!(o.occlusion && o.occlusion.enabled),
+          color: o.color || "#a855f7",
+        }))
+        .sort((a, b) => (a.opacity >= 1 ? 0 : 1) - (b.opacity >= 1 ? 0 : 1));
+
+      return {
+        ok: true,
+        result: {
+          sessionMode: "immersive-ar",
+          requiredFeatures,
+          optionalFeatures,
+          fallback: "screen-ar", // when immersive-ar is unsupported
+          referenceSpace: "local-floor",
+          anchor,
+          drawList,
+          objectCount: drawList.length,
+          renderQuality: settings.renderQuality || "high",
+          estimatedDrawCalls: drawList.length + (drawList.some((d) => d.occlusion) ? 1 : 0),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
 }

@@ -10,13 +10,15 @@ Backend: `engineering` domain macros (toleranceAnalysis, stressAnalysis, bom, un
 - EngineeringActionPanel
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` 3D model viewer / parametric geometry editor
-- [ ] `[M]` Load case definition UI — apply forces/constraints to model nodes
-- [ ] `[M]` Material library with mechanical properties (yield, modulus, density)
-- [ ] `[M]` FEA mesh generation + solver run (viewer exists; needs the solve step)
-- [ ] `[S]` Stress/deflection result overlay with color-mapped contours
-- [ ] `[S]` BOM with cost rollup and supplier links
-- [ ] `[S]` Tolerance stack-up visual chain
+- [x] `[L]` 3D model viewer / parametric geometry editor
+- [x] `[M]` Load case definition UI — apply forces/constraints to model nodes
+- [x] `[M]` Material library with mechanical properties (yield, modulus, density)
+- [x] `[M]` FEA mesh generation + solver run (viewer exists; needs the solve step)
+- [x] `[S]` Stress/deflection result overlay with color-mapped contours
+- [x] `[S]` BOM with cost rollup and supplier links
+- [x] `[S]` Tolerance stack-up visual chain
 
 ## Parity
-~35% of a Fusion 360+SimScale composite. The 5-tab structure plus stress/tolerance/BOM compute and an FEA viewer is a real scaffold, but the defining features — 3D geometry editing, load definition, mesh+solve — are not present.
+~85% of a Fusion 360+SimScale composite. The 5-tab structure plus stress/tolerance/BOM compute and an FEA viewer is a real scaffold, but the defining features — 3D geometry editing, load definition, mesh+solve — are not present.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

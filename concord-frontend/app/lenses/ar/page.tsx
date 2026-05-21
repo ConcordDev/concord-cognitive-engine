@@ -29,6 +29,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SketchfabModels } from '@/components/ar/SketchfabModels';
+import { SceneStudio } from '@/components/ar/SceneStudio';
 
 type ModeTab = 'scenes' | 'layers' | 'anchors' | 'models' | 'configs' | 'captures';
 type ArtifactType = 'Scene' | 'Layer' | 'Anchor' | 'Model3D' | 'Config' | 'Capture';
@@ -83,6 +84,7 @@ export default function ARLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<ARArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showStudio, setShowStudio] = useState(true);
   const [showFeatures, setShowFeatures] = useState(true);
   const [arEnabled, setArEnabled] = useState(false);
 
@@ -482,10 +484,11 @@ export default function ARLensPage() {
         <div className="flex items-center gap-2">
           {runAction.isPending && <span className="text-xs text-neon-purple animate-pulse">AI processing...</span>}
           <DTUExportButton domain="ar" data={{}} compact />
+          <button onClick={() => { setShowStudio(!showStudio); setShowDashboard(false); }} className={cn(showStudio ? ds.btnPrimary : ds.btnSecondary)}><Box className="w-4 h-4" /> Scene Studio</button>
           <button onClick={() => setArEnabled(!arEnabled)} className={cn(arEnabled ? ds.btnPrimary : ds.btnSecondary)}>
             {arEnabled ? <><Camera className="w-4 h-4" /> Stop AR</> : <><Glasses className="w-4 h-4" /> Start AR</>}
           </button>
-          <button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button>
+          <button onClick={() => { setShowDashboard(!showDashboard); setShowStudio(false); }} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button>
         </div>
       </header>
       <RealtimeDataPanel domain="ar" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
@@ -500,9 +503,15 @@ export default function ARLensPage() {
         </div>
       ); })()}
 
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
-      {showDashboard ? renderDashboard() : renderLibrary()}
-      {renderEditor()}
+      {showStudio ? (
+        <section className="rounded-xl border border-lattice-border bg-zinc-950/40 p-4">
+          <SceneStudio />
+        </section>
+      ) : (<>
+        <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
+        {showDashboard ? renderDashboard() : renderLibrary()}
+        {renderEditor()}
+      </>)}
       <div className="border-t border-white/10">
         <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="ar" /></div>}

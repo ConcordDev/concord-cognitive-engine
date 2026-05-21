@@ -206,6 +206,7 @@ import worldCreator from './world-creator.js';
 import expeditionJournal from './expedition-journal.js';
 import bounties from './bounties.js';
 import subWorlds from './sub-worlds.js';
+import inheritance from './inheritance.js';
 
 export default [
   healthcare,
@@ -405,4 +406,5 @@ export default [
   bounties,
   expeditionJournal,
   subWorlds,
+  inheritance,
 ];

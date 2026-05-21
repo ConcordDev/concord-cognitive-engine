@@ -10,11 +10,14 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnEngineeringFeed } from '@/components/engineering/HnEngineeringFeed';
 import { EngineeringActionPanel } from '@/components/engineering/EngineeringActionPanel';
+import { GeometryEditor } from '@/components/engineering/GeometryEditor';
+import { BomPanel } from '@/components/engineering/BomPanel';
+import { TolerancePanel } from '@/components/engineering/TolerancePanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { FEAResultViewer } from '@/components/engineering/FEAResultViewer';
 import {
   Wrench,
@@ -28,6 +31,9 @@ import {
   Atom,
   BarChart3,
   Layers,
+  Save,
+  FolderOpen,
+  Grid3x3,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -84,7 +90,42 @@ const MATERIALS: Record<string, { E: number; allowable: number; density: number;
     'Douglas Fir': { E: 1.9e6, allowable: 1500, density: 0.019, label: 'Douglas Fir (lumber)' },
   };
 
-const TABS = ['Model', 'Loads', 'Materials', 'Analysis', 'Results'] as const;
+// Material library entry from the engineering.materialLibrary macro (SI units).
+interface LibMaterial {
+  id: string;
+  label: string;
+  category: string;
+  E: number;
+  yield: number;
+  ultimate: number;
+  density: number;
+  poisson: number;
+  cte: number;
+  thermalK: number;
+  costPerKg: number;
+}
+
+// Saved load case from the engineering.saveLoadCase macro.
+interface SavedLoadCase {
+  id: string;
+  name: string;
+  loads: Load[];
+  supports: Support[];
+  gravity: boolean;
+  note: string;
+  updatedAt: string;
+}
+
+const TABS = [
+  'Geometry',
+  'Model',
+  'Loads',
+  'Materials',
+  'Analysis',
+  'BOM',
+  'Tolerance',
+  'Results',
+] as const;
 type Tab = (typeof TABS)[number];
 
 // ── Default FEA template (simple portal frame) ───────────────────────────────
@@ -156,8 +197,107 @@ export default function EngineeringPage() {
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<string>('');
 
+  // Material library (loaded from engineering.materialLibrary macro).
+  const [libMaterials, setLibMaterials] = useState<LibMaterial[]>([]);
+  const [matCategories, setMatCategories] = useState<string[]>([]);
+  const [matFilter, setMatFilter] = useState<string>('all');
+
+  // Load cases (saved via engineering.saveLoadCase macro).
+  const [loadCases, setLoadCases] = useState<SavedLoadCase[]>([]);
+  const [lcName, setLcName] = useState('Load Case 1');
+
+  // Mesh generation stats (engineering.meshGenerate macro).
+  const [meshDivisions, setMeshDivisions] = useState(4);
+  const [meshStats, setMeshStats] = useState<{
+    divisions: number;
+    meshNodes: number;
+    meshElements: number;
+    avgElementLength: number;
+  } | null>(null);
+
   const runAction = useRunArtifact('engineering');
   const createArtifact = useCreateArtifact('engineering');
+
+  // Load the material library + load cases once on mount.
+  useEffect(() => {
+    (async () => {
+      const matRes = await lensRun<{ materials: LibMaterial[]; categories: string[] }>(
+        'engineering',
+        'materialLibrary',
+        {},
+      );
+      if (matRes.data.ok && matRes.data.result) {
+        setLibMaterials(matRes.data.result.materials || []);
+        setMatCategories(matRes.data.result.categories || []);
+      }
+      const lcRes = await lensRun<{ loadCases: SavedLoadCase[] }>(
+        'engineering',
+        'listLoadCases',
+        {},
+      );
+      if (lcRes.data.ok && lcRes.data.result) {
+        setLoadCases(lcRes.data.result.loadCases || []);
+      }
+    })();
+  }, []);
+
+  // Save the current loads + supports as a reusable load case.
+  const saveLoadCase = useCallback(async () => {
+    setStatus('Saving load case…');
+    const r = await lensRun<{ loadCase: SavedLoadCase }>('engineering', 'saveLoadCase', {
+      name: lcName,
+      loads: model.loads,
+      supports: model.supports,
+    });
+    if (r.data.ok) {
+      const list = await lensRun<{ loadCases: SavedLoadCase[] }>(
+        'engineering',
+        'listLoadCases',
+        {},
+      );
+      if (list.data.ok && list.data.result) setLoadCases(list.data.result.loadCases || []);
+      setStatus('Load case saved');
+    } else {
+      setStatus(`Error: ${r.data.error}`);
+    }
+  }, [lcName, model.loads, model.supports]);
+
+  const applyLoadCase = useCallback((lc: SavedLoadCase) => {
+    setModel((m) => ({ ...m, loads: lc.loads || [], supports: lc.supports || [] }));
+    setStatus(`Applied load case "${lc.name}"`);
+  }, []);
+
+  const deleteLoadCase = useCallback(async (id: string) => {
+    await lensRun('engineering', 'deleteLoadCase', { id });
+    const list = await lensRun<{ loadCases: SavedLoadCase[] }>(
+      'engineering',
+      'listLoadCases',
+      {},
+    );
+    if (list.data.ok && list.data.result) setLoadCases(list.data.result.loadCases || []);
+  }, []);
+
+  // Generate an FEA mesh by subdividing each member into N elements.
+  const generateMesh = useCallback(async () => {
+    setStatus('Generating mesh…');
+    const r = await lensRun<{
+      mesh: { nodes: Node3D[]; members: Member[] };
+      stats: {
+        divisions: number;
+        meshNodes: number;
+        meshElements: number;
+        avgElementLength: number;
+      };
+    }>('engineering', 'meshGenerate', { model, divisions: meshDivisions });
+    if (r.data.ok && r.data.result) {
+      setMeshStats(r.data.result.stats);
+      setStatus(
+        `Mesh ready — ${r.data.result.stats.meshElements} elements`,
+      );
+    } else {
+      setStatus(`Mesh error: ${r.data.error}`);
+    }
+  }, [model, meshDivisions]);
 
   // Poll async FEA job
   const { data: jobData } = useQuery({
@@ -444,6 +584,21 @@ export default function EngineeringPage() {
         ))}
       </div>
 
+      {/* ── Geometry Tab — parametric 3-D part editor ──────────────────────────── */}
+      {tab === 'Geometry' && (
+        <GeometryEditor
+          materials={
+            libMaterials.length > 0
+              ? libMaterials.map((m) => ({
+                  id: m.id,
+                  label: m.label,
+                  density: m.density,
+                }))
+              : [{ id: 'steel-a36', label: 'ASTM A36 Steel', density: 7850 }]
+          }
+        />
+      )}
+
       {/* ── Model Tab ──────────────────────────────────────────────────────────── */}
       {tab === 'Model' && (
         <div className="space-y-4">
@@ -708,52 +863,156 @@ export default function EngineeringPage() {
               No loads defined. Add point loads above.
             </p>
           )}
+
+          {/* ── Saved load cases ── */}
+          <div className="border-t border-white/10 pt-3 mt-3 space-y-2">
+            <h4 className="font-semibold text-xs flex items-center gap-2">
+              <FolderOpen className="w-3.5 h-3.5 text-purple-400" /> Load Cases
+            </h4>
+            <div className="flex items-center gap-2">
+              <input
+                value={lcName}
+                onChange={(e) => setLcName(e.target.value)}
+                placeholder="Load case name"
+                className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-xs"
+              />
+              <button
+                onClick={saveLoadCase}
+                className="flex items-center gap-1 px-3 py-1 bg-purple-500/20 text-purple-400 rounded text-xs hover:bg-purple-500/30"
+              >
+                <Save className="w-3 h-3" /> Save current loads + supports
+              </button>
+            </div>
+            {loadCases.length === 0 ? (
+              <p className="text-xs text-gray-500">
+                No saved load cases. Save the current loads/supports to reuse them.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {loadCases.map((lc) => (
+                  <div
+                    key={lc.id}
+                    className="flex items-center justify-between bg-black/20 rounded px-2 py-1.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs truncate">{lc.name}</p>
+                      <p className="text-[10px] text-gray-500">
+                        {lc.loads.length} loads · {lc.supports.length} supports
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => applyLoadCase(lc)}
+                        className="text-xs px-2 py-0.5 bg-neon-cyan/20 text-neon-cyan rounded hover:bg-neon-cyan/30"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        onClick={() => deleteLoadCase(lc.id)}
+                        className="text-gray-600 hover:text-red-400"
+                        aria-label="Delete load case"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── Materials Tab ──────────────────────────────────────────────────────── */}
+      {/* ── Materials Tab — backend material library ───────────────────────────── */}
       {tab === 'Materials' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {Object.entries(MATERIALS).map(([name, mat]) => (
-            <div key={name} className="panel p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <FlaskConical className="w-4 h-4 text-purple-400" />
-                <h3 className="font-medium text-sm">{mat.label}</h3>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="bg-black/20 rounded p-2 text-center">
-                  <p className="text-gray-500">E</p>
-                  <p className="font-mono text-neon-cyan">{(mat.E / 1e6).toFixed(1)} Msi</p>
-                </div>
-                <div className="bg-black/20 rounded p-2 text-center">
-                  <p className="text-gray-500">F_allow</p>
-                  <p className="font-mono text-green-400">
-                    {(mat.allowable / 1000).toFixed(1)} ksi
-                  </p>
-                </div>
-                <div className="bg-black/20 rounded p-2 text-center">
-                  <p className="text-gray-500">ρ</p>
-                  <p className="font-mono text-yellow-400">{mat.density} lb/in³</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                <p>
-                  Strength/Weight:{' '}
-                  <span className="text-white font-mono">
-                    {(mat.allowable / mat.density / 1000).toFixed(0)} ksi·in³/lb
-                  </span>
-                </p>
-                <p>
-                  Stiffness/Weight:{' '}
-                  <span className="text-white font-mono">
-                    {(mat.E / mat.density / 1e9).toFixed(2)} Gsi·in³/lb
-                  </span>
-                </p>
-              </div>
+        <div className="space-y-3">
+          {/* Category filter */}
+          <div className="flex flex-wrap gap-1">
+            {['all', ...matCategories].map((c) => (
+              <button
+                key={c}
+                onClick={() => setMatFilter(c)}
+                className={`px-3 py-1 rounded-full text-xs capitalize ${
+                  matFilter === c
+                    ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40'
+                    : 'bg-white/5 text-gray-400 border border-white/10'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          {libMaterials.length === 0 ? (
+            <div className="panel p-8 text-center text-gray-500 text-sm">
+              <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+              Loading material library…
             </div>
-          ))}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {libMaterials
+                .filter((m) => matFilter === 'all' || m.category === matFilter)
+                .map((mat) => (
+                  <div key={mat.id} className="panel p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FlaskConical className="w-4 h-4 text-purple-400" />
+                      <h3 className="font-medium text-sm">{mat.label}</h3>
+                      <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 capitalize">
+                        {mat.category}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-xs">
+                      <div className="bg-black/20 rounded p-2 text-center">
+                        <p className="text-gray-500">E</p>
+                        <p className="font-mono text-neon-cyan">
+                          {(mat.E / 1000).toFixed(0)} GPa
+                        </p>
+                      </div>
+                      <div className="bg-black/20 rounded p-2 text-center">
+                        <p className="text-gray-500">σ_yield</p>
+                        <p className="font-mono text-green-400">{mat.yield} MPa</p>
+                      </div>
+                      <div className="bg-black/20 rounded p-2 text-center">
+                        <p className="text-gray-500">σ_ult</p>
+                        <p className="font-mono text-orange-400">{mat.ultimate} MPa</p>
+                      </div>
+                      <div className="bg-black/20 rounded p-2 text-center">
+                        <p className="text-gray-500">ρ</p>
+                        <p className="font-mono text-yellow-400">
+                          {mat.density} kg/m³
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-[11px] text-gray-500">
+                      <p>
+                        ν <span className="text-white font-mono">{mat.poisson}</span>
+                      </p>
+                      <p>
+                        CTE{' '}
+                        <span className="text-white font-mono">{mat.cte}µ/K</span>
+                      </p>
+                      <p>
+                        k{' '}
+                        <span className="text-white font-mono">{mat.thermalK}</span>
+                      </p>
+                      <p>
+                        $/kg{' '}
+                        <span className="text-white font-mono">
+                          ${mat.costPerKg}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
+
+      {/* ── BOM Tab — cost rollup + supplier links ─────────────────────────────── */}
+      {tab === 'BOM' && <BomPanel />}
+
+      {/* ── Tolerance Tab — directional stack-up chain ─────────────────────────── */}
+      {tab === 'Tolerance' && <TolerancePanel />}
 
       {/* ── Analysis Tab ───────────────────────────────────────────────────────── */}
       {tab === 'Analysis' && (
@@ -775,6 +1034,58 @@ export default function EngineeringPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Mesh generation step */}
+          <div className="panel p-4 space-y-3">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Grid3x3 className="w-4 h-4 text-purple-400" /> Mesh Generation
+            </h3>
+            <p className="text-xs text-gray-400">
+              Subdivide each structural member into N beam elements for a finer
+              deflection curve before solving.
+            </p>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-gray-400">Divisions / member</label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={meshDivisions}
+                onChange={(e) =>
+                  setMeshDivisions(
+                    Math.max(1, Math.min(20, parseInt(e.target.value) || 1)),
+                  )
+                }
+                className="w-16 bg-black/30 border border-white/10 rounded px-2 py-1 text-sm font-mono"
+              />
+              <button
+                onClick={generateMesh}
+                className="flex items-center gap-1 px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded text-sm hover:bg-purple-500/30"
+              >
+                <Grid3x3 className="w-4 h-4" /> Generate Mesh
+              </button>
+            </div>
+            {meshStats && (
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                {[
+                  { label: 'Divisions', value: meshStats.divisions },
+                  { label: 'Mesh Nodes', value: meshStats.meshNodes },
+                  { label: 'Elements', value: meshStats.meshElements },
+                  {
+                    label: 'Avg El. Len',
+                    value: meshStats.avgElementLength.toFixed(2),
+                  },
+                ].map((s) => (
+                  <div key={s.label} className="bg-black/20 rounded-lg p-2">
+                    <p className="text-base font-bold text-purple-400">
+                      {s.value}
+                    </p>
+                    <p className="text-gray-500">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="panel p-4 space-y-3">

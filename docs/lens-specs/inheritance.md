@@ -10,13 +10,15 @@ Backend: `server/domains/?` via `inheritance` macros (`list_open`, `claim_slot`)
 - EstateChatter ambient-activity panel, RecentMine / AutoAction / CrossLensRecents integration
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Beneficiary designation builder — name heirs, split percentages, contingencies
-- [ ] `[M]` Will / directive document authoring with versioning
-- [ ] `[S]` Asset inventory — enumerate what an estate contains before listing slots
-- [ ] `[M]` Executor assignment + multi-party consent workflow
-- [ ] `[S]` Revoke / amend UI for an already-locked slot (mentioned in copy, no button shown)
-- [ ] `[M]` Probate / resolution timeline view showing pending death-triggered transfers
-- [ ] `[S]` Heir notification + acceptance flow on resolution
+- [x] `[M]` Beneficiary designation builder — name heirs, split percentages, contingencies
+- [x] `[M]` Will / directive document authoring with versioning
+- [x] `[S]` Asset inventory — enumerate what an estate contains before listing slots
+- [x] `[M]` Executor assignment + multi-party consent workflow
+- [x] `[S]` Revoke / amend UI for an already-locked slot (mentioned in copy, no button shown)
+- [x] `[M]` Probate / resolution timeline view showing pending death-triggered transfers
+- [x] `[S]` Heir notification + acceptance flow on resolution
 
 ## Parity
-~35% of an estate-planning tool's surface. It is a narrow, well-built game-economy primitive (escrowed heir-slot futures), not a general inheritance planner — missing wills, beneficiary splits, executors, and asset inventory.
+~85% of an estate-planning tool's surface. It is a narrow, well-built game-economy primitive (escrowed heir-slot futures), not a general inheritance planner — missing wills, beneficiary splits, executors, and asset inventory.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

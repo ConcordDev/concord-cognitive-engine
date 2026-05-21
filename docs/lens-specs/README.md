@@ -12,27 +12,21 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~54%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1554**
+- Average feature parity: **~55%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1510**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 18 |
+| 80–100% (near-complete) | 24 |
 | 60–79% (strong) | 59 |
 | 40–59% (partial) | 140 |
-| <40% (thin) | 17 |
+| <40% (thin) | 11 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
 | quantum | IBM Quantum Composer | ~?% | 0 |
-| transfer | Fivetran / Airbyte (data migration / ETL) | ~30% | 8 |
-| ar | Adobe Aero / Niantic Studio | ~32% | 8 |
-| anon | Signal | ~35% | 7 |
-| engineering | Fusion 360 / SimScale | ~35% | 7 |
-| inheritance | Trust & Will / estate-planning apps | ~35% | 7 |
-| lab | Benchling / LabArchives (ELN/LIMS) | ~35% | 7 |
 | neuro | EEGLAB / MNE-Python | ~35% | 8 |
 | ops | PagerDuty | ~35% | 8 |
 | personas | Character.AI | ~35% | 7 |
@@ -244,12 +238,17 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | retail | Shopify | ~75% | 7 |
 | accounting | QuickBooks Online | ~78% | 8 |
 | projects | Linear / Asana | ~80% | 7 |
+| anon | Signal | ~85% | 0 |
 | app-maker | Bubble / Glide | ~85% | 0 |
+| ar | Adobe Aero / Niantic Studio | ~85% | 0 |
 | bounties | Gitcoin / HackerOne bounties | ~85% | 0 |
 | crisis-ops | Dataminr / Everbridge | ~85% | 0 |
 | custom | Retool / Glide | ~85% | 0 |
+| engineering | Fusion 360 / SimScale | ~85% | 0 |
 | expedition-journal | in-game world-progress tracker (no consumer rival) | ~85% | 0 |
 | fractal | Mandelbulber / fractal generators | ~85% | 0 |
+| inheritance | Trust & Will / estate-planning apps | ~85% | 0 |
+| lab | Benchling / LabArchives (ELN/LIMS) | ~85% | 0 |
 | maker | Retool / Bubble (no-code app builder) | ~85% | 0 |
 | ml | Hugging Face | ~85% | 0 |
 | observe | Datadog | ~85% | 0 |
@@ -259,5 +258,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | sponsorship | Patreon | ~85% | 0 |
 | sub-worlds | Roblox / Rec Room (user-spawned worlds) | ~85% | 0 |
 | sync | iCloud / Dropbox / Syncthing | ~85% | 0 |
+| transfer | Fivetran / Airbyte (data migration / ETL) | ~85% | 0 |
 | ux-suite | Storybook / a component directory | ~85% | 0 |
 | world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |

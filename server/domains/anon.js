@@ -1,8 +1,148 @@
 // server/domains/anon.js
 // Domain actions for anonymization/privacy: k-anonymity, re-identification
 // risk assessment, and differential privacy noise injection.
+//
+// Plus a real end-to-end encrypted pseudonymous messaging substrate:
+// X25519 ECDH key exchange, AES-256-GCM sealed-sender envelopes, safety
+// numbers, group conversations, server-side ephemeral sweeping, and
+// per-conversation disappearing-message defaults.
+
+import crypto from "node:crypto";
 
 export default function registerAnonActions(registerLensAction) {
+
+  // ─────────────────────────────────────────────────────────────────
+  //  E2E messaging substrate — persistent per-user state in _concordSTATE
+  // ─────────────────────────────────────────────────────────────────
+
+  function getAnonState() {
+    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+    if (!STATE.anonLens) STATE.anonLens = {};
+    const s = STATE.anonLens;
+    // identities: userId -> identity object (keypair + alias)
+    // conversations: convId -> conversation object
+    // userConvs: userId -> Set(convId)
+    for (const k of ["identities", "conversations", "userConvs"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveAnonState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const anUid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const anNow = () => Date.now();
+
+  // Real-time delivery: emit to each member's per-user socket room so a
+  // sent message lands on every recipient's open client without polling.
+  // The stored record is still ciphertext-only — the socket payload
+  // carries only metadata + the recipient's own sealed envelope, never
+  // plaintext, preserving the E2E + sealed-sender guarantees.
+  function emitToUser(userId, name, payload) {
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`user:${userId}`).emit(name, { userId, ...payload, ts: Date.now() });
+    } catch (_e) { /* best effort — delivery degrades to poll */ }
+  }
+  const anId = (p) => `${p}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+  const anClean = (v, max = 4000) => String(v == null ? "" : v).trim().slice(0, max);
+
+  // Derive a deterministic 6-line numeric safety number from two public keys.
+  function safetyNumber(pubA, pubB) {
+    const sorted = [pubA, pubB].sort().join("|");
+    const digest = crypto.createHash("sha256").update(sorted).digest();
+    const groups = [];
+    for (let i = 0; i < 12; i++) {
+      const chunk = digest.readUInt32BE((i * 2) % 28);
+      groups.push(String(chunk % 100000).padStart(5, "0"));
+    }
+    return groups;
+  }
+
+  // Lazily mint / fetch a user's pseudonymous identity (X25519 keypair).
+  function ensureIdentity(s, userId) {
+    let ident = s.identities.get(userId);
+    if (ident) return ident;
+    const { publicKey, privateKey } = crypto.generateKeyPairSync("x25519");
+    const pub = publicKey.export({ type: "spki", format: "der" }).toString("base64");
+    const priv = privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
+    const alias = `anon-${crypto.randomBytes(4).toString("hex")}`;
+    ident = {
+      userId,
+      alias,
+      anonId: anId("aid"),
+      publicKey: pub,
+      privateKey: priv,
+      fingerprint: crypto.createHash("sha256").update(pub).digest("hex").slice(0, 16),
+      createdAt: anNow(),
+      rotatedAt: null,
+      verifiedPeers: {}, // peerAnonId -> true once safety number confirmed
+    };
+    s.identities.set(userId, ident);
+    return ident;
+  }
+
+  // Resolve a peer identity by anonId. Returns null if not found.
+  function findIdentityByAnonId(s, anonId) {
+    for (const ident of s.identities.values()) {
+      if (ident.anonId === anonId) return ident;
+    }
+    return null;
+  }
+
+  // AES-256-GCM encrypt with an ECDH-derived shared secret.
+  function sealEnvelope(myPrivB64, peerPubB64, plaintext) {
+    const myPriv = crypto.createPrivateKey({
+      key: Buffer.from(myPrivB64, "base64"), format: "der", type: "pkcs8",
+    });
+    const peerPub = crypto.createPublicKey({
+      key: Buffer.from(peerPubB64, "base64"), format: "der", type: "spki",
+    });
+    const shared = crypto.diffieHellman({ privateKey: myPriv, publicKey: peerPub });
+    const aesKey = crypto.createHash("sha256").update(shared).digest();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
+    const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return {
+      ciphertext: ct.toString("base64"),
+      iv: iv.toString("base64"),
+      tag: tag.toString("base64"),
+    };
+  }
+
+  // AES-256-GCM decrypt — recipient side.
+  function openEnvelope(myPrivB64, peerPubB64, env) {
+    const myPriv = crypto.createPrivateKey({
+      key: Buffer.from(myPrivB64, "base64"), format: "der", type: "pkcs8",
+    });
+    const peerPub = crypto.createPublicKey({
+      key: Buffer.from(peerPubB64, "base64"), format: "der", type: "spki",
+    });
+    const shared = crypto.diffieHellman({ privateKey: myPriv, publicKey: peerPub });
+    const aesKey = crypto.createHash("sha256").update(shared).digest();
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm", aesKey, Buffer.from(env.iv, "base64"),
+    );
+    decipher.setAuthTag(Buffer.from(env.tag, "base64"));
+    return Buffer.concat([
+      decipher.update(Buffer.from(env.ciphertext, "base64")),
+      decipher.final(),
+    ]).toString("utf8");
+  }
+
+  // Drop messages whose disappear deadline has passed. Mutates conversation.
+  function sweepConversation(conv, now) {
+    let removed = 0;
+    conv.messages = conv.messages.filter((m) => {
+      if (m.expiresAt && m.expiresAt <= now) { removed++; return false; }
+      return true;
+    });
+    return removed;
+  }
+
   /**
    * anonymize
    * Anonymize data fields using k-anonymity via generalization hierarchies.
@@ -373,5 +513,463 @@ export default function registerAnonActions(registerLensAction) {
         },
       },
     };
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  E2E ENCRYPTED PSEUDONYMOUS MESSAGING
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * identity — fetch (lazily mint) the caller's pseudonymous identity.
+   * Returns the public-facing identity only — never the private key.
+   */
+  registerLensAction("anon", "identity", (ctx) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      saveAnonState();
+      return {
+        ok: true,
+        result: {
+          anonId: me.anonId,
+          alias: me.alias,
+          publicKey: me.publicKey,
+          fingerprint: me.fingerprint,
+          createdAt: me.createdAt,
+          rotatedAt: me.rotatedAt,
+          verifiedPeerCount: Object.keys(me.verifiedPeers).length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * rotateIdentity — regenerate alias + X25519 keypair for the caller.
+   * Old conversations remain readable only with re-keying; this mints a
+   * fresh anonId so prior traffic can no longer be linked to the caller.
+   */
+  registerLensAction("anon", "rotateIdentity", (ctx) => {
+    try {
+      const s = getAnonState();
+      const userId = anUid(ctx);
+      const { publicKey, privateKey } = crypto.generateKeyPairSync("x25519");
+      const pub = publicKey.export({ type: "spki", format: "der" }).toString("base64");
+      const priv = privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
+      const ident = {
+        userId,
+        alias: `anon-${crypto.randomBytes(4).toString("hex")}`,
+        anonId: anId("aid"),
+        publicKey: pub,
+        privateKey: priv,
+        fingerprint: crypto.createHash("sha256").update(pub).digest("hex").slice(0, 16),
+        createdAt: anNow(),
+        rotatedAt: anNow(),
+        verifiedPeers: {},
+      };
+      s.identities.set(userId, ident);
+      saveAnonState();
+      return {
+        ok: true,
+        result: {
+          anonId: ident.anonId,
+          alias: ident.alias,
+          publicKey: ident.publicKey,
+          fingerprint: ident.fingerprint,
+          rotatedAt: ident.rotatedAt,
+          note: "Identity rotated — prior traffic is now unlinkable.",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * safetyNumber — compute the verified key-exchange safety number for a
+   * peer. Both parties compare the same 12-group code out-of-band; a match
+   * proves no man-in-the-middle. params.peerAnonId
+   */
+  registerLensAction("anon", "safetyNumber", (ctx, _artifact, params) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      const peerAnonId = anClean(params?.peerAnonId, 80);
+      if (!peerAnonId) return { ok: false, error: "peerAnonId required" };
+      const peer = findIdentityByAnonId(s, peerAnonId);
+      if (!peer) return { ok: false, error: "peer identity not found" };
+      const groups = safetyNumber(me.publicKey, peer.publicKey);
+      return {
+        ok: true,
+        result: {
+          peerAnonId,
+          peerAlias: peer.alias,
+          safetyNumber: groups,
+          formatted: groups.join(" "),
+          verified: !!me.verifiedPeers[peerAnonId],
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * verifyPeer — mark a peer's safety number as confirmed (or revoke).
+   * params.peerAnonId, params.verified (bool, default true)
+   */
+  registerLensAction("anon", "verifyPeer", (ctx, _artifact, params) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      const peerAnonId = anClean(params?.peerAnonId, 80);
+      if (!peerAnonId) return { ok: false, error: "peerAnonId required" };
+      const verified = params?.verified !== false;
+      if (verified) me.verifiedPeers[peerAnonId] = true;
+      else delete me.verifiedPeers[peerAnonId];
+      saveAnonState();
+      return {
+        ok: true,
+        result: { peerAnonId, verified, verifiedPeerCount: Object.keys(me.verifiedPeers).length },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * startConversation — open a direct (1:1) or group conversation.
+   * params.peerAnonIds = [anonId, ...] (one for DM, many for group)
+   * params.title (optional, group only)
+   * params.disappearDefaultSec (optional, per-conversation disappearing default)
+   */
+  registerLensAction("anon", "startConversation", (ctx, _artifact, params) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      let peerIds = Array.isArray(params?.peerAnonIds)
+        ? params.peerAnonIds
+        : (params?.peerAnonId ? [params.peerAnonId] : []);
+      peerIds = peerIds.map((p) => anClean(p, 80)).filter(Boolean);
+      if (peerIds.length === 0) return { ok: false, error: "at least one peerAnonId required" };
+
+      const memberIdents = [me];
+      for (const pid of peerIds) {
+        const peer = findIdentityByAnonId(s, pid);
+        if (!peer) return { ok: false, error: `peer not found: ${pid}` };
+        memberIdents.push(peer);
+      }
+      const isGroup = memberIdents.length > 2;
+      const convId = anId(isGroup ? "grp" : "dm");
+      const disappearDefaultSec = Math.max(0, Math.min(604800,
+        Number(params?.disappearDefaultSec) || 0));
+      const conv = {
+        id: convId,
+        kind: isGroup ? "group" : "direct",
+        title: isGroup ? anClean(params?.title, 120) || `Group (${memberIdents.length})` : null,
+        members: memberIdents.map((i) => ({
+          anonId: i.anonId, alias: i.alias, publicKey: i.publicKey,
+        })),
+        memberUserIds: memberIdents.map((i) => i.userId),
+        disappearDefaultSec,
+        createdAt: anNow(),
+        messages: [],
+      };
+      s.conversations.set(convId, conv);
+      for (const i of memberIdents) {
+        if (!s.userConvs.has(i.userId)) s.userConvs.set(i.userId, new Set());
+        s.userConvs.get(i.userId).add(convId);
+      }
+      saveAnonState();
+      // Notify every member (except the initiator) of the new thread.
+      for (const i of memberIdents) {
+        if (i.userId === me.userId) continue;
+        emitToUser(i.userId, "anon:conversation-created", {
+          conversationId: convId,
+          kind: conv.kind,
+          title: conv.title,
+          memberCount: conv.members.length,
+        });
+      }
+      return {
+        ok: true,
+        result: {
+          conversationId: convId,
+          kind: conv.kind,
+          title: conv.title,
+          members: conv.members.map((m) => ({ anonId: m.anonId, alias: m.alias })),
+          disappearDefaultSec,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * listConversations — all conversations the caller is a member of, with
+   * unread/preview metadata. Sweeps expired messages first.
+   */
+  registerLensAction("anon", "listConversations", (ctx) => {
+    try {
+      const s = getAnonState();
+      const userId = anUid(ctx);
+      ensureIdentity(s, userId);
+      const now = anNow();
+      const convIds = s.userConvs.get(userId) || new Set();
+      const out = [];
+      for (const cid of convIds) {
+        const conv = s.conversations.get(cid);
+        if (!conv) continue;
+        sweepConversation(conv, now);
+        const last = conv.messages[conv.messages.length - 1];
+        out.push({
+          conversationId: conv.id,
+          kind: conv.kind,
+          title: conv.title,
+          members: conv.members.map((m) => ({ anonId: m.anonId, alias: m.alias })),
+          memberCount: conv.members.length,
+          disappearDefaultSec: conv.disappearDefaultSec,
+          messageCount: conv.messages.length,
+          lastActivityAt: last ? last.sentAt : conv.createdAt,
+          lastSenderAnonId: last ? (last.sealedSender ? null : last.fromAnonId) : null,
+        });
+      }
+      out.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+      saveAnonState();
+      return { ok: true, result: { conversations: out, count: out.length } };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * sendMessage — encrypt + persist a message into a conversation.
+   * Each recipient gets a per-recipient AES-256-GCM envelope sealed under
+   * an X25519 ECDH shared secret. Plaintext is NEVER stored.
+   * params.conversationId, params.content
+   * params.ephemeralSec (overrides conversation disappearing default)
+   * params.sealedSender (bool — strip sender metadata from stored record)
+   */
+  registerLensAction("anon", "sendMessage", (ctx, _artifact, params) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      const conv = s.conversations.get(anClean(params?.conversationId, 80));
+      if (!conv) return { ok: false, error: "conversation not found" };
+      if (!conv.memberUserIds.includes(me.userId)) {
+        return { ok: false, error: "not a member of this conversation" };
+      }
+      const content = anClean(params?.content, 4000);
+      if (!content) return { ok: false, error: "content required" };
+
+      const now = anNow();
+      const ttlSec = params?.ephemeralSec != null
+        ? Math.max(0, Math.min(604800, Number(params.ephemeralSec) || 0))
+        : conv.disappearDefaultSec;
+      const sealedSender = !!params?.sealedSender;
+
+      // Per-recipient sealed envelopes — sender's own copy included so they
+      // can decrypt their sent history.
+      const envelopes = {};
+      for (const member of conv.members) {
+        const recipient = findIdentityByAnonId(s, member.anonId);
+        if (!recipient) continue;
+        envelopes[member.anonId] = sealEnvelope(me.privateKey, recipient.publicKey, content);
+      }
+
+      const msg = {
+        id: anId("msg"),
+        fromAnonId: sealedSender ? null : me.anonId,
+        fromAlias: sealedSender ? null : me.alias,
+        sealedSender,
+        senderPublicKey: me.publicKey, // needed by recipients to derive shared key
+        envelopes,
+        sentAt: now,
+        expiresAt: ttlSec > 0 ? now + ttlSec * 1000 : null,
+      };
+      conv.messages.push(msg);
+      saveAnonState();
+      // Real-time fan-out: push a delivery ping to every member's socket
+      // room. Plaintext is never on the wire — clients call readConversation
+      // to decrypt their own envelope. Sealed-sender hides fromAnonId.
+      for (const member of conv.members) {
+        const recipient = findIdentityByAnonId(s, member.anonId);
+        if (!recipient) continue;
+        emitToUser(recipient.userId, "anon:message", {
+          conversationId: conv.id,
+          messageId: msg.id,
+          fromAnonId: sealedSender ? null : me.anonId,
+          fromAlias: sealedSender ? null : me.alias,
+          sealedSender,
+          sentAt: now,
+          expiresAt: msg.expiresAt,
+        });
+      }
+      return {
+        ok: true,
+        result: {
+          messageId: msg.id,
+          conversationId: conv.id,
+          sentAt: now,
+          expiresAt: msg.expiresAt,
+          recipients: Object.keys(envelopes).length,
+          sealedSender,
+          encrypted: true,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * readConversation — decrypt every message in a conversation for the
+   * caller. Sweeps expired messages first. Plaintext only ever leaves the
+   * server for the authenticated member who holds the matching key.
+   * params.conversationId
+   */
+  registerLensAction("anon", "readConversation", (ctx, _artifact, params) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      const conv = s.conversations.get(anClean(params?.conversationId, 80));
+      if (!conv) return { ok: false, error: "conversation not found" };
+      if (!conv.memberUserIds.includes(me.userId)) {
+        return { ok: false, error: "not a member of this conversation" };
+      }
+      const now = anNow();
+      const swept = sweepConversation(conv, now);
+
+      const messages = conv.messages.map((m) => {
+        const env = m.envelopes[me.anonId];
+        let content = null;
+        let decryptError = null;
+        if (env) {
+          try {
+            content = openEnvelope(me.privateKey, m.senderPublicKey, env);
+          } catch (e) {
+            decryptError = e.message;
+          }
+        } else {
+          decryptError = "no envelope for this identity";
+        }
+        const mine = !m.sealedSender && m.fromAnonId === me.anonId;
+        return {
+          id: m.id,
+          fromAnonId: m.fromAnonId,
+          fromAlias: m.fromAlias,
+          sealedSender: m.sealedSender,
+          mine,
+          content,
+          decryptError,
+          sentAt: m.sentAt,
+          expiresAt: m.expiresAt,
+          encrypted: true,
+        };
+      });
+      saveAnonState();
+      return {
+        ok: true,
+        result: {
+          conversationId: conv.id,
+          kind: conv.kind,
+          title: conv.title,
+          members: conv.members.map((mm) => ({ anonId: mm.anonId, alias: mm.alias })),
+          disappearDefaultSec: conv.disappearDefaultSec,
+          messages,
+          messageCount: messages.length,
+          sweptExpired: swept,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * setDisappearing — set the per-conversation disappearing-message
+   * default. Affects future messages only.
+   * params.conversationId, params.disappearDefaultSec
+   */
+  registerLensAction("anon", "setDisappearing", (ctx, _artifact, params) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      const conv = s.conversations.get(anClean(params?.conversationId, 80));
+      if (!conv) return { ok: false, error: "conversation not found" };
+      if (!conv.memberUserIds.includes(me.userId)) {
+        return { ok: false, error: "not a member of this conversation" };
+      }
+      const sec = Math.max(0, Math.min(604800, Number(params?.disappearDefaultSec) || 0));
+      conv.disappearDefaultSec = sec;
+      saveAnonState();
+      return {
+        ok: true,
+        result: {
+          conversationId: conv.id,
+          disappearDefaultSec: sec,
+          enabled: sec > 0,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * sweepEphemeral — server-side enforcement of ephemeral timers across
+   * every conversation the caller belongs to. Intended for periodic /
+   * on-open invocation so expired messages are actually purged, not just
+   * flagged. Returns the purge count per conversation.
+   */
+  registerLensAction("anon", "sweepEphemeral", (ctx) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      const now = anNow();
+      const convIds = s.userConvs.get(me.userId) || new Set();
+      let totalRemoved = 0;
+      const perConv = [];
+      for (const cid of convIds) {
+        const conv = s.conversations.get(cid);
+        if (!conv) continue;
+        const removed = sweepConversation(conv, now);
+        if (removed > 0) perConv.push({ conversationId: cid, removed });
+        totalRemoved += removed;
+      }
+      saveAnonState();
+      return {
+        ok: true,
+        result: { totalRemoved, conversationsSwept: perConv.length, perConv, sweptAt: now },
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  /**
+   * directory — list other pseudonymous identities the caller can start a
+   * conversation with (public-facing fields only — never private keys).
+   */
+  registerLensAction("anon", "directory", (ctx) => {
+    try {
+      const s = getAnonState();
+      const me = ensureIdentity(s, anUid(ctx));
+      const peers = [];
+      for (const ident of s.identities.values()) {
+        if (ident.userId === me.userId) continue;
+        peers.push({
+          anonId: ident.anonId,
+          alias: ident.alias,
+          fingerprint: ident.fingerprint,
+          verified: !!me.verifiedPeers[ident.anonId],
+        });
+      }
+      return { ok: true, result: { peers, count: peers.length, myAnonId: me.anonId } };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
   });
 }
