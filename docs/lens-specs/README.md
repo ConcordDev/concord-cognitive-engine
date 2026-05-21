@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~66%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1115**
+- Average feature parity: **~67%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1075**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 74 |
+| 80–100% (near-complete) | 80 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 97 |
+| 40–59% (partial) | 91 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -31,12 +31,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| ethics | Ethical OS / decision-ethics tooling | ~45% | 6 |
-| expert-mode | Perplexity | ~45% | 7 |
-| ghost-tracker | no direct rival (in-game mode) | ~45% | 6 |
-| grounding | Ground News / fact-check tools | ~45% | 7 |
-| home-improvement | Houzz / HomeZada | ~45% | 7 |
-| hvac | ServiceTitan / Housecall Pro | ~45% | 7 |
 | inference | Prolog / Drools rule engines | ~45% | 7 |
 | ingest | Airbyte / Fivetran | ~45% | 7 |
 | lattice | Weights & Biases / fine-tuning consoles | ~45% | 8 |
@@ -223,6 +217,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | billing | Stripe Billing | ~88% | 0 |
 | carpentry | Houzz Pro / Buildertrend (trades) | ~88% | 0 |
 | code-quality | SonarQube / CodeClimate | ~88% | 0 |
+| ethics | Ethical OS / decision-ethics tooling | ~88% | 0 |
+| expert-mode | Perplexity | ~88% | 0 |
+| ghost-tracker | no direct rival (in-game mode) | ~88% | 0 |
+| grounding | Ground News / fact-check tools | ~88% | 0 |
+| home-improvement | Houzz / HomeZada | ~88% | 0 |
+| hvac | ServiceTitan / Housecall Pro | ~88% | 0 |
 | neuro | EEGLAB / MNE-Python | ~88% | 0 |
 | ops | PagerDuty | ~88% | 0 |
 | psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |

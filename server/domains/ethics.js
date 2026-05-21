@@ -339,4 +339,449 @@ export default function registerEthicsActions(registerLensAction) {
       },
     };
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Ethics decision-toolkit features. Persistent per-user state in
+  //  globalThis._concordSTATE.ethicsLens. Every handler try/catch
+  //  wrapped and returns { ok, result?, error? } — never throws.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getEthicsState() {
+    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+    if (!STATE.ethicsLens) {
+      STATE.ethicsLens = {
+        analyses: new Map(),  // userId -> Array<MultiFrameworkAnalysis>
+        maps: new Map(),      // userId -> Array<StakeholderMap>
+        matrices: new Map(),  // userId -> Array<DecisionMatrix>
+        checklists: new Map(),// userId -> Array<BiasChecklist>
+        reviews: new Map(),   // userId -> Array<ReviewWorkflow>
+        cases: new Map(),     // userId -> Array<CaseRecord>
+        seq: 1,
+      };
+    }
+    return STATE.ethicsLens;
+  }
+  function saveEthics() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* noop */ }
+    }
+  }
+  function eid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function euid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function enow() { return new Date().toISOString(); }
+  function elist(map, key) {
+    if (!map.has(key)) map.set(key, []);
+    return map.get(key);
+  }
+  function ewrap(fn) {
+    return (ctx, artifact, params) => {
+      try { return fn(ctx, artifact, params); }
+      catch (e) { return { ok: false, error: String(e?.message || e) }; }
+    };
+  }
+
+  // Shared keyword tables for lightweight framework scoring of free text.
+  const POS_KW = ["truth", "honest", "consent", "respect", "dignity", "rights", "promise", "fair", "transparent", "autonomy", "benefit", "help", "protect", "care"];
+  const NEG_KW = ["deceive", "coerce", "manipulate", "exploit", "violate", "discriminate", "surveil", "harm", "force", "lie", "damage", "endanger", "neglect"];
+
+  function scoreText(text) {
+    const t = String(text || "").toLowerCase();
+    let pos = 0, neg = 0;
+    for (const k of POS_KW) if (t.includes(k)) pos++;
+    for (const k of NEG_KW) if (t.includes(k)) neg++;
+    return { pos, neg };
+  }
+
+  /**
+   * multiFrameworkDilemma — run a single dilemma + options through
+   * utilitarian / deontological / virtue lenses side by side.
+   * params: { dilemma, options: [{ name, description, harmScore?, benefitScore? }] }
+   */
+  registerLensAction("ethics", "multiFrameworkDilemma", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const dilemma = String(p.dilemma || artifact?.data?.dilemma || "").trim();
+    const options = Array.isArray(p.options) ? p.options : [];
+    if (!dilemma) return { ok: false, error: "dilemma text required" };
+    if (options.length === 0) return { ok: false, error: "at least one option required" };
+
+    const analyzed = options.map((o) => {
+      const desc = `${o.name || ""} ${o.description || ""}`;
+      const { pos, neg } = scoreText(desc);
+      const benefit = Number.isFinite(o.benefitScore) ? Math.max(0, Math.min(100, o.benefitScore)) : pos * 20;
+      const harm = Number.isFinite(o.harmScore) ? Math.max(0, Math.min(100, o.harmScore)) : neg * 20;
+
+      // Utilitarian: net welfare.
+      const utilitarian = Math.max(0, Math.min(100, 50 + (benefit - harm) / 2));
+      // Deontological: duty alignment, penalised hard for harmful means.
+      const deontological = Math.max(0, Math.min(100, 50 + pos * 12 - neg * 22));
+      // Virtue: character expression, balanced view of harm/benefit.
+      const virtue = Math.max(0, Math.min(100, 50 + pos * 10 - neg * 12 + (benefit > harm ? 8 : -8)));
+      const composite = Math.round((utilitarian + deontological + virtue) / 3);
+      const spread = Math.max(utilitarian, deontological, virtue) - Math.min(utilitarian, deontological, virtue);
+      return {
+        name: o.name || "Option",
+        description: o.description || "",
+        scores: {
+          utilitarian: Math.round(utilitarian),
+          deontological: Math.round(deontological),
+          virtue: Math.round(virtue),
+        },
+        composite,
+        agreement: spread < 15 ? "consensus" : spread < 35 ? "mild-disagreement" : "frameworks-conflict",
+        benefit, harm,
+      };
+    });
+    analyzed.sort((a, b) => b.composite - a.composite);
+    const recommended = analyzed[0];
+    const conflicted = analyzed.filter((a) => a.agreement === "frameworks-conflict").map((a) => a.name);
+
+    const st = getEthicsState();
+    const id = euid("mfa");
+    const record = {
+      id, dilemma, options: analyzed, recommended: recommended?.name,
+      conflicted, createdAt: enow(),
+    };
+    elist(st.analyses, eid(ctx)).unshift(record);
+    saveEthics();
+    return { ok: true, result: record };
+  }));
+
+  registerLensAction("ethics", "listMultiFramework", ewrap((ctx) => {
+    const st = getEthicsState();
+    return { ok: true, result: { analyses: elist(st.analyses, eid(ctx)) } };
+  }));
+
+  /**
+   * stakeholderMap — list affected parties with impact magnitude per option.
+   * params: { title, options: [string], stakeholders: [{ name, group?, vulnerability?,
+   *   impacts: { [optionName]: number(-100..100) } }] }
+   */
+  registerLensAction("ethics", "stakeholderMap", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const title = String(p.title || "Untitled map").trim();
+    const options = Array.isArray(p.options) ? p.options.map(String) : [];
+    const stakeholders = Array.isArray(p.stakeholders) ? p.stakeholders : [];
+    if (options.length === 0) return { ok: false, error: "at least one option required" };
+    if (stakeholders.length === 0) return { ok: false, error: "at least one stakeholder required" };
+
+    const rows = stakeholders.map((s) => {
+      const vuln = Math.max(0, Math.min(100, Number(s.vulnerability) || 0));
+      const impacts = {};
+      let totalWeighted = 0;
+      for (const opt of options) {
+        const raw = Number(s.impacts?.[opt]) || 0;
+        const clamped = Math.max(-100, Math.min(100, raw));
+        // Vulnerability amplifies negative impact.
+        const weighted = clamped < 0 ? clamped * (1 + vuln / 100) : clamped;
+        impacts[opt] = { raw: clamped, weighted: Math.round(weighted * 10) / 10 };
+        totalWeighted += weighted;
+      }
+      return {
+        name: s.name || "Stakeholder",
+        group: s.group || "ungrouped",
+        vulnerability: vuln,
+        impacts,
+        netExposure: Math.round((totalWeighted / options.length) * 10) / 10,
+      };
+    });
+
+    // Per-option aggregate score (sum of weighted impacts across stakeholders).
+    const optionTotals = options.map((opt) => {
+      const total = rows.reduce((s, r) => s + r.impacts[opt].weighted, 0);
+      const harmed = rows.filter((r) => r.impacts[opt].weighted < 0).length;
+      const benefited = rows.filter((r) => r.impacts[opt].weighted > 0).length;
+      return {
+        option: opt,
+        netImpact: Math.round(total * 10) / 10,
+        harmed, benefited,
+        vulnerableHarmed: rows.filter((r) => r.vulnerability > 50 && r.impacts[opt].weighted < 0).length,
+      };
+    });
+    optionTotals.sort((a, b) => b.netImpact - a.netImpact);
+
+    const st = getEthicsState();
+    const id = euid("smap");
+    const record = {
+      id, title, options, stakeholders: rows, optionTotals,
+      bestOption: optionTotals[0]?.option, createdAt: enow(),
+    };
+    elist(st.maps, eid(ctx)).unshift(record);
+    saveEthics();
+    return { ok: true, result: record };
+  }));
+
+  registerLensAction("ethics", "listStakeholderMaps", ewrap((ctx) => {
+    const st = getEthicsState();
+    return { ok: true, result: { maps: elist(st.maps, eid(ctx)) } };
+  }));
+
+  /**
+   * decisionMatrix — score options against weighted ethical criteria.
+   * params: { title, criteria: [{ name, weight(0..1) }],
+   *   options: [{ name, scores: { [criterionName]: number(0..10) } }] }
+   */
+  registerLensAction("ethics", "decisionMatrix", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const title = String(p.title || "Untitled matrix").trim();
+    const criteria = Array.isArray(p.criteria) ? p.criteria : [];
+    const options = Array.isArray(p.options) ? p.options : [];
+    if (criteria.length === 0) return { ok: false, error: "at least one criterion required" };
+    if (options.length === 0) return { ok: false, error: "at least one option required" };
+
+    const weightSum = criteria.reduce((s, c) => s + (Number(c.weight) || 0), 0) || 1;
+    const normCriteria = criteria.map((c) => ({
+      name: c.name || "Criterion",
+      weight: (Number(c.weight) || 0) / weightSum,
+    }));
+
+    const scored = options.map((o) => {
+      const breakdown = normCriteria.map((c) => {
+        const raw = Math.max(0, Math.min(10, Number(o.scores?.[c.name]) || 0));
+        return { criterion: c.name, raw, weighted: Math.round(raw * c.weight * 100) / 100 };
+      });
+      const total = Math.round(breakdown.reduce((s, b) => s + b.weighted, 0) * 100) / 100;
+      return {
+        name: o.name || "Option",
+        breakdown,
+        total, // 0..10 weighted
+        percent: Math.round(total * 10),
+      };
+    });
+    scored.sort((a, b) => b.total - a.total);
+
+    const st = getEthicsState();
+    const id = euid("mtx");
+    const record = {
+      id, title, criteria: normCriteria, options: scored,
+      winner: scored[0]?.name, createdAt: enow(),
+    };
+    elist(st.matrices, eid(ctx)).unshift(record);
+    saveEthics();
+    return { ok: true, result: record };
+  }));
+
+  registerLensAction("ethics", "listDecisionMatrices", ewrap((ctx) => {
+    const st = getEthicsState();
+    return { ok: true, result: { matrices: elist(st.matrices, eid(ctx)) } };
+  }));
+
+  // Canonical cognitive-bias review template.
+  const BIAS_ITEMS = [
+    { key: "confirmation", label: "Confirmation bias", prompt: "Did you seek evidence that contradicts your preferred option?" },
+    { key: "anchoring", label: "Anchoring", prompt: "Is your judgment over-influenced by the first number or framing you saw?" },
+    { key: "availability", label: "Availability heuristic", prompt: "Are recent or vivid cases distorting how likely outcomes feel?" },
+    { key: "sunk_cost", label: "Sunk-cost fallacy", prompt: "Are past investments pushing you to continue regardless of merit?" },
+    { key: "groupthink", label: "Groupthink", prompt: "Did dissenting views get genuine airtime?" },
+    { key: "self_serving", label: "Self-serving bias", prompt: "Does the chosen option mostly benefit you or your group?" },
+    { key: "status_quo", label: "Status-quo bias", prompt: "Are you defaulting to inaction simply because it is familiar?" },
+    { key: "overconfidence", label: "Overconfidence", prompt: "Have you quantified your uncertainty honestly?" },
+    { key: "framing", label: "Framing effect", prompt: "Would the decision change if framed as a loss instead of a gain?" },
+    { key: "in_group", label: "In-group favoritism", prompt: "Are out-group stakeholders weighted fairly?" },
+  ];
+
+  registerLensAction("ethics", "biasChecklistTemplate", ewrap(() => {
+    return { ok: true, result: { items: BIAS_ITEMS } };
+  }));
+
+  /**
+   * biasChecklist — structured cognitive-bias review of a decision.
+   * params: { decision, responses: { [biasKey]: { flagged: boolean, note?: string } } }
+   */
+  registerLensAction("ethics", "biasChecklist", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const decision = String(p.decision || "").trim();
+    if (!decision) return { ok: false, error: "decision text required" };
+    const responses = p.responses && typeof p.responses === "object" ? p.responses : {};
+
+    const items = BIAS_ITEMS.map((b) => {
+      const r = responses[b.key] || {};
+      return {
+        key: b.key, label: b.label, prompt: b.prompt,
+        flagged: !!r.flagged,
+        note: String(r.note || ""),
+      };
+    });
+    const flaggedItems = items.filter((i) => i.flagged);
+    const riskScore = Math.round((flaggedItems.length / items.length) * 100);
+    const riskLevel = riskScore >= 50 ? "high" : riskScore >= 20 ? "moderate" : "low";
+
+    const st = getEthicsState();
+    const id = euid("bchk");
+    const record = {
+      id, decision, items,
+      flaggedCount: flaggedItems.length,
+      totalCount: items.length,
+      riskScore, riskLevel,
+      createdAt: enow(),
+    };
+    elist(st.checklists, eid(ctx)).unshift(record);
+    saveEthics();
+    return { ok: true, result: record };
+  }));
+
+  registerLensAction("ethics", "listBiasChecklists", ewrap((ctx) => {
+    const st = getEthicsState();
+    return { ok: true, result: { checklists: elist(st.checklists, eid(ctx)) } };
+  }));
+
+  /**
+   * submitReview — submit a dilemma into the peer-input review workflow.
+   * params: { title, dilemma, options?: [string] }
+   */
+  registerLensAction("ethics", "submitReview", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const title = String(p.title || "").trim();
+    const dilemma = String(p.dilemma || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (!dilemma) return { ok: false, error: "dilemma required" };
+
+    const st = getEthicsState();
+    const id = euid("rev");
+    const record = {
+      id, title, dilemma,
+      options: Array.isArray(p.options) ? p.options.map(String) : [],
+      status: "open", // open -> deliberating -> decided
+      submittedBy: eid(ctx),
+      opinions: [], // { id, by, stance, rationale, createdAt }
+      verdict: null,
+      createdAt: enow(), updatedAt: enow(),
+    };
+    elist(st.reviews, eid(ctx)).unshift(record);
+    saveEthics();
+    return { ok: true, result: record };
+  }));
+
+  /**
+   * addReviewOpinion — record peer input on a review.
+   * params: { reviewId, stance(approve|reject|abstain|amend), rationale, by? }
+   */
+  registerLensAction("ethics", "addReviewOpinion", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const reviewId = String(p.reviewId || "");
+    const stance = String(p.stance || "abstain");
+    if (!reviewId) return { ok: false, error: "reviewId required" };
+    if (!["approve", "reject", "abstain", "amend"].includes(stance)) {
+      return { ok: false, error: "invalid stance" };
+    }
+    const st = getEthicsState();
+    const reviews = elist(st.reviews, eid(ctx));
+    const rev = reviews.find((r) => r.id === reviewId);
+    if (!rev) return { ok: false, error: "review not found" };
+    if (rev.status === "decided") return { ok: false, error: "review already decided" };
+
+    rev.opinions.push({
+      id: euid("op"),
+      by: String(p.by || eid(ctx)),
+      stance,
+      rationale: String(p.rationale || ""),
+      createdAt: enow(),
+    });
+    rev.status = "deliberating";
+    rev.updatedAt = enow();
+    saveEthics();
+    return { ok: true, result: rev };
+  }));
+
+  /**
+   * recordVerdict — finalise an ethics review with a verdict.
+   * params: { reviewId, decision, rationale }
+   */
+  registerLensAction("ethics", "recordVerdict", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const reviewId = String(p.reviewId || "");
+    const decision = String(p.decision || "").trim();
+    if (!reviewId) return { ok: false, error: "reviewId required" };
+    if (!decision) return { ok: false, error: "decision required" };
+    const st = getEthicsState();
+    const reviews = elist(st.reviews, eid(ctx));
+    const rev = reviews.find((r) => r.id === reviewId);
+    if (!rev) return { ok: false, error: "review not found" };
+
+    const tally = { approve: 0, reject: 0, abstain: 0, amend: 0 };
+    for (const o of rev.opinions) tally[o.stance] = (tally[o.stance] || 0) + 1;
+
+    rev.verdict = {
+      decision,
+      rationale: String(p.rationale || ""),
+      tally,
+      decidedBy: eid(ctx),
+      decidedAt: enow(),
+    };
+    rev.status = "decided";
+    rev.updatedAt = enow();
+    saveEthics();
+    return { ok: true, result: rev };
+  }));
+
+  registerLensAction("ethics", "listReviews", ewrap((ctx) => {
+    const st = getEthicsState();
+    return { ok: true, result: { reviews: elist(st.reviews, eid(ctx)) } };
+  }));
+
+  /**
+   * archiveCase — archive a resolved dilemma into the searchable case library.
+   * params: { title, dilemma, reasoning, resolution, framework?, tags?: [string] }
+   */
+  registerLensAction("ethics", "archiveCase", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const title = String(p.title || "").trim();
+    const dilemma = String(p.dilemma || "").trim();
+    const resolution = String(p.resolution || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (!dilemma) return { ok: false, error: "dilemma required" };
+    if (!resolution) return { ok: false, error: "resolution required" };
+
+    const st = getEthicsState();
+    const id = euid("case");
+    const record = {
+      id, title, dilemma,
+      reasoning: String(p.reasoning || ""),
+      resolution,
+      framework: String(p.framework || ""),
+      tags: Array.isArray(p.tags) ? p.tags.map((t) => String(t).toLowerCase()) : [],
+      sourceReviewId: p.sourceReviewId ? String(p.sourceReviewId) : null,
+      archivedAt: enow(),
+    };
+    elist(st.cases, eid(ctx)).unshift(record);
+    saveEthics();
+    return { ok: true, result: record };
+  }));
+
+  /**
+   * searchCases — searchable archive of resolved dilemmas.
+   * params: { query?, tag?, framework? }
+   */
+  registerLensAction("ethics", "searchCases", ewrap((ctx, artifact, params) => {
+    const p = params || {};
+    const q = String(p.query || "").toLowerCase().trim();
+    const tag = String(p.tag || "").toLowerCase().trim();
+    const framework = String(p.framework || "").toLowerCase().trim();
+    const st = getEthicsState();
+    let cases = elist(st.cases, eid(ctx));
+    if (q) {
+      cases = cases.filter((c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.dilemma.toLowerCase().includes(q) ||
+        c.reasoning.toLowerCase().includes(q) ||
+        c.resolution.toLowerCase().includes(q));
+    }
+    if (tag) cases = cases.filter((c) => c.tags.includes(tag));
+    if (framework) cases = cases.filter((c) => c.framework.toLowerCase().includes(framework));
+    const allTags = [...new Set(elist(st.cases, eid(ctx)).flatMap((c) => c.tags))].sort();
+    return { ok: true, result: { cases, total: cases.length, allTags } };
+  }));
+
+  registerLensAction("ethics", "deleteCase", ewrap((ctx, artifact, params) => {
+    const id = String(params?.caseId || "");
+    if (!id) return { ok: false, error: "caseId required" };
+    const st = getEthicsState();
+    const cases = elist(st.cases, eid(ctx));
+    const idx = cases.findIndex((c) => c.id === id);
+    if (idx === -1) return { ok: false, error: "case not found" };
+    cases.splice(idx, 1);
+    saveEthics();
+    return { ok: true, result: { deleted: id } };
+  }));
 }

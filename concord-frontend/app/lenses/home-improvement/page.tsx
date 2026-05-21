@@ -9,6 +9,13 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HomeImprovementFeed } from '@/components/home-improvement/HomeImprovementFeed';
+import { PhotoGallery } from '@/components/home-improvement/PhotoGallery';
+import { IdeaBoards } from '@/components/home-improvement/IdeaBoards';
+import { ContractorDirectory } from '@/components/home-improvement/ContractorDirectory';
+import { ShoppingList } from '@/components/home-improvement/ShoppingList';
+import { HomeInventory } from '@/components/home-improvement/HomeInventory';
+import { ProjectGantt } from '@/components/home-improvement/ProjectGantt';
+import { MaintenanceReminders } from '@/components/home-improvement/MaintenanceReminders';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -20,6 +27,7 @@ import {
   Hammer, Plus, Search, Trash2, DollarSign,
   CheckCircle2, Wrench, Layers, ChevronDown,
   Home, ToggleLeft, ToggleRight, Loader2, BarChart3, Calculator,
+  Camera, Lightbulb, ShoppingCart, Boxes, GanttChartSquare, CalendarClock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -116,14 +124,22 @@ export default function HomeImprovementLensPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
-  const [activeTab, setActiveTab] = useState<'projects' | 'budget' | 'contractors'>('projects');
+  const [activeTab, setActiveTab] = useState<
+    'projects' | 'budget' | 'timeline' | 'gallery' | 'ideas' | 'pros' | 'shopping' | 'inventory' | 'maintenance'
+  >('projects');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
     [
       { id: 'tab-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setActiveTab('projects') },
       { id: 'tab-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setActiveTab('budget') },
-      { id: 'tab-contractors', keys: 'c', description: 'Contractors', category: 'navigation', action: () => setActiveTab('contractors') },
+      { id: 'tab-timeline', keys: 't', description: 'Timeline', category: 'navigation', action: () => setActiveTab('timeline') },
+      { id: 'tab-gallery', keys: 'g', description: 'Gallery', category: 'navigation', action: () => setActiveTab('gallery') },
+      { id: 'tab-ideas', keys: 'i', description: 'Idea boards', category: 'navigation', action: () => setActiveTab('ideas') },
+      { id: 'tab-pros', keys: 'c', description: 'Contractors', category: 'navigation', action: () => setActiveTab('pros') },
+      { id: 'tab-shopping', keys: 's', description: 'Shopping list', category: 'navigation', action: () => setActiveTab('shopping') },
+      { id: 'tab-inventory', keys: 'v', description: 'Home inventory', category: 'navigation', action: () => setActiveTab('inventory') },
+      { id: 'tab-maintenance', keys: 'm', description: 'Maintenance', category: 'navigation', action: () => setActiveTab('maintenance') },
     ],
     { lensId: 'home-improvement' }
   );
@@ -215,7 +231,13 @@ export default function HomeImprovementLensPage() {
   const tabs = [
     { key: 'projects' as const, label: 'Projects', icon: Hammer },
     { key: 'budget' as const, label: 'Budget', icon: DollarSign },
-    { key: 'contractors' as const, label: 'Contractors', icon: Wrench },
+    { key: 'timeline' as const, label: 'Timeline', icon: GanttChartSquare },
+    { key: 'gallery' as const, label: 'Gallery', icon: Camera },
+    { key: 'ideas' as const, label: 'Ideas', icon: Lightbulb },
+    { key: 'pros' as const, label: 'Contractors', icon: Wrench },
+    { key: 'shopping' as const, label: 'Shopping', icon: ShoppingCart },
+    { key: 'inventory' as const, label: 'Inventory', icon: Boxes },
+    { key: 'maintenance' as const, label: 'Maintenance', icon: CalendarClock },
   ];
 
   return (
@@ -294,13 +316,13 @@ export default function HomeImprovementLensPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1">
+      <div className="flex flex-wrap gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 justify-center',
+              'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all justify-center',
               activeTab === tab.key
                 ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30'
                 : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
@@ -498,45 +520,57 @@ export default function HomeImprovementLensPage() {
           </motion.div>
         )}
 
-        {activeTab === 'contractors' && (
-          <motion.div
-            key="contractors"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-6"
-          >
-            <h2 className="font-semibold mb-4 flex items-center gap-2"><Wrench className="w-4 h-4 text-neon-cyan" />Contractors</h2>
-            {contractors.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No contractors assigned yet. Add contractor names to your projects.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {contractors.map((c, i) => (
-                  <motion.div
-                    key={c.name}
-                    custom={i}
-                    variants={cardVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="lens-card"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center">
-                        <Wrench className="w-5 h-5 text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-white">{c.name}</p>
-                        <p className="text-xs text-gray-400">{c.projects} project{c.projects !== 1 ? 's' : ''}</p>
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Total budget: <span className="text-neon-green font-semibold">${c.totalBudget.toLocaleString()}</span>
-                    </div>
-                  </motion.div>
-                ))}
+        {activeTab === 'timeline' && (
+          <motion.div key="timeline" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
+            <ProjectGantt />
+          </motion.div>
+        )}
+
+        {activeTab === 'gallery' && (
+          <motion.div key="gallery" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
+            <PhotoGallery />
+          </motion.div>
+        )}
+
+        {activeTab === 'ideas' && (
+          <motion.div key="ideas" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
+            <IdeaBoards />
+          </motion.div>
+        )}
+
+        {activeTab === 'pros' && (
+          <motion.div key="pros" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
+            <ContractorDirectory />
+            {contractors.length > 0 && (
+              <div className="mt-4 border-t border-lattice-border pt-3">
+                <p className="text-xs text-gray-500 mb-2">Contractors referenced on project cards</p>
+                <div className="flex flex-wrap gap-2">
+                  {contractors.map((c) => (
+                    <span key={c.name} className="text-xs px-2 py-1 bg-lattice-surface rounded text-gray-300">
+                      {c.name} · {c.projects} project{c.projects !== 1 ? 's' : ''}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {activeTab === 'shopping' && (
+          <motion.div key="shopping" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
+            <ShoppingList />
+          </motion.div>
+        )}
+
+        {activeTab === 'inventory' && (
+          <motion.div key="inventory" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
+            <HomeInventory />
+          </motion.div>
+        )}
+
+        {activeTab === 'maintenance' && (
+          <motion.div key="maintenance" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} className="panel p-4">
+            <MaintenanceReminders />
           </motion.div>
         )}
       </AnimatePresence>

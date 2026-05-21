@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HvacFeed } from '@/components/hvac/HvacFeed';
 import { ManualJCalc } from '@/components/hvac/ManualJCalc';
+import { FieldService } from '@/components/hvac/FieldService';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -36,6 +37,7 @@ import {
   Fan,
   Gauge,
   Zap,
+  CalendarDays,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
@@ -170,6 +172,7 @@ export default function HVACLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<TradeArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showFieldService, setShowFieldService] = useState(false);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -654,7 +657,19 @@ export default function HVACLensPage() {
             <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
           )}
           <button
-            onClick={() => setShowDashboard(!showDashboard)}
+            onClick={() => {
+              setShowFieldService((v) => !v);
+              setShowDashboard(false);
+            }}
+            className={cn(showFieldService ? ds.btnPrimary : ds.btnSecondary)}
+          >
+            <CalendarDays className="w-4 h-4" /> Field Service
+          </button>
+          <button
+            onClick={() => {
+              setShowDashboard(!showDashboard);
+              setShowFieldService(false);
+            }}
             className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}
           >
             <BarChart3 className="w-4 h-4" /> Dashboard
@@ -702,28 +717,34 @@ export default function HVACLensPage() {
       })()}
 
       <UniversalActions domain="hvac" artifactId={items[0]?.id} compact />
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
-        {MODE_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setActiveTab(tab.id);
-              setShowDashboard(false);
-            }}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-              activeTab === tab.id && !showDashboard
-                ? 'bg-neon-blue/20 text-neon-blue'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      {showDashboard ? renderDashboard() : renderLibrary()}
-      {renderEditor()}
+      {showFieldService ? (
+        <FieldService />
+      ) : (
+        <>
+          <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
+            {MODE_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setShowDashboard(false);
+                }}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
+                  activeTab === tab.id && !showDashboard
+                    ? 'bg-neon-blue/20 text-neon-blue'
+                    : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
+                )}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+          {showDashboard ? renderDashboard() : renderLibrary()}
+          {renderEditor()}
+        </>
+      )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <HvacFeed />
       </section>

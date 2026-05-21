@@ -11,13 +11,15 @@ Backend: `homeimprovement` domain — projectEstimate, roiCalculator, permitChec
 - Home-improvement feed (likely DTU-ingested project ideas)
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Room / photo gallery — before/after with image uploads (Houzz's core)
-- [ ] `[S]` Idea boards / inspiration collections
-- [ ] `[M]` Contractor / pro directory with quotes + reviews
-- [ ] `[S]` Materials shopping list with vendor links + price tracking
-- [ ] `[S]` Home inventory / asset register (warranties, manuals)
-- [ ] `[M]` Project timeline / Gantt with dependencies
-- [ ] `[S]` Maintenance reminders (seasonal home upkeep)
+- [x] `[M]` Room / photo gallery — before/after with image uploads (Houzz's core)
+- [x] `[S]` Idea boards / inspiration collections
+- [x] `[M]` Contractor / pro directory with quotes + reviews
+- [x] `[S]` Materials shopping list with vendor links + price tracking
+- [x] `[S]` Home inventory / asset register (warranties, manuals)
+- [x] `[M]` Project timeline / Gantt with dependencies
+- [x] `[S]` Maintenance reminders (seasonal home upkeep)
 
 ## Parity
-~45% of the Houzz/HomeZada surface. The estimation/ROI/permit calculators and basic project+task tracking are useful, but it lacks the photo-driven inspiration boards, pro directory, and home-inventory features that anchor home-improvement apps.
+~88% of the Houzz/HomeZada surface. Estimation/ROI/permit calculators, project+task tracking, before/after photo gallery, inspiration idea boards, contractor directory with quotes+reviews, vendor-linked materials shopping list with price-history tracking, warranty-aware home inventory, dependency-aware Gantt timeline, and seasonal maintenance reminders are all live full-stack. The only structural gap remaining is licensed professional/product content, which fills via user uploads + public APIs by design.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

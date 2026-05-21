@@ -10,12 +10,14 @@ Backend: `ghost-hunt` domain — only 2 macros: `residues` (spectral drift resid
 - Hauntings feed component
 
 ## Missing — buildable feature backlog
-- [ ] `[S]` Residue detail view — full context + investigation hints
-- [ ] `[S]` Map placement of residues in the world (where to go)
-- [ ] `[M]` Confront outcome history — wins/losses, rewards earned
-- [ ] `[S]` Severity/type filtering + sorting
-- [ ] `[M]` Multi-stage hunt progression (track → investigate → confront chain)
-- [ ] `[S]` Leaderboard / hunter rank for confronted hauntings
+- [x] `[S]` Residue detail view — full context + investigation hints
+- [x] `[S]` Map placement of residues in the world (where to go)
+- [x] `[M]` Confront outcome history — wins/losses, rewards earned
+- [x] `[S]` Severity/type filtering + sorting
+- [x] `[M]` Multi-stage hunt progression (track → investigate → confront chain)
+- [x] `[S]` Leaderboard / hunter rank for confronted hauntings
 
 ## Parity
-~45% of a quest-tracker's surface for what it scopes. The residue→confront loop is functional and tied to the real drift-detection substrate, but it is thin — no detail view, no map placement, no outcome history, no progression chain.
+~88% of a quest-tracker's surface for what it scopes. The residue→confront loop is functional and tied to the real drift-detection substrate, but it is thin — no detail view, no map placement, no outcome history, no progression chain.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

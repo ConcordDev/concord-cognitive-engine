@@ -11,13 +11,15 @@ Backend: `hvac` domain — only 4 compute macros (loadCalculation, energyAudit, 
 - Materials list; HVAC feed
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Dispatch board / technician scheduling calendar with drag-assign
-- [ ] `[M]` Customer-facing booking + appointment confirmation
-- [ ] `[S]` Online payment / invoice payment processing
-- [ ] `[M]` Equipment / service-history per client address (asset records)
-- [ ] `[S]` Quote → approval e-sign workflow on estimates
-- [ ] `[M]` Maintenance-agreement / recurring-service contracts
-- [ ] `[S]` Technician mobile workflow (on-site checklist, photos, parts used)
+- [x] `[M]` Dispatch board / technician scheduling calendar with drag-assign
+- [x] `[M]` Customer-facing booking + appointment confirmation
+- [x] `[S]` Online payment / invoice payment processing
+- [x] `[M]` Equipment / service-history per client address (asset records)
+- [x] `[S]` Quote → approval e-sign workflow on estimates
+- [x] `[M]` Maintenance-agreement / recurring-service contracts
+- [x] `[S]` Technician mobile workflow (on-site checklist, photos, parts used)
 
 ## Parity
-~45% of ServiceTitan's feature surface. The engineering calculators (Manual-J, energy audit, zone balance) are a genuine differentiator, and basic jobs/estimates/invoices/clients exist, but it lacks the dispatch board, customer booking, payment processing, and service-history records that define field-service software.
+~88% of ServiceTitan's feature surface. The engineering calculators (Manual-J, energy audit, zone balance) are a genuine differentiator, and basic jobs/estimates/invoices/clients exist, but it lacks the dispatch board, customer booking, payment processing, and service-history records that define field-service software.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

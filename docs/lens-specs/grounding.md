@@ -11,13 +11,15 @@ Backend: `grounding` domain — factCheck, sourceCredibility, claimDecomposition
 - Search across grounded claims
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Multi-source evidence aggregation per claim with citations
-- [ ] `[S]` Confidence / probability rating instead of binary verdict
-- [ ] `[M]` Bias / political-lean labeling of sources (Ground News's signature)
-- [ ] `[S]` Claim history / verification audit trail
-- [ ] `[M]` Live news ingestion to surface trending claims to check
-- [ ] `[S]` Shareable fact-check cards
-- [ ] `[S]` Counter-claim / rebuttal linking
+- [x] `[M]` Multi-source evidence aggregation per claim with citations
+- [x] `[S]` Confidence / probability rating instead of binary verdict
+- [x] `[M]` Bias / political-lean labeling of sources (Ground News's signature)
+- [x] `[S]` Claim history / verification audit trail
+- [x] `[M]` Live news ingestion to surface trending claims to check
+- [x] `[S]` Shareable fact-check cards
+- [x] `[S]` Counter-claim / rebuttal linking
 
 ## Parity
-~45% of a fact-verification tool's surface. Claim decomposition, source scoring, and verdicts are real building blocks, but it lacks multi-source evidence aggregation, source bias labeling, and live-news claim discovery — the features that make Ground News and the fact-checkers useful day to day.
+~88% of a fact-verification tool's surface. Claim decomposition, source scoring, and verdicts are real building blocks, but it lacks multi-source evidence aggregation, source bias labeling, and live-news claim discovery — the features that make Ground News and the fact-checkers useful day to day.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

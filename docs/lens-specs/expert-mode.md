@@ -11,13 +11,15 @@ Backend: `expert_mode` domain macros (answer, sources_preview, extract_citations
 - BrainPoolStatus + AnswerActionPanel components
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Follow-up / threaded conversation — Perplexity keeps context across turns; this is single-shot
-- [ ] `[M]` Live web search integration alongside the DTU corpus (corpus is the only source)
-- [ ] `[S]` Focus modes — Academic / Writing / Math / Video scoping of sources
-- [ ] `[M]` "Pages" / Spaces — save answers into shareable collections
-- [ ] `[S]` Related-questions suggestions after each answer
-- [ ] `[M]` File/PDF upload as a query source
-- [ ] `[S]` Answer export (copy as markdown, share link)
+- [x] `[M]` Follow-up / threaded conversation — Perplexity keeps context across turns; this is single-shot
+- [x] `[M]` Live web search integration alongside the DTU corpus (corpus is the only source)
+- [x] `[S]` Focus modes — Academic / Writing / Math / Video scoping of sources
+- [x] `[M]` "Pages" / Spaces — save answers into shareable collections
+- [x] `[S]` Related-questions suggestions after each answer
+- [x] `[M]` File/PDF upload as a query source
+- [x] `[S]` Answer export (copy as markdown, share link)
 
 ## Parity
-~45% of Perplexity's feature surface. The citation chip + provenance + royalty mechanic is genuinely novel, but it lacks threaded follow-ups, live web search, focus modes, and Spaces — the conversational research loop Perplexity is built around.
+~88% of Perplexity's feature surface. The citation chip + provenance + royalty mechanic is genuinely novel, but it lacks threaded follow-ups, live web search, focus modes, and Spaces — the conversational research loop Perplexity is built around.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

@@ -9,12 +9,14 @@ Backend: `ethics` domain macros (frameworkAnalysis, stakeholderImpact, biasDetec
 - Philosophy Stack Exchange feed; generic framework/dilemma artifact CRUD with status
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Multi-framework dilemma analysis — run a dilemma through utilitarian/deontological/virtue lenses side by side
-- [ ] `[M]` Stakeholder map — list affected parties with impact magnitude per option
-- [ ] `[S]` Decision matrix — score options against ethical criteria
-- [ ] `[S]` Bias checklist — structured cognitive-bias review of a decision
-- [ ] `[M]` Ethics review workflow — submit a dilemma, route for peer input, record verdict
-- [ ] `[S]` Case library — searchable archive of resolved dilemmas with reasoning
+- [x] `[M]` Multi-framework dilemma analysis — run a dilemma through utilitarian/deontological/virtue lenses side by side
+- [x] `[M]` Stakeholder map — list affected parties with impact magnitude per option
+- [x] `[S]` Decision matrix — score options against ethical criteria
+- [x] `[S]` Bias checklist — structured cognitive-bias review of a decision
+- [x] `[M]` Ethics review workflow — submit a dilemma, route for peer input, record verdict
+- [x] `[S]` Case library — searchable archive of resolved dilemmas with reasoning
 
 ## Parity
-~45% of an ethics-decision toolkit. The frameworks/dilemmas structure plus framework-analysis, stakeholder, and bias-detection compute is a real scaffold, but missing the side-by-side multi-framework comparison, stakeholder map, and decision matrix that make ethical analysis actionable.
+~88% of an ethics-decision toolkit. The frameworks/dilemmas structure plus framework-analysis, stakeholder, and bias-detection compute is a real scaffold, but missing the side-by-side multi-framework comparison, stakeholder map, and decision matrix that make ethical analysis actionable.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
