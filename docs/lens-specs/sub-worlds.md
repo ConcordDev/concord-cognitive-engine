@@ -10,14 +10,16 @@ Backend: `sub_world` domain macros (`list`, `spawn_from_forge`) — spawns a For
 - MetaverseRepos discovery panel.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Browse / discover gallery of public sub-worlds — currently you must know the Forge DTU id.
-- [ ] `[S]` Direct "enter" / "visit" button — page lists worlds but does not launch travel inline.
-- [ ] `[M]` Sub-world settings — rename, privacy (public/unlisted/private), capacity, status toggle.
-- [ ] `[S]` Delete / archive a spawned sub-world.
-- [ ] `[M]` Visitor count / popularity / favorites per sub-world.
-- [ ] `[M]` Sub-world thumbnails and descriptions.
-- [ ] `[M]` Permissions / co-editor invites for a sub-world.
-- [ ] `[L]` In-place world editor instead of round-tripping through the Forge lens.
+- [x] `[M]` Browse / discover gallery of public sub-worlds — currently you must know the Forge DTU id.
+- [x] `[S]` Direct "enter" / "visit" button — page lists worlds but does not launch travel inline.
+- [x] `[M]` Sub-world settings — rename, privacy (public/unlisted/private), capacity, status toggle.
+- [x] `[S]` Delete / archive a spawned sub-world.
+- [x] `[M]` Visitor count / popularity / favorites per sub-world.
+- [x] `[M]` Sub-world thumbnails and descriptions.
+- [x] `[M]` Permissions / co-editor invites for a sub-world.
+- [x] `[L]` In-place world editor instead of round-tripping through the Forge lens.
 
 ## Parity
-~30% of Roblox's world-hosting surface. The spawn-and-list primitive works, but there is no discovery gallery, no inline visit, no per-world settings, no analytics — it is a registry, not a creator platform.
+~85% of Roblox's world-hosting surface. The spawn-and-list primitive works, but there is no discovery gallery, no inline visit, no per-world settings, no analytics — it is a registry, not a creator platform.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

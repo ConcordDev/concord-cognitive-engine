@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * /lenses/sponsorship — patron NPCs you've chosen to support.
- * Phase 9.4 #1. Currency: CC.
+ * /lenses/sponsorship — creator-membership platform (Patreon-shaped).
+ * Tiered membership, creator discovery, sponsor-only content, billing
+ * dashboard, sponsor leaderboards, and thank-you messaging. Currency: CC.
  */
-// Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors. Local fetch errors caught with try/catch where shown.
+// Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors.
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -17,143 +17,80 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SponsorRepos } from '@/components/sponsorship/SponsorRepos';
+import { DiscoverPanel } from '@/components/sponsorship/DiscoverPanel';
+import { MySponsorships } from '@/components/sponsorship/MySponsorships';
+import { BillingDashboard } from '@/components/sponsorship/BillingDashboard';
+import { SponsorInbox } from '@/components/sponsorship/SponsorInbox';
+import { CreatorHub } from '@/components/sponsorship/CreatorHub';
 
-interface Sponsorship {
-  id: number;
-  npc_id: string;
-  npc_name?: string;
-  monthly_cc: number;
-  dispatch_freq_hours: number;
-  started_at: number;
-  last_dispatch_at: number | null;
-}
+type Tab = 'discover' | 'memberships' | 'billing' | 'inbox' | 'creator';
 
-async function macro(domain: string, name: string, input: Record<string, unknown> = {}) {
-  const r = await fetch('/api/lens/run', {
-    method: 'POST', credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ domain, name, input }),
-  }).catch(() => null);
-  return r ? r.json().catch(() => null) : null;
-}
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'discover', label: 'Discover' },
+  { id: 'memberships', label: 'My Memberships' },
+  { id: 'billing', label: 'Billing' },
+  { id: 'inbox', label: 'Inbox' },
+  { id: 'creator', label: 'Creator Hub' },
+];
 
 export default function SponsorshipPage() {
+  const [tab, setTab] = useState<Tab>('discover');
+  // Bumped on any membership mutation so dependent tabs reload.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const bump = () => setRefreshKey((k) => k + 1);
+
   useLensCommand([
-    { id: 'sponsorship-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
+    { id: 'sponsorship-discover', keys: 'g d', description: 'Discover creators', category: 'navigation', action: () => setTab('discover') },
+    { id: 'sponsorship-memberships', keys: 'g m', description: 'My memberships', category: 'navigation', action: () => setTab('memberships') },
+    { id: 'sponsorship-billing', keys: 'g b', description: 'Billing dashboard', category: 'navigation', action: () => setTab('billing') },
   ], { lensId: 'sponsorship' });
 
-  const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
-  const [form, setForm] = useState({ npcId: '', monthlyCc: 5, dispatchFreqHours: 168 });
-  const [status, setStatus] = useState<string | null>(null);
-
-  const refresh = async () => {
-    const r = await macro('sponsorship', 'list_for_user');
-    if (r?.ok) setSponsorships(r.sponsorships || []);
-  };
-
-  useEffect(() => { void refresh(); }, []);
-
-  const sponsor = async () => {
-    if (!form.npcId) return;
-    setStatus('Sponsoring…');
-    const r = await macro('sponsorship', 'create', form);
-    if (r?.ok) {
-      setStatus(`✓ Sponsoring ${form.npcId} for ${form.monthlyCc} CC/mo`);
-      setForm({ npcId: '', monthlyCc: 5, dispatchFreqHours: 168 });
-      await refresh();
-    } else {
-      setStatus(`Failed: ${r?.error || r?.reason || 'unknown'}`);
-    }
-    window.setTimeout(() => setStatus(null), 4000);
-  };
-
-  const cancel = async (id: number) => {
-    const r = await macro('sponsorship', 'cancel', { sponsorshipId: id });
-    if (r?.ok) await refresh();
-  };
-
   return (
-        <LensShell lensId="sponsorship">
+    <LensShell lensId="sponsorship">
       <FirstRunTour lensId="sponsorship" />
       <DepthBadge lensId="sponsorship" size="sm" className="ml-2" />
-  <div className="p-6 sm:p-8 max-w-3xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-zinc-100">Sponsor an NPC</h1>
+      <div className="p-6 sm:p-8 max-w-3xl mx-auto">
+        <header className="mb-5">
+          <h1 className="text-2xl font-bold text-zinc-100">Sponsorship</h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Pay an NPC's mentor (a real player) in CC. The NPC sends you periodic dispatches composed from their state — grudges they've held, schemes they've watched, kingdoms that have risen. <strong>Currency: CC.</strong>
+            Support NPC-creators with recurring CC. Pick a tier, unlock sponsor-only
+            dispatches and posts, track your billing, and climb the sponsor leaderboard.
+            <strong> Currency: CC.</strong>
           </p>
         </header>
 
-        {status && (
-          <div className="mb-4 bg-emerald-950/50 border border-emerald-700/50 text-emerald-200 px-3 py-2 rounded-lg text-sm">{status}</div>
-        )}
+        <nav className="flex flex-wrap gap-1 mb-4 border-b border-zinc-800">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`px-3 py-1.5 text-sm rounded-t-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                tab === t.id
+                  ? 'bg-zinc-900 text-emerald-300 border-b-2 border-emerald-500'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >{t.label}</button>
+          ))}
+        </nav>
 
-        <section className="mb-6 bg-zinc-900/80 border border-emerald-800/50 rounded-xl p-4 space-y-3">
-          <h2 className="text-sm font-bold text-emerald-300">New Sponsorship</h2>
-          <input
-            type="text" placeholder="NPC id"
-            value={form.npcId}
-            onChange={(e) => setForm({ ...form, npcId: e.target.value })}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
-          />
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-zinc-400 block">Monthly CC</label>
-              <input
-                type="number" min={1} value={form.monthlyCc}
-                onChange={(e) => setForm({ ...form, monthlyCc: Math.max(1, Number(e.target.value) || 1) })}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-zinc-400 block">Dispatch every (hours)</label>
-              <input
-                type="number" min={1} value={form.dispatchFreqHours}
-                onChange={(e) => setForm({ ...form, dispatchFreqHours: Math.max(1, Number(e.target.value) || 1) })}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
-              />
-            </div>
-          </div>
-          <button
-            type="button" onClick={sponsor} disabled={!form.npcId}
-            className="w-full bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-sm py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >Sponsor</button>
-        </section>
+        {tab === 'discover' && <DiscoverPanel onSubscribed={bump} />}
+        {tab === 'memberships' && <MySponsorships refreshKey={refreshKey} onChange={bump} />}
+        {tab === 'billing' && <BillingDashboard refreshKey={refreshKey} />}
+        {tab === 'inbox' && <SponsorInbox refreshKey={refreshKey} />}
+        {tab === 'creator' && <CreatorHub />}
 
-        <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Active Sponsorships</h2>
-        {sponsorships.length === 0 ? (
-          <div className="text-center text-zinc-500 italic py-6 border border-zinc-800 rounded-xl">
-            No active sponsorships.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {sponsorships.map(s => (
-              <li key={s.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-lg p-3 text-sm flex justify-between items-center">
-                <div>
-                  <p className="text-zinc-100 font-medium">{s.npc_name || s.npc_id}</p>
-                  <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
-                    {s.monthly_cc} CC/mo · every {s.dispatch_freq_hours}h · since {new Date(s.started_at * 1000).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  type="button" onClick={() => cancel(s.id)}
-                  className="text-[11px] text-rose-400 hover:text-rose-300"
-                >Cancel</button>
-              </li>
-            ))}
-          </ul>
-        )}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <SponsorRepos />
         </section>
       </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
-          <RecentMineCard domain="sponsorship" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="sponsorship" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="sponsorship" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <RecentMineCard domain="sponsorship" limit={10} hideWhenEmpty className="mt-4" />
+      <AutoActionStrip domain="sponsorship" hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="sponsorship" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

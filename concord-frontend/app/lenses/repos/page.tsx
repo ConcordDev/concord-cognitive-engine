@@ -50,6 +50,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { RepoBrowser } from '@/components/repos-explorer/RepoBrowser';
+import { ConcordRepoWorkspace } from '@/components/repos/ConcordRepoWorkspace';
 
 interface Repository {
   id: string;
@@ -583,15 +584,12 @@ export default function ReposLensPage() {
             )}
 
             {activeTab === 'pulls' && (
-              <div className="bg-[#161b22] border border-gray-700 rounded-lg p-8 text-center">
-                <GitPullRequest className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">Welcome to pull requests!</h3>
-                <p className="text-gray-400 mb-4">
-                  Pull requests help you collaborate on code with other people.
+              <div className="rounded-lg border border-gray-700 bg-[#161b22] p-4">
+                <p className="mb-3 text-xs text-gray-400">
+                  Pull requests, branches, CI and security live in the Concord Code Host below — a full GitHub-shape
+                  workspace over your DTU repositories.
                 </p>
-                <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Create new pull request' })} className="px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700">
-                  New pull request
-                </button>
+                <ConcordRepoWorkspace />
               </div>
             )}
           </div>
@@ -608,6 +606,11 @@ export default function ReposLensPage() {
           compact
         />
       )}
+
+      {/* Concord Code Host — full GitHub-shape workspace over the repo substrate */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ConcordRepoWorkspace />
+      </section>
 
       {/* Real GitHub data — bespoke browser */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

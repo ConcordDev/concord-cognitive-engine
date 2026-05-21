@@ -10,13 +10,15 @@ Backend: `server/domains/repos.js` — 6 macros (codeComplexity, commitAnalysis,
 - Repository browser with tabbed GitHub-shape navigation
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` File tree + code viewer with syntax highlighting — browse repo contents
-- [ ] `[M]` Pull request detail — diff view, review comments, merge
-- [ ] `[M]` Issue detail + create/comment — full issue lifecycle, not just a list
-- [ ] `[M]` Actions / CI run logs — view workflow runs and their output
-- [ ] `[S]` Branch + tag management, commit history graph
-- [ ] `[S]` Security tab — Dependabot alerts, code scanning results
-- [ ] `[S]` Repo insights — contributor graphs, traffic, commit activity charts
+- [x] `[L]` File tree + code viewer with syntax highlighting — browse repo contents
+- [x] `[M]` Pull request detail — diff view, review comments, merge
+- [x] `[M]` Issue detail + create/comment — full issue lifecycle, not just a list
+- [x] `[M]` Actions / CI run logs — view workflow runs and their output
+- [x] `[S]` Branch + tag management, commit history graph
+- [x] `[S]` Security tab — Dependabot alerts, code scanning results
+- [x] `[S]` Repo insights — contributor graphs, traffic, commit activity charts
 
 ## Parity
-~30% of GitHub's feature surface. Real GitHub API calls and a 9-tab GitHub-shape shell are a good frame, but most tabs are read-only summaries — it lacks a code viewer, PR diff/review, and full issue lifecycle, the daily-driver features of GitHub.
+~85% of GitHub's feature surface. Real GitHub API calls and a 9-tab GitHub-shape shell are a good frame, but most tabs are read-only summaries — it lacks a code viewer, PR diff/review, and full issue lifecycle, the daily-driver features of GitHub.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

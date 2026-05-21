@@ -1,5 +1,11 @@
 'use client';
 
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Atom, Zap, Play, Loader2, Layers, ChevronDown, X, StepForward,
+  StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles,
+} from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
@@ -9,502 +15,662 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
-import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Atom, Zap, Waves, RotateCcw, Play, Shuffle, Loader2, Layers, ChevronDown, X } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { apiHelpers } from '@/lib/api/client';
-import { useMutation } from '@tanstack/react-query';
-import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { ArxivPanel } from '@/components/research/ArxivPanel';
+import { QuantumArxiv } from '@/components/quantum/QuantumArxiv';
+import { ChartKit } from '@/components/viz';
+import { lensRun } from '@/lib/api/client';
+import {
+  CircuitComposer, type GateDef, type PlacedGate,
+} from '@/components/quantum/CircuitComposer';
+import { BlochSphere, type BlochVector } from '@/components/quantum/BlochSphere';
 
-interface SimResultData {
+interface ProbEntry { state: string; probability: number; amplitude?: { re: number; im: number } }
+interface SimResult {
   qubits: number;
-  result: string;
-  gates: string[];
+  gatesApplied: number;
+  circuitDepth: number;
+  statevector: ProbEntry[];
+  measurements: { shots: number; counts: Record<string, number> };
+  bloch: BlochVector[];
+  entropy: number;
+  maxEntanglement: boolean;
+}
+interface StepFrame { step: number; gate: string; statevector: ProbEntry[]; bloch: BlochVector[] }
+interface AnalysisResult {
+  totalGates: number; circuitDepth: number; tCount: number; cnotCount: number;
+  cliffordCount: number; nonCliffordCount: number; parallelism: number;
+  avgUtilization: number; faultToleranceCost: string;
+  gateCounts: Record<string, number>;
+}
+interface ErrorResult {
+  preset: string; fidelityPercent: number; quality: string;
+  errorBudget: {
+    gateErrors: { contribution: number };
+    decoherence: { contribution: number; executionTimeUs: number };
+    readout: { contribution: number };
+    totalError: number;
+  };
+  recommendations: string[];
+}
+interface SavedCircuitMeta { id: string; name: string; qubits: number; gateCount: number; updatedAt: string }
+interface NoisePreset { id: string; label: string; t1: number; t2: number; gateErrorRate: number; readoutError: number }
+interface ApiCircuit { qubits: number; gates: Array<{ gate: string; targets?: number[]; controls?: number[]; params?: { theta: number } }> }
+
+// Convert PlacedGate[] → the { qubits, gates } shape the simulator wants.
+function buildCircuit(qubits: number, placed: PlacedGate[]): ApiCircuit {
+  return {
+    qubits,
+    gates: [...placed]
+      .sort((a, b) => a.column - b.column)
+      .map((g) => ({ gate: g.gate, targets: g.targets, controls: g.controls, params: g.params })),
+  };
 }
 
-// Compute probability amplitudes from a measurement outcome
-// For a uniform superposition, each basis state has equal probability 1/2^n
-// We display the top amplitudes weighted toward the measured state
-function computeAmplitudes(result: string, qubits: number): { state: string; prob: number; phase: number }[] {
-  const totalStates = 2 ** qubits;
-  const displayCount = Math.min(totalStates, 8);
-  const amplitudes: { state: string; prob: number; phase: number }[] = [];
-  const measuredVal = parseInt(result, 2);
-
-  for (let i = 0; i < displayCount; i++) {
-    const stateStr = i.toString(2).padStart(qubits, '0');
-    const isMeasured = i === measuredVal;
-    // Collapsed: measured state = 1.0, others = 0
-    amplitudes.push({
-      state: stateStr,
-      prob: isMeasured ? 1.0 : 0.0,
-      phase: isMeasured ? 0 : Math.random() * 360,
-    });
-  }
-  return amplitudes;
-}
-
-// Pre-measurement: equal superposition
-function computeSuperpositionAmplitudes(qubits: number): { state: string; prob: number }[] {
-  const totalStates = 2 ** qubits;
-  const displayCount = Math.min(totalStates, 8);
-  const prob = 1 / totalStates;
-  return Array.from({ length: displayCount }, (_, i) => ({
-    state: i.toString(2).padStart(qubits, '0'),
-    prob,
+// Convert an API circuit back into placed gates laid out column by column.
+function circuitToPlaced(circuit: ApiCircuit): PlacedGate[] {
+  return (circuit.gates || []).map((g, i) => ({
+    uid: `load_${i}_${Date.now().toString(36)}`,
+    gate: String(g.gate || '').toUpperCase(),
+    column: i,
+    targets: Array.isArray(g.targets) ? g.targets : [],
+    controls: Array.isArray(g.controls) ? g.controls : [],
+    params: g.params,
   }));
 }
 
+const TEMPLATES: { id: string; label: string }[] = [
+  { id: 'bell', label: 'Bell pair' },
+  { id: 'ghz', label: 'GHZ state' },
+  { id: 'qft', label: 'QFT' },
+  { id: 'grover', label: 'Grover search' },
+  { id: 'teleport', label: 'Teleportation' },
+  { id: 'deutsch', label: 'Deutsch-Jozsa' },
+  { id: 'superposition', label: 'Superposition' },
+];
+
 export default function QuantumLensPage() {
   useLensNav('quantum');
-  const [qubits, setQubits] = useState(4);
-  const [result, setResult] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
-  const runAction = useRunArtifact('quantum');
-  const [quantumActionResult, setQuantumActionResult] = useState<Record<string, unknown> | null>(null);
-  const [quantumActiveAction, setQuantumActiveAction] = useState<string | null>(null);
 
-  const handleQuantumAction = async (action: string) => {
-    const id = circuitItems[0]?.id;
-    if (!id) return;
-    setQuantumActiveAction(action);
-    try {
-      const res = await runAction.mutateAsync({ id, action });
-      if (res.ok === false) { setQuantumActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setQuantumActionResult({ action, ...(res.result as Record<string, unknown>) }); }
-    } catch (err) { console.error('Quantum action failed:', err); }
-    finally { setQuantumActiveAction(null); }
-  };
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('quantum');
+  const [qubits, setQubits] = useState(2);
+  const [placed, setPlaced] = useState<PlacedGate[]>([]);
+  const [gateLib, setGateLib] = useState<GateDef[]>([]);
+  const [noisePresets, setNoisePresets] = useState<NoisePreset[]>([]);
+  const [selectedPreset, setSelectedPreset] = useState('ideal');
 
-  const { items: circuitItems, isLoading: circuitsLoading, isError: isError, error: error, refetch: refetch, create: saveResult } = useLensData<SimResultData>('quantum', 'sim-result', {
-    seed: [],
-  });
+  const [sim, setSim] = useState<SimResult | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [errAnalysis, setErrAnalysis] = useState<ErrorResult | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const circuits = [
-    { name: 'Hadamard', desc: 'Superposition gate', icon: '|H\u27E9' },
-    { name: 'CNOT', desc: 'Entanglement gate', icon: '\u2295' },
-    { name: 'Phase', desc: 'Rotation gate', icon: 'ei\u03B8' },
-    { name: 'Measure', desc: 'Collapse state', icon: '\uD83D\uDCCA' },
-  ];
+  // step-through state
+  const [frames, setFrames] = useState<StepFrame[]>([]);
+  const [frameIdx, setFrameIdx] = useState(0);
 
-  const runSimulation = useMutation({
-    mutationFn: async () => {
-      try {
-        const { data } = await apiHelpers.chat.ask(
-          `Simulate a ${qubits}-qubit quantum circuit with Hadamard and CNOT gates. Return a measurement outcome as a binary string of length ${qubits}.`,
-          'quantum'
-        );
-        const reply = data?.reply || data?.response || '';
-        // Extract a binary string from the response
-        const binaryMatch = reply.match(/[01]{2,}/);
-        if (binaryMatch) return binaryMatch[0].slice(0, qubits).padStart(qubits, '0');
-      } catch {
-        // Fallback to local simulation if backend unavailable
+  // saved circuits
+  const [saved, setSaved] = useState<SavedCircuitMeta[]>([]);
+  const [qasm, setQasm] = useState('');
+  const [showFeatures, setShowFeatures] = useState(false);
+
+  const circuit = useMemo(() => buildCircuit(qubits, placed), [qubits, placed]);
+
+  const refreshSaved = useCallback(async () => {
+    const r = await lensRun('quantum', 'listCircuits', {});
+    if (r.data?.ok && r.data.result) {
+      setSaved((r.data.result as { circuits: SavedCircuitMeta[] }).circuits || []);
+    }
+  }, []);
+
+  // initial load: gate library, noise presets, saved circuits
+  useEffect(() => {
+    (async () => {
+      const lib = await lensRun('quantum', 'gateLibrary', {});
+      if (lib.data?.ok && lib.data.result) {
+        setGateLib((lib.data.result as { gates: GateDef[] }).gates || []);
       }
-      const outcomes = Array.from({ length: 2 ** qubits }, (_, i) =>
-        i.toString(2).padStart(qubits, '0')
-      );
-      return outcomes[Math.floor(Math.random() * outcomes.length)];
-    },
-    onSuccess: (resultStr) => {
-      setResult(resultStr);
-      saveResult({
-        title: `Sim ${new Date().toISOString().slice(0, 19)}`,
-        data: { qubits, result: resultStr, gates: circuits.map((c) => c.name) },
-      }).catch((err) => console.error('Failed to save simulation result:', err instanceof Error ? err.message : err));
-    },
-    onError: (err) => console.error('runSimulation failed:', err instanceof Error ? err.message : err),
-  });
+      const np = await lensRun('quantum', 'noisePresets', {});
+      if (np.data?.ok && np.data.result) {
+        setNoisePresets((np.data.result as { presets: NoisePreset[] }).presets || []);
+      }
+      await refreshSaved();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const recentSims = circuitItems.slice(0, 5);
+  const run = useCallback(async (action: string, input: Record<string, unknown>) => {
+    setBusy(action);
+    setError(null);
+    try {
+      const r = await lensRun('quantum', action, input);
+      if (!r.data?.ok) { setError(r.data?.error || `${action} failed`); return null; }
+      return r.data.result;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return null;
+    } finally {
+      setBusy(null);
+    }
+  }, []);
 
-  // Lab / quantum-IDE shortcuts: ⌘⏎ runs the sim, +/- adjusts qubits
-  // (clamped 1-8), r resets the result.
+  const handleSimulate = useCallback(async () => {
+    const res = await run('simulateCircuit', { circuit, shots: 1024 });
+    if (res) { setSim(res as SimResult); setFrames([]); }
+  }, [circuit, run]);
+
+  const handleAnalyze = useCallback(async () => {
+    const res = await run('analyzeCircuit', { circuit });
+    if (res) setAnalysis(res as AnalysisResult);
+  }, [circuit, run]);
+
+  const handleErrorAnalysis = useCallback(async () => {
+    const res = await run('errorAnalysis', { circuit, preset: selectedPreset });
+    if (res) setErrAnalysis(res as ErrorResult);
+  }, [circuit, run, selectedPreset]);
+
+  const handleStepThrough = useCallback(async () => {
+    const res = await run('stepCircuit', { circuit });
+    if (res) {
+      setFrames((res as { frames: StepFrame[] }).frames || []);
+      setFrameIdx(0);
+      setSim(null);
+    }
+  }, [circuit, run]);
+
+  const handleTemplate = useCallback(async (id: string) => {
+    const res = await run('algorithmTemplate', { template: id, qubits });
+    if (res) {
+      const c = (res as { circuit: ApiCircuit }).circuit;
+      setQubits(c.qubits);
+      setPlaced(circuitToPlaced(c));
+      setSim(null); setFrames([]); setAnalysis(null); setErrAnalysis(null);
+    }
+  }, [run, qubits]);
+
+  const handleSave = useCallback(async () => {
+    const name = window.prompt('Name this circuit', `Circuit ${new Date().toISOString().slice(0, 16)}`);
+    if (!name) return;
+    const res = await run('saveCircuit', { circuit, name });
+    if (res) await refreshSaved();
+  }, [circuit, run, refreshSaved]);
+
+  const handleLoad = useCallback(async (id: string) => {
+    const res = await run('loadCircuit', { id });
+    if (res) {
+      const c = (res as { circuit: ApiCircuit }).circuit;
+      setQubits(c.qubits);
+      setPlaced(circuitToPlaced(c));
+      setSim(null); setFrames([]);
+    }
+  }, [run]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const res = await run('deleteCircuit', { id });
+    if (res) await refreshSaved();
+  }, [run, refreshSaved]);
+
+  const handleExportQASM = useCallback(async () => {
+    const res = await run('exportQASM', { circuit });
+    if (res) setQasm((res as { qasm: string }).qasm || '');
+  }, [circuit, run]);
+
+  const handleImportQASM = useCallback(async () => {
+    if (!qasm.trim()) { setError('Paste OpenQASM source first.'); return; }
+    const res = await run('importQASM', { qasm });
+    if (res) {
+      const c = (res as { circuit: ApiCircuit }).circuit;
+      setQubits(c.qubits);
+      setPlaced(circuitToPlaced(c));
+      setSim(null); setFrames([]);
+    }
+  }, [qasm, run]);
+
   useLensCommand(
     [
-      { id: 'run', keys: 'mod+enter', description: 'Run simulation', category: 'actions',
-        action: () => { if (!runSimulation.isPending) runSimulation.mutate(); }, global: true },
-      { id: 'qubits-inc', keys: 'shift+=', description: 'Add a qubit (max 8)', category: 'actions',
-        action: () => setQubits((q) => Math.min(8, q + 1)) },
-      { id: 'qubits-dec', keys: '-',      description: 'Remove a qubit (min 1)', category: 'actions',
-        action: () => setQubits((q) => Math.max(1, q - 1)) },
-      { id: 'reset',      keys: 'r',      description: 'Reset result',          category: 'actions',
-        action: () => setResult(null) },
+      { id: 'run', keys: 'mod+enter', description: 'Simulate circuit', category: 'actions',
+        action: () => { if (!busy) handleSimulate(); }, global: true },
+      { id: 'step', keys: 'mod+shift+enter', description: 'Step-through execution', category: 'actions',
+        action: () => { if (!busy) handleStepThrough(); } },
+      { id: 'save', keys: 'mod+s', description: 'Save circuit', category: 'actions',
+        action: () => { if (!busy) handleSave(); } },
     ],
-    { lensId: 'quantum' }
+    { lensId: 'quantum' },
   );
 
-  if (circuitsLoading) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Initializing quantum circuits...</p>
-        </div>
-      </div>
-    );
-  }
+  // ── histogram data from the active result / step frame ──────────────
+  const activeFrame = frames.length > 0 ? frames[frameIdx] : null;
+  const histProbs: ProbEntry[] = activeFrame
+    ? activeFrame.statevector
+    : (sim ? sim.statevector : []);
+  const histData = histProbs
+    .slice(0, 16)
+    .map((p) => ({ state: `|${p.state}⟩`, probability: Math.round(p.probability * 10000) / 100 }));
+  const activeBloch: BlochVector[] = activeFrame ? activeFrame.bloch : (sim ? sim.bloch : []);
 
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
-      </div>
-    );
-  }
+  // measurement-shot counts as a second chart series
+  const shotData = sim
+    ? Object.entries(sim.measurements.counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 16)
+      .map(([state, count]) => ({ state: `|${state}⟩`, count }))
+    : [];
+
   return (
     <LensShell lensId="quantum" asMain={false}>
       <FirstRunTour lensId="quantum" />
       <ManifestActionBar />
       <DepthBadge lensId="quantum" size="sm" className="ml-2" />
       <LensVerticalHero lensId="quantum" className="mx-6 mt-4" />
-    <div data-lens-theme="quantum" className="p-6 space-y-6">
-      {/* Phase 4 — REAL arXiv quant-ph feed. */}
-      <ArxivPanel domain="quantum" title="arXiv · Quantum Physics (quant-ph)" />
-      <header className="flex items-center gap-3">
-        <span className="text-2xl">\u269B\uFE0F</span>
-        <div>
-          <h1 className="text-xl font-bold">Quantum Lens</h1>
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-          <p className="text-sm text-gray-400">
-            Quantum computing simulations and circuit builder
-          </p>
-        </div>
-      </header>
 
+      <div data-lens-theme="quantum" className="p-6 space-y-6">
+        <ArxivPanel domain="quantum" title="arXiv · Quantum Physics (quant-ph)" />
 
-      <RealtimeDataPanel domain="quantum" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <DTUExportButton domain="quantum" data={{}} compact />
+        <header className="flex items-center gap-3">
+          <Atom className="w-7 h-7 text-neon-purple" />
+          <div>
+            <h1 className="text-xl font-bold">Quantum Composer</h1>
+            <p className="text-sm text-gray-400">
+              Visual circuit composer + real state-vector simulator
+            </p>
+          </div>
+        </header>
 
-      {/* AI Actions */}
-      <UniversalActions domain="quantum" artifactId={circuitItems[0]?.id} compact />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="lens-card">
-          <Atom className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">{qubits}</p>
-          <p className="text-sm text-gray-400">Qubits</p>
-        </div>
-        <div className="lens-card">
-          <Waves className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{2 ** qubits}</p>
-          <p className="text-sm text-gray-400">States</p>
-        </div>
-        <div className="lens-card">
-          <Shuffle className="w-5 h-5 text-neon-blue mb-2" />
-          <p className="text-2xl font-bold">{circuits.length}</p>
-          <p className="text-sm text-gray-400">Gates</p>
-        </div>
-        <div className="lens-card">
-          <Zap className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">{runSimulation.isPending ? '...' : 'Ready'}</p>
-          <p className="text-sm text-gray-400">Status</p>
-        </div>
-      </div>
+        {error && (
+          <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300">
+            <span>{error}</span>
+            <button onClick={() => setError(null)}><X className="w-4 h-4" /></button>
+          </div>
+        )}
 
-      {/* Circuit Builder */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Atom className="w-4 h-4 text-neon-purple" />
-          Quantum Circuit
-        </h2>
-        <div className="flex gap-2 mb-4">
-          <label className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">Qubits:</span>
-            <input
-              type="range"
-              min="1"
-              max="8"
-              value={qubits}
-              onChange={(e) => { setQubits(Number(e.target.value)); setResult(null); }}
-              className="w-32"
+        {/* ── Visual circuit composer ───────────────────────────── */}
+        <div className="panel p-4 space-y-4">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Atom className="w-4 h-4 text-neon-purple" /> Circuit Composer
+          </h2>
+          {gateLib.length === 0 ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading gate library…
+            </div>
+          ) : (
+            <CircuitComposer
+              gateLibrary={gateLib}
+              qubits={qubits}
+              onQubitsChange={(n) => { setQubits(n); setSim(null); setFrames([]); }}
+              placed={placed}
+              onPlacedChange={(g) => { setPlaced(g); setSim(null); setFrames([]); }}
             />
-            <span className="font-mono">{qubits}</span>
-          </label>
+          )}
+
+          {/* algorithm templates */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 mr-1 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Templates
+            </span>
+            {TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => handleTemplate(t.id)}
+                disabled={!!busy}
+                className="px-2 py-1 rounded text-xs border border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20 disabled:opacity-40"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* run controls */}
+          <div className="flex flex-wrap gap-2">
+            <button onClick={handleSimulate} disabled={!!busy || placed.length === 0}
+              className="btn-neon purple flex items-center gap-1.5 disabled:opacity-40">
+              {busy === 'simulateCircuit'
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Play className="w-4 h-4" />}
+              Run Simulation
+            </button>
+            <button onClick={handleStepThrough} disabled={!!busy || placed.length === 0}
+              className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+              {busy === 'stepCircuit'
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <StepForward className="w-4 h-4" />}
+              Step-Through
+            </button>
+            <button onClick={handleAnalyze} disabled={!!busy || placed.length === 0}
+              className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+              <Zap className="w-4 h-4" /> Analyze
+            </button>
+            <button onClick={handleSave} disabled={!!busy || placed.length === 0}
+              className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+              <Save className="w-4 h-4" /> Save
+            </button>
+          </div>
         </div>
 
-        {/* Text-based circuit diagram */}
-        <div className="mb-4 p-3 bg-black/40 rounded-lg border border-white/10 font-mono text-xs overflow-x-auto">
-          <p className="text-gray-500 mb-2 text-[10px] uppercase tracking-wider">Circuit Diagram</p>
-          {Array.from({ length: qubits }, (_, qi) => (
-            <div key={qi} className="flex items-center gap-0 text-gray-300 mb-1 whitespace-nowrap">
-              <span className="text-neon-purple w-10 shrink-0">q[{qi}]:</span>
-              <span className="text-gray-600">─</span>
-              <span className="px-1 py-0 border border-neon-purple/50 rounded text-neon-purple bg-neon-purple/10">H</span>
-              <span className="text-gray-600">────</span>
-              {qi < qubits - 1 ? (
-                <>
-                  <span className="text-neon-cyan">●</span>
-                  <span className="text-gray-600">──</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-neon-cyan px-0.5 border border-neon-cyan/50 rounded bg-neon-cyan/10">⊕</span>
-                  <span className="text-gray-600">──</span>
-                </>
-              )}
-              <span className="px-1 py-0 border border-yellow-500/50 rounded text-yellow-400 bg-yellow-500/10">M</span>
-              <span className="text-gray-600">─▶</span>
-              <span className="text-gray-500 ml-1">c[{qi}]</span>
+        {/* ── Step-through navigator ─────────────────────────────── */}
+        {frames.length > 0 && activeFrame && (
+          <div className="panel p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold flex items-center gap-2">
+                <StepForward className="w-4 h-4 text-neon-cyan" /> Step-Through Execution
+              </h2>
+              <span className="text-xs text-gray-400 font-mono">
+                Step {activeFrame.step} / {frames.length - 1}
+                {' · '}<span className="text-neon-cyan">{activeFrame.gate}</span>
+              </span>
             </div>
-          ))}
-        </div>
-
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {circuits.map((gate) => (
-            <div key={gate.name} className="lens-card text-center p-3">
-              <span className="text-2xl font-mono">{gate.icon}</span>
-              <p className="text-xs font-medium mt-1">{gate.name}</p>
-              <p className="text-xs text-gray-500">{gate.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Pre-measurement amplitude bars (superposition) */}
-        {!result && (
-          <div className="mb-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Probability Amplitudes (pre-measurement)</p>
-            <div className="space-y-1">
-              {computeSuperpositionAmplitudes(qubits).map(({ state, prob }) => (
-                <div key={state} className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] text-gray-400 w-12 shrink-0">|{state}⟩</span>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-neon-purple/70 rounded-full"
-                      style={{ width: `${Math.round(prob * 100)}%` }}
-                    />
-                  </div>
-                  <span className="font-mono text-[11px] text-neon-purple w-10 text-right">
-                    {(prob * 100).toFixed(1)}%
-                  </span>
-                </div>
-              ))}
+            <div className="flex items-center gap-2">
+              <button onClick={() => setFrameIdx((i) => Math.max(0, i - 1))}
+                disabled={frameIdx === 0}
+                className="btn-neon flex items-center gap-1 disabled:opacity-40">
+                <StepBack className="w-4 h-4" /> Prev
+              </button>
+              <input
+                type="range" min={0} max={frames.length - 1} value={frameIdx}
+                onChange={(e) => setFrameIdx(Number(e.target.value))}
+                className="flex-1"
+              />
+              <button onClick={() => setFrameIdx((i) => Math.min(frames.length - 1, i + 1))}
+                disabled={frameIdx === frames.length - 1}
+                className="btn-neon flex items-center gap-1 disabled:opacity-40">
+                Next <StepForward className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => runSimulation.mutate()}
-            disabled={runSimulation.isPending}
-            className="btn-neon purple flex-1"
-          >
-            {runSimulation.isPending ? (
-              <><Loader2 className="w-4 h-4 mr-2 inline animate-spin" />Simulating...</>
-            ) : (
-              <><Play className="w-4 h-4 mr-2 inline" />Run Circuit</>
-            )}
-          </button>
-          <button onClick={() => setResult(null)} className="btn-neon" aria-label="Rotate ccw">
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Result + Post-measurement amplitudes */}
-      <AnimatePresence>
-        {result && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            className="panel p-6 space-y-5"
-          >
-            {/* Measurement outcome */}
-            <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Measurement Result</p>
-              <motion.p
-                key={result}
-                initial={{ scale: 0.85, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-4xl font-mono text-neon-cyan tracking-widest"
-              >
-                |{result}⟩
-              </motion.p>
-              <p className="text-sm text-gray-500 mt-2">
-                Wavefunction collapsed — {qubits}-qubit register measured
-              </p>
+        {/* ── Probability histogram + Bloch readout ──────────────── */}
+        {(sim || activeFrame) && (
+          <div className="grid lg:grid-cols-3 gap-4">
+            <div className="panel p-4 lg:col-span-2 space-y-3">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Layers className="w-4 h-4 text-neon-purple" />
+                State Probabilities {activeFrame ? `(step ${activeFrame.step})` : ''}
+              </h2>
+              <ChartKit
+                kind="bar"
+                data={histData}
+                xKey="state"
+                series={[{ key: 'probability', label: 'Probability %', color: '#a855f7' }]}
+                height={240}
+                showLegend={false}
+              />
+              {sim && (
+                <div className="flex flex-wrap gap-4 text-xs text-gray-400 pt-1">
+                  <span>Qubits <span className="text-neon-purple font-mono">{sim.qubits}</span></span>
+                  <span>Gates <span className="text-white font-mono">{sim.gatesApplied}</span></span>
+                  <span>Depth <span className="text-neon-cyan font-mono">{sim.circuitDepth}</span></span>
+                  <span>Entropy <span className="text-neon-cyan font-mono">{sim.entropy}</span></span>
+                  <span className={sim.maxEntanglement ? 'text-neon-purple' : 'text-gray-500'}>
+                    {sim.maxEntanglement ? 'High entanglement' : 'Low entanglement'}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Post-collapse amplitude bars */}
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Post-Measurement Amplitudes</p>
-              <div className="space-y-1.5">
-                {computeAmplitudes(result, qubits).map(({ state, prob }) => {
-                  const isMeasured = state === result;
-                  return (
-                    <div key={state} className="flex items-center gap-2">
-                      <span className={`font-mono text-[11px] w-12 shrink-0 ${isMeasured ? 'text-neon-cyan' : 'text-gray-600'}`}>
-                        |{state}⟩
-                      </span>
-                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${prob * 100}%` }}
-                          transition={{ duration: 0.4, delay: 0.1 }}
-                          className={`h-full rounded-full ${isMeasured ? 'bg-neon-cyan' : 'bg-gray-700'}`}
-                        />
-                      </div>
-                      <span className={`font-mono text-[11px] w-12 text-right ${isMeasured ? 'text-neon-cyan' : 'text-gray-600'}`}>
-                        {(prob * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  );
-                })}
+            {/* Bloch spheres */}
+            <div className="panel p-4 space-y-2">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Atom className="w-4 h-4 text-neon-cyan" /> Bloch Spheres
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {activeBloch.map((bv) => (
+                  <BlochSphere key={bv.qubit} vector={bv} size={110} />
+                ))}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Bit-by-bit breakdown */}
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Qubit Readout</p>
-              <div className="flex gap-2 flex-wrap">
-                {result.split('').map((bit, idx) => (
-                  <div key={idx} className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-gray-500">q[{idx}]</span>
-                    <span className={`font-mono text-lg font-bold px-2 py-1 rounded border ${
-                      bit === '1'
-                        ? 'text-neon-cyan border-neon-cyan/40 bg-neon-cyan/10'
-                        : 'text-gray-400 border-gray-600/40 bg-gray-800/30'
-                    }`}>
-                      {bit}
+        {/* ── Amplitude readout + measurement shots ──────────────── */}
+        {(sim || activeFrame) && (
+          <div className="grid lg:grid-cols-2 gap-4">
+            <div className="panel p-4 space-y-2">
+              <h2 className="font-semibold text-sm flex items-center gap-2">
+                <Layers className="w-4 h-4 text-neon-purple" /> Amplitude Readout
+              </h2>
+              <div className="space-y-1 font-mono text-xs">
+                {histProbs.slice(0, 12).map((p) => (
+                  <div key={p.state} className="flex items-center gap-2">
+                    <span className="text-neon-cyan w-16 shrink-0">|{p.state}⟩</span>
+                    <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-neon-purple/70 rounded-full"
+                        style={{ width: `${p.probability * 100}%` }} />
+                    </div>
+                    <span className="text-neon-purple w-12 text-right">
+                      {(p.probability * 100).toFixed(1)}%
                     </span>
-                    <span className="text-[10px] text-gray-500">{bit === '1' ? '|1⟩' : '|0⟩'}</span>
+                    {p.amplitude && (
+                      <span className="text-gray-500 w-28 text-right">
+                        {p.amplitude.re.toFixed(3)}
+                        {p.amplitude.im >= 0 ? '+' : ''}{p.amplitude.im.toFixed(3)}i
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Quantum Domain Actions */}
-      <div className="panel p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-neon-purple flex items-center gap-2"><Zap className="w-4 h-4" /> Circuit Analysis Actions</h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'simulateCircuit', label: 'Simulate Circuit' },
-            { action: 'analyzeCircuit', label: 'Analyze Circuit' },
-            { action: 'errorAnalysis', label: 'Error Analysis' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleQuantumAction(action)} disabled={quantumActiveAction === action || !circuitItems[0]?.id}
-              className="px-3 py-1.5 text-xs bg-neon-purple/10 border border-neon-purple/20 rounded-lg hover:bg-neon-purple/20 disabled:opacity-50 flex items-center gap-1.5">
-              {quantumActiveAction === action ? <div className="w-3 h-3 border border-neon-purple border-t-transparent rounded-full animate-spin" /> : <Atom className="w-3 h-3 text-neon-purple" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {quantumActionResult && (
-          <div className="p-3 bg-black/40 rounded-lg border border-neon-purple/20 text-xs space-y-2">
-            {quantumActionResult.action === 'simulateCircuit' && (
-              <div className="space-y-2">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Qubits: <span className="text-neon-purple font-mono">{String(quantumActionResult.qubits ?? '')}</span></span>
-                  <span className="text-gray-400">Gates applied: <span className="text-white font-mono">{String(quantumActionResult.gatesApplied ?? '')}</span></span>
-                  <span className="text-gray-400">Entropy: <span className="text-neon-cyan font-mono">{String(quantumActionResult.entropy ?? '')}</span></span>
-                  <span className={`${quantumActionResult.maxEntanglement ? 'text-neon-purple' : 'text-gray-500'}`}>{quantumActionResult.maxEntanglement ? 'Max entanglement' : 'Low entanglement'}</span>
-                </div>
-                {Array.isArray(quantumActionResult.statevector) && (
-                  <div className="space-y-0.5">
-                    <p className="text-gray-500">Top states:</p>
-                    {(quantumActionResult.statevector as {state:string;probability:number}[]).slice(0,5).map(({state,probability}) => (
-                      <div key={state} className="flex items-center gap-2">
-                        <span className="font-mono text-neon-cyan w-12">{state}</span>
-                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-neon-purple/70 rounded-full" style={{width:`${probability*100}%`}} /></div>
-                        <span className="font-mono text-neon-purple w-12 text-right">{(probability*100).toFixed(1)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {sim && shotData.length > 0 && (
+              <div className="panel p-4 space-y-2">
+                <h2 className="font-semibold text-sm flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-neon-green" />
+                  Measurement Shots ({sim.measurements.shots})
+                </h2>
+                <ChartKit
+                  kind="bar"
+                  data={shotData}
+                  xKey="state"
+                  series={[{ key: 'count', label: 'Counts', color: '#22c55e' }]}
+                  height={200}
+                  showLegend={false}
+                />
               </div>
             )}
-            {quantumActionResult.action === 'analyzeCircuit' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Total gates: <span className="text-white font-mono">{String(quantumActionResult.totalGates ?? '')}</span></span>
-                  <span className="text-gray-400">Depth: <span className="text-neon-cyan font-mono">{String(quantumActionResult.circuitDepth ?? '')}</span></span>
-                  <span className="text-gray-400">T-count: <span className="text-neon-purple font-mono">{String(quantumActionResult.tCount ?? '')}</span></span>
-                  <span className="text-gray-400">CNOT: <span className="text-white font-mono">{String(quantumActionResult.cnotCount ?? '')}</span></span>
-                  <span className="text-gray-400">Parallelism: <span className="text-neon-green font-mono">{String(quantumActionResult.parallelism ?? '')}</span></span>
-                </div>
-                <p className="text-gray-400">Fault tolerance: <span className={`${String(quantumActionResult.faultToleranceCost).includes('Clifford') ? 'text-green-400' : 'text-yellow-400'}`}>{String(quantumActionResult.faultToleranceCost ?? '')}</span></p>
-              </div>
-            )}
-            {quantumActionResult.action === 'errorAnalysis' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Fidelity: <span className={`font-mono font-bold ${(quantumActionResult.fidelityPercent as number) > 95 ? 'text-green-400' : (quantumActionResult.fidelityPercent as number) > 80 ? 'text-yellow-400' : 'text-red-400'}`}>{String(quantumActionResult.fidelityPercent ?? '')}%</span></span>
-                  <span className="text-gray-400">Quality: <span className="text-white capitalize">{String(quantumActionResult.quality ?? '')}</span></span>
-                </div>
-                {Array.isArray(quantumActionResult.recommendations) && quantumActionResult.recommendations.length > 0 && (
-                  <div className="space-y-0.5">{(quantumActionResult.recommendations as string[]).map((r, i) => <p key={i} className="text-yellow-300">⚠ {r}</p>)}</div>
-                )}
-              </div>
-            )}
-            <button onClick={() => setQuantumActionResult(null)} className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1"><X className="w-3 h-3" /> Dismiss</button>
           </div>
         )}
-      </div>
 
-      {/* Recent Simulations */}
-      {recentSims.length > 0 && (
-        <div className="panel p-4">
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-neon-green" />
-            Recent Simulations
+        {/* ── Circuit analysis ───────────────────────────────────── */}
+        {analysis && (
+          <div className="panel p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Zap className="w-4 h-4 text-neon-purple" /> Circuit Analysis
+              </h2>
+              <button onClick={() => setAnalysis(null)}><X className="w-4 h-4 text-gray-500" /></button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              {[
+                ['Total gates', analysis.totalGates],
+                ['Depth', analysis.circuitDepth],
+                ['T-count', analysis.tCount],
+                ['CNOT count', analysis.cnotCount],
+                ['Clifford', analysis.cliffordCount],
+                ['Non-Clifford', analysis.nonCliffordCount],
+                ['Parallelism', analysis.parallelism],
+                ['Avg utilization', `${analysis.avgUtilization}%`],
+              ].map(([label, val]) => (
+                <div key={String(label)} className="bg-black/30 rounded p-2">
+                  <p className="text-gray-500">{label}</p>
+                  <p className="font-mono text-neon-cyan text-base">{String(val)}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400">
+              Fault tolerance:{' '}
+              <span className={analysis.faultToleranceCost.includes('Clifford-only')
+                ? 'text-green-400' : 'text-yellow-400'}>
+                {analysis.faultToleranceCost}
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* ── Noise model + error analysis ───────────────────────── */}
+        <div className="panel p-4 space-y-3">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Zap className="w-4 h-4 text-neon-green" /> Noise Model &amp; Error Analysis
           </h2>
-          <div className="space-y-2">
-            {recentSims.map((sim) => (
-              <div key={sim.id} className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg">
-                <div>
-                  <span className="font-mono text-neon-cyan">|{sim.data.result}\u27E9</span>
-                  <span className="text-xs text-gray-500 ml-2">{sim.data.qubits} qubits</span>
-                </div>
-                <span className="text-xs text-gray-500">{new Date(sim.createdAt).toLocaleString()}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedPreset}
+              onChange={(e) => setSelectedPreset(e.target.value)}
+              className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-200"
+            >
+              {noisePresets.map((np) => (
+                <option key={np.id} value={np.id}>{np.label}</option>
+              ))}
+            </select>
+            <button onClick={handleErrorAnalysis} disabled={!!busy || placed.length === 0}
+              className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+              {busy === 'errorAnalysis'
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Zap className="w-4 h-4" />}
+              Run Error Analysis
+            </button>
+          </div>
+          {(() => {
+            const np = noisePresets.find((p) => p.id === selectedPreset);
+            return np ? (
+              <p className="text-[11px] text-gray-500 font-mono">
+                T1 {np.t1}µs · T2 {np.t2}µs · gate err {np.gateErrorRate} · readout err {np.readoutError}
+              </p>
+            ) : null;
+          })()}
+          {errAnalysis && (
+            <div className="bg-black/30 rounded-lg p-3 space-y-2 text-xs">
+              <div className="flex flex-wrap gap-4">
+                <span>Preset <span className="text-white">{errAnalysis.preset}</span></span>
+                <span>Fidelity{' '}
+                  <span className={`font-mono font-bold ${
+                    errAnalysis.fidelityPercent > 95 ? 'text-green-400'
+                      : errAnalysis.fidelityPercent > 80 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {errAnalysis.fidelityPercent}%
+                  </span>
+                </span>
+                <span>Quality <span className="text-white capitalize">{errAnalysis.quality}</span></span>
               </div>
-            ))}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  ['Gate errors', errAnalysis.errorBudget.gateErrors.contribution],
+                  ['Decoherence', errAnalysis.errorBudget.decoherence.contribution],
+                  ['Readout', errAnalysis.errorBudget.readout.contribution],
+                ].map(([label, val]) => (
+                  <div key={String(label)} className="bg-black/30 rounded p-2">
+                    <p className="text-gray-500">{label}</p>
+                    <p className="font-mono text-neon-cyan">{((val as number) * 100).toFixed(3)}%</p>
+                  </div>
+                ))}
+              </div>
+              {errAnalysis.recommendations.length > 0 && (
+                <div className="space-y-0.5">
+                  {errAnalysis.recommendations.map((r, i) => (
+                    <p key={i} className="text-yellow-300">⚠ {r}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── QASM import / export ───────────────────────────────── */}
+        <div className="panel p-4 space-y-2">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Download className="w-4 h-4 text-neon-cyan" /> OpenQASM Interop
+          </h2>
+          <textarea
+            value={qasm}
+            onChange={(e) => setQasm(e.target.value)}
+            placeholder="OpenQASM 2.0 source — Export current circuit, or paste QASM and Import."
+            spellCheck={false}
+            className="w-full h-32 bg-black/40 border border-white/10 rounded p-2 font-mono text-xs text-gray-200"
+          />
+          <div className="flex gap-2">
+            <button onClick={handleExportQASM} disabled={!!busy || placed.length === 0}
+              className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+              <Download className="w-4 h-4" /> Export QASM
+            </button>
+            <button onClick={handleImportQASM} disabled={!!busy}
+              className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+              <Upload className="w-4 h-4" /> Import QASM
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="quantum" />
-          </div>
-        )}
+        {/* ── Saved circuits ─────────────────────────────────────── */}
+        <div className="panel p-4 space-y-2">
+          <h2 className="font-semibold flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-neon-green" /> Saved Circuits
+          </h2>
+          {saved.length === 0 ? (
+            <p className="text-xs text-gray-500">No saved circuits yet — compose one and click Save.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {saved.map((sc) => (
+                <div key={sc.id}
+                  className="flex items-center justify-between p-2 bg-black/30 rounded-lg">
+                  <div className="text-xs">
+                    <p className="text-white font-medium">{sc.name}</p>
+                    <p className="text-gray-500 font-mono">
+                      {sc.qubits} qubits · {sc.gateCount} gates ·{' '}
+                      {new Date(sc.updatedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleLoad(sc.id)}
+                      className="p-1.5 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20"
+                      title="Load">
+                      <FolderOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(sc.id)}
+                      className="p-1.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20"
+                      title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Lens features */}
+        <div className="border-t border-white/10">
+          <button
+            onClick={() => setShowFeatures(!showFeatures)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          >
+            <span className="flex items-center gap-2">
+              <Layers className="w-4 h-4" /> Lens Features &amp; Capabilities
+            </span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {showFeatures && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4">
+                  <LensFeaturePanel lensId="quantum" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <QuantumArxiv />
+        </section>
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <QuantumArxiv />
-      </section>
-    </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <a href="#quantum-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to quantum content</a>
-          <RecentMineCard domain="quantum" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="quantum" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="quantum" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#quantum-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        Skip to quantum content
+      </a>
+      <RecentMineCard domain="quantum" limit={10} hideWhenEmpty className="mt-4" />
+      <AutoActionStrip domain="quantum" hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="quantum" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -19,6 +19,9 @@ Backend: `apps` macro domain (list, metrics, promote), `quest` macro domain (lis
 - [x] `[S]` Version history + rollback for built apps
 
 ## Parity
+
+~85% of Retool/Bubble feature surface — full backlog implemented.
+
 Full no-code builder shipped. The `Builder` tab hosts a real project workspace: a drag-drop visual editor with a component palette and property inspector (`editor.*` macros), a data-model designer with tables/fields/relations and per-element data binding (`data.*` macros), a workflow builder wiring triggers→action steps (`workflow.*` macros), a cross-user component marketplace (`market.*` macros), version snapshot/rollback (`version.*` macros), and live in-iframe preview + one-click deploy (`preview.render` / `deploy.*`). The `Quest Designer` tab authors branching quests as a draggable node graph with structural validation (`questGraph*` / `questNode*` / `questEdge*` macros). Apps/Quests/Creative observation tabs retained.
 
 _Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

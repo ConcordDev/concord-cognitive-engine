@@ -205,6 +205,7 @@ import uxSuite from './ux-suite.js';
 import worldCreator from './world-creator.js';
 import expeditionJournal from './expedition-journal.js';
 import bounties from './bounties.js';
+import subWorlds from './sub-worlds.js';
 
 export default [
   healthcare,
@@ -403,4 +404,5 @@ export default [
   worldCreator,
   bounties,
   expeditionJournal,
+  subWorlds,
 ];

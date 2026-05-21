@@ -1,7 +1,7 @@
 # quantum — Feature Gap vs IBM Quantum Composer
 
 Category leader (2026): IBM Quantum Composer / Quirk (quantum circuit simulator). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: `server/domains/quantum.js` — 3 macros (simulateCircuit, analyzeCircuit, errorAnalysis); page also calls the chat brain for LLM-assisted explanation.
+Backend: `server/domains/quantum.js` — 13 macros: a real state-vector simulator (`simulateCircuit`, `stepCircuit`), `analyzeCircuit`, `errorAnalysis`, `gateLibrary`, `noisePresets`, `algorithmTemplate`, `exportQASM`, `importQASM`, and persistent per-user circuits (`saveCircuit`, `listCircuits`, `loadCircuit`, `deleteCircuit`). No LLM in the simulation math path.
 
 ## Has (verified in code)
 - Circuit simulation macro — run a gate circuit and return state/measurement results
@@ -10,13 +10,15 @@ Backend: `server/domains/quantum.js` — 3 macros (simulateCircuit, analyzeCircu
 - LLM-assisted quantum explanation via the chat brain
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Visual circuit composer — drag-and-drop gates onto qubit wires
-- [ ] `[M]` State visualization — Bloch sphere, amplitude/probability histograms, Q-sphere
-- [ ] `[M]` Gate library — full set (H, X, Y, Z, CNOT, T, rotations, custom) with parameters
-- [ ] `[S]` QASM import/export — interoperate with OpenQASM circuits
-- [ ] `[M]` Algorithm templates — Grover, Shor, QFT, teleportation starter circuits
-- [ ] `[S]` Step-through execution — animate the statevector gate by gate
-- [ ] `[S]` Noise model presets — simulate on realistic device noise profiles
+- [x] `[L]` Visual circuit composer — click-to-place gates on a qubit-wire grid (`components/quantum/CircuitComposer.tsx`, multi-qubit control/target wiring)
+- [x] `[M]` State visualization — SVG Bloch spheres (`components/quantum/BlochSphere.tsx`) + probability/amplitude histograms via ChartKit
+- [x] `[M]` Gate library — full set (H, X, Y, Z, S, T, RX/RY/RZ/P rotations, CNOT, CZ, SWAP, Toffoli, Measure) served by the `gateLibrary` macro
+- [x] `[S]` QASM import/export — `exportQASM` / `importQASM` macros wired to a QASM editor panel
+- [x] `[M]` Algorithm templates — Bell, GHZ, QFT, Grover, teleportation, Deutsch-Jozsa, superposition via `algorithmTemplate`
+- [x] `[S]` Step-through execution — `stepCircuit` macro emits per-gate statevector frames; UI step navigator animates them
+- [x] `[S]` Noise model presets — `noisePresets` + `errorAnalysis` macros (ideal / IBM Eagle / IBM Heron / superconducting / trapped-ion)
 
 ## Parity
-~30% of IBM Quantum Composer's feature surface. The simulation/analysis/error macros are a real compute core, but with no visual circuit composer, no statevector visualization, and no gate-library UI it is a backend without the interactive workbench that defines the category.
+Full interactive workbench. A real gate-based state-vector simulator (complex amplitude vector + unitary application — `simulateCircuit`, verified by tests: H on |0⟩ → 50/50, Bell → maximally entangled), a visual circuit composer, Bloch-sphere + histogram visualization, the full gate library, QASM interop, algorithm templates, step-through animation, and device noise modelling. No LLM in the math path. Persistent per-user saved circuits via `saveCircuit`/`listCircuits`/`loadCircuit`/`deleteCircuit`.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

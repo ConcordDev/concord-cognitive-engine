@@ -12,27 +12,21 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~52%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1598**
+- Average feature parity: **~54%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1554**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 12 |
+| 80–100% (near-complete) | 18 |
 | 60–79% (strong) | 59 |
 | 40–59% (partial) | 140 |
-| <40% (thin) | 23 |
+| <40% (thin) | 17 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| maker | Retool / Bubble (no-code app builder) | ~?% | 0 |
-| platform | Vercel / Heroku dashboard | ~30% | 7 |
-| quantum | IBM Quantum Composer | ~30% | 7 |
-| repos | GitHub | ~30% | 7 |
-| robotics | ROS / robot simulation tools | ~30% | 7 |
-| sponsorship | Patreon | ~30% | 8 |
-| sub-worlds | Roblox / Rec Room (user-spawned worlds) | ~30% | 8 |
+| quantum | IBM Quantum Composer | ~?% | 0 |
 | transfer | Fivetran / Airbyte (data migration / ETL) | ~30% | 8 |
 | ar | Adobe Aero / Niantic Studio | ~32% | 8 |
 | anon | Signal | ~35% | 7 |
@@ -256,8 +250,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | custom | Retool / Glide | ~85% | 0 |
 | expedition-journal | in-game world-progress tracker (no consumer rival) | ~85% | 0 |
 | fractal | Mandelbulber / fractal generators | ~85% | 0 |
+| maker | Retool / Bubble (no-code app builder) | ~85% | 0 |
 | ml | Hugging Face | ~85% | 0 |
 | observe | Datadog | ~85% | 0 |
+| platform | Vercel / Heroku dashboard | ~85% | 0 |
+| repos | GitHub | ~85% | 0 |
+| robotics | ROS / robot simulation tools | ~85% | 0 |
+| sponsorship | Patreon | ~85% | 0 |
+| sub-worlds | Roblox / Rec Room (user-spawned worlds) | ~85% | 0 |
 | sync | iCloud / Dropbox / Syncthing | ~85% | 0 |
 | ux-suite | Storybook / a component directory | ~85% | 0 |
 | world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |

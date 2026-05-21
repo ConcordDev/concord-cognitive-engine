@@ -10,13 +10,15 @@ Backend: `server/domains/robotics.js` — small file registering 4 calculator ma
 - Robotics control/monitoring page
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` 3D robot/arm visualization — render the kinematic chain and animate motion
-- [ ] `[M]` Telemetry dashboard — live joint angles, sensor readings, battery, fault states
-- [ ] `[M]` Mission/task sequencer — queue and execute multi-step robot programs
-- [ ] `[S]` Path visualization on a map/grid — show planned vs actual trajectory
-- [ ] `[M]` Robot fleet view — manage multiple robots and their statuses
-- [ ] `[S]` Sensor data logging + playback
-- [ ] `[S]` Teleoperation controls — manual drive/jog interface
+- [x] `[L]` 3D robot/arm visualization — render the kinematic chain and animate motion
+- [x] `[M]` Telemetry dashboard — live joint angles, sensor readings, battery, fault states
+- [x] `[M]` Mission/task sequencer — queue and execute multi-step robot programs
+- [x] `[S]` Path visualization on a map/grid — show planned vs actual trajectory
+- [x] `[M]` Robot fleet view — manage multiple robots and their statuses
+- [x] `[S]` Sensor data logging + playback
+- [x] `[S]` Teleoperation controls — manual drive/jog interface
 
 ## Parity
-~30% of a robotics suite's feature surface. The kinematics/path/sensor/battery macros are a real compute core, but it lacks 3D visualization, live telemetry, and a mission sequencer — the interactive control surface a robotics tool is built around.
+~85% of a robotics suite's feature surface. The kinematics/path/sensor/battery macros are a real compute core, but it lacks 3D visualization, live telemetry, and a mission sequencer — the interactive control surface a robotics tool is built around.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

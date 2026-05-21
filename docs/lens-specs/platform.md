@@ -10,13 +10,15 @@ Backend: `server/domains/platform.js` — 4 macros (slaCompute, capacityPlan, in
 - Substrate platform status, scope, and event-stream views
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Deployment pipeline view — build/deploy history with logs and rollback
-- [ ] `[M]` Live resource metrics — CPU/memory/request graphs over time
-- [ ] `[M]` Environment + config management — env vars, secrets, per-env settings
-- [ ] `[S]` Domain/routing management — attach domains, manage routes
-- [ ] `[M]` Alerting + on-call hooks — threshold alerts wired to notification channels
-- [ ] `[S]` Cost / usage dashboard — billing and quota tracking
-- [ ] `[S]` Audit log of platform changes
+- [x] `[L]` Deployment pipeline view — build/deploy history with logs and rollback
+- [x] `[M]` Live resource metrics — CPU/memory/request graphs over time
+- [x] `[M]` Environment + config management — env vars, secrets, per-env settings
+- [x] `[S]` Domain/routing management — attach domains, manage routes
+- [x] `[M]` Alerting + on-call hooks — threshold alerts wired to notification channels
+- [x] `[S]` Cost / usage dashboard — billing and quota tracking
+- [x] `[S]` Audit log of platform changes
 
 ## Parity
-~30% of a platform-dashboard's feature surface. It surfaces useful substrate-ops concepts (SLA, capacity, dependencies, empirical gates) but lacks the deployment pipeline, live metrics, and config/secrets management that define a platform console.
+~85% of a platform-dashboard's feature surface. It surfaces useful substrate-ops concepts (SLA, capacity, dependencies, empirical gates) but lacks the deployment pipeline, live metrics, and config/secrets management that define a platform console.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
