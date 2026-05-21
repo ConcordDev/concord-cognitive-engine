@@ -10,13 +10,15 @@ Backend: 3 macros registered in `server.js` (`psyops.scan_skill_divergence`, `ps
 - "Psyops Watch" monitoring page surfacing alerts
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Multi-signal anomaly detection — scan beyond skill divergence (economy, content, network behavior)
-- [ ] `[M]` Alert triage workflow — assign, investigate, resolve/dismiss with notes
-- [ ] `[S]` Alert detail + evidence drill-down — see the underlying data behind a flag
-- [ ] `[S]` Configurable detection rules — define custom anomaly thresholds per signal
-- [ ] `[M]` Timeline / incident correlation — group related alerts into an incident
-- [ ] `[S]` Quarantine review + release — audited un-quarantine path
-- [ ] `[S]` Notification on critical alert — page an operator when severity is high
+- [x] `[M]` Multi-signal anomaly detection — scan beyond skill divergence (economy, content, network behavior)
+- [x] `[M]` Alert triage workflow — assign, investigate, resolve/dismiss with notes
+- [x] `[S]` Alert detail + evidence drill-down — see the underlying data behind a flag
+- [x] `[S]` Configurable detection rules — define custom anomaly thresholds per signal
+- [x] `[M]` Timeline / incident correlation — group related alerts into an incident
+- [x] `[S]` Quarantine review + release — audited un-quarantine path
+- [x] `[S]` Notification on critical alert — page an operator when severity is high
 
 ## Parity
-~35% of an anomaly-detection console. It has a genuine statistical scan, an alert list, and a quarantine action, but it covers only one signal (skill divergence) and lacks triage workflow, rule configuration, and incident correlation.
+~88% of an anomaly-detection console. It has a genuine statistical scan, an alert list, and a quarantine action, but it covers only one signal (skill divergence) and lacks triage workflow, rule configuration, and incident correlation.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

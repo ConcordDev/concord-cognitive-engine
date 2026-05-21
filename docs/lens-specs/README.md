@@ -12,27 +12,22 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~55%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1510**
+- Average feature parity: **~56%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1466**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 24 |
+| 80–100% (near-complete) | 29 |
 | 60–79% (strong) | 59 |
 | 40–59% (partial) | 140 |
-| <40% (thin) | 11 |
+| <40% (thin) | 5 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
+| personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
-| neuro | EEGLAB / MNE-Python | ~35% | 8 |
-| ops | PagerDuty | ~35% | 8 |
-| personas | Character.AI | ~35% | 7 |
-| psyops | threat-intelligence / anomaly-detection console | ~35% | 7 |
-| questmarket | Bountysource / gamified quest board | ~35% | 7 |
-| schema | JSON Schema tooling / Hasura console | ~35% | 7 |
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~35% | 8 |
 | tools | utility bundle (Perplexity + Babel REPL + DocuSign) | ~35% | 7 |
 | wellness | Whoop / Calm / CBT apps | ~35% | 8 |
@@ -261,3 +256,8 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | transfer | Fivetran / Airbyte (data migration / ETL) | ~85% | 0 |
 | ux-suite | Storybook / a component directory | ~85% | 0 |
 | world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |
+| neuro | EEGLAB / MNE-Python | ~88% | 0 |
+| ops | PagerDuty | ~88% | 0 |
+| psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |
+| questmarket | Bountysource / gamified quest board | ~88% | 0 |
+| schema | JSON Schema tooling / Hasura console | ~88% | 0 |

@@ -207,6 +207,8 @@ import expeditionJournal from './expedition-journal.js';
 import bounties from './bounties.js';
 import subWorlds from './sub-worlds.js';
 import inheritance from './inheritance.js';
+import personas from './personas.js';
+import psyops from './psyops.js';
 
 export default [
   healthcare,
@@ -407,4 +409,6 @@ export default [
   expeditionJournal,
   subWorlds,
   inheritance,
+  personas,
+  psyops,
 ];

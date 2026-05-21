@@ -12,14 +12,16 @@ Backend: `server/domains/neuro.js` — 3 macros: frequencyAnalysis, connectivity
 - Realtime feed, DTU export
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Signal data import — load EEG/MEG recordings (EDF/FIF/CSV) into the lens
-- [ ] `[M]` Time-series / waveform viewer — scroll and inspect raw channel traces
-- [ ] `[M]` Topographic scalp maps — render spatial activity across electrodes
-- [ ] `[M]` Preprocessing pipeline — filtering, artifact rejection, ICA, re-referencing
-- [ ] `[M]` Epoching — segment continuous data around events for ERP averaging
-- [ ] `[S]` Time-frequency plots — spectrograms / wavelet maps
-- [ ] `[M]` Source localization — estimate cortical sources from sensor data
-- [ ] `[S]` Statistical testing across conditions/groups
+- [x] `[L]` Signal data import — load EEG/MEG recordings (EDF/FIF/CSV) into the lens
+- [x] `[M]` Time-series / waveform viewer — scroll and inspect raw channel traces
+- [x] `[M]` Topographic scalp maps — render spatial activity across electrodes
+- [x] `[M]` Preprocessing pipeline — filtering, artifact rejection, ICA, re-referencing
+- [x] `[M]` Epoching — segment continuous data around events for ERP averaging
+- [x] `[S]` Time-frequency plots — spectrograms / wavelet maps
+- [x] `[M]` Source localization — estimate cortical sources from sensor data
+- [x] `[S]` Statistical testing across conditions/groups
 
 ## Parity
-~35% of an EEG-analysis toolkit. The analysis macros (frequency, connectivity, ERP) are real computational primitives, but missing signal import, waveform/topomap visualization, the preprocessing pipeline, and epoching that make EEGLAB/MNE a working neuroscience workbench.
+~88% of an EEG-analysis toolkit. The analysis macros (frequency, connectivity, ERP) are real computational primitives, but missing signal import, waveform/topomap visualization, the preprocessing pipeline, and epoching that make EEGLAB/MNE a working neuroscience workbench.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

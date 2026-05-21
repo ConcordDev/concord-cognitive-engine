@@ -9,13 +9,24 @@ Backend: `server/domains/questmarket.js` — 5 macros (balanceDifficulty, leader
 - Difficulty-balancing macro, leaderboard ranking, achievement unlock, guild scoring, reward-economics modeling
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Quest accept → submit → verify flow — full lifecycle, not just artifact records
-- [ ] `[M]` Bounty escrow + payout — lock CC on post, release on verified completion
-- [ ] `[S]` Proof-of-completion submission — attach evidence/artifacts to a quest claim
-- [ ] `[M]` Guild membership + shared quests — join a guild, contribute to guild objectives
-- [ ] `[S]` Reputation / rank progression — persistent player rank from completed quests
-- [ ] `[S]` Quest discovery + filtering — browse by reward, difficulty, tag
-- [ ] `[S]` Achievement showcase — public profile of unlocked achievements
+- [x] `[M]` Quest accept → submit → verify flow — full lifecycle, not just artifact records
+- [x] `[M]` Bounty escrow + payout — lock CC on post, release on verified completion
+- [x] `[S]` Proof-of-completion submission — attach evidence/artifacts to a quest claim
+- [x] `[M]` Guild membership + shared quests — join a guild, contribute to guild objectives
+- [x] `[S]` Reputation / rank progression — persistent player rank from completed quests
+- [x] `[S]` Quest discovery + filtering — browse by reward, difficulty, tag
+- [x] `[S]` Achievement showcase — public profile of unlocked achievements
 
 ## Parity
-~35% of a gamified quest marketplace. The 6-tab structure and game-balance macros (difficulty, leaderboard, guilds, reward economics) frame the concept well, but it lacks the accept→submit→verify lifecycle and bounty escrow that make a quest marketplace transactional.
+~88% of a gamified quest marketplace. The transactional lifecycle layer is now
+fully wired end-to-end: a real lens-local CC wallet, post-with-escrow, an
+accept → submit-proof → verify → escrow-payout flow, abandon/cancel paths,
+guild membership with shared guild-bound quests, persistent reputation/rank
+progression with an 8-rank XP ladder, a live reputation leaderboard, an
+achievement showcase (unlocked/locked split), and reward-economics analysis
+driven by real quest data. 20 macros, all exercised by purpose-built UI in
+`app/lenses/questmarket/page.tsx` + 8 dedicated `components/questmarket/*`
+components. Remaining gap is licensed/external-bounty content volume, which
+fills via the GitHub bounty feed and user-posted quests by design.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

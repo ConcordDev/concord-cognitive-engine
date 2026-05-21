@@ -20,6 +20,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { OpsRepos } from '@/components/ops/OpsRepos';
 import { OpsActionPanel } from '@/components/ops/OpsActionPanel';
+import { IncidentConsole } from '@/components/ops/IncidentConsole';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -118,6 +119,16 @@ export default function OpsLensPage() {
           </div>
         </div>
       </header>
+
+      {/* Primary surface — full PagerDuty-parity incident manager */}
+      <section className="mx-auto max-w-7xl px-4 pt-6 md:px-8">
+        <IncidentConsole />
+      </section>
+
+      <div className="mx-auto mt-8 max-w-7xl px-4 md:px-8">
+        <h2 className="font-mono text-sm font-semibold text-slate-400">Substrate observability</h2>
+        <p className="text-xs text-slate-600">Attention budget · repair network · physical DTUs · explorations</p>
+      </div>
 
       <nav className="border-b border-slate-800/50 px-4 md:px-8" aria-label="Ops sections">
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">

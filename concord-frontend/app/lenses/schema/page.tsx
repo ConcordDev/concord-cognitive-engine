@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
+import { SchemaWorkbench } from '@/components/schema/SchemaWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -369,6 +370,16 @@ export default function SchemaLensPage() {
           creating={createMutation.isPending}
         />
       )}
+      <section className="mt-6 rounded-xl border border-cyan-500/15 bg-zinc-950/40 p-4">
+        <div className="mb-3 flex items-center gap-2 border-b border-cyan-500/15 pb-2">
+          <Database className="h-5 w-5 text-cyan-400" />
+          <h2 className="text-sm font-semibold text-white">Schema Workbench</h2>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+            registry · editor · codegen
+          </span>
+        </div>
+        <SchemaWorkbench />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SchemaRepos />
       </section>
