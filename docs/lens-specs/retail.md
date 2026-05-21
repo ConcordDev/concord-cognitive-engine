@@ -1,26 +1,25 @@
-# retail — Feature Completeness Spec
+# retail — Feature Gap vs Shopify
 
-Rival app(s): Shopify, Square, Lightspeed Retail (2026)
-Sources:
-- https://world.openbeautyfacts.org/data — Open Beauty Facts open product database (free, no key)
+Category leader (2026): Shopify (commerce platform + POS). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/retail.js` — ~49 macros: products + variants + inventory + pricing, carts (open/add/total/tender), orders, customers + segments + RFM, discounts, abandoned-cart recovery, shipping zones + rate quotes, tax rates, gift cards, refunds, collections, inventory transfers, revenue/top-product analytics, Stripe payment intents, product feed.
 
-## Features
+## Has (verified in code)
+- Product catalog with variants, inventory, pricing sub-tabs; low-stock + reorder checks
+- Carts with line items, totals, tender; orders list + timeline + returns
+- Real Stripe payment-intent creation + confirm-paid; refunds
+- Customers directory, segments, RFM analysis; abandoned-cart list + recovery
+- Discounts (create/apply), gift cards (create/balance/redeem), collections
+- Shipping zones + rate quoting, tax rates; inventory transfers between locations
+- Analytics: revenue-by-day, top products, summary; customer LTV, pipeline value, SLA status; 6 tabs
 
-### Commerce substrate
-- [x] Products + SKUs, orders, carts, customers
-- [x] Revenue + average-order-value + active-cart dashboard
-- (49 macros)
+## Missing — buildable feature backlog
+- [ ] `[M]` Storefront / buyer-facing shop — a public product browse + checkout page
+- [ ] `[M]` Shipping label purchase + tracking — carrier API integration beyond rate quotes
+- [ ] `[S]` Order fulfillment workflow — pick/pack/ship status with notifications
+- [ ] `[M]` Marketing campaigns — email/discount campaigns and conversion tracking
+- [ ] `[S]` Multi-channel listing — sync inventory to external marketplaces
+- [ ] `[S]` Product reviews + ratings on the storefront
+- [ ] `[S]` Staff accounts + permissions for the admin
 
-### Live data & feed
-- [x] Live product feed — Open Beauty Facts consumer products ingested as DTUs (macro: retail.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Payment capture | a payments processor licence | the `wallet` lens carries settlement |
-| Shipping label printing | a carrier API | order records with manual fulfillment status |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (Open Beauty Facts → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` retail feed green; `tests/retail-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="retail"` mounted in the lens page.
+## Parity
+~75% of Shopify's admin feature surface. The commerce backend is genuinely deep — variants, real Stripe payments, RFM, discounts, gift cards, shipping/tax, transfers, analytics. The main gap is a buyer-facing storefront and carrier label/tracking integration.
