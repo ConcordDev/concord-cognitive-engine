@@ -12,30 +12,25 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~64%**
-- Total buildable features in the backlog (sum of all "Missing" items): **1200**
+- Average feature parity: **~65%**
+- Total buildable features in the backlog (sum of all "Missing" items): **1158**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 63 |
+| 80–100% (near-complete) | 68 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 109 |
+| 40–59% (partial) | 103 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
+| collab | Figma / Google Docs (real-time collaboration) | ~?% | 0 |
 | organ | ChartHop | ~?% | 0 |
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| carpentry | Houzz Pro / Buildertrend (trades) | ~42% | 7 |
-| collab | Figma / Google Docs (real-time collaboration) | ~44% | 7 |
-| alliance | Slack Connect / Discord | ~45% | 7 |
-| artistry | Behance / ArtStation | ~45% | 7 |
-| billing | Stripe Billing | ~45% | 7 |
-| code-quality | SonarQube / CodeClimate | ~45% | 7 |
 | construction | Procore | ~45% | 8 |
 | database | DBeaver / TablePlus | ~45% | 7 |
 | disputes | marketplace dispute / ODR systems | ~45% | 7 |
@@ -222,7 +217,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | transfer | Fivetran / Airbyte (data migration / ETL) | ~85% | 0 |
 | ux-suite | Storybook / a component directory | ~85% | 0 |
 | world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |
+| alliance | Slack Connect / Discord | ~88% | 0 |
+| artistry | Behance / ArtStation | ~88% | 0 |
 | attention | Sunsama / Motion | ~88% | 0 |
+| billing | Stripe Billing | ~88% | 0 |
+| carpentry | Houzz Pro / Buildertrend (trades) | ~88% | 0 |
+| code-quality | SonarQube / CodeClimate | ~88% | 0 |
 | neuro | EEGLAB / MNE-Python | ~88% | 0 |
 | ops | PagerDuty | ~88% | 0 |
 | psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |

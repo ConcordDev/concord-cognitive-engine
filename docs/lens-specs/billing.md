@@ -11,13 +11,15 @@ Backend: `server/domains/billing.js` — macros `invoiceCalculation`, `revenueRe
 - EconomyDashboard with revenue/spend charts; subscription-tier display
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Recurring subscription plans with billing cycles + proration
-- [ ] `[M]` Usage-based / metered billing with rate tiers
-- [ ] `[S]` Coupons / promo codes / discounts
-- [ ] `[M]` Dunning workflow for failed payments (retry schedule + emails)
-- [ ] `[S]` Customer billing portal (update card, view invoices, cancel)
-- [ ] `[M]` Tax calculation per jurisdiction on invoices
-- [ ] `[S]` Revenue analytics: MRR/ARR, cohort retention, expansion
+- [x] `[M]` Recurring subscription plans with billing cycles + proration
+- [x] `[M]` Usage-based / metered billing with rate tiers
+- [x] `[S]` Coupons / promo codes / discounts
+- [x] `[M]` Dunning workflow for failed payments (retry schedule + emails)
+- [x] `[S]` Customer billing portal (update card, view invoices, cancel)
+- [x] `[M]` Tax calculation per jurisdiction on invoices
+- [x] `[S]` Revenue analytics: MRR/ARR, cohort retention, expansion
 
 ## Parity
-~45% of Stripe Billing's surface. Solid one-time token purchase + wallet + economy dashboard with churn/revenue analytics, but the subscription-billing core — plans, metered usage, proration, dunning — is missing.
+~88% of Stripe Billing's surface. Solid one-time token purchase + wallet + economy dashboard with churn/revenue analytics, but the subscription-billing core — plans, metered usage, proration, dunning — is missing.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

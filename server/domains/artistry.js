@@ -393,4 +393,699 @@ export default function registerArtistryActions(registerLensAction) {
     artifact.data.mediaInventory = result;
     return { ok: true, result };
   });
+
+  // ─── Behance / ArtStation parity — social-portfolio core ────────────
+  // Project case studies, follow graph + personalized feed, comments /
+  // appreciations / collections, portfolio profile, tag search, job board,
+  // curated galleries. Persistent per-user state on globalThis._concordSTATE.
+
+  function getArtState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.artistryLens) STATE.artistryLens = {};
+    const s = STATE.artistryLens;
+    for (const k of [
+      "projects", "follows", "comments", "appreciations",
+      "collections", "profiles", "jobs", "galleries",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveArtState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const artId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const artNow = () => new Date().toISOString();
+  const artAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const artClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
+  const artArr = (v) => (Array.isArray(v) ? v : []);
+  const artList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+
+  // ── Project pages — multi-image case studies ────────────────────────
+  registerLensAction("artistry", "projectCreate", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const uid = artAid(ctx);
+      const project = {
+        id: artId("proj"),
+        userId: uid,
+        title: artClean(p.title, 160) || "Untitled Project",
+        description: artClean(p.description, 4000),
+        discipline: artClean(p.discipline, 60) || "illustration",
+        tools: artArr(p.tools).map((t) => artClean(t, 60)).filter(Boolean),
+        tags: artArr(p.tags).map((t) => artClean(t, 40).toLowerCase()).filter(Boolean),
+        images: artArr(p.images).map((im, i) => ({
+          url: artClean(typeof im === "string" ? im : im.url, 600),
+          caption: artClean(typeof im === "object" ? im.caption : "", 280),
+          order: typeof im === "object" && Number.isFinite(Number(im.order)) ? Number(im.order) : i,
+        })).filter((im) => im.url),
+        processSteps: artArr(p.processSteps).map((st) => ({
+          title: artClean(typeof st === "string" ? st : st.title, 120),
+          detail: artClean(typeof st === "object" ? st.detail : "", 1000),
+        })).filter((st) => st.title),
+        coverUrl: artClean(p.coverUrl, 600),
+        published: p.published !== false,
+        views: 0,
+        createdAt: artNow(),
+        updatedAt: artNow(),
+      };
+      artList(s.projects, uid).unshift(project);
+      saveArtState();
+      return { ok: true, result: { project } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "projectUpdate", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const uid = artAid(ctx);
+      const list = artList(s.projects, uid);
+      const proj = list.find((x) => x.id === p.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      if (p.title !== undefined) proj.title = artClean(p.title, 160) || proj.title;
+      if (p.description !== undefined) proj.description = artClean(p.description, 4000);
+      if (p.discipline !== undefined) proj.discipline = artClean(p.discipline, 60) || proj.discipline;
+      if (p.tools !== undefined) proj.tools = artArr(p.tools).map((t) => artClean(t, 60)).filter(Boolean);
+      if (p.tags !== undefined) proj.tags = artArr(p.tags).map((t) => artClean(t, 40).toLowerCase()).filter(Boolean);
+      if (p.coverUrl !== undefined) proj.coverUrl = artClean(p.coverUrl, 600);
+      if (p.published !== undefined) proj.published = !!p.published;
+      if (p.images !== undefined) {
+        proj.images = artArr(p.images).map((im, i) => ({
+          url: artClean(typeof im === "string" ? im : im.url, 600),
+          caption: artClean(typeof im === "object" ? im.caption : "", 280),
+          order: typeof im === "object" && Number.isFinite(Number(im.order)) ? Number(im.order) : i,
+        })).filter((im) => im.url);
+      }
+      if (p.processSteps !== undefined) {
+        proj.processSteps = artArr(p.processSteps).map((st) => ({
+          title: artClean(typeof st === "string" ? st : st.title, 120),
+          detail: artClean(typeof st === "object" ? st.detail : "", 1000),
+        })).filter((st) => st.title);
+      }
+      proj.updatedAt = artNow();
+      saveArtState();
+      return { ok: true, result: { project: proj } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "projectDelete", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const list = artList(s.projects, uid);
+      const idx = list.findIndex((x) => x.id === (params || {}).projectId);
+      if (idx === -1) return { ok: false, error: "project_not_found" };
+      list.splice(idx, 1);
+      saveArtState();
+      return { ok: true, result: { deleted: true } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "projectList", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const ownerId = artClean(p.userId, 80) || artAid(ctx);
+      const viewerId = artAid(ctx);
+      let list = (s.projects.get(ownerId) || []).slice();
+      if (ownerId !== viewerId) list = list.filter((x) => x.published);
+      list = list.map((proj) => ({
+        ...proj,
+        appreciations: (s.appreciations.get(proj.id) || []).length,
+        commentCount: (s.comments.get(proj.id) || []).length,
+      }));
+      return { ok: true, result: { projects: list, count: list.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "projectView", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      let found = null;
+      for (const [, list] of s.projects) {
+        const proj = list.find((x) => x.id === p.projectId);
+        if (proj) { found = proj; break; }
+      }
+      if (!found) return { ok: false, error: "project_not_found" };
+      if (found.userId !== artAid(ctx)) found.views += 1;
+      saveArtState();
+      const comments = (s.comments.get(found.id) || []).slice();
+      const appreciations = (s.appreciations.get(found.id) || []);
+      return {
+        ok: true,
+        result: {
+          project: found,
+          comments,
+          appreciations: appreciations.length,
+          appreciated: appreciations.some((a) => a.userId === artAid(ctx)),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Follow / followers graph + personalized feed ────────────────────
+  registerLensAction("artistry", "follow", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const target = artClean((params || {}).targetUserId, 80);
+      if (!target) return { ok: false, error: "targetUserId_required" };
+      if (target === uid) return { ok: false, error: "cannot_follow_self" };
+      const following = artList(s.follows, uid);
+      if (!following.includes(target)) following.push(target);
+      saveArtState();
+      return { ok: true, result: { following: target, followingCount: following.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "unfollow", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const target = artClean((params || {}).targetUserId, 80);
+      const following = artList(s.follows, uid);
+      const idx = following.indexOf(target);
+      if (idx !== -1) following.splice(idx, 1);
+      saveArtState();
+      return { ok: true, result: { unfollowed: target, followingCount: following.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "followGraph", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artClean((params || {}).userId, 80) || artAid(ctx);
+      const following = (s.follows.get(uid) || []).slice();
+      const followers = [];
+      for (const [u, list] of s.follows) {
+        if (list.includes(uid)) followers.push(u);
+      }
+      const mutuals = following.filter((f) => followers.includes(f));
+      return {
+        ok: true,
+        result: {
+          userId: uid,
+          following, followers, mutuals,
+          followingCount: following.length,
+          followerCount: followers.length,
+          mutualCount: mutuals.length,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "personalizedFeed", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const following = (s.follows.get(uid) || []);
+      const limit = Math.min(60, Math.max(1, Number((params || {}).limit) || 24));
+      let feed = [];
+      for (const followed of following) {
+        for (const proj of (s.projects.get(followed) || [])) {
+          if (proj.published) {
+            feed.push({
+              ...proj,
+              appreciations: (s.appreciations.get(proj.id) || []).length,
+              commentCount: (s.comments.get(proj.id) || []).length,
+            });
+          }
+        }
+      }
+      feed.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const fromFollows = feed.length;
+      // If empty, fall back to discovery (most-appreciated published projects).
+      let mode = "follows";
+      if (feed.length === 0) {
+        mode = "discovery";
+        for (const [owner, list] of s.projects) {
+          if (owner === uid) continue;
+          for (const proj of list) {
+            if (proj.published) {
+              feed.push({
+                ...proj,
+                appreciations: (s.appreciations.get(proj.id) || []).length,
+                commentCount: (s.comments.get(proj.id) || []).length,
+              });
+            }
+          }
+        }
+        feed.sort((a, b) => (b.appreciations - a.appreciations) || (b.views - a.views));
+      }
+      return {
+        ok: true,
+        result: { mode, fromFollowsCount: fromFollows, items: feed.slice(0, limit), count: Math.min(feed.length, limit) },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Comments + appreciations ────────────────────────────────────────
+  registerLensAction("artistry", "commentAdd", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const projectId = artClean(p.projectId, 80);
+      const body = artClean(p.body, 1200);
+      if (!projectId) return { ok: false, error: "projectId_required" };
+      if (!body) return { ok: false, error: "body_required" };
+      const comment = {
+        id: artId("cmt"),
+        projectId,
+        userId: artAid(ctx),
+        body,
+        createdAt: artNow(),
+      };
+      artList(s.comments, projectId).push(comment);
+      saveArtState();
+      return { ok: true, result: { comment, commentCount: s.comments.get(projectId).length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "commentList", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const projectId = artClean((params || {}).projectId, 80);
+      const comments = (s.comments.get(projectId) || []).slice();
+      return { ok: true, result: { comments, count: comments.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "commentDelete", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const list = s.comments.get(artClean(p.projectId, 80)) || [];
+      const idx = list.findIndex((c) => c.id === p.commentId && c.userId === artAid(ctx));
+      if (idx === -1) return { ok: false, error: "comment_not_found" };
+      list.splice(idx, 1);
+      saveArtState();
+      return { ok: true, result: { deleted: true, count: list.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "appreciate", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const projectId = artClean((params || {}).projectId, 80);
+      if (!projectId) return { ok: false, error: "projectId_required" };
+      const list = artList(s.appreciations, projectId);
+      const existing = list.findIndex((a) => a.userId === uid);
+      let appreciated;
+      if (existing === -1) {
+        list.push({ userId: uid, createdAt: artNow() });
+        appreciated = true;
+      } else {
+        list.splice(existing, 1);
+        appreciated = false;
+      }
+      saveArtState();
+      return { ok: true, result: { appreciated, count: list.length, projectId } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Collections — save-to-board ─────────────────────────────────────
+  registerLensAction("artistry", "collectionCreate", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      const collection = {
+        id: artId("coll"),
+        userId: uid,
+        name: artClean(p.name, 120) || "New Collection",
+        description: artClean(p.description, 600),
+        isPrivate: !!p.isPrivate,
+        projectIds: [],
+        createdAt: artNow(),
+      };
+      artList(s.collections, uid).push(collection);
+      saveArtState();
+      return { ok: true, result: { collection } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "collectionList", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const owner = artClean((params || {}).userId, 80) || artAid(ctx);
+      const viewer = artAid(ctx);
+      let list = (s.collections.get(owner) || []).slice();
+      if (owner !== viewer) list = list.filter((c) => !c.isPrivate);
+      list = list.map((c) => ({ ...c, itemCount: c.projectIds.length }));
+      return { ok: true, result: { collections: list, count: list.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "collectionSave", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      const list = s.collections.get(uid) || [];
+      const coll = list.find((c) => c.id === p.collectionId);
+      if (!coll) return { ok: false, error: "collection_not_found" };
+      const projectId = artClean(p.projectId, 80);
+      if (!projectId) return { ok: false, error: "projectId_required" };
+      let saved;
+      const idx = coll.projectIds.indexOf(projectId);
+      if (idx === -1) { coll.projectIds.push(projectId); saved = true; }
+      else { coll.projectIds.splice(idx, 1); saved = false; }
+      saveArtState();
+      return { ok: true, result: { saved, collectionId: coll.id, itemCount: coll.projectIds.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "collectionItems", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      let coll = null;
+      for (const [, list] of s.collections) {
+        const c = list.find((x) => x.id === p.collectionId);
+        if (c) { coll = c; break; }
+      }
+      if (!coll) return { ok: false, error: "collection_not_found" };
+      if (coll.isPrivate && coll.userId !== artAid(ctx)) return { ok: false, error: "collection_private" };
+      const items = [];
+      for (const pid of coll.projectIds) {
+        for (const [, list] of s.projects) {
+          const proj = list.find((x) => x.id === pid);
+          if (proj) { items.push(proj); break; }
+        }
+      }
+      return { ok: true, result: { collection: coll, items, count: items.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Portfolio profile page ──────────────────────────────────────────
+  registerLensAction("artistry", "profileUpdate", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const p = params || {};
+      const prev = s.profiles.get(uid) || {};
+      const profile = {
+        userId: uid,
+        displayName: artClean(p.displayName, 80) || prev.displayName || uid,
+        headline: artClean(p.headline, 160) ?? prev.headline ?? "",
+        bio: artClean(p.bio, 2000) ?? prev.bio ?? "",
+        location: artClean(p.location, 120) ?? prev.location ?? "",
+        avatarUrl: artClean(p.avatarUrl, 600) ?? prev.avatarUrl ?? "",
+        bannerUrl: artClean(p.bannerUrl, 600) ?? prev.bannerUrl ?? "",
+        disciplines: p.disciplines !== undefined
+          ? artArr(p.disciplines).map((d) => artClean(d, 60)).filter(Boolean)
+          : (prev.disciplines || []),
+        availableForHire: p.availableForHire !== undefined ? !!p.availableForHire : !!prev.availableForHire,
+        links: p.links !== undefined
+          ? artArr(p.links).map((l) => ({
+            label: artClean(typeof l === "object" ? l.label : "", 40),
+            url: artClean(typeof l === "string" ? l : l.url, 400),
+          })).filter((l) => l.url)
+          : (prev.links || []),
+        layout: artClean(p.layout, 30) || prev.layout || "grid",
+        updatedAt: artNow(),
+        createdAt: prev.createdAt || artNow(),
+      };
+      s.profiles.set(uid, profile);
+      saveArtState();
+      return { ok: true, result: { profile } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "profileGet", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artClean((params || {}).userId, 80) || artAid(ctx);
+      const viewer = artAid(ctx);
+      const profile = s.profiles.get(uid) || {
+        userId: uid, displayName: uid, headline: "", bio: "", location: "",
+        avatarUrl: "", bannerUrl: "", disciplines: [], availableForHire: false,
+        links: [], layout: "grid",
+      };
+      let projects = (s.projects.get(uid) || []);
+      if (uid !== viewer) projects = projects.filter((x) => x.published);
+      const totalViews = projects.reduce((sum, p) => sum + (p.views || 0), 0);
+      const totalAppreciations = projects.reduce(
+        (sum, p) => sum + (s.appreciations.get(p.id) || []).length, 0);
+      const followers = [];
+      for (const [u, list] of s.follows) { if (list.includes(uid)) followers.push(u); }
+      return {
+        ok: true,
+        result: {
+          profile,
+          projects: projects.map((p) => ({
+            id: p.id, title: p.title, coverUrl: p.coverUrl || (p.images[0]?.url || ""),
+            discipline: p.discipline, views: p.views,
+            appreciations: (s.appreciations.get(p.id) || []).length,
+          })),
+          stats: {
+            projectCount: projects.length,
+            totalViews,
+            totalAppreciations,
+            followerCount: followers.length,
+            followingCount: (s.follows.get(uid) || []).length,
+          },
+          isOwner: uid === viewer,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Tags / categories / search-by-discipline ────────────────────────
+  registerLensAction("artistry", "search", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const q = artClean(p.query, 120).toLowerCase();
+      const discipline = artClean(p.discipline, 60).toLowerCase();
+      const tag = artClean(p.tag, 40).toLowerCase();
+      const sort = artClean(p.sort, 20) || "recent";
+      const viewer = artAid(ctx);
+      let results = [];
+      for (const [owner, list] of s.projects) {
+        for (const proj of list) {
+          if (!proj.published && owner !== viewer) continue;
+          if (discipline && proj.discipline.toLowerCase() !== discipline) continue;
+          if (tag && !proj.tags.includes(tag)) continue;
+          if (q) {
+            const hay = `${proj.title} ${proj.description} ${proj.tags.join(" ")} ${proj.discipline}`.toLowerCase();
+            if (!hay.includes(q)) continue;
+          }
+          results.push({
+            ...proj,
+            appreciations: (s.appreciations.get(proj.id) || []).length,
+            commentCount: (s.comments.get(proj.id) || []).length,
+          });
+        }
+      }
+      if (sort === "appreciated") results.sort((a, b) => b.appreciations - a.appreciations);
+      else if (sort === "viewed") results.sort((a, b) => b.views - a.views);
+      else results.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      return { ok: true, result: { results, count: results.length, query: q, discipline, tag, sort } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "tagCloud", (ctx, artifact, _params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const viewer = artAid(ctx);
+      const tagCounts = {};
+      const disciplineCounts = {};
+      for (const [owner, list] of s.projects) {
+        for (const proj of list) {
+          if (!proj.published && owner !== viewer) continue;
+          for (const t of proj.tags) tagCounts[t] = (tagCounts[t] || 0) + 1;
+          const d = proj.discipline || "other";
+          disciplineCounts[d] = (disciplineCounts[d] || 0) + 1;
+        }
+      }
+      const tags = Object.entries(tagCounts).map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count);
+      const disciplines = Object.entries(disciplineCounts).map(([discipline, count]) => ({ discipline, count }))
+        .sort((a, b) => b.count - a.count);
+      return { ok: true, result: { tags, disciplines, tagCount: tags.length, disciplineCount: disciplines.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Job board / commission requests ─────────────────────────────────
+  registerLensAction("artistry", "jobPost", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const title = artClean(p.title, 160);
+      if (!title) return { ok: false, error: "title_required" };
+      const job = {
+        id: artId("job"),
+        posterId: artAid(ctx),
+        title,
+        description: artClean(p.description, 3000),
+        discipline: artClean(p.discipline, 60) || "illustration",
+        kind: ["full-time", "contract", "commission", "freelance"].includes(p.kind) ? p.kind : "commission",
+        budgetMin: Number.isFinite(Number(p.budgetMin)) ? Math.max(0, Number(p.budgetMin)) : 0,
+        budgetMax: Number.isFinite(Number(p.budgetMax)) ? Math.max(0, Number(p.budgetMax)) : 0,
+        remote: p.remote !== false,
+        location: artClean(p.location, 120),
+        tags: artArr(p.tags).map((t) => artClean(t, 40).toLowerCase()).filter(Boolean),
+        status: "open",
+        applications: [],
+        createdAt: artNow(),
+      };
+      // jobs Map is keyed by a single "board" bucket for global discovery.
+      artList(s.jobs, "board").unshift(job);
+      saveArtState();
+      return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "jobList", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const discipline = artClean(p.discipline, 60).toLowerCase();
+      const kind = artClean(p.kind, 30).toLowerCase();
+      const mine = !!p.mine;
+      const uid = artAid(ctx);
+      let jobs = (s.jobs.get("board") || []).slice();
+      if (discipline) jobs = jobs.filter((j) => j.discipline.toLowerCase() === discipline);
+      if (kind) jobs = jobs.filter((j) => j.kind === kind);
+      if (mine) jobs = jobs.filter((j) => j.posterId === uid);
+      if (!mine && !p.includeClosed) jobs = jobs.filter((j) => j.status === "open");
+      jobs = jobs.map((j) => ({
+        ...j,
+        applicationCount: j.applications.length,
+        applied: j.applications.some((a) => a.userId === uid),
+      }));
+      return { ok: true, result: { jobs, count: jobs.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "jobApply", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const uid = artAid(ctx);
+      const jobs = s.jobs.get("board") || [];
+      const job = jobs.find((j) => j.id === p.jobId);
+      if (!job) return { ok: false, error: "job_not_found" };
+      if (job.posterId === uid) return { ok: false, error: "cannot_apply_own_job" };
+      if (job.status !== "open") return { ok: false, error: "job_closed" };
+      if (job.applications.some((a) => a.userId === uid)) return { ok: false, error: "already_applied" };
+      job.applications.push({
+        userId: uid,
+        message: artClean(p.message, 1500),
+        portfolioProjectId: artClean(p.portfolioProjectId, 80),
+        quote: Number.isFinite(Number(p.quote)) ? Math.max(0, Number(p.quote)) : null,
+        createdAt: artNow(),
+      });
+      saveArtState();
+      return { ok: true, result: { applied: true, jobId: job.id, applicationCount: job.applications.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "jobClose", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const uid = artAid(ctx);
+      const jobs = s.jobs.get("board") || [];
+      const job = jobs.find((j) => j.id === (params || {}).jobId);
+      if (!job) return { ok: false, error: "job_not_found" };
+      if (job.posterId !== uid) return { ok: false, error: "not_job_owner" };
+      job.status = "closed";
+      saveArtState();
+      return { ok: true, result: { closed: true, jobId: job.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Behance-style "served sites" / curated galleries ────────────────
+  registerLensAction("artistry", "galleryCreate", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const p = params || {};
+      const title = artClean(p.title, 140);
+      if (!title) return { ok: false, error: "title_required" };
+      const gallery = {
+        id: artId("gal"),
+        curatorId: artAid(ctx),
+        title,
+        theme: artClean(p.theme, 80) || "Featured",
+        description: artClean(p.description, 1000),
+        projectIds: artArr(p.projectIds).map((x) => artClean(x, 80)).filter(Boolean),
+        featured: !!p.featured,
+        createdAt: artNow(),
+      };
+      artList(s.galleries, "curated").unshift(gallery);
+      saveArtState();
+      return { ok: true, result: { gallery } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "galleryList", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const theme = artClean((params || {}).theme, 80).toLowerCase();
+      let galleries = (s.galleries.get("curated") || []).slice();
+      if (theme) galleries = galleries.filter((g) => g.theme.toLowerCase() === theme);
+      galleries = galleries.map((g) => ({ ...g, projectCount: g.projectIds.length }));
+      galleries.sort((a, b) => (Number(b.featured) - Number(a.featured))
+        || (Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+      return { ok: true, result: { galleries, count: galleries.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("artistry", "galleryItems", (ctx, artifact, params) => {
+    try {
+      const s = getArtState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const gallery = (s.galleries.get("curated") || []).find((g) => g.id === (params || {}).galleryId);
+      if (!gallery) return { ok: false, error: "gallery_not_found" };
+      const items = [];
+      for (const pid of gallery.projectIds) {
+        for (const [, list] of s.projects) {
+          const proj = list.find((x) => x.id === pid && x.published);
+          if (proj) {
+            items.push({
+              ...proj,
+              appreciations: (s.appreciations.get(proj.id) || []).length,
+            });
+            break;
+          }
+        }
+      }
+      return { ok: true, result: { gallery, items, count: items.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
 }

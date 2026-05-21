@@ -40,6 +40,7 @@ import { showToast } from '@/components/common/Toasts';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { WoodSpeciesReference } from '@/components/carpentry/WoodSpeciesReference';
 import { CarpentryShop } from '@/components/carpentry/CarpentryShop';
+import { JobOps } from '@/components/carpentry/JobOps';
 
 type ModeTab =
   | 'jobs'
@@ -771,6 +772,11 @@ export default function CarpentryLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+
+      <section className="mt-6 rounded-xl border border-amber-700/20 bg-zinc-950/40 p-4">
+        <JobOps />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <WoodSpeciesReference />
       </section>

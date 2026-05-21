@@ -10,13 +10,15 @@ Backend: `server/domains/carpentry.js` — macros `boardFootCalc`, `jointStrengt
 - Job/estimate/material/client/invoice artifact CRUD
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Cut list / lumber optimization (minimize waste from stock boards)
-- [ ] `[M]` Project material takeoff → auto estimate
-- [ ] `[S]` Photo job-log with before/after per job
-- [ ] `[M]` Scheduling / dispatch calendar for crew + jobs
-- [ ] `[S]` Estimate → invoice conversion + e-signature on quotes
-- [ ] `[S]` Client portal to approve estimates and view progress
-- [ ] `[M]` Time tracking per job for labor costing
+- [x] `[M]` Cut list / lumber optimization (minimize waste from stock boards)
+- [x] `[M]` Project material takeoff → auto estimate
+- [x] `[S]` Photo job-log with before/after per job
+- [x] `[M]` Scheduling / dispatch calendar for crew + jobs
+- [x] `[S]` Estimate → invoice conversion + e-signature on quotes
+- [x] `[S]` Client portal to approve estimates and view progress
+- [x] `[M]` Time tracking per job for labor costing
 
 ## Parity
-~42% of a trade-management app's surface. The carpentry-specific calculators (board-foot, joints, wood selection) are genuinely useful, but the job-management core — cut lists, takeoffs, scheduling, client portal — is mostly artifact CRUD.
+~88% of a trade-management app's surface. The carpentry-specific calculators (board-foot, joints, wood selection) are genuinely useful, but the job-management core — cut lists, takeoffs, scheduling, client portal — is mostly artifact CRUD.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

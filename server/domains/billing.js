@@ -486,4 +486,603 @@ export default function registerBillingActions(registerLensAction) {
     artifact.data.churnPrediction = result;
     return { ok: true, result };
   });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Parity-sprint macros — subscription billing core
+  // Persistent per-user state in globalThis._concordSTATE.billingLens.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  function getBillState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.billingLens) STATE.billingLens = {};
+    const s = STATE.billingLens;
+    for (const k of [
+      "plans", "subscriptions", "usage", "coupons",
+      "customers", "invoices", "dunning",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveBillState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const billAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const billId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const billNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const round2 = (v) => Math.round(v * 100) / 100;
+  const CYCLE_DAYS = { monthly: 30, quarterly: 91, annual: 365, weekly: 7 };
+  function cycleDays(interval) { return CYCLE_DAYS[interval] || 30; }
+  function listFor(map, userId) { return map.get(userId) || []; }
+  function ensureList(map, userId) { if (!map.has(userId)) map.set(userId, []); return map.get(userId); }
+
+  // ─── Feature: Recurring subscription plans + billing cycles + proration ───
+
+  registerLensAction("billing", "plan-list", (ctx) => {
+    const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { plans: listFor(s.plans, billAid(ctx)) } };
+  });
+
+  registerLensAction("billing", "plan-create", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      const interval = ["monthly", "quarterly", "annual", "weekly"].includes(params.interval) ? params.interval : "monthly";
+      const plan = {
+        id: billId("plan"),
+        name,
+        interval,
+        amount: Math.max(0, round2(billNum(params.amount))),
+        currency: String(params.currency || "USD").toUpperCase(),
+        trialDays: Math.max(0, Math.round(billNum(params.trialDays))),
+        meteredComponent: params.meteredComponent ? String(params.meteredComponent) : null,
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
+      ensureList(s.plans, userId).push(plan);
+      saveBillState();
+      return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "subscription-list", (ctx) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const plans = listFor(s.plans, userId);
+      const subs = listFor(s.subscriptions, userId).map((sub) => ({
+        ...sub,
+        plan: plans.find((p) => p.id === sub.planId) || null,
+      }));
+      const now = Date.now();
+      const mrr = round2(subs
+        .filter((x) => x.status === "active" || x.status === "trialing")
+        .reduce((acc, x) => {
+          const p = x.plan; if (!p) return acc;
+          return acc + (p.amount / cycleDays(p.interval)) * 30;
+        }, 0));
+      return {
+        ok: true,
+        result: {
+          subscriptions: subs,
+          activeCount: subs.filter((x) => x.status === "active").length,
+          trialingCount: subs.filter((x) => x.status === "trialing").length,
+          mrr,
+          arr: round2(mrr * 12),
+          asOf: new Date(now).toISOString(),
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "subscription-create", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const plan = listFor(s.plans, userId).find((p) => p.id === params.planId);
+      if (!plan) return { ok: false, error: "plan not found" };
+      const customerName = String(params.customerName || "Customer").trim();
+      const now = new Date();
+      const trialing = plan.trialDays > 0;
+      const periodStart = now;
+      const periodEnd = new Date(now.getTime() + (trialing ? plan.trialDays : cycleDays(plan.interval)) * 86400000);
+      const sub = {
+        id: billId("sub"),
+        planId: plan.id,
+        customerName,
+        quantity: Math.max(1, Math.round(billNum(params.quantity, 1))),
+        status: trialing ? "trialing" : "active",
+        currentPeriodStart: periodStart.toISOString(),
+        currentPeriodEnd: periodEnd.toISOString(),
+        cancelAtPeriodEnd: false,
+        createdAt: now.toISOString(),
+      };
+      ensureList(s.subscriptions, userId).push(sub);
+      saveBillState();
+      return { ok: true, result: { subscription: sub } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Proration when switching plans mid-cycle.
+  registerLensAction("billing", "subscription-proration", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const subs = listFor(s.subscriptions, userId);
+      const plans = listFor(s.plans, userId);
+      const sub = subs.find((x) => x.id === params.subscriptionId);
+      if (!sub) return { ok: false, error: "subscription not found" };
+      const oldPlan = plans.find((p) => p.id === sub.planId);
+      const newPlan = plans.find((p) => p.id === params.newPlanId);
+      if (!oldPlan || !newPlan) return { ok: false, error: "plan not found" };
+      const periodStart = new Date(sub.currentPeriodStart).getTime();
+      const periodEnd = new Date(sub.currentPeriodEnd).getTime();
+      const now = Date.now();
+      const totalMs = Math.max(1, periodEnd - periodStart);
+      const remainingMs = Math.max(0, periodEnd - now);
+      const remainingFraction = remainingMs / totalMs;
+      const unusedCredit = round2(oldPlan.amount * sub.quantity * remainingFraction);
+      const newPlanProrated = round2(newPlan.amount * sub.quantity * remainingFraction);
+      const amountDue = round2(newPlanProrated - unusedCredit);
+      const result = {
+        subscriptionId: sub.id,
+        fromPlan: oldPlan.name,
+        toPlan: newPlan.name,
+        remainingDays: Math.round(remainingMs / 86400000),
+        remainingFraction: round2(remainingFraction),
+        unusedCredit,
+        newPlanProrated,
+        amountDue,
+        direction: amountDue >= 0 ? "upgrade-charge" : "downgrade-credit",
+      };
+      if (params.apply === true) {
+        sub.planId = newPlan.id;
+        saveBillState();
+        result.applied = true;
+      }
+      return { ok: true, result };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "subscription-cancel", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const sub = listFor(s.subscriptions, userId).find((x) => x.id === params.subscriptionId);
+      if (!sub) return { ok: false, error: "subscription not found" };
+      if (params.immediate === true) {
+        sub.status = "canceled";
+        sub.canceledAt = new Date().toISOString();
+      } else {
+        sub.cancelAtPeriodEnd = true;
+      }
+      saveBillState();
+      return { ok: true, result: { subscription: sub } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ─── Feature: Usage-based / metered billing with rate tiers ───
+
+  registerLensAction("billing", "usage-record", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const subId = String(params.subscriptionId || "").trim();
+      if (!subId) return { ok: false, error: "subscriptionId required" };
+      const qty = billNum(params.quantity);
+      if (qty <= 0) return { ok: false, error: "quantity must be positive" };
+      const rec = {
+        id: billId("use"),
+        subscriptionId: subId,
+        metric: String(params.metric || "api_calls"),
+        quantity: qty,
+        timestamp: params.timestamp || new Date().toISOString(),
+      };
+      ensureList(s.usage, userId).push(rec);
+      saveBillState();
+      return { ok: true, result: { record: rec } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Compute metered charge across rate tiers (graduated pricing).
+  registerLensAction("billing", "usage-summary", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const subId = String(params.subscriptionId || "").trim();
+      const records = listFor(s.usage, userId).filter((r) => !subId || r.subscriptionId === subId);
+      const totalQty = records.reduce((acc, r) => acc + r.quantity, 0);
+      // Default graduated tier table — overridable via params.tiers.
+      const tiers = Array.isArray(params.tiers) && params.tiers.length
+        ? params.tiers.map((t) => ({ upTo: t.upTo == null ? Infinity : billNum(t.upTo), unitPrice: billNum(t.unitPrice) }))
+        : [
+          { upTo: 1000, unitPrice: 0 },
+          { upTo: 10000, unitPrice: 0.002 },
+          { upTo: 100000, unitPrice: 0.0015 },
+          { upTo: Infinity, unitPrice: 0.001 },
+        ];
+      let remaining = totalQty;
+      let lastBound = 0;
+      let charge = 0;
+      const breakdown = [];
+      for (const tier of tiers) {
+        if (remaining <= 0) break;
+        const span = tier.upTo - lastBound;
+        const inTier = Math.min(remaining, span);
+        const tierCharge = round2(inTier * tier.unitPrice);
+        breakdown.push({
+          range: `${lastBound + 1}–${tier.upTo === Infinity ? "∞" : tier.upTo}`,
+          units: inTier,
+          unitPrice: tier.unitPrice,
+          charge: tierCharge,
+        });
+        charge += tierCharge;
+        remaining -= inTier;
+        lastBound = tier.upTo;
+      }
+      // Per-metric breakdown.
+      const byMetric = {};
+      for (const r of records) byMetric[r.metric] = round2((byMetric[r.metric] || 0) + r.quantity);
+      return {
+        ok: true,
+        result: {
+          subscriptionId: subId || null,
+          recordCount: records.length,
+          totalQuantity: totalQty,
+          totalCharge: round2(charge),
+          tierBreakdown: breakdown,
+          byMetric,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ─── Feature: Coupons / promo codes / discounts ───
+
+  registerLensAction("billing", "coupon-list", (ctx) => {
+    const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { coupons: listFor(s.coupons, billAid(ctx)) } };
+  });
+
+  registerLensAction("billing", "coupon-create", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const code = String(params.code || "").trim().toUpperCase();
+      if (!code) return { ok: false, error: "code required" };
+      const existing = listFor(s.coupons, userId);
+      if (existing.some((c) => c.code === code)) return { ok: false, error: "coupon code already exists" };
+      const kind = params.kind === "fixed" ? "fixed" : "percent";
+      const value = Math.max(0, billNum(params.value));
+      if (value <= 0) return { ok: false, error: "value must be positive" };
+      const coupon = {
+        id: billId("cpn"),
+        code,
+        kind,
+        value: kind === "percent" ? Math.min(100, value) : round2(value),
+        duration: ["once", "forever", "repeating"].includes(params.duration) ? params.duration : "once",
+        maxRedemptions: params.maxRedemptions ? Math.max(1, Math.round(billNum(params.maxRedemptions))) : null,
+        redemptions: 0,
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
+      ensureList(s.coupons, userId).push(coupon);
+      saveBillState();
+      return { ok: true, result: { coupon } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Validate a code against an amount and return the discounted total.
+  registerLensAction("billing", "coupon-apply", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const code = String(params.code || "").trim().toUpperCase();
+      const amount = Math.max(0, billNum(params.amount));
+      const coupon = listFor(s.coupons, userId).find((c) => c.code === code);
+      if (!coupon) return { ok: false, error: "invalid coupon code" };
+      if (!coupon.active) return { ok: false, error: "coupon inactive" };
+      if (coupon.maxRedemptions != null && coupon.redemptions >= coupon.maxRedemptions) {
+        return { ok: false, error: "coupon redemption limit reached" };
+      }
+      const discount = coupon.kind === "percent"
+        ? round2(amount * (coupon.value / 100))
+        : Math.min(amount, coupon.value);
+      const finalAmount = round2(amount - discount);
+      if (params.redeem === true) {
+        coupon.redemptions += 1;
+        if (coupon.maxRedemptions != null && coupon.redemptions >= coupon.maxRedemptions) coupon.active = false;
+        saveBillState();
+      }
+      return {
+        ok: true,
+        result: {
+          code: coupon.code,
+          kind: coupon.kind,
+          discount,
+          originalAmount: round2(amount),
+          finalAmount,
+          redeemed: params.redeem === true,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ─── Feature: Customer billing portal (cards, invoices, cancel) ───
+
+  registerLensAction("billing", "portal-overview", (ctx) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const customers = listFor(s.customers, userId);
+      const subs = listFor(s.subscriptions, userId);
+      const invoices = listFor(s.invoices, userId);
+      const plans = listFor(s.plans, userId);
+      const activeSubs = subs.filter((x) => x.status === "active" || x.status === "trialing").map((x) => ({
+        ...x, plan: plans.find((p) => p.id === x.planId) || null,
+      }));
+      return {
+        ok: true,
+        result: {
+          customer: customers[0] || null,
+          paymentMethod: customers[0]?.paymentMethod || null,
+          activeSubscriptions: activeSubs,
+          invoices: invoices.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")),
+          openInvoiceCount: invoices.filter((i) => i.status === "open" || i.status === "past_due").length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Update / add the saved card on file (last4 only — never store full PAN).
+  registerLensAction("billing", "portal-update-card", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const raw = String(params.cardNumber || "").replace(/\D/g, "");
+      if (raw.length < 12) return { ok: false, error: "invalid card number" };
+      const expMonth = Math.round(billNum(params.expMonth));
+      const expYear = Math.round(billNum(params.expYear));
+      if (expMonth < 1 || expMonth > 12) return { ok: false, error: "invalid expiry month" };
+      if (expYear < new Date().getFullYear()) return { ok: false, error: "card expired" };
+      const brand = raw.startsWith("4") ? "Visa"
+        : /^5[1-5]/.test(raw) ? "Mastercard"
+          : /^3[47]/.test(raw) ? "Amex"
+            : "Card";
+      const customers = ensureList(s.customers, userId);
+      let customer = customers[0];
+      if (!customer) {
+        customer = { id: billId("cus"), name: String(params.name || "Account holder"), createdAt: new Date().toISOString() };
+        customers.push(customer);
+      }
+      customer.paymentMethod = {
+        brand,
+        last4: raw.slice(-4),
+        expMonth,
+        expYear,
+        updatedAt: new Date().toISOString(),
+      };
+      saveBillState();
+      return { ok: true, result: { paymentMethod: customer.paymentMethod } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ─── Feature: Tax calculation per jurisdiction ───
+
+  // Jurisdiction → effective sales/VAT rate table (representative real-world rates).
+  const TAX_RATES = {
+    "US-CA": { rate: 0.0725, label: "California sales tax", kind: "sales_tax" },
+    "US-NY": { rate: 0.08875, label: "New York sales tax", kind: "sales_tax" },
+    "US-TX": { rate: 0.0625, label: "Texas sales tax", kind: "sales_tax" },
+    "US-WA": { rate: 0.065, label: "Washington sales tax", kind: "sales_tax" },
+    "US-OR": { rate: 0, label: "Oregon (no sales tax)", kind: "sales_tax" },
+    "EU-DE": { rate: 0.19, label: "Germany VAT", kind: "vat" },
+    "EU-FR": { rate: 0.20, label: "France VAT", kind: "vat" },
+    "EU-IE": { rate: 0.23, label: "Ireland VAT", kind: "vat" },
+    "GB": { rate: 0.20, label: "UK VAT", kind: "vat" },
+    "CA-ON": { rate: 0.13, label: "Ontario HST", kind: "hst" },
+    "AU": { rate: 0.10, label: "Australia GST", kind: "gst" },
+    "JP": { rate: 0.10, label: "Japan consumption tax", kind: "consumption_tax" },
+  };
+
+  registerLensAction("billing", "tax-jurisdictions", () => ({
+    ok: true,
+    result: {
+      jurisdictions: Object.entries(TAX_RATES).map(([code, t]) => ({
+        code, rate: t.rate, ratePct: round2(t.rate * 100), label: t.label, kind: t.kind,
+      })),
+    },
+  }));
+
+  registerLensAction("billing", "tax-calculate", (ctx, _artifact, params = {}) => {
+    try {
+      const jurisdiction = String(params.jurisdiction || "").trim().toUpperCase();
+      const entry = TAX_RATES[jurisdiction];
+      if (!entry) return { ok: false, error: `unknown jurisdiction: ${jurisdiction || "(none)"}` };
+      const amount = Math.max(0, billNum(params.amount));
+      // EU/GB VAT reverse charge for B2B with a valid VAT id.
+      const reverseCharge = entry.kind === "vat" && params.b2b === true && !!String(params.taxId || "").trim();
+      const effectiveRate = reverseCharge ? 0 : entry.rate;
+      const taxAmount = round2(amount * effectiveRate);
+      return {
+        ok: true,
+        result: {
+          jurisdiction,
+          label: entry.label,
+          taxKind: entry.kind,
+          rate: effectiveRate,
+          ratePct: round2(effectiveRate * 100),
+          netAmount: round2(amount),
+          taxAmount,
+          grossAmount: round2(amount + taxAmount),
+          reverseCharge,
+          note: reverseCharge ? "B2B reverse charge applied — customer self-accounts for VAT" : null,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ─── Feature: Dunning workflow for failed payments ───
+
+  // Open a dunning case with a retry schedule when a charge fails.
+  registerLensAction("billing", "dunning-open", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const amount = Math.max(0, billNum(params.amount));
+      if (amount <= 0) return { ok: false, error: "amount must be positive" };
+      const retryOffsetsDays = [1, 3, 5, 7];
+      const now = Date.now();
+      const schedule = retryOffsetsDays.map((d, i) => ({
+        attempt: i + 1,
+        scheduledFor: new Date(now + d * 86400000).toISOString(),
+        emailTemplate: i === 0 ? "payment_failed" : i === retryOffsetsDays.length - 1 ? "final_notice" : "payment_retry",
+        status: "pending",
+      }));
+      const dunning = {
+        id: billId("dun"),
+        subscriptionId: params.subscriptionId ? String(params.subscriptionId) : null,
+        invoiceId: params.invoiceId ? String(params.invoiceId) : null,
+        amount: round2(amount),
+        currency: String(params.currency || "USD").toUpperCase(),
+        reason: String(params.reason || "card_declined"),
+        status: "in_progress",
+        attemptsUsed: 0,
+        schedule,
+        openedAt: new Date(now).toISOString(),
+      };
+      ensureList(s.dunning, userId).push(dunning);
+      saveBillState();
+      return { ok: true, result: { dunning } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "dunning-list", (ctx) => {
+    const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const all = listFor(s.dunning, billAid(ctx));
+    return {
+      ok: true,
+      result: {
+        cases: all,
+        openCount: all.filter((d) => d.status === "in_progress").length,
+        recoveredCount: all.filter((d) => d.status === "recovered").length,
+        lostCount: all.filter((d) => d.status === "lost").length,
+      },
+    };
+  });
+
+  // Record a retry outcome — advances or closes the dunning case.
+  registerLensAction("billing", "dunning-retry", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const dunning = listFor(s.dunning, userId).find((d) => d.id === params.dunningId);
+      if (!dunning) return { ok: false, error: "dunning case not found" };
+      if (dunning.status !== "in_progress") return { ok: false, error: "dunning case already closed" };
+      const next = dunning.schedule.find((a) => a.status === "pending");
+      if (!next) return { ok: false, error: "no pending retry" };
+      const succeeded = params.outcome === "succeeded";
+      next.status = succeeded ? "succeeded" : "failed";
+      next.executedAt = new Date().toISOString();
+      dunning.attemptsUsed += 1;
+      if (succeeded) {
+        dunning.status = "recovered";
+        dunning.closedAt = next.executedAt;
+      } else if (!dunning.schedule.some((a) => a.status === "pending")) {
+        dunning.status = "lost";
+        dunning.closedAt = next.executedAt;
+      }
+      saveBillState();
+      return { ok: true, result: { dunning, attempt: next } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ─── Feature: Revenue analytics — MRR/ARR, cohorts, expansion ───
+
+  // Create an invoice (used by analytics + portal). Light helper macro.
+  registerLensAction("billing", "invoice-create", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const amount = Math.max(0, billNum(params.amount));
+      const invoice = {
+        id: billId("inv"),
+        subscriptionId: params.subscriptionId ? String(params.subscriptionId) : null,
+        customerName: String(params.customerName || "Customer"),
+        amount: round2(amount),
+        currency: String(params.currency || "USD").toUpperCase(),
+        status: ["open", "paid", "past_due", "void"].includes(params.status) ? params.status : "open",
+        createdAt: new Date().toISOString(),
+        dueAt: params.dueAt || new Date(Date.now() + 14 * 86400000).toISOString(),
+      };
+      ensureList(s.invoices, userId).push(invoice);
+      saveBillState();
+      return { ok: true, result: { invoice } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "revenue-analytics", (ctx) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const plans = listFor(s.plans, userId);
+      const subs = listFor(s.subscriptions, userId);
+      const planOf = (id) => plans.find((p) => p.id === id) || null;
+      const monthlyValue = (sub) => {
+        const p = planOf(sub.planId);
+        if (!p) return 0;
+        return (p.amount * sub.quantity / cycleDays(p.interval)) * 30;
+      };
+      const activeSubs = subs.filter((x) => x.status === "active" || x.status === "trialing");
+      const mrr = round2(activeSubs.reduce((acc, x) => acc + monthlyValue(x), 0));
+      // Cohort retention by signup month.
+      const cohorts = {};
+      for (const sub of subs) {
+        const month = (sub.createdAt || "").slice(0, 7) || "unknown";
+        if (!cohorts[month]) cohorts[month] = { signups: 0, retained: 0, churned: 0, mrr: 0 };
+        cohorts[month].signups += 1;
+        if (sub.status === "canceled") cohorts[month].churned += 1;
+        else { cohorts[month].retained += 1; cohorts[month].mrr = round2(cohorts[month].mrr + monthlyValue(sub)); }
+      }
+      const cohortRows = Object.entries(cohorts)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([month, c]) => ({
+          month,
+          signups: c.signups,
+          retained: c.retained,
+          churned: c.churned,
+          retentionPct: c.signups > 0 ? round2((c.retained / c.signups) * 100) : 0,
+          mrr: c.mrr,
+        }));
+      // Expansion: total quantity above the seat-1 baseline.
+      const expansionSeats = activeSubs.reduce((acc, x) => acc + Math.max(0, x.quantity - 1), 0);
+      const expansionMrr = round2(activeSubs.reduce((acc, x) => {
+        const p = planOf(x.planId);
+        if (!p || x.quantity <= 1) return acc;
+        return acc + ((p.amount * (x.quantity - 1)) / cycleDays(p.interval)) * 30;
+      }, 0));
+      const churnedCount = subs.filter((x) => x.status === "canceled").length;
+      const churnRatePct = subs.length > 0 ? round2((churnedCount / subs.length) * 100) : 0;
+      return {
+        ok: true,
+        result: {
+          mrr,
+          arr: round2(mrr * 12),
+          activeSubscriptions: activeSubs.length,
+          totalSubscriptions: subs.length,
+          arpa: activeSubs.length > 0 ? round2(mrr / activeSubs.length) : 0,
+          churnedCount,
+          churnRatePct,
+          expansionSeats,
+          expansionMrr,
+          cohorts: cohortRows,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
 }

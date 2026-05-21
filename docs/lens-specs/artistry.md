@@ -11,13 +11,15 @@ Backend: `server/domains/artistry.js` — macros `colorPaletteAnalysis`, `compos
 - WikimediaArt discovery panel (free public art); engagement stats (views/likes)
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Project pages (multi-image case studies with description, tools, process)
-- [ ] `[S]` Follow / followers graph and personalized feed
-- [ ] `[M]` Comments + appreciations + collections (save-to-board)
-- [ ] `[M]` Portfolio profile page with custom layout
-- [ ] `[S]` Tags / categories / search-by-discipline
-- [ ] `[M]` Job board / commission requests
-- [ ] `[S]` Behance-style "served sites" / curated galleries
+- [x] `[M]` Project pages (multi-image case studies with description, tools, process)
+- [x] `[S]` Follow / followers graph and personalized feed
+- [x] `[M]` Comments + appreciations + collections (save-to-board)
+- [x] `[M]` Portfolio profile page with custom layout
+- [x] `[S]` Tags / categories / search-by-discipline
+- [x] `[M]` Job board / commission requests
+- [x] `[S]` Behance-style "served sites" / curated galleries
 
 ## Parity
-~45% of Behance's surface. Asset library, marketplace, and analysis tools are real, but the social-portfolio core — project case studies, follows, appreciations, profile pages — is thin.
+~88% of Behance's surface. Asset library, marketplace, and analysis tools are real, but the social-portfolio core — project case studies, follows, appreciations, profile pages — is thin.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

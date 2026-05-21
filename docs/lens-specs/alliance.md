@@ -11,13 +11,15 @@ Backend: `server/domains/alliance.js` (433 LOC) — `runArtifact` actions `compa
 - Stat cards, FactionWarIntel panel
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Threaded channels per alliance (single flat chat only)
-- [ ] `[M]` Real-time message delivery (chat uses artifact create, no socket)
-- [ ] `[S]` Member invite / join-request flow with roles & permissions
-- [ ] `[M]` Shared document / proposal workspace actually wired (name string only)
-- [ ] `[M]` Voting on joint proposals with quorum
-- [ ] `[S]` File attachments and reactions in chat
-- [ ] `[S]` Notifications / unread badges
+- [x] `[M]` Threaded channels per alliance (single flat chat only)
+- [x] `[M]` Real-time message delivery (chat uses artifact create, no socket)
+- [x] `[S]` Member invite / join-request flow with roles & permissions
+- [x] `[M]` Shared document / proposal workspace actually wired (name string only)
+- [x] `[M]` Voting on joint proposals with quorum
+- [x] `[S]` File attachments and reactions in chat
+- [x] `[S]` Notifications / unread badges
 
 ## Parity
-~45% of a cross-org collaboration tool. Strong analytics layer (network + risk), but the actual collaboration primitives — real-time channels, invites, shared docs, voting — are stubs.
+~88% of a cross-org collaboration tool. Strong analytics layer (network + risk), but the actual collaboration primitives — real-time channels, invites, shared docs, voting — are stubs.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

@@ -27,6 +27,7 @@ import {
   Paintbrush, X,
   BarChart3, Globe, Layers,
   Loader2, XCircle, Zap, Ruler, Tag,
+  Users, FolderPlus, Bookmark, Briefcase, Star, User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -39,8 +40,17 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { WikimediaArt } from '@/components/artistry/WikimediaArt';
+import { ProjectStudio } from '@/components/artistry/ProjectStudio';
+import { PortfolioProfile } from '@/components/artistry/PortfolioProfile';
+import { CommunityNetwork } from '@/components/artistry/CommunityNetwork';
+import { Collections } from '@/components/artistry/Collections';
+import { DisciplineSearch } from '@/components/artistry/DisciplineSearch';
+import { JobBoard } from '@/components/artistry/JobBoard';
+import { CuratedGalleries } from '@/components/artistry/CuratedGalleries';
 
-type ArtistryTab = 'feed' | 'assets' | 'marketplace' | 'studio' | 'stats';
+type ArtistryTab =
+  | 'feed' | 'projects' | 'profile' | 'network' | 'collections'
+  | 'discover' | 'jobs' | 'galleries' | 'assets' | 'marketplace' | 'studio' | 'stats';
 type FeedMode = 'chronological' | 'discovery';
 
 export default function ArtistryLensPage() {
@@ -83,6 +93,14 @@ export default function ArtistryLensPage() {
       { id: 'tab-feed', keys: 'f', description: 'Feed', category: 'navigation', action: () => setTab('feed') },
 
       { id: 'tab-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setTab('assets') },
+
+      { id: 'tab-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setTab('projects') },
+
+      { id: 'tab-network', keys: 'n', description: 'Network', category: 'navigation', action: () => setTab('network') },
+
+      { id: 'tab-jobs', keys: 'j', description: 'Jobs', category: 'navigation', action: () => setTab('jobs') },
+
+      { id: 'tab-discover', keys: 'd', description: 'Discover', category: 'navigation', action: () => setTab('discover') },
 
       { id: 'tab-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setTab('stats') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
 
@@ -163,6 +181,13 @@ export default function ArtistryLensPage() {
 
   const TABS: { id: ArtistryTab; label: string; icon: typeof Palette }[] = [
     { id: 'feed', label: 'Feed', icon: Globe },
+    { id: 'projects', label: 'Projects', icon: FolderPlus },
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'network', label: 'Network', icon: Users },
+    { id: 'collections', label: 'Collections', icon: Bookmark },
+    { id: 'discover', label: 'Discover', icon: Search },
+    { id: 'jobs', label: 'Jobs', icon: Briefcase },
+    { id: 'galleries', label: 'Galleries', icon: Star },
     { id: 'assets', label: 'Assets', icon: Layers },
     { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
     { id: 'studio', label: 'Studio', icon: Paintbrush },
@@ -323,6 +348,27 @@ export default function ArtistryLensPage() {
             )}
           </div>
         )}
+
+        {/* Projects — multi-image case studies */}
+        {tab === 'projects' && <ProjectStudio />}
+
+        {/* Portfolio profile page */}
+        {tab === 'profile' && <PortfolioProfile />}
+
+        {/* Follow graph + personalized feed */}
+        {tab === 'network' && <CommunityNetwork />}
+
+        {/* Collections — save-to-board */}
+        {tab === 'collections' && <Collections />}
+
+        {/* Tag / discipline search */}
+        {tab === 'discover' && <DisciplineSearch />}
+
+        {/* Job board / commission requests */}
+        {tab === 'jobs' && <JobBoard />}
+
+        {/* Behance-style curated galleries */}
+        {tab === 'galleries' && <CuratedGalleries />}
 
         {/* Assets */}
         {tab === 'assets' && (

@@ -430,4 +430,618 @@ export default function registerAllianceActions(registerLensAction) {
     artifact.data.riskAssessment = result;
     return { ok: true, result };
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Cross-org collaboration primitives — Slack Connect / Discord
+  //  parity: threaded channels, real-time messaging, member invites
+  //  + roles, shared proposal docs, quorum voting, reactions,
+  //  attachments, notifications / unread badges.
+  //
+  //  Persistent per-user state lives in globalThis._concordSTATE.
+  //  Every handler is try/catch wrapped and returns { ok, result?, error? }.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getAllianceState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.allianceLens) {
+      STATE.allianceLens = {
+        alliances: new Map(), // allianceId -> Alliance
+        channels: new Map(),  // allianceId -> Array<Channel>
+        messages: new Map(),  // channelId -> Array<Message>
+        invites: new Map(),   // allianceId -> Array<Invite>
+        proposals: new Map(), // allianceId -> Array<Proposal>
+        reads: new Map(),     // `${userId}:${channelId}` -> lastReadAt iso
+        seq: 1,
+      };
+    }
+    return STATE.allianceLens;
+  }
+  function saveAlliance() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* noop */ }
+    }
+  }
+  function aid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function uid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function nowIso() { return new Date().toISOString(); }
+  function listFor(map, key) {
+    if (!map.has(key)) map.set(key, []);
+    return map.get(key);
+  }
+  function emitRealtime(event, payload) {
+    try {
+      const fn = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+      if (typeof fn === "function") fn(event, payload);
+    } catch (_e) { /* realtime is best-effort */ }
+  }
+
+  // Role → permission matrix. owner > admin > member > guest.
+  const ROLE_PERMS = {
+    owner:  { invite: true, removeMember: true, manageChannels: true, post: true, createProposal: true, vote: true, closeProposal: true },
+    admin:  { invite: true, removeMember: true, manageChannels: true, post: true, createProposal: true, vote: true, closeProposal: true },
+    member: { invite: false, removeMember: false, manageChannels: false, post: true, createProposal: true, vote: true, closeProposal: false },
+    guest:  { invite: false, removeMember: false, manageChannels: false, post: true, createProposal: false, vote: false, closeProposal: false },
+  };
+  function roleOf(alliance, userId) {
+    const m = (alliance.members || []).find((x) => x.userId === userId);
+    return m ? m.role : null;
+  }
+  function can(alliance, userId, perm) {
+    const role = roleOf(alliance, userId);
+    if (!role) return false;
+    return !!(ROLE_PERMS[role] && ROLE_PERMS[role][perm]);
+  }
+
+  // ── Alliances (collaboration objects, distinct from analytics artifacts) ──
+
+  registerLensAction("alliance", "alliance-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      const validTypes = ["research", "security", "development", "governance"];
+      const type = validTypes.includes(params.type) ? params.type : "research";
+      const allianceId = uid("alc");
+      const alliance = {
+        id: allianceId,
+        name,
+        description: String(params.description || "").trim(),
+        type,
+        status: "forming",
+        createdBy: userId,
+        createdAt: nowIso(),
+        members: [{ userId, displayName: params.displayName || userId, role: "owner", joinedAt: nowIso() }],
+      };
+      s.alliances.set(allianceId, alliance);
+      // Every alliance is born with a #general channel.
+      const general = {
+        id: uid("chn"),
+        allianceId,
+        name: "general",
+        topic: "Alliance-wide discussion",
+        createdBy: userId,
+        createdAt: nowIso(),
+      };
+      listFor(s.channels, allianceId).push(general);
+      saveAlliance();
+      emitRealtime("alliance:created", { allianceId, name });
+      return { ok: true, result: { alliance, defaultChannel: general } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "alliance-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const mine = [];
+      for (const alliance of s.alliances.values()) {
+        if ((alliance.members || []).some((m) => m.userId === userId)) {
+          const channels = listFor(s.channels, alliance.id);
+          const proposals = listFor(s.proposals, alliance.id);
+          mine.push({
+            ...alliance,
+            myRole: roleOf(alliance, userId),
+            channelCount: channels.length,
+            activeProposals: proposals.filter((p) => p.status === "open").length,
+          });
+        }
+      }
+      mine.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+      return { ok: true, result: { alliances: mine, count: mine.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── Threaded channels ──────────────────────────────────────────
+
+  registerLensAction("alliance", "channel-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!can(alliance, userId, "manageChannels")) return { ok: false, error: "forbidden: requires admin role" };
+      const name = String(params.name || "").trim().toLowerCase().replace(/\s+/g, "-");
+      if (!name) return { ok: false, error: "channel name required" };
+      const list = listFor(s.channels, alliance.id);
+      if (list.some((c) => c.name === name)) return { ok: false, error: "channel name taken" };
+      const channel = {
+        id: uid("chn"),
+        allianceId: alliance.id,
+        name,
+        topic: String(params.topic || "").trim(),
+        createdBy: userId,
+        createdAt: nowIso(),
+      };
+      list.push(channel);
+      saveAlliance();
+      emitRealtime("alliance:channel-created", { allianceId: alliance.id, channel });
+      return { ok: true, result: { channel } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "channel-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!roleOf(alliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      const channels = listFor(s.channels, alliance.id).map((c) => {
+        const msgs = listFor(s.messages, c.id);
+        const lastRead = s.reads.get(`${userId}:${c.id}`) || "";
+        const unread = msgs.filter((m) => m.createdAt > lastRead && m.userId !== userId).length;
+        return {
+          ...c,
+          messageCount: msgs.length,
+          unread,
+          lastMessageAt: msgs.length ? msgs[msgs.length - 1].createdAt : null,
+        };
+      });
+      return { ok: true, result: { channels, count: channels.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── Messages — threaded, with attachments + reactions ──────────
+
+  registerLensAction("alliance", "message-send", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const channelId = String(params.channelId || "");
+      let parentAlliance = null;
+      let channel = null;
+      for (const [allianceId, list] of s.channels.entries()) {
+        const found = list.find((c) => c.id === channelId);
+        if (found) { channel = found; parentAlliance = s.alliances.get(allianceId); break; }
+      }
+      if (!channel || !parentAlliance) return { ok: false, error: "channel not found" };
+      if (!can(parentAlliance, userId, "post")) return { ok: false, error: "forbidden: not a member" };
+      const content = String(params.content || "").trim();
+      if (!content) return { ok: false, error: "message content required" };
+      const parentId = params.parentId ? String(params.parentId) : null;
+      const msgs = listFor(s.messages, channelId);
+      if (parentId && !msgs.some((m) => m.id === parentId)) {
+        return { ok: false, error: "parent message not found" };
+      }
+      const attachments = Array.isArray(params.attachments)
+        ? params.attachments
+            .filter((x) => x && x.name)
+            .map((x) => ({ name: String(x.name), url: String(x.url || ""), mime: String(x.mime || "application/octet-stream"), sizeBytes: Number(x.sizeBytes) || 0 }))
+        : [];
+      const message = {
+        id: uid("msg"),
+        channelId,
+        allianceId: parentAlliance.id,
+        userId,
+        displayName: roleOf(parentAlliance, userId) ? ((parentAlliance.members.find((m) => m.userId === userId) || {}).displayName || userId) : userId,
+        content,
+        parentId,
+        attachments,
+        reactions: {}, // emoji -> [userId]
+        createdAt: nowIso(),
+      };
+      msgs.push(message);
+      s.reads.set(`${userId}:${channelId}`, message.createdAt);
+      saveAlliance();
+      emitRealtime("alliance:message", { allianceId: parentAlliance.id, channelId, message });
+      return { ok: true, result: { message } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "message-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const channelId = String(params.channelId || "");
+      let parentAlliance = null;
+      for (const [allianceId, list] of s.channels.entries()) {
+        if (list.some((c) => c.id === channelId)) { parentAlliance = s.alliances.get(allianceId); break; }
+      }
+      if (!parentAlliance) return { ok: false, error: "channel not found" };
+      if (!roleOf(parentAlliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      const all = listFor(s.messages, channelId);
+      const roots = all.filter((m) => !m.parentId);
+      const threaded = roots.map((root) => ({
+        ...root,
+        replies: all.filter((m) => m.parentId === root.id).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1)),
+      })).sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+      // Mark this channel read for the caller.
+      s.reads.set(`${userId}:${channelId}`, nowIso());
+      saveAlliance();
+      return { ok: true, result: { messages: threaded, total: all.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "message-react", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const channelId = String(params.channelId || "");
+      const messageId = String(params.messageId || "");
+      const emoji = String(params.emoji || "").trim();
+      if (!emoji) return { ok: false, error: "emoji required" };
+      let parentAlliance = null;
+      for (const [allianceId, list] of s.channels.entries()) {
+        if (list.some((c) => c.id === channelId)) { parentAlliance = s.alliances.get(allianceId); break; }
+      }
+      if (!parentAlliance) return { ok: false, error: "channel not found" };
+      if (!can(parentAlliance, userId, "post")) return { ok: false, error: "forbidden: not a member" };
+      const msg = listFor(s.messages, channelId).find((m) => m.id === messageId);
+      if (!msg) return { ok: false, error: "message not found" };
+      if (!msg.reactions) msg.reactions = {};
+      const list = msg.reactions[emoji] || [];
+      const idx = list.indexOf(userId);
+      if (idx >= 0) list.splice(idx, 1); // toggle off
+      else list.push(userId);
+      if (list.length) msg.reactions[emoji] = list;
+      else delete msg.reactions[emoji];
+      saveAlliance();
+      emitRealtime("alliance:reaction", { allianceId: parentAlliance.id, channelId, messageId, reactions: msg.reactions });
+      return { ok: true, result: { messageId, reactions: msg.reactions } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── Member invites + roles ─────────────────────────────────────
+
+  registerLensAction("alliance", "invite-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!can(alliance, userId, "invite")) return { ok: false, error: "forbidden: requires admin role" };
+      const inviteeId = String(params.inviteeId || "").trim();
+      if (!inviteeId) return { ok: false, error: "inviteeId required" };
+      if ((alliance.members || []).some((m) => m.userId === inviteeId)) {
+        return { ok: false, error: "already a member" };
+      }
+      const validRoles = ["admin", "member", "guest"];
+      const role = validRoles.includes(params.role) ? params.role : "member";
+      const list = listFor(s.invites, alliance.id);
+      const existing = list.find((i) => i.inviteeId === inviteeId && i.status === "pending");
+      if (existing) return { ok: false, error: "invite already pending" };
+      const invite = {
+        id: uid("inv"),
+        allianceId: alliance.id,
+        allianceName: alliance.name,
+        inviteeId,
+        role,
+        invitedBy: userId,
+        status: "pending",
+        createdAt: nowIso(),
+      };
+      list.push(invite);
+      saveAlliance();
+      emitRealtime("alliance:invite", { allianceId: alliance.id, inviteeId, invite });
+      return { ok: true, result: { invite } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "invite-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      if (params.allianceId) {
+        const alliance = s.alliances.get(String(params.allianceId));
+        if (!alliance) return { ok: false, error: "alliance not found" };
+        if (!roleOf(alliance, userId)) return { ok: false, error: "forbidden: not a member" };
+        return { ok: true, result: { invites: listFor(s.invites, alliance.id), scope: "alliance" } };
+      }
+      // Default: invites addressed TO the caller (join-request inbox).
+      const inbox = [];
+      for (const list of s.invites.values()) {
+        for (const inv of list) {
+          if (inv.inviteeId === userId && inv.status === "pending") inbox.push(inv);
+        }
+      }
+      return { ok: true, result: { invites: inbox, scope: "inbox" } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "invite-respond", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const inviteId = String(params.inviteId || "");
+      const accept = params.accept === true || params.accept === "true";
+      let invite = null;
+      for (const list of s.invites.values()) {
+        const found = list.find((i) => i.id === inviteId);
+        if (found) { invite = found; break; }
+      }
+      if (!invite) return { ok: false, error: "invite not found" };
+      if (invite.inviteeId !== userId) return { ok: false, error: "forbidden: not your invite" };
+      if (invite.status !== "pending") return { ok: false, error: "invite already resolved" };
+      invite.status = accept ? "accepted" : "declined";
+      invite.respondedAt = nowIso();
+      const alliance = s.alliances.get(invite.allianceId);
+      if (accept && alliance && !(alliance.members || []).some((m) => m.userId === userId)) {
+        alliance.members.push({ userId, displayName: params.displayName || userId, role: invite.role, joinedAt: nowIso() });
+        if (alliance.status === "forming" && alliance.members.length >= 2) alliance.status = "active";
+      }
+      saveAlliance();
+      emitRealtime("alliance:invite-resolved", { allianceId: invite.allianceId, inviteId, status: invite.status });
+      return { ok: true, result: { invite, joined: accept } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "member-set-role", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (roleOf(alliance, userId) !== "owner") return { ok: false, error: "forbidden: requires owner role" };
+      const targetId = String(params.memberId || "");
+      const validRoles = ["admin", "member", "guest"];
+      const role = params.role;
+      if (!validRoles.includes(role)) return { ok: false, error: "invalid role" };
+      const member = (alliance.members || []).find((m) => m.userId === targetId);
+      if (!member) return { ok: false, error: "member not found" };
+      if (member.role === "owner") return { ok: false, error: "cannot change owner role" };
+      member.role = role;
+      saveAlliance();
+      return { ok: true, result: { member } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "member-remove", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!can(alliance, userId, "removeMember")) return { ok: false, error: "forbidden: requires admin role" };
+      const targetId = String(params.memberId || "");
+      const member = (alliance.members || []).find((m) => m.userId === targetId);
+      if (!member) return { ok: false, error: "member not found" };
+      if (member.role === "owner") return { ok: false, error: "cannot remove owner" };
+      alliance.members = alliance.members.filter((m) => m.userId !== targetId);
+      saveAlliance();
+      emitRealtime("alliance:member-removed", { allianceId: alliance.id, memberId: targetId });
+      return { ok: true, result: { removed: targetId, memberCount: alliance.members.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── Shared proposal workspace + quorum voting ──────────────────
+
+  registerLensAction("alliance", "proposal-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!can(alliance, userId, "createProposal")) return { ok: false, error: "forbidden: members only" };
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      const eligible = (alliance.members || []).filter((m) => ROLE_PERMS[m.role] && ROLE_PERMS[m.role].vote).length;
+      // Quorum: default simple majority of eligible voters, clamped to [0,1].
+      let quorum = typeof params.quorum === "number" ? params.quorum : 0.5;
+      quorum = Math.max(0, Math.min(1, quorum));
+      const proposal = {
+        id: uid("prp"),
+        allianceId: alliance.id,
+        title,
+        body: String(params.body || "").trim(),
+        createdBy: userId,
+        createdAt: nowIso(),
+        status: "open",
+        quorum,
+        eligibleVoters: eligible,
+        votes: {}, // userId -> 'yes' | 'no' | 'abstain'
+        decision: null,
+      };
+      listFor(s.proposals, alliance.id).push(proposal);
+      saveAlliance();
+      emitRealtime("alliance:proposal-created", { allianceId: alliance.id, proposalId: proposal.id, title });
+      return { ok: true, result: { proposal } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  function tallyProposal(proposal) {
+    const votes = Object.values(proposal.votes || {});
+    const yes = votes.filter((v) => v === "yes").length;
+    const no = votes.filter((v) => v === "no").length;
+    const abstain = votes.filter((v) => v === "abstain").length;
+    const cast = votes.length;
+    const eligible = proposal.eligibleVoters || 0;
+    const participation = eligible > 0 ? cast / eligible : 0;
+    const quorumMet = participation >= (proposal.quorum || 0);
+    const decisive = yes + no;
+    const passed = quorumMet && decisive > 0 && yes / decisive > 0.5;
+    return { yes, no, abstain, cast, eligible, participation: Math.round(participation * 1000) / 1000, quorumMet, passed };
+  }
+
+  registerLensAction("alliance", "proposal-vote", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!can(alliance, userId, "vote")) return { ok: false, error: "forbidden: not eligible to vote" };
+      const proposal = listFor(s.proposals, alliance.id).find((p) => p.id === String(params.proposalId || ""));
+      if (!proposal) return { ok: false, error: "proposal not found" };
+      if (proposal.status !== "open") return { ok: false, error: "proposal is closed" };
+      const choice = params.choice;
+      if (!["yes", "no", "abstain"].includes(choice)) return { ok: false, error: "choice must be yes|no|abstain" };
+      proposal.votes[userId] = choice;
+      const tally = tallyProposal(proposal);
+      saveAlliance();
+      emitRealtime("alliance:proposal-vote", { allianceId: alliance.id, proposalId: proposal.id, tally });
+      return { ok: true, result: { proposalId: proposal.id, tally } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "proposal-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      if (!roleOf(alliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      const proposals = listFor(s.proposals, alliance.id).map((p) => ({
+        ...p,
+        tally: tallyProposal(p),
+        myVote: p.votes[userId] || null,
+      })).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+      return { ok: true, result: { proposals, count: proposals.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "proposal-close", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const alliance = s.alliances.get(String(params.allianceId || ""));
+      if (!alliance) return { ok: false, error: "alliance not found" };
+      const proposal = listFor(s.proposals, alliance.id).find((p) => p.id === String(params.proposalId || ""));
+      if (!proposal) return { ok: false, error: "proposal not found" };
+      if (!can(alliance, userId, "closeProposal") && proposal.createdBy !== userId) {
+        return { ok: false, error: "forbidden: requires admin role or proposal author" };
+      }
+      if (proposal.status !== "open") return { ok: false, error: "proposal already closed" };
+      const tally = tallyProposal(proposal);
+      proposal.status = "closed";
+      proposal.closedAt = nowIso();
+      proposal.decision = !tally.quorumMet ? "failed-quorum" : tally.passed ? "passed" : "rejected";
+      proposal.finalTally = tally;
+      saveAlliance();
+      emitRealtime("alliance:proposal-closed", { allianceId: alliance.id, proposalId: proposal.id, decision: proposal.decision });
+      return { ok: true, result: { proposal } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── Notifications / unread badges ──────────────────────────────
+
+  registerLensAction("alliance", "notifications", (ctx, _a, _params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      let totalUnread = 0;
+      const perAlliance = [];
+      for (const alliance of s.alliances.values()) {
+        if (!roleOf(alliance, userId)) continue;
+        let allianceUnread = 0;
+        const channels = [];
+        for (const channel of listFor(s.channels, alliance.id)) {
+          const lastRead = s.reads.get(`${userId}:${channel.id}`) || "";
+          const unread = listFor(s.messages, channel.id)
+            .filter((m) => m.createdAt > lastRead && m.userId !== userId).length;
+          allianceUnread += unread;
+          if (unread > 0) channels.push({ channelId: channel.id, name: channel.name, unread });
+        }
+        const openProposals = listFor(s.proposals, alliance.id)
+          .filter((p) => p.status === "open" && !(p.votes && p.votes[userId])).length;
+        totalUnread += allianceUnread;
+        if (allianceUnread > 0 || openProposals > 0) {
+          perAlliance.push({ allianceId: alliance.id, name: alliance.name, unread: allianceUnread, channels, pendingVotes: openProposals });
+        }
+      }
+      const pendingInvites = [];
+      for (const list of s.invites.values()) {
+        for (const inv of list) {
+          if (inv.inviteeId === userId && inv.status === "pending") pendingInvites.push(inv);
+        }
+      }
+      return {
+        ok: true,
+        result: {
+          totalUnread,
+          pendingInvites: pendingInvites.length,
+          perAlliance,
+          invites: pendingInvites,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("alliance", "mark-read", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const channelId = String(params.channelId || "");
+      if (!channelId) return { ok: false, error: "channelId required" };
+      s.reads.set(`${userId}:${channelId}`, nowIso());
+      saveAlliance();
+      return { ok: true, result: { channelId, readAt: s.reads.get(`${userId}:${channelId}`) } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
 }

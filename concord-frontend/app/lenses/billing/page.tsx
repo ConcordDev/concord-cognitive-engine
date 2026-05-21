@@ -25,6 +25,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { EconomyDashboard } from '@/components/billing/EconomyDashboard';
+import { SubscriptionBillingSuite } from '@/components/billing/SubscriptionBillingSuite';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -62,7 +63,7 @@ export default function BillingPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('billing');
   const queryClient = useQueryClient();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'subscriptions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'subscriptions' | 'billing'>('overview');
   const [txFilter, setTxFilter] = useState<'all' | 'purchase' | 'usage' | 'credit'>('all');
   const [showFeatures, setShowFeatures] = useState(true);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -75,6 +76,7 @@ export default function BillingPage() {
       { id: 'goto-overview', keys: 'g o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
       { id: 'goto-transactions', keys: 'g t', description: 'Transactions', category: 'navigation', action: () => setActiveTab('transactions') },
       { id: 'goto-subscriptions', keys: 'g s', description: 'Subscriptions', category: 'navigation', action: () => setActiveTab('subscriptions') },
+      { id: 'goto-billing', keys: 'g b', description: 'Subscription Billing', category: 'navigation', action: () => setActiveTab('billing') },
     ],
     { lensId: 'billing' }
   );
@@ -373,6 +375,7 @@ export default function BillingPage() {
           { key: 'overview' as const, label: 'Usage Overview', icon: BarChart3 },
           { key: 'transactions' as const, label: 'Transactions', icon: History },
           { key: 'subscriptions' as const, label: 'Plans & Tokens', icon: CreditCard },
+          { key: 'billing' as const, label: 'Subscription Billing', icon: Layers },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -713,6 +716,13 @@ export default function BillingPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ============ SUBSCRIPTION BILLING TAB ============ */}
+      {activeTab === 'billing' && (
+        <section className="rounded-xl border border-lattice-border bg-lattice-surface p-4">
+          <SubscriptionBillingSuite />
+        </section>
       )}
 
       <RealtimeDataPanel data={realtimeInsights} />
