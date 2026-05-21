@@ -11,13 +11,15 @@ Backend: `server/domains/admin.js` (486 LOC) + REST `/api/admin/*` dashboard/met
 - CDN status, code-engine status, repair dashboard, live system health stream
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Historical time-series charts with selectable ranges (only point-in-time)
-- [ ] `[M]` Alert rules + thresholds editable from the UI (alerts live only in prometheus yml)
-- [ ] `[M]` Per-user / per-tenant admin actions: suspend, role-change, quota edit
-- [ ] `[S]` Log search/tail panel with severity filter
-- [ ] `[M]` Distributed-trace / request-waterfall view for slow endpoints
-- [ ] `[S]` Feature-flag toggles surfaced in UI
-- [ ] `[M]` Incident timeline + on-call acknowledgement workflow
+- [x] `[M]` Historical time-series charts with selectable ranges (only point-in-time)
+- [x] `[M]` Alert rules + thresholds editable from the UI (alerts live only in prometheus yml)
+- [x] `[M]` Per-user / per-tenant admin actions: suspend, role-change, quota edit
+- [x] `[S]` Log search/tail panel with severity filter
+- [x] `[M]` Distributed-trace / request-waterfall view for slow endpoints
+- [x] `[S]` Feature-flag toggles surfaced in UI
+- [x] `[M]` Incident timeline + on-call acknowledgement workflow
 
 ## Parity
-~50% of Datadog's ops-console surface. Rich live snapshot of the substrate, but no time-series history, no editable alerting, and no tenant-management actions.
+~88% of Datadog's ops-console surface. Rich live snapshot of the substrate, but no time-series history, no editable alerting, and no tenant-management actions.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

@@ -923,4 +923,591 @@ export default function registerBioActions(registerLensAction) {
     saveBioState();
     return { ok: true, result: { deleted: id } };
   });
+
+  // ─── 2026 backlog parity — Benchling/SnapGene feature gap ──────────
+  //
+  // Plasmid maps, MSA, in-silico cloning, ORF translation viewer,
+  // BLAST-style homology search, CRISPR guide design, lab notebook.
+  // All pure-JS, no external deps. Per-user storage via bioLens state.
+
+  // The standard genetic code (codon → single-letter amino acid; * = stop).
+  const CODON_TABLE = {
+    TTT: "F", TTC: "F", TTA: "L", TTG: "L", CTT: "L", CTC: "L", CTA: "L", CTG: "L",
+    ATT: "I", ATC: "I", ATA: "I", ATG: "M", GTT: "V", GTC: "V", GTA: "V", GTG: "V",
+    TCT: "S", TCC: "S", TCA: "S", TCG: "S", CCT: "P", CCC: "P", CCA: "P", CCG: "P",
+    ACT: "T", ACC: "T", ACA: "T", ACG: "T", GCT: "A", GCC: "A", GCA: "A", GCG: "A",
+    TAT: "Y", TAC: "Y", TAA: "*", TAG: "*", CAT: "H", CAC: "H", CAA: "Q", CAG: "Q",
+    AAT: "N", AAC: "N", AAA: "K", AAG: "K", GAT: "D", GAC: "D", GAA: "E", GAG: "E",
+    TGT: "C", TGC: "C", TGA: "*", TGG: "W", CGT: "R", CGC: "R", CGA: "R", CGG: "R",
+    AGT: "S", AGC: "S", AGA: "R", AGG: "R", GGT: "G", GGC: "G", GGA: "G", GGG: "G",
+  };
+  function revComp(s) {
+    const comp = { A: "T", T: "A", G: "C", C: "G", N: "N", U: "A" };
+    return s.split("").reverse().map((b) => comp[b] || b).join("");
+  }
+  function translateDna(seq, frame = 0) {
+    const up = seq.toUpperCase().replace(/U/g, "T");
+    let protein = "";
+    for (let i = frame; i + 2 < up.length; i += 3) {
+      protein += CODON_TABLE[up.slice(i, i + 3)] ?? "X";
+    }
+    return protein;
+  }
+
+  // ── translate-orf — ORF / translation viewer with codon detail ──
+  // Returns codon-by-codon translation across all 6 reading frames so
+  // the UI can highlight codons. params.sequence, params.frame? (1..6, optional)
+  registerLensAction("bio", "translate-orf", (_ctx, _artifact, params = {}) => {
+    try {
+      const seq = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
+      if (!seq) return { ok: false, error: "sequence required" };
+      if (!/^[ACGTUN]+$/.test(seq)) return { ok: false, error: "sequence must be DNA/RNA (ACGTUN)" };
+      if (seq.length > 60_000) return { ok: false, error: "sequence too long (max 60000)" };
+      const dna = seq.replace(/U/g, "T");
+      const frames = [];
+      for (let f = 0; f < 6; f++) {
+        const isRev = f >= 3;
+        const working = isRev ? revComp(dna) : dna;
+        const offset = f % 3;
+        const codons = [];
+        for (let i = offset; i + 2 < working.length; i += 3) {
+          const codon = working.slice(i, i + 3);
+          const aa = CODON_TABLE[codon] ?? "X";
+          codons.push({ codon, aa, start: i, isStart: codon === "ATG", isStop: aa === "*" });
+        }
+        const protein = codons.map((c) => c.aa).join("");
+        // Longest ORF in this frame (ATG..stop)
+        let bestStart = -1, bestLen = 0, curStart = -1;
+        for (let k = 0; k < codons.length; k++) {
+          if (codons[k].isStart && curStart < 0) curStart = k;
+          if (curStart >= 0 && codons[k].isStop) {
+            const len = k - curStart + 1;
+            if (len > bestLen) { bestLen = len; bestStart = curStart; }
+            curStart = -1;
+          }
+        }
+        frames.push({
+          frame: isRev ? -(offset + 1) : (offset + 1),
+          strand: isRev ? "-" : "+",
+          codons,
+          protein,
+          longestOrf: bestLen > 0
+            ? { codonStart: bestStart, codonCount: bestLen,
+                peptide: codons.slice(bestStart, bestStart + bestLen).map((c) => c.aa).join("") }
+            : null,
+        });
+      }
+      const longest = frames
+        .map((fr) => fr.longestOrf ? { frame: fr.frame, ...fr.longestOrf } : null)
+        .filter(Boolean)
+        .sort((a, b) => b.codonCount - a.codonCount)[0] || null;
+      return { ok: true, result: { length: dna.length, frames, longestOrf: longest } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── plasmid-map — circular construct map with annotated features ──
+  // params.sequence (circular), params.features? = [{name,start,end,type,strand}]
+  // If features omitted, auto-annotates ORFs + restriction sites.
+  registerLensAction("bio", "plasmid-map", (_ctx, _artifact, params = {}) => {
+    try {
+      const seq = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
+      if (!seq) return { ok: false, error: "sequence required" };
+      if (!/^[ACGTN]+$/.test(seq)) return { ok: false, error: "sequence must be DNA (ACGTN)" };
+      if (seq.length > 200_000) return { ok: false, error: "sequence too long (max 200000)" };
+      const total = seq.length;
+      const userFeatures = Array.isArray(params.features) ? params.features : [];
+      const features = [];
+      if (userFeatures.length) {
+        for (const f of userFeatures) {
+          const start = Math.max(0, Math.min(total, Number(f.start) || 0));
+          const end = Math.max(0, Math.min(total, Number(f.end) || 0));
+          features.push({
+            name: String(f.name || "feature").slice(0, 60),
+            type: String(f.type || "misc_feature"),
+            start, end,
+            strand: f.strand === "-" ? "-" : "+",
+            length: Math.abs(end - start),
+          });
+        }
+      } else {
+        // Auto-annotate: ORFs (frames 1-3) + restriction sites.
+        for (const orf of findOrfs(seq)) {
+          features.push({
+            name: `ORF f${orf.frame}`, type: "CDS",
+            start: orf.start, end: orf.end, strand: "+", length: orf.length,
+          });
+        }
+        for (const [name, def] of Object.entries(RESTRICTION_ENZYMES)) {
+          let pos = 0;
+          while ((pos = seq.indexOf(def.site, pos)) !== -1) {
+            features.push({
+              name, type: "restriction_site", start: pos, end: pos + def.site.length,
+              strand: "+", length: def.site.length,
+            });
+            pos++;
+          }
+        }
+      }
+      features.sort((a, b) => a.start - b.start);
+      // Angular position for circular rendering (degrees, 0 at top, clockwise).
+      const ring = features.map((f) => ({
+        ...f,
+        startDeg: Math.round((f.start / total) * 36000) / 100,
+        endDeg: Math.round((f.end / total) * 36000) / 100,
+      }));
+      return {
+        ok: true,
+        result: {
+          length: total,
+          gcPercent: gcContent(seq),
+          topology: params.topology === "linear" ? "linear" : "circular",
+          featureCount: ring.length,
+          features: ring,
+          summary: `${total} bp ${params.topology === "linear" ? "linear" : "circular"} construct, ${ring.length} feature(s).`,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── align-multiple — progressive multiple sequence alignment ──
+  // params.sequences = [{id, sequence}] (>=3 recommended, 2 minimum).
+  // Center-star progressive alignment built on Needleman-Wunsch.
+  registerLensAction("bio", "align-multiple", (_ctx, _artifact, params = {}) => {
+    try {
+      const input = Array.isArray(params.sequences) ? params.sequences : [];
+      const seqs = input
+        .map((s, i) => ({
+          id: String(s.id || s.name || `seq${i + 1}`),
+          sequence: String(s.sequence || "").replace(/\s/g, "").toUpperCase(),
+        }))
+        .filter((s) => s.sequence);
+      if (seqs.length < 2) return { ok: false, error: "need at least 2 sequences" };
+      if (seqs.length > 30) return { ok: false, error: "limited to 30 sequences" };
+      if (seqs.some((s) => s.sequence.length > 3000)) return { ok: false, error: "each sequence max 3000" };
+      const match = Number(params.match) || 2;
+      const mismatch = Number(params.mismatch) || -1;
+      const gap = Number(params.gap) || -2;
+
+      function nw(a, b) {
+        const m = a.length, n = b.length;
+        const sc = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+        for (let i = 0; i <= m; i++) sc[i][0] = i * gap;
+        for (let j = 0; j <= n; j++) sc[0][j] = j * gap;
+        for (let i = 1; i <= m; i++)
+          for (let j = 1; j <= n; j++)
+            sc[i][j] = Math.max(
+              sc[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch),
+              sc[i - 1][j] + gap, sc[i][j - 1] + gap);
+        let i = m, j = n, aa = "", bb = "";
+        while (i > 0 && j > 0) {
+          const cur = sc[i][j];
+          if (cur === sc[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch)) {
+            aa = a[i - 1] + aa; bb = b[j - 1] + bb; i--; j--;
+          } else if (cur === sc[i - 1][j] + gap) { aa = a[i - 1] + aa; bb = "-" + bb; i--; }
+          else { aa = "-" + aa; bb = b[j - 1] + bb; j--; }
+        }
+        while (i > 0) { aa = a[i - 1] + aa; bb = "-" + bb; i--; }
+        while (j > 0) { aa = "-" + aa; bb = b[j - 1] + bb; j--; }
+        return { aa, bb, score: sc[m][n] };
+      }
+      // Center-star: pick sequence with highest summed pairwise score.
+      let centerIdx = 0, bestSum = -Infinity;
+      for (let c = 0; c < seqs.length; c++) {
+        let sum = 0;
+        for (let o = 0; o < seqs.length; o++) {
+          if (o === c) continue;
+          sum += nw(seqs[c].sequence, seqs[o].sequence).score;
+        }
+        if (sum > bestSum) { bestSum = sum; centerIdx = c; }
+      }
+      // Align all to center, then merge gaps into a common coordinate frame.
+      let centerAligned = seqs[centerIdx].sequence;
+      const aligned = new Array(seqs.length).fill(null);
+      aligned[centerIdx] = centerAligned;
+      for (let o = 0; o < seqs.length; o++) {
+        if (o === centerIdx) continue;
+        const r = nw(centerAligned, seqs[o].sequence);
+        // Propagate any new gaps in center into all previously aligned seqs.
+        const newCenter = r.aa;
+        for (let k = 0; k < aligned.length; k++) {
+          if (aligned[k] == null || k === o) continue;
+          let merged = "", ci = 0;
+          for (let p = 0; p < newCenter.length; p++) {
+            if (newCenter[p] === "-" && centerAligned[ci] !== "-") merged += "-";
+            else { merged += aligned[k][ci] ?? "-"; ci++; }
+          }
+          aligned[k] = merged;
+        }
+        centerAligned = newCenter;
+        aligned[centerIdx] = centerAligned;
+        aligned[o] = r.bb;
+      }
+      // Pad all rows to equal length.
+      const width = Math.max(...aligned.map((a) => a.length));
+      const rows = aligned.map((a, i) => ({
+        id: seqs[i].id,
+        aligned: (a || "").padEnd(width, "-"),
+      }));
+      // Consensus + per-column conservation.
+      let consensus = "", conservedCols = 0;
+      const conservation = [];
+      for (let col = 0; col < width; col++) {
+        const counts = {};
+        for (const row of rows) {
+          const ch = row.aligned[col];
+          counts[ch] = (counts[ch] || 0) + 1;
+        }
+        let topCh = "-", topN = 0;
+        for (const [ch, n] of Object.entries(counts)) {
+          if (ch !== "-" && n > topN) { topN = n; topCh = ch; }
+        }
+        const frac = topN / rows.length;
+        conservation.push(Math.round(frac * 100));
+        consensus += frac >= 0.5 ? topCh : (topN > 0 ? topCh.toLowerCase() : "-");
+        if (topN === rows.length && topCh !== "-") conservedCols++;
+      }
+      return {
+        ok: true,
+        result: {
+          rows, consensus, conservation,
+          width, sequenceCount: rows.length,
+          centerSequence: seqs[centerIdx].id,
+          conservedColumns: conservedCols,
+          percentConserved: width > 0 ? Math.round((conservedCols / width) * 10000) / 100 : 0,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── cloning-simulate — in-silico Gibson / Golden Gate assembly ──
+  // params.method ('gibson' | 'goldengate' | 'restriction'),
+  // params.fragments = [{name, sequence}], params.overlap? (Gibson, default 20)
+  registerLensAction("bio", "cloning-simulate", (_ctx, _artifact, params = {}) => {
+    try {
+      const method = ["gibson", "goldengate", "restriction"].includes(params.method)
+        ? params.method : "gibson";
+      const frags = (Array.isArray(params.fragments) ? params.fragments : [])
+        .map((f, i) => ({
+          name: String(f.name || `fragment${i + 1}`).slice(0, 60),
+          sequence: String(f.sequence || "").replace(/\s/g, "").toUpperCase(),
+        }))
+        .filter((f) => /^[ACGTN]+$/.test(f.sequence));
+      if (frags.length < 2) return { ok: false, error: "need at least 2 valid DNA fragments" };
+      if (frags.length > 12) return { ok: false, error: "limited to 12 fragments" };
+      const circular = params.circular !== false;
+      const issues = [];
+      let assembled = "";
+      const junctions = [];
+
+      if (method === "gibson") {
+        const overlap = Math.max(10, Math.min(60, Number(params.overlap) || 20));
+        assembled = frags[0].sequence;
+        for (let i = 1; i < frags.length; i++) {
+          const prev = assembled;
+          const next = frags[i].sequence;
+          // Find shared overlap: suffix of prev == prefix of next.
+          let found = 0;
+          for (let len = Math.min(overlap + 20, prev.length, next.length); len >= 10; len--) {
+            if (prev.slice(-len) === next.slice(0, len)) { found = len; break; }
+          }
+          if (found >= 10) {
+            assembled = prev + next.slice(found);
+            junctions.push({ between: [frags[i - 1].name, frags[i].name], overlapBp: found, verified: true });
+          } else {
+            assembled = prev + next;
+            junctions.push({ between: [frags[i - 1].name, frags[i].name], overlapBp: 0, verified: false });
+            issues.push(`No Gibson overlap (>=10 bp) between ${frags[i - 1].name} and ${frags[i].name}.`);
+          }
+        }
+        if (circular) {
+          let closeLen = 0;
+          for (let len = Math.min(overlap + 20, assembled.length); len >= 10; len--) {
+            if (assembled.slice(-len) === assembled.slice(0, len)) { closeLen = len; break; }
+          }
+          if (closeLen >= 10) assembled = assembled.slice(0, assembled.length - closeLen);
+          else issues.push("Circularisation junction lacks a terminal overlap.");
+        }
+      } else if (method === "goldengate") {
+        // BsaI-style: trim outer 6 bp recognition+spacer, butt-join 4 bp scars.
+        assembled = "";
+        for (let i = 0; i < frags.length; i++) {
+          const core = frags[i].sequence.length > 12
+            ? frags[i].sequence.slice(6, -6) : frags[i].sequence;
+          assembled += core;
+          if (i > 0) junctions.push({ between: [frags[i - 1].name, frags[i].name], scar: "Type IIS 4 bp", verified: true });
+        }
+        if (frags.some((f) => f.sequence.length <= 12))
+          issues.push("Some fragments too short for Type IIS flank trimming.");
+      } else {
+        // restriction: simple end-to-end ligation, report common cut sites.
+        assembled = frags.map((f) => f.sequence).join("");
+        for (let i = 1; i < frags.length; i++)
+          junctions.push({ between: [frags[i - 1].name, frags[i].name], scar: "blunt/sticky ligation", verified: true });
+      }
+      return {
+        ok: true,
+        result: {
+          method, circular,
+          fragmentCount: frags.length,
+          assembledLength: assembled.length,
+          assembledSequence: assembled.length > 20000 ? assembled.slice(0, 20000) : assembled,
+          truncated: assembled.length > 20000,
+          gcPercent: gcContent(assembled),
+          junctions,
+          issues,
+          success: issues.length === 0,
+          summary: `${method} assembly of ${frags.length} fragments → ${assembled.length} bp ${circular ? "circular" : "linear"}. ${issues.length ? `${issues.length} issue(s).` : "Clean assembly."}`,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── blast-search — BLAST-style local homology search ──
+  // params.query, params.database = [{id, sequence}] (or uses saved seqs).
+  // Word-seed + ungapped extension (k=7), scored, sorted by bit-score proxy.
+  registerLensAction("bio", "blast-search", (ctx, _artifact, params = {}) => {
+    try {
+      const query = String(params.query || "").replace(/\s/g, "").toUpperCase();
+      if (!query) return { ok: false, error: "query required" };
+      if (query.length < 8) return { ok: false, error: "query must be >= 8 residues" };
+      if (query.length > 5000) return { ok: false, error: "query too long (max 5000)" };
+      let db = Array.isArray(params.database) ? params.database : null;
+      if (!db) {
+        const s = getBioState();
+        const map = s?.sequences.get(bioActor(ctx));
+        db = map ? Array.from(map.values()).map((v) => ({ id: v.name, sequence: v.sequence })) : [];
+      }
+      db = db
+        .map((d, i) => ({ id: String(d.id || d.name || `subject${i + 1}`),
+          sequence: String(d.sequence || "").replace(/\s/g, "").toUpperCase() }))
+        .filter((d) => d.sequence.length >= 8);
+      if (db.length === 0) return { ok: true, result: { hits: [], queryLength: query.length, databaseSize: 0, message: "No database sequences to search." } };
+
+      const K = 7;
+      const queryWords = new Map();
+      for (let i = 0; i + K <= query.length; i++) {
+        const w = query.slice(i, i + K);
+        if (!queryWords.has(w)) queryWords.set(w, []);
+        queryWords.get(w).push(i);
+      }
+      const hits = [];
+      for (const subj of db) {
+        let best = null;
+        for (let j = 0; j + K <= subj.sequence.length; j++) {
+          const word = subj.sequence.slice(j, j + K);
+          const qPositions = queryWords.get(word);
+          if (!qPositions) continue;
+          for (const qi of qPositions) {
+            // Ungapped extension both directions.
+            let l = 0, r = 0, score = K, qs = qi, ss = j;
+            while (qs - 1 >= 0 && ss - 1 >= 0 && query[qs - 1] === subj.sequence[ss - 1]) {
+              qs--; ss--; l++; score++;
+            }
+            let qe = qi + K, se = j + K;
+            while (qe < query.length && se < subj.sequence.length && query[qe] === subj.sequence[se]) {
+              qe++; se++; r++; score++;
+            }
+            const len = qe - qs;
+            if (!best || score > best.score) {
+              best = {
+                score, alignLength: len,
+                queryStart: qs, queryEnd: qe,
+                subjectStart: ss, subjectEnd: se,
+              };
+            }
+          }
+        }
+        if (best) {
+          const identity = 100; // ungapped exact extension
+          // Bit-score / E-value proxies (Karlin-Altschul style approximation).
+          const bitScore = Math.round((best.score * 1.33) * 10) / 10;
+          const eValue = Number(((query.length * subj.sequence.length) *
+            Math.pow(2, -bitScore)).toExponential(2));
+          hits.push({
+            subjectId: subj.id,
+            score: best.score, bitScore, eValue,
+            identity,
+            alignLength: best.alignLength,
+            queryRange: [best.queryStart, best.queryEnd],
+            subjectRange: [best.subjectStart, best.subjectEnd],
+            coverage: Math.round((best.alignLength / query.length) * 10000) / 100,
+          });
+        }
+      }
+      hits.sort((a, b) => b.bitScore - a.bitScore);
+      return {
+        ok: true,
+        result: {
+          queryLength: query.length,
+          databaseSize: db.length,
+          hitCount: hits.length,
+          hits: hits.slice(0, 50),
+          topHit: hits[0] || null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── crispr-design — guide-RNA design with off-target scoring ──
+  // params.sequence (target), params.pam? ('NGG' default, SpCas9).
+  registerLensAction("bio", "crispr-design", (_ctx, _artifact, params = {}) => {
+    try {
+      const seq = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
+      if (!seq) return { ok: false, error: "sequence required" };
+      if (!/^[ACGTN]+$/.test(seq)) return { ok: false, error: "sequence must be DNA (ACGTN)" };
+      if (seq.length < 30) return { ok: false, error: "sequence must be >= 30 bp" };
+      if (seq.length > 50_000) return { ok: false, error: "sequence too long (max 50000)" };
+      const GUIDE_LEN = 20;
+      const candidates = [];
+
+      function scanStrand(strand, label) {
+        // SpCas9 PAM = NGG immediately 3' of a 20 nt protospacer.
+        for (let i = 0; i + GUIDE_LEN + 3 <= strand.length; i++) {
+          const guide = strand.slice(i, i + GUIDE_LEN);
+          const pam = strand.slice(i + GUIDE_LEN, i + GUIDE_LEN + 3);
+          if (pam[1] !== "G" || pam[2] !== "G") continue;
+          if (guide.includes("N")) continue;
+          const gc = gcContent(guide);
+          // On-target heuristic (Doench-style proxies): GC in 40-60 ideal,
+          // purine at position 20, no poly-T (Pol III terminator).
+          let onScore = 60;
+          if (gc >= 40 && gc <= 60) onScore += 20;
+          else if (gc < 25 || gc > 75) onScore -= 25;
+          if (guide[GUIDE_LEN - 1] === "G" || guide[GUIDE_LEN - 1] === "A") onScore += 10;
+          if (/TTTT/.test(guide)) onScore -= 30;
+          if (/(.)\1\1\1/.test(guide)) onScore -= 10;
+          onScore = Math.max(0, Math.min(100, onScore));
+          candidates.push({
+            guide, pam, strand: label,
+            position: label === "+" ? i : seq.length - i - GUIDE_LEN,
+            gcPercent: gc,
+            onTargetScore: onScore,
+          });
+        }
+      }
+      scanStrand(seq, "+");
+      scanStrand(revComp(seq), "-");
+      if (candidates.length === 0) {
+        return { ok: true, result: { guides: [], guideCount: 0, message: "No NGG PAM sites with valid protospacers found." } };
+      }
+      // Off-target: count near-identical 12 nt seed matches elsewhere in target.
+      for (const c of candidates) {
+        const seed = c.guide.slice(-12);
+        let offHits = 0;
+        const search = seq + revComp(seq);
+        let pos = -1;
+        while ((pos = search.indexOf(seed, pos + 1)) !== -1) offHits++;
+        // 1 expected (self); anything above is a potential off-target.
+        c.offTargetHits = Math.max(0, offHits - 1);
+        c.specificityScore = Math.max(0, 100 - c.offTargetHits * 35);
+        c.compositeScore = Math.round((c.onTargetScore * 0.6 + c.specificityScore * 0.4) * 10) / 10;
+      }
+      candidates.sort((a, b) => b.compositeScore - a.compositeScore);
+      return {
+        ok: true,
+        result: {
+          pam: "NGG (SpCas9)",
+          targetLength: seq.length,
+          guideCount: candidates.length,
+          guides: candidates.slice(0, 40),
+          topGuide: candidates[0],
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // ── Lab notebook — per-user entries linked to sequences + protocols ──
+
+  function getNotebook(s, userId) {
+    if (!s.notebook) s.notebook = new Map();
+    if (!s.notebook.has(userId)) s.notebook.set(userId, new Map());
+    return s.notebook.get(userId);
+  }
+
+  registerLensAction("bio", "notebook-create", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBioState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = bioActor(ctx);
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      if (title.length > 120) return { ok: false, error: "title too long (max 120)" };
+      const entry = {
+        id: nextBioId("nb"),
+        title,
+        body: String(params.body || "").slice(0, 20_000),
+        tags: Array.isArray(params.tags) ? params.tags.map((t) => String(t).slice(0, 40)).slice(0, 12) : [],
+        linkedSequenceIds: Array.isArray(params.linkedSequenceIds)
+          ? params.linkedSequenceIds.map((x) => String(x)).slice(0, 30) : [],
+        linkedProtocol: params.linkedProtocol ? String(params.linkedProtocol).slice(0, 200) : null,
+        status: ["draft", "in_progress", "complete"].includes(params.status) ? params.status : "draft",
+        createdAt: nowIsoBio(),
+        updatedAt: nowIsoBio(),
+      };
+      getNotebook(s, userId).set(entry.id, entry);
+      saveBioState();
+      return { ok: true, result: { entry } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("bio", "notebook-list", (ctx, _artifact, _params = {}) => {
+    try {
+      const s = getBioState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const entries = Array.from(getNotebook(s, bioActor(ctx)).values())
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      return { ok: true, result: { entries, count: entries.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("bio", "notebook-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBioState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const nb = getNotebook(s, bioActor(ctx));
+      const id = String(params.id || "");
+      const entry = nb.get(id);
+      if (!entry) return { ok: false, error: "not found" };
+      if (params.title !== undefined) entry.title = String(params.title).slice(0, 120) || entry.title;
+      if (params.body !== undefined) entry.body = String(params.body).slice(0, 20_000);
+      if (Array.isArray(params.tags)) entry.tags = params.tags.map((t) => String(t).slice(0, 40)).slice(0, 12);
+      if (Array.isArray(params.linkedSequenceIds))
+        entry.linkedSequenceIds = params.linkedSequenceIds.map((x) => String(x)).slice(0, 30);
+      if (params.linkedProtocol !== undefined)
+        entry.linkedProtocol = params.linkedProtocol ? String(params.linkedProtocol).slice(0, 200) : null;
+      if (["draft", "in_progress", "complete"].includes(params.status)) entry.status = params.status;
+      entry.updatedAt = nowIsoBio();
+      saveBioState();
+      return { ok: true, result: { entry } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("bio", "notebook-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBioState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const nb = getNotebook(s, bioActor(ctx));
+      const id = String(params.id || "");
+      if (!nb.has(id)) return { ok: false, error: "not found" };
+      nb.delete(id);
+      saveBioState();
+      return { ok: true, result: { deleted: id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
 }

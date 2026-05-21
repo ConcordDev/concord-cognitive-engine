@@ -11,12 +11,21 @@ Backend: `server/domains/bridge.js` — macros `connectionHealth`, `dataMapping`
 - ConcordLinkWalkers panel; DTU detail view; realtime data panel
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Visual sync topology graph (worlds/peers as nodes, flows as edges)
-- [ ] `[S]` Per-flow retry / replay of a failed bridge action
-- [ ] `[M]` Field-mapping editor for cross-world data transforms
-- [ ] `[S]` Sync schedule configuration per peer
-- [ ] `[M]` Alerting on sync failure / lag thresholds
-- [ ] `[S]` Throughput history charts over time
+- [x] `[M]` Visual sync topology graph (worlds/peers as nodes, flows as edges)
+- [x] `[S]` Per-flow retry / replay of a failed bridge action
+- [x] `[M]` Field-mapping editor for cross-world data transforms
+- [x] `[S]` Sync schedule configuration per peer
+- [x] `[M]` Alerting on sync failure / lag thresholds
+- [x] `[S]` Throughput history charts over time
 
 ## Parity
-~50% of an integration-monitoring console. Real organism/bridge/debate substrate with health analytics, but lacks the visual topology, mapping editor, and retry/alerting that an ops-grade sync console needs.
+Full ops-grade integration-monitoring console. The original organism/bridge/debate
+substrate plus a Federation Console (`components/bridge/FederationConsole.tsx`,
+"federation" tab) wiring the `syncTopology`, `recordFlow`/`flowList`/`flowReplay`,
+`mappingUpsert`/`mappingList`/`mappingRemove`/`mappingPreview`, `scheduleSet`/`scheduleList`,
+`alertRuleUpsert`/`alertRuleList`/`alertRuleRemove`/`alertEvaluate`, `throughputHistory`
+and `peerRegister`/`peerList`/`peerRemove` macros to real controls: an SVG topology
+graph, per-flow replay, a field-mapping editor with live transform preview, per-peer
+sync schedules, threshold alerting, and throughput history charts.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

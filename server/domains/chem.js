@@ -2,7 +2,18 @@
 // Domain actions for chemistry: molecular formula parsing, reaction balancing,
 // solution chemistry, and thermochemistry.
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 export default function registerChemActions(registerLensAction) {
+  // ── Per-user persistent state (structures, lab notebook) ──
+  function chemState() {
+    const g = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+    if (!g.chemStructures) g.chemStructures = new Map();  // userId -> Map<id, structure>
+    if (!g.chemLabNotebook) g.chemLabNotebook = new Map(); // userId -> Array<entry>
+    return g;
+  }
+  function chemActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function chemId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   // Periodic table subset (atomic masses)
   const ELEMENTS = {
     H: 1.008, He: 4.003, Li: 6.941, Be: 9.012, B: 10.81, C: 12.011,
@@ -926,5 +937,775 @@ export default function registerChemActions(registerLensAction) {
     else result = { P, V, n, T: Math.round((P * V / (n * R)) * 10000) / 10000 };
     result.formula = "PV = nRT (R = 0.08206 L·atm·K⁻¹·mol⁻¹)";
     return { ok: true, result };
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 2026 parity backlog — structure editing, SMILES, stoichiometry,
+  // spectroscopy, mechanism diagrams, lab notebook.
+  // ═══════════════════════════════════════════════════════════════════
+
+  // ── SMILES tokenizer + formula derivation ──
+  // Supports a practical subset of SMILES: atoms (organic subset +
+  // bracketed atoms), bonds (- = # :), branches ( ), rings (digits),
+  // and implicit-hydrogen valence filling for the organic subset.
+  const ORGANIC_SUBSET = { B: 3, C: 4, N: 3, O: 2, P: 3, S: 2, F: 1, Cl: 1, Br: 1, I: 1 };
+  const AROMATIC = { b: "B", c: "C", n: "N", o: "O", p: "P", s: "S" };
+
+  function tokenizeSmiles(smiles) {
+    const tokens = [];
+    let i = 0;
+    while (i < smiles.length) {
+      const ch = smiles[i];
+      if (ch === "(" || ch === ")") { tokens.push({ t: "branch", v: ch }); i++; continue; }
+      if (ch === "-" || ch === "=" || ch === "#" || ch === ":" || ch === "/" || ch === "\\") {
+        tokens.push({ t: "bond", v: ch }); i++; continue;
+      }
+      if (ch >= "0" && ch <= "9") { tokens.push({ t: "ring", v: Number(ch) }); i++; continue; }
+      if (ch === "%") {
+        const num = smiles.slice(i + 1, i + 3);
+        tokens.push({ t: "ring", v: Number(num) }); i += 3; continue;
+      }
+      if (ch === "[") {
+        const close = smiles.indexOf("]", i);
+        if (close === -1) throw new Error("unbalanced bracket atom");
+        const inner = smiles.slice(i + 1, close);
+        const m = inner.match(/^(\d*)([A-Z][a-z]?|[a-z])((?:H\d*)?)((?:[+-]\d*)*)$/);
+        if (!m) throw new Error(`bad bracket atom [${inner}]`);
+        const sym = m[2][0] >= "a" ? (AROMATIC[m[2]] || m[2].toUpperCase()) : m[2];
+        let hCount = 0;
+        if (m[3]) hCount = m[3] === "H" ? 1 : Number(m[3].slice(1));
+        tokens.push({ t: "atom", v: sym, aromatic: m[2][0] >= "a", explicitH: hCount, bracketed: true });
+        i = close + 1; continue;
+      }
+      // organic-subset atom
+      let sym = null, aromatic = false;
+      if (ch === "C" && smiles[i + 1] === "l") { sym = "Cl"; i += 2; }
+      else if (ch === "B" && smiles[i + 1] === "r") { sym = "Br"; i += 2; }
+      else if (/[A-Z]/.test(ch)) { sym = ch; i++; }
+      else if (AROMATIC[ch]) { sym = AROMATIC[ch]; aromatic = true; i++; }
+      else { i++; continue; }
+      tokens.push({ t: "atom", v: sym, aromatic, bracketed: false });
+    }
+    return tokens;
+  }
+
+  function smilesToGraph(smiles) {
+    const tokens = tokenizeSmiles(smiles);
+    const atoms = [];           // { sym, aromatic, bracketed, explicitH, bonds:[] }
+    const bonds = [];           // { a, b, order }
+    const branchStack = [];
+    const ringMap = {};         // ringNum -> { atomIdx, order }
+    let prev = -1;
+    let pendingBond = 1;        // bond order for next connection
+    for (const tok of tokens) {
+      if (tok.t === "atom") {
+        const idx = atoms.length;
+        atoms.push({
+          sym: tok.v, aromatic: tok.aromatic, bracketed: tok.bracketed,
+          explicitH: tok.explicitH || 0, bonds: [],
+        });
+        if (prev !== -1) {
+          const order = pendingBond;
+          bonds.push({ a: prev, b: idx, order });
+          atoms[prev].bonds.push({ to: idx, order });
+          atoms[idx].bonds.push({ to: prev, order });
+        }
+        prev = idx;
+        pendingBond = 1;
+      } else if (tok.t === "bond") {
+        pendingBond = tok.v === "=" ? 2 : tok.v === "#" ? 3 : tok.v === ":" ? 1.5 : 1;
+      } else if (tok.t === "branch") {
+        if (tok.v === "(") branchStack.push(prev);
+        else prev = branchStack.pop();
+      } else if (tok.t === "ring") {
+        if (ringMap[tok.v]) {
+          const { atomIdx, order } = ringMap[tok.v];
+          const o = Math.max(order, pendingBond);
+          bonds.push({ a: atomIdx, b: prev, order: o, ring: true });
+          atoms[atomIdx].bonds.push({ to: prev, order: o });
+          atoms[prev].bonds.push({ to: atomIdx, order: o });
+          delete ringMap[tok.v];
+        } else {
+          ringMap[tok.v] = { atomIdx: prev, order: pendingBond };
+        }
+        pendingBond = 1;
+      }
+    }
+    if (Object.keys(ringMap).length) throw new Error("unclosed ring bond");
+    return { atoms, bonds };
+  }
+
+  function graphToFormula(graph) {
+    const counts = {};
+    let rings = 0;
+    let bondSum = 0;
+    for (const b of graph.bonds) {
+      bondSum += (b.aromatic || b.order === 1.5) ? 1.5 : b.order;
+    }
+    for (const a of graph.atoms) {
+      counts[a.sym] = (counts[a.sym] || 0) + 1;
+      // implicit hydrogens for organic-subset, non-bracket atoms
+      if (!a.bracketed && ORGANIC_SUBSET[a.sym] != null) {
+        // Bonds between two aromatic atoms count as order 1.5 (delocalised
+        // ring bond) even when written without an explicit ':' — otherwise
+        // benzene (c1ccccc1) over-fills hydrogens to C6H12.
+        const used = a.bonds.reduce((s, bd) => {
+          const neighbour = graph.atoms[bd.to];
+          const aromaticBond = a.aromatic && neighbour && neighbour.aromatic && bd.order === 1;
+          const ord = aromaticBond ? 1.5 : bd.order;
+          return s + (ord === 1.5 ? 1.5 : ord);
+        }, 0);
+        // organic-subset valence applies to both aliphatic and aromatic atoms
+        const target = ORGANIC_SUBSET[a.sym];
+        const h = Math.max(0, Math.round(target - used));
+        if (h > 0) counts.H = (counts.H || 0) + h;
+      } else if (a.bracketed && a.explicitH) {
+        counts.H = (counts.H || 0) + a.explicitH;
+      }
+    }
+    // ring count = bonds - atoms + connected-components (assume 1 component)
+    rings = Math.max(0, graph.bonds.length - graph.atoms.length + 1);
+    return { counts, rings, bondSum };
+  }
+
+  function formatHill(counts) {
+    // Hill system: C first, H second, then alphabetical
+    const keys = Object.keys(counts).sort();
+    const ordered = [];
+    if (counts.C) { ordered.push("C"); if (counts.H) ordered.push("H"); }
+    for (const k of keys) { if (k !== "C" && k !== "H") ordered.push(k); }
+    if (!counts.C && counts.H) ordered.push("H");
+    return ordered.map((k) => (counts[k] === 1 ? k : `${k}${counts[k]}`)).join("");
+  }
+
+  /**
+   * parse-smiles — parse a SMILES string into an atom/bond graph, derive
+   * the molecular formula (Hill notation), ring count, heavy-atom count.
+   */
+  registerLensAction("chem", "parse-smiles", (_ctx, _artifact, params = {}) => {
+    const smiles = String(params.smiles || "").trim();
+    if (!smiles) return { ok: false, error: "smiles required (e.g. CCO, c1ccccc1, CC(=O)O)" };
+    if (smiles.length > 400) return { ok: false, error: "smiles too long (max 400)" };
+    let graph;
+    try {
+      graph = smilesToGraph(smiles);
+    } catch (e) {
+      return { ok: false, error: `could not parse SMILES: ${e.message}` };
+    }
+    if (graph.atoms.length === 0) return { ok: false, error: "no atoms found in SMILES" };
+    const { counts, rings } = graphToFormula(graph);
+    const formula = formatHill(counts);
+    // molecular weight from PERIODIC_TABLE
+    let mw = 0;
+    let unknown = null;
+    for (const [sym, n] of Object.entries(counts)) {
+      const el = PERIODIC_TABLE[sym];
+      if (!el) { unknown = sym; break; }
+      mw += el.mass * n;
+    }
+    return {
+      ok: true,
+      result: {
+        smiles,
+        formula,
+        molecularWeight: unknown ? null : Math.round(mw * 1000) / 1000,
+        unknownElement: unknown,
+        heavyAtomCount: graph.atoms.length,
+        ringCount: rings,
+        bondCount: graph.bonds.length,
+        aromatic: graph.atoms.some((a) => a.aromatic),
+        atoms: graph.atoms.map((a, i) => ({ index: i, element: a.sym, aromatic: a.aromatic })),
+        bonds: graph.bonds.map((b) => ({ from: b.a, to: b.b, order: b.order })),
+      },
+    };
+  });
+
+  // ── 2D structure layout — force-directed coordinate assignment ──
+  // Produces drawable (x,y) coordinates from a SMILES graph so the
+  // frontend editor / viewer can render a real skeletal structure.
+  function layout2D(graph) {
+    const n = graph.atoms.length;
+    const pos = graph.atoms.map((_, i) => {
+      const ang = (i / Math.max(1, n)) * Math.PI * 2;
+      return { x: Math.cos(ang) * 60, y: Math.sin(ang) * 60 };
+    });
+    // adjacency
+    const adj = graph.atoms.map(() => []);
+    for (const b of graph.bonds) { adj[b.a].push(b.b); adj[b.b].push(b.a); }
+    // BFS tree layout from atom 0 along bond directions at 120° angles
+    const visited = new Array(n).fill(false);
+    const BOND_LEN = 50;
+    const queue = [{ idx: 0, x: 0, y: 0, dir: 0 }];
+    visited[0] = true;
+    pos[0] = { x: 0, y: 0 };
+    while (queue.length) {
+      const { idx, x, y, dir } = queue.shift();
+      let childDir = dir + Math.PI;
+      const children = adj[idx].filter((c) => !visited[c]);
+      const spread = Math.PI / 1.5;
+      children.forEach((c, k) => {
+        const a = childDir + (k - (children.length - 1) / 2) * (spread / Math.max(1, children.length));
+        const nx = x + Math.cos(a) * BOND_LEN;
+        const ny = y + Math.sin(a) * BOND_LEN;
+        pos[c] = { x: nx, y: ny };
+        visited[c] = true;
+        queue.push({ idx: c, x: nx, y: ny, dir: a });
+      });
+    }
+    // light spring relaxation to de-overlap ring closures
+    for (let iter = 0; iter < 60; iter++) {
+      const force = pos.map(() => ({ x: 0, y: 0 }));
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const dx = pos[i].x - pos[j].x, dy = pos[i].y - pos[j].y;
+          const d2 = dx * dx + dy * dy || 0.01;
+          const rep = 1200 / d2;
+          force[i].x += dx * rep; force[i].y += dy * rep;
+          force[j].x -= dx * rep; force[j].y -= dy * rep;
+        }
+      }
+      for (const b of graph.bonds) {
+        const dx = pos[b.b].x - pos[b.a].x, dy = pos[b.b].y - pos[b.a].y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        const k = (d - BOND_LEN) * 0.08;
+        force[b.a].x += dx / d * k; force[b.a].y += dy / d * k;
+        force[b.b].x -= dx / d * k; force[b.b].y -= dy / d * k;
+      }
+      for (let i = 1; i < n; i++) {
+        pos[i].x += Math.max(-8, Math.min(8, force[i].x));
+        pos[i].y += Math.max(-8, Math.min(8, force[i].y));
+      }
+    }
+    return pos.map((p) => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 }));
+  }
+
+  /**
+   * structure-layout — convert a SMILES string into 2D drawable atom
+   * coordinates + bond list for the structure editor / viewer.
+   */
+  registerLensAction("chem", "structure-layout", (_ctx, _artifact, params = {}) => {
+    const smiles = String(params.smiles || "").trim();
+    if (!smiles) return { ok: false, error: "smiles required" };
+    if (smiles.length > 400) return { ok: false, error: "smiles too long" };
+    let graph;
+    try {
+      graph = smilesToGraph(smiles);
+    } catch (e) {
+      return { ok: false, error: `could not parse SMILES: ${e.message}` };
+    }
+    if (graph.atoms.length === 0) return { ok: false, error: "no atoms in SMILES" };
+    const coords = layout2D(graph);
+    const { counts } = graphToFormula(graph);
+    return {
+      ok: true,
+      result: {
+        smiles,
+        formula: formatHill(counts),
+        atoms: graph.atoms.map((a, i) => ({
+          index: i, element: a.sym, aromatic: a.aromatic,
+          x: coords[i].x, y: coords[i].y,
+        })),
+        bonds: graph.bonds.map((b) => ({ from: b.a, to: b.b, order: b.order, ring: !!b.ring })),
+      },
+    };
+  });
+
+  /**
+   * save-structure — persist a user-drawn / parsed structure to per-user
+   * state. Accepts a SMILES string and an optional name; stores the
+   * derived graph so it can be re-opened in the editor.
+   */
+  registerLensAction("chem", "save-structure", (ctx, _artifact, params = {}) => {
+    const userId = chemActor(ctx);
+    const smiles = String(params.smiles || "").trim();
+    const name = String(params.name || "").trim() || "Untitled structure";
+    if (!smiles) return { ok: false, error: "smiles required" };
+    let graph;
+    try { graph = smilesToGraph(smiles); }
+    catch (e) { return { ok: false, error: `invalid SMILES: ${e.message}` }; }
+    const { counts } = graphToFormula(graph);
+    const s = chemState();
+    if (!s.chemStructures.has(userId)) s.chemStructures.set(userId, new Map());
+    const map = s.chemStructures.get(userId);
+    const id = chemId("struct");
+    const record = {
+      id, name, smiles, formula: formatHill(counts),
+      heavyAtomCount: graph.atoms.length,
+      createdAt: new Date().toISOString(),
+    };
+    map.set(id, record);
+    return { ok: true, result: record };
+  });
+
+  /**
+   * list-structures — return all structures saved by the user.
+   */
+  registerLensAction("chem", "list-structures", (ctx) => {
+    const userId = chemActor(ctx);
+    const s = chemState();
+    const map = s.chemStructures.get(userId);
+    const structures = map ? [...map.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) : [];
+    return { ok: true, result: { structures, count: structures.length } };
+  });
+
+  /**
+   * delete-structure — remove a saved structure by id.
+   */
+  registerLensAction("chem", "delete-structure", (ctx, _artifact, params = {}) => {
+    const userId = chemActor(ctx);
+    const id = String(params.id || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const s = chemState();
+    const map = s.chemStructures.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "structure not found" };
+    map.delete(id);
+    return { ok: true, result: { deleted: id } };
+  });
+
+  /**
+   * resolve-structure — given a compound name or SMILES, look up the
+   * canonical structure from PubChem (free PUG-REST API): canonical
+   * SMILES, InChI, InChIKey, IUPAC name, molecular formula, CID.
+   */
+  registerLensAction("chem", "resolve-structure", async (_ctx, _artifact, params = {}) => {
+    const query = String(params.query || params.name || "").trim();
+    if (!query) return { ok: false, error: "query required (compound name or SMILES)" };
+    if (query.length > 200) return { ok: false, error: "query too long" };
+    const ns = params.bySmiles ? "smiles" : "name";
+    const props = "MolecularFormula,MolecularWeight,CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName";
+    const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/${ns}/${encodeURIComponent(query)}/property/${props}/JSON`;
+    try {
+      const json = await cachedFetchJson(url, { ttlMs: 24 * 60 * 60 * 1000 });
+      const row = json?.PropertyTable?.Properties?.[0];
+      if (!row) return { ok: false, error: `no PubChem match for "${query}"` };
+      return {
+        ok: true,
+        result: {
+          query,
+          cid: row.CID,
+          iupacName: row.IUPACName || null,
+          molecularFormula: row.MolecularFormula || null,
+          molecularWeight: row.MolecularWeight ? Number(row.MolecularWeight) : null,
+          canonicalSmiles: row.CanonicalSMILES || null,
+          isomericSmiles: row.IsomericSMILES || null,
+          inchi: row.InChI || null,
+          inchiKey: row.InChIKey || null,
+          structureImage: row.CID
+            ? `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${row.CID}/PNG`
+            : null,
+          conformerUrl: row.CID
+            ? `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${row.CID}/record/SDF?record_type=3d`
+            : null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `PubChem lookup failed: ${e.message}` };
+    }
+  });
+
+  /**
+   * conformer-3d — fetch the 3D conformer (atom coords + bonds) for a
+   * PubChem compound by CID. Parses the free SDF/JSON 3D record into a
+   * coordinate list the 3D viewer can render.
+   */
+  registerLensAction("chem", "conformer-3d", async (_ctx, _artifact, params = {}) => {
+    const cid = Number(params.cid);
+    if (!Number.isInteger(cid) || cid <= 0) return { ok: false, error: "valid integer cid required" };
+    const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/record/JSON?record_type=3d`;
+    try {
+      const json = await cachedFetchJson(url, { ttlMs: 24 * 60 * 60 * 1000 });
+      const compound = json?.PC_Compounds?.[0];
+      if (!compound) return { ok: false, error: `no 3D conformer for CID ${cid}` };
+      const elementIds = compound.atoms?.element || [];
+      const conf = compound.coords?.[0]?.conformers?.[0];
+      const xs = conf?.x || [], ys = conf?.y || [], zs = conf?.z || [];
+      // PubChem atomic-number → symbol
+      const Z_TO_SYM = {};
+      for (const [sym, el] of Object.entries(PERIODIC_TABLE)) Z_TO_SYM[el.z] = sym;
+      const atoms = elementIds.map((z, i) => ({
+        element: Z_TO_SYM[z] || `#${z}`,
+        x: xs[i] ?? 0, y: ys[i] ?? 0, z: zs[i] ?? 0,
+      }));
+      const bondA = compound.bonds?.aid1 || [];
+      const bondB = compound.bonds?.aid2 || [];
+      const bondOrder = compound.bonds?.order || [];
+      const bonds = bondA.map((a, i) => ({ from: a - 1, to: bondB[i] - 1, order: bondOrder[i] || 1 }));
+      return {
+        ok: true,
+        result: { cid, atomCount: atoms.length, atoms, bonds },
+      };
+    } catch (e) {
+      return { ok: false, error: `conformer fetch failed: ${e.message}` };
+    }
+  });
+
+  /**
+   * stoichiometry — given a balanced equation and the amounts (in grams
+   * or moles) of one or more reactants, compute the limiting reagent,
+   * theoretical yield of every product, and percent yield if an actual
+   * yield is supplied.
+   *
+   * params.equation = "2H2 + O2 -> 2H2O"  (must already be balanced OR
+   *   pass balance:true to balance it first)
+   * params.amounts = { "H2": { grams: 4 }, "O2": { grams: 40 } }
+   * params.actualYield = { compound: "H2O", grams: 30 }  (optional)
+   */
+  registerLensAction("chem", "stoichiometry", (_ctx, _artifact, params = {}) => {
+    const equation = String(params.equation || "").trim();
+    if (!equation) return { ok: false, error: "equation required (e.g. 2H2 + O2 -> 2H2O)" };
+    const sides = equation.split(/->|→|=/).map((s) => s.trim());
+    if (sides.length !== 2) return { ok: false, error: "equation must have one arrow (->)" };
+
+    // parse "2H2" → { coeff, formula }
+    function parseTerm(term) {
+      const m = term.trim().match(/^(\d*)\s*(.+)$/);
+      return { coeff: m[1] ? Number(m[1]) : 1, formula: m[2].trim() };
+    }
+    const reactants = sides[0].split("+").map((s) => parseTerm(s)).filter((t) => t.formula);
+    const products = sides[1].split("+").map((s) => parseTerm(s)).filter((t) => t.formula);
+    if (!reactants.length || !products.length) {
+      return { ok: false, error: "need at least one reactant and one product" };
+    }
+
+    function mwOf(formula) {
+      let counts;
+      try { counts = parseFormula(formula); }
+      catch { return null; }
+      let mw = 0;
+      for (const [sym, n] of Object.entries(counts)) {
+        const el = PERIODIC_TABLE[sym];
+        if (!el) return null;
+        mw += el.mass * n;
+      }
+      return mw;
+    }
+
+    const amounts = params.amounts || {};
+    const r = (v) => Math.round(v * 10000) / 10000;
+
+    // moles of each supplied reactant
+    const supplied = [];
+    for (const rt of reactants) {
+      const a = amounts[rt.formula];
+      if (!a) continue;
+      const mw = mwOf(rt.formula);
+      if (mw == null) return { ok: false, error: `cannot compute MW of ${rt.formula}` };
+      let moles;
+      if (a.moles != null) moles = Number(a.moles);
+      else if (a.grams != null) moles = Number(a.grams) / mw;
+      else continue;
+      if (!Number.isFinite(moles) || moles < 0) {
+        return { ok: false, error: `bad amount for ${rt.formula}` };
+      }
+      supplied.push({ formula: rt.formula, coeff: rt.coeff, mw: r(mw), moles, grams: a.grams != null ? Number(a.grams) : r(moles * mw) });
+    }
+    if (supplied.length === 0) {
+      return { ok: false, error: "provide amounts (grams or moles) for at least one reactant" };
+    }
+
+    // limiting reagent = min(moles / coeff)
+    let limiting = null;
+    for (const s of supplied) {
+      const ratio = s.moles / s.coeff;
+      s.reactionRatio = r(ratio);
+      if (limiting == null || ratio < limiting.reactionRatio) limiting = s;
+    }
+    const extent = limiting.moles / limiting.coeff; // mol of "reaction"
+
+    // theoretical yield of every product
+    const productYields = products.map((p) => {
+      const mw = mwOf(p.formula);
+      const moles = extent * p.coeff;
+      return {
+        formula: p.formula,
+        coefficient: p.coeff,
+        molarMass: mw == null ? null : r(mw),
+        molesProduced: r(moles),
+        gramsProduced: mw == null ? null : r(moles * mw),
+      };
+    });
+
+    // leftover reactants
+    const leftovers = supplied
+      .filter((s) => s.formula !== limiting.formula)
+      .map((s) => {
+        const consumed = extent * s.coeff;
+        const remainingMol = s.moles - consumed;
+        return {
+          formula: s.formula,
+          remainingMoles: r(Math.max(0, remainingMol)),
+          remainingGrams: r(Math.max(0, remainingMol) * s.mw),
+        };
+      });
+
+    // percent yield
+    let percentYield = null;
+    if (params.actualYield && params.actualYield.compound) {
+      const py = productYields.find((p) => p.formula === params.actualYield.compound);
+      if (py) {
+        let actualMol;
+        if (params.actualYield.moles != null) actualMol = Number(params.actualYield.moles);
+        else if (params.actualYield.grams != null && py.molarMass) actualMol = Number(params.actualYield.grams) / py.molarMass;
+        if (actualMol != null && py.molesProduced > 0) {
+          percentYield = {
+            compound: params.actualYield.compound,
+            theoreticalMoles: py.molesProduced,
+            actualMoles: r(actualMol),
+            percent: r((actualMol / py.molesProduced) * 100),
+          };
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      result: {
+        equation,
+        limitingReagent: limiting.formula,
+        reactionExtent: r(extent),
+        suppliedReactants: supplied.map((s) => ({
+          formula: s.formula, moles: r(s.moles), grams: r(s.grams),
+          molarMass: s.mw, coefficient: s.coeff,
+        })),
+        products: productYields,
+        leftoverReactants: leftovers,
+        percentYield,
+      },
+    };
+  });
+
+  /**
+   * spectroscopy-reference — return a characteristic peak table for a
+   * spectroscopy technique (IR / NMR-1H / NMR-13C / MS). Optionally
+   * filtered by functional group. Values are standard reference ranges.
+   */
+  const SPECTRO_TABLES = {
+    ir: {
+      technique: "Infrared (IR)", unit: "cm⁻¹",
+      peaks: [
+        { group: "O–H (alcohol)", range: "3200–3550", intensity: "strong, broad", note: "Hydrogen-bonded; sharper if free" },
+        { group: "O–H (carboxylic acid)", range: "2500–3300", intensity: "strong, very broad", note: "Overlaps C–H" },
+        { group: "N–H (amine/amide)", range: "3300–3500", intensity: "medium", note: "1° amine shows two bands" },
+        { group: "C–H (sp³)", range: "2850–2960", intensity: "medium", note: "Alkyl stretch" },
+        { group: "C–H (sp², aromatic)", range: "3000–3100", intensity: "medium", note: "Just above 3000" },
+        { group: "C≡C / C≡N", range: "2100–2260", intensity: "medium", note: "Triple-bond stretch" },
+        { group: "C=O (carbonyl)", range: "1670–1780", intensity: "strong", note: "Ketone ~1715, ester ~1740, acid ~1710" },
+        { group: "C=C (alkene)", range: "1620–1680", intensity: "medium", note: "Conjugation lowers frequency" },
+        { group: "Aromatic C=C", range: "1450–1600", intensity: "medium", note: "Ring breathing modes" },
+        { group: "C–O (ester/ether)", range: "1000–1300", intensity: "strong", note: "Often two bands for esters" },
+        { group: "C–N", range: "1020–1250", intensity: "medium", note: "Amine fingerprint region" },
+      ],
+    },
+    "nmr-1h": {
+      technique: "¹H NMR", unit: "ppm",
+      peaks: [
+        { group: "TMS reference", range: "0.0", intensity: "—", note: "Calibration standard" },
+        { group: "Alkyl C–H (R–CH₃)", range: "0.8–1.2", intensity: "—", note: "Most shielded" },
+        { group: "Alkyl C–H (R–CH₂–R)", range: "1.2–1.5", intensity: "—", note: "Methylene" },
+        { group: "Allylic / α-to-C=O", range: "2.0–2.6", intensity: "—", note: "Deshielded by adjacent π/C=O" },
+        { group: "C–H next to O/N", range: "3.3–4.0", intensity: "—", note: "Ethers, amines" },
+        { group: "Vinyl C–H (alkene)", range: "4.6–6.0", intensity: "—", note: "sp² hydrogens" },
+        { group: "Aromatic C–H", range: "6.5–8.0", intensity: "—", note: "Ring current deshielding" },
+        { group: "Aldehyde C–H", range: "9.0–10.0", intensity: "—", note: "Highly deshielded" },
+        { group: "Carboxylic acid O–H", range: "10.0–13.0", intensity: "broad", note: "Exchangeable" },
+      ],
+    },
+    "nmr-13c": {
+      technique: "¹³C NMR", unit: "ppm",
+      peaks: [
+        { group: "Alkyl C (sp³)", range: "0–50", intensity: "—", note: "Saturated carbons" },
+        { group: "C–O / C–N (sp³)", range: "50–90", intensity: "—", note: "Alcohols, ethers, amines" },
+        { group: "Alkyne C", range: "65–90", intensity: "—", note: "sp carbons" },
+        { group: "Alkene / aromatic C", range: "100–150", intensity: "—", note: "sp² carbons" },
+        { group: "Nitrile C≡N", range: "115–120", intensity: "—", note: "" },
+        { group: "Ester / acid / amide C=O", range: "160–185", intensity: "—", note: "Carbonyl carbons" },
+        { group: "Ketone / aldehyde C=O", range: "190–220", intensity: "—", note: "Most deshielded" },
+      ],
+    },
+    ms: {
+      technique: "Mass Spectrometry", unit: "m/z loss",
+      peaks: [
+        { group: "Loss of 15", range: "M–15", intensity: "—", note: "Loss of •CH₃" },
+        { group: "Loss of 17", range: "M–17", intensity: "—", note: "Loss of •OH" },
+        { group: "Loss of 18", range: "M–18", intensity: "—", note: "Loss of H₂O" },
+        { group: "Loss of 28", range: "M–28", intensity: "—", note: "Loss of CO or C₂H₄" },
+        { group: "Loss of 29", range: "M–29", intensity: "—", note: "Loss of CHO or C₂H₅" },
+        { group: "Loss of 31", range: "M–31", intensity: "—", note: "Loss of •OCH₃" },
+        { group: "Loss of 45", range: "M–45", intensity: "—", note: "Loss of •COOH / •OEt" },
+        { group: "m/z 77", range: "77", intensity: "—", note: "Phenyl cation C₆H₅⁺" },
+        { group: "m/z 43", range: "43", intensity: "—", note: "Acylium CH₃CO⁺ / C₃H₇⁺" },
+        { group: "M+1 isotope", range: "M+1", intensity: "~1.1%/C", note: "¹³C abundance" },
+      ],
+    },
+  };
+
+  registerLensAction("chem", "spectroscopy-reference", (_ctx, _artifact, params = {}) => {
+    const technique = String(params.technique || "ir").toLowerCase().trim();
+    const table = SPECTRO_TABLES[technique];
+    if (!table) {
+      return { ok: false, error: `unknown technique "${technique}". Use: ir, nmr-1h, nmr-13c, ms` };
+    }
+    const filter = String(params.group || "").toLowerCase().trim();
+    let peaks = table.peaks;
+    if (filter) {
+      peaks = peaks.filter((p) => p.group.toLowerCase().includes(filter) || p.note.toLowerCase().includes(filter));
+    }
+    return {
+      ok: true,
+      result: {
+        technique: table.technique,
+        unit: table.unit,
+        peaks,
+        peakCount: peaks.length,
+        availableTechniques: Object.keys(SPECTRO_TABLES),
+      },
+    };
+  });
+
+  /**
+   * reaction-mechanism — produce an electron-pushing / mechanism step
+   * outline for a named reaction type. Each step lists the bond changes
+   * and curved-arrow descriptions used to render a mechanism diagram.
+   */
+  const MECHANISMS = {
+    sn2: {
+      name: "SN2 (bimolecular nucleophilic substitution)",
+      summary: "Concerted backside attack — one step, inversion of configuration.",
+      steps: [
+        { step: 1, title: "Backside attack", arrows: ["Nucleophile lone pair → C–LG carbon"], bondChanges: ["Form Nu–C", "Break C–LG"], description: "Nucleophile attacks 180° opposite the leaving group; transition state is trigonal bipyramidal." },
+        { step: 2, title: "Product", arrows: [], bondChanges: [], description: "Inverted stereocenter; leaving group departs with the bonding pair." },
+      ],
+      kinetics: "rate = k[substrate][nucleophile] — 2nd order",
+    },
+    sn1: {
+      name: "SN1 (unimolecular nucleophilic substitution)",
+      summary: "Two-step via carbocation — racemization at the stereocenter.",
+      steps: [
+        { step: 1, title: "Ionization", arrows: ["C–LG bond pair → leaving group"], bondChanges: ["Break C–LG"], description: "Rate-determining loss of leaving group forms a planar carbocation." },
+        { step: 2, title: "Nucleophilic capture", arrows: ["Nucleophile lone pair → carbocation"], bondChanges: ["Form Nu–C"], description: "Nucleophile attacks either face of the planar cation → racemic mixture." },
+        { step: 3, title: "Deprotonation (if Nu is neutral)", arrows: ["Solvent base lone pair → O–H/N–H"], bondChanges: ["Break Nu–H"], description: "Restores neutral product when the nucleophile was protic." },
+      ],
+      kinetics: "rate = k[substrate] — 1st order",
+    },
+    e2: {
+      name: "E2 (bimolecular elimination)",
+      summary: "Concerted anti-periplanar elimination — one step.",
+      steps: [
+        { step: 1, title: "Concerted elimination", arrows: ["Base lone pair → β-H", "β C–H bond pair → forming C=C", "α C–LG bond pair → leaving group"], bondChanges: ["Break β C–H", "Form C=C π", "Break C–LG"], description: "Base removes β-hydrogen anti-periplanar to the leaving group as the π bond forms." },
+      ],
+      kinetics: "rate = k[substrate][base] — 2nd order",
+    },
+    e1: {
+      name: "E1 (unimolecular elimination)",
+      summary: "Two-step via carbocation — same intermediate as SN1.",
+      steps: [
+        { step: 1, title: "Ionization", arrows: ["C–LG bond pair → leaving group"], bondChanges: ["Break C–LG"], description: "Rate-determining carbocation formation." },
+        { step: 2, title: "β-Hydrogen loss", arrows: ["β C–H bond pair → forming C=C"], bondChanges: ["Break β C–H", "Form C=C π"], description: "Weak base removes a β-hydrogen, giving the more substituted (Zaitsev) alkene." },
+      ],
+      kinetics: "rate = k[substrate] — 1st order",
+    },
+    esterification: {
+      name: "Fischer esterification",
+      summary: "Acid-catalyzed condensation of a carboxylic acid + alcohol → ester.",
+      steps: [
+        { step: 1, title: "Carbonyl protonation", arrows: ["Acid H⁺ → carbonyl O lone pair"], bondChanges: ["Form O–H⁺"], description: "Protonation activates the carbonyl toward nucleophilic attack." },
+        { step: 2, title: "Alcohol attack", arrows: ["Alcohol O lone pair → carbonyl C"], bondChanges: ["Form C–O", "Break C=O π"], description: "Tetrahedral intermediate forms." },
+        { step: 3, title: "Proton transfer + water loss", arrows: ["O–H pair → leaving water"], bondChanges: ["Break C–OH₂⁺"], description: "Proton shuffling converts an OH into a good leaving group (water)." },
+        { step: 4, title: "Deprotonation", arrows: ["Water lone pair → O–H⁺"], bondChanges: ["Break O–H⁺"], description: "Regenerates the acid catalyst and gives the neutral ester." },
+      ],
+      kinetics: "equilibrium — driven by excess reagent or water removal",
+    },
+    "acid-base": {
+      name: "Brønsted acid–base proton transfer",
+      summary: "Single concerted proton transfer from acid to base.",
+      steps: [
+        { step: 1, title: "Proton transfer", arrows: ["Base lone pair → acidic H", "H–A bond pair → A⁻"], bondChanges: ["Form B–H", "Break H–A"], description: "Equilibrium position set by relative pKa — proton moves to the stronger base." },
+      ],
+      kinetics: "fast, diffusion-limited equilibrium",
+    },
+  };
+
+  registerLensAction("chem", "reaction-mechanism", (_ctx, _artifact, params = {}) => {
+    const type = String(params.type || "").toLowerCase().trim();
+    if (!type) {
+      return {
+        ok: true,
+        result: { available: Object.keys(MECHANISMS).map((k) => ({ key: k, name: MECHANISMS[k].name })) },
+      };
+    }
+    const mech = MECHANISMS[type];
+    if (!mech) {
+      return { ok: false, error: `unknown mechanism "${type}". Available: ${Object.keys(MECHANISMS).join(", ")}` };
+    }
+    return {
+      ok: true,
+      result: {
+        type, name: mech.name, summary: mech.summary,
+        kinetics: mech.kinetics, steps: mech.steps, stepCount: mech.steps.length,
+      },
+    };
+  });
+
+  /**
+   * notebook-add — append a lab-notebook entry (reaction log). Stores
+   * title, equation/procedure, observations, yield, and tags per user.
+   */
+  registerLensAction("chem", "notebook-add", (ctx, _artifact, params = {}) => {
+    const userId = chemActor(ctx);
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    const s = chemState();
+    if (!s.chemLabNotebook.has(userId)) s.chemLabNotebook.set(userId, []);
+    const entries = s.chemLabNotebook.get(userId);
+    const entry = {
+      id: chemId("lab"),
+      title,
+      equation: String(params.equation || "").trim() || null,
+      procedure: String(params.procedure || "").trim() || null,
+      observations: String(params.observations || "").trim() || null,
+      yieldPercent: params.yieldPercent != null && Number.isFinite(Number(params.yieldPercent))
+        ? Number(params.yieldPercent) : null,
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => String(t)).slice(0, 12) : [],
+      createdAt: new Date().toISOString(),
+    };
+    entries.unshift(entry);
+    if (entries.length > 500) entries.length = 500;
+    return { ok: true, result: entry };
+  });
+
+  /**
+   * notebook-list — return the user's lab-notebook entries, optionally
+   * filtered by a tag or free-text query.
+   */
+  registerLensAction("chem", "notebook-list", (ctx, _artifact, params = {}) => {
+    const userId = chemActor(ctx);
+    const s = chemState();
+    let entries = s.chemLabNotebook.get(userId) || [];
+    const tag = String(params.tag || "").toLowerCase().trim();
+    const q = String(params.query || "").toLowerCase().trim();
+    if (tag) entries = entries.filter((e) => e.tags.some((t) => t.toLowerCase() === tag));
+    if (q) {
+      entries = entries.filter((e) =>
+        e.title.toLowerCase().includes(q) ||
+        (e.observations && e.observations.toLowerCase().includes(q)) ||
+        (e.equation && e.equation.toLowerCase().includes(q)));
+    }
+    return { ok: true, result: { entries, count: entries.length } };
+  });
+
+  /**
+   * notebook-delete — remove a lab-notebook entry by id.
+   */
+  registerLensAction("chem", "notebook-delete", (ctx, _artifact, params = {}) => {
+    const userId = chemActor(ctx);
+    const id = String(params.id || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const s = chemState();
+    const entries = s.chemLabNotebook.get(userId);
+    if (!entries) return { ok: false, error: "entry not found" };
+    const idx = entries.findIndex((e) => e.id === id);
+    if (idx === -1) return { ok: false, error: "entry not found" };
+    entries.splice(idx, 1);
+    return { ok: true, result: { deleted: id } };
   });
 }

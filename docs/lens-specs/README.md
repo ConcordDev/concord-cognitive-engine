@@ -13,30 +13,26 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 - Lenses audited: **235**
 - Average feature parity: **~72%**
-- Total buildable features in the backlog (sum of all "Missing" items): **896**
+- Total buildable features in the backlog (sum of all "Missing" items): **855**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 104 |
+| 80–100% (near-complete) | 108 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 67 |
+| 40–59% (partial) | 61 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
+| bridge | (cross-world federation console) | ~?% | 0 |
+| chem | ChemDraw / PubChem | ~?% | 0 |
 | collab | Figma / Google Docs (real-time collaboration) | ~?% | 0 |
 | organ | ChartHop | ~?% | 0 |
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| bio | Benchling / SnapGene | ~48% | 7 |
-| cognitive-replay | Spotify Wrapped / RescueTime timeline | ~48% | 7 |
-| admin | Datadog / Grafana | ~50% | 7 |
-| bridge | (cross-world federation console) | ~50% | 6 |
-| chem | ChemDraw / PubChem | ~50% | 7 |
-| commonsense | ConceptNet / Cyc | ~50% | 7 |
 | consulting | Bonsai / Harvest | ~50% | 8 |
 | creative | StudioBinder / Frame.io | ~50% | 7 |
 | cri | data-quality scorecard tooling | ~50% | 6 |
@@ -187,12 +183,16 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | transfer | Fivetran / Airbyte (data migration / ETL) | ~85% | 0 |
 | ux-suite | Storybook / a component directory | ~85% | 0 |
 | world-creator | Roblox Studio / Core / Unreal Editor | ~85% | 0 |
+| admin | Datadog / Grafana | ~88% | 0 |
 | alliance | Slack Connect / Discord | ~88% | 0 |
 | artistry | Behance / ArtStation | ~88% | 0 |
 | attention | Sunsama / Motion | ~88% | 0 |
 | billing | Stripe Billing | ~88% | 0 |
+| bio | Benchling / SnapGene | ~88% | 0 |
 | carpentry | Houzz Pro / Buildertrend (trades) | ~88% | 0 |
 | code-quality | SonarQube / CodeClimate | ~88% | 0 |
+| cognitive-replay | Spotify Wrapped / RescueTime timeline | ~88% | 0 |
+| commonsense | ConceptNet / Cyc | ~88% | 0 |
 | ethics | Ethical OS / decision-ethics tooling | ~88% | 0 |
 | expert-mode | Perplexity | ~88% | 0 |
 | ghost-tracker | no direct rival (in-game mode) | ~88% | 0 |

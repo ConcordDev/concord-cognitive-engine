@@ -16,6 +16,7 @@ import { apiHelpers } from '@/lib/api/client';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import BioWorkbench from '@/components/bio/BioWorkbench';
+import { MolecularWorkbench } from '@/components/bio/MolecularWorkbench';
 import { SequenceAnalyzer } from '@/components/bio/SequenceAnalyzer';
 import { BioActionPanel } from '@/components/bio/BioActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -320,27 +321,11 @@ export default function BioLensPage() {
       )}
 
       {activeTab === 'sequences' && (
-        <motion.div key="sequences" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="panel p-4">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Dna className="w-4 h-4 text-neon-purple" /> DNA Sequence Viewer</h3>
-          <div className="bg-black/30 rounded-lg p-4 font-mono text-xs leading-relaxed overflow-x-auto">
-            <div className="flex flex-wrap gap-x-1">
-              {'ATGCGTACGTTAACGGCTATGCAGTACGCTTAAGCGTACG'.split('').map((base, i) => {
-                const colors: Record<string, string> = { A: 'text-green-400', T: 'text-red-400', G: 'text-amber-400', C: 'text-blue-400' };
-                return (
-                  <motion.span key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                    className={colors[base] || 'text-gray-400'}>
-                    {base}
-                  </motion.span>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex gap-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400" /> Adenine (A)</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> Thymine (T)</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Guanine (G)</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" /> Cytosine (C)</span>
-            </div>
-          </div>
+        <motion.div key="sequences" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          {/* Benchling/SnapGene parity — plasmid maps, MSA, in-silico cloning,
+              ORF/translation, BLAST homology, CRISPR guide design, lab notebook.
+              Every panel is wired to a real bio.* macro. */}
+          <MolecularWorkbench />
         </motion.div>
       )}
       </AnimatePresence>

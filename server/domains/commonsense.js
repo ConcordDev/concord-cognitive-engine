@@ -4,7 +4,112 @@
 // ConceptNet knowledge-graph lookups (free, no API key — ~34M
 // edges across 304 languages).
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const CONCEPTNET_BASE = "https://api.conceptnet.io";
+
+// ---------------------------------------------------------------------------
+// Per-user persistent fact store. Lives on globalThis._concordSTATE so it
+// survives across macro calls (but not server restart — intentional, this is
+// a working knowledge base, not the DTU substrate).
+// ---------------------------------------------------------------------------
+
+/** Lazily provision the per-domain state container. */
+function csState() {
+  const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+  if (!STATE.commonsenseLens) {
+    STATE.commonsenseLens = {
+      facts: new Map(), // userId -> Map<factId, fact>
+    };
+  }
+  return STATE.commonsenseLens;
+}
+
+/** Resolve the calling user's id from ctx, defaulting to a shared bucket. */
+function userIdOf(ctx) {
+  return (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "anon";
+}
+
+/** Per-user Map accessor that auto-creates the bucket. */
+function factBucket(uid) {
+  const map = csState().facts;
+  if (!map.has(uid)) map.set(uid, new Map());
+  return map.get(uid);
+}
+
+function rid(prefix) {
+  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// Canonical relation taxonomy (ConceptNet-aligned), grouped for browsing.
+const RELATION_TAXONOMY = [
+  {
+    group: "Taxonomic",
+    description: "Class membership and subtype hierarchy.",
+    relations: [
+      { id: "is_a", label: "IsA", inverse: "has_subtype", symmetric: false, transitive: true },
+      { id: "instance_of", label: "InstanceOf", inverse: null, symmetric: false, transitive: false },
+    ],
+  },
+  {
+    group: "Compositional",
+    description: "Part-whole and made-of structure.",
+    relations: [
+      { id: "part_of", label: "PartOf", inverse: "has_part", symmetric: false, transitive: true },
+      { id: "made_of", label: "MadeOf", inverse: null, symmetric: false, transitive: false },
+      { id: "has_a", label: "HasA", inverse: "part_of", symmetric: false, transitive: false },
+    ],
+  },
+  {
+    group: "Functional",
+    description: "Purpose, capability, and use.",
+    relations: [
+      { id: "used_for", label: "UsedFor", inverse: null, symmetric: false, transitive: false },
+      { id: "capable_of", label: "CapableOf", inverse: null, symmetric: false, transitive: false },
+      { id: "has_property", label: "HasProperty", inverse: null, symmetric: false, transitive: false },
+    ],
+  },
+  {
+    group: "Causal",
+    description: "Cause, effect, and motivation.",
+    relations: [
+      { id: "causes", label: "Causes", inverse: "caused_by", symmetric: false, transitive: true },
+      { id: "has_prerequisite", label: "HasPrerequisite", inverse: null, symmetric: false, transitive: true },
+      { id: "motivated_by", label: "MotivatedByGoal", inverse: null, symmetric: false, transitive: false },
+    ],
+  },
+  {
+    group: "Spatial / Lexical",
+    description: "Location and word relationships.",
+    relations: [
+      { id: "located_at", label: "AtLocation", inverse: null, symmetric: false, transitive: false },
+      { id: "synonym", label: "Synonym", inverse: "synonym", symmetric: true, transitive: true },
+      { id: "antonym", label: "Antonym", inverse: "antonym", symmetric: true, transitive: false },
+      { id: "related_to", label: "RelatedTo", inverse: "related_to", symmetric: true, transitive: false },
+    ],
+  },
+];
+
+const RELATION_INDEX = (() => {
+  const idx = {};
+  for (const g of RELATION_TAXONOMY) {
+    for (const r of g.relations) idx[r.id] = { ...r, group: g.group };
+  }
+  return idx;
+})();
+
+// Antonym / mutually-exclusive property pairs for contradiction detection.
+const ANTONYM_PAIRS = [
+  ["alive", "dead"], ["hot", "cold"], ["big", "small"], ["large", "small"],
+  ["fast", "slow"], ["wet", "dry"], ["open", "closed"], ["light", "heavy"],
+  ["soft", "hard"], ["happy", "sad"], ["true", "false"], ["empty", "full"],
+  ["young", "old"], ["safe", "dangerous"], ["edible", "poisonous"],
+  ["animate", "inanimate"], ["solid", "liquid"], ["natural", "artificial"],
+];
+
+function normTok(s) {
+  return String(s || "").trim().toLowerCase().replace(/\s+/g, "_");
+}
 
 export default function registerCommonsenseActions(registerLensAction) {
   /**
@@ -613,6 +718,686 @@ export default function registerCommonsenseActions(registerLensAction) {
       };
     } catch (e) {
       return { ok: false, error: `conceptnet unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // =========================================================================
+  // FACT STORE — persistent per-user subject-relation-object triples.
+  // These back the graph / inference / contradiction / query features.
+  // =========================================================================
+
+  /**
+   * factAdd — add one fact triple to the per-user store.
+   * params: { subject, relation, object, confidence?, source? }
+   */
+  registerLensAction("commonsense", "factAdd", (ctx, _artifact, params = {}) => {
+    try {
+      const subject = String(params.subject || "").trim();
+      const relation = normTok(params.relation || "is_a");
+      const object = String(params.object || "").trim();
+      if (!subject || !object) return { ok: false, error: "subject + object required" };
+      const confidence = Math.max(0, Math.min(1, Number(params.confidence) || 0.8));
+      const bucket = factBucket(userIdOf(ctx));
+      const id = rid("fact");
+      const fact = {
+        id, subject, relation, object, confidence,
+        source: String(params.source || "user").trim() || "user",
+        createdAt: new Date().toISOString(),
+      };
+      bucket.set(id, fact);
+      return { ok: true, result: { fact, total: bucket.size } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /** factList — list all stored facts for the calling user. */
+  registerLensAction("commonsense", "factList", (ctx, _artifact, _params = {}) => {
+    try {
+      const facts = [...factBucket(userIdOf(ctx)).values()];
+      return { ok: true, result: { facts, count: facts.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /** factDelete — remove a fact by id. params: { id } */
+  registerLensAction("commonsense", "factDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const id = String(params.id || "");
+      const bucket = factBucket(userIdOf(ctx));
+      const existed = bucket.delete(id);
+      return { ok: true, result: { deleted: existed, total: bucket.size } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * knowledgeGraph — build a node/edge graph from the fact store, optionally
+   * focused on one concept up to a given hop depth. Backs the interactive
+   * graph visualization.
+   * params: { focus?: string, depth?: 1-4, includeConceptNet?: bool }
+   */
+  registerLensAction("commonsense", "knowledgeGraph", async (ctx, _artifact, params = {}) => {
+    try {
+      const facts = [...factBucket(userIdOf(ctx)).values()];
+      const focus = normTok(params.focus || "");
+      const depth = Math.max(1, Math.min(4, Number(params.depth) || 2));
+
+      // Adjacency from the fact store (undirected reachability for the BFS).
+      const adj = new Map();
+      const touch = (k) => { if (!adj.has(k)) adj.set(k, new Set()); return adj.get(k); };
+      for (const f of facts) {
+        const s = normTok(f.subject), o = normTok(f.object);
+        touch(s).add(o);
+        touch(o).add(s);
+      }
+
+      // BFS from focus to find the included node set.
+      let included = null;
+      if (focus) {
+        included = new Set([focus]);
+        let frontier = [focus];
+        for (let h = 0; h < depth; h++) {
+          const next = [];
+          for (const n of frontier) {
+            for (const nb of (adj.get(n) || [])) {
+              if (!included.has(nb)) { included.add(nb); next.push(nb); }
+            }
+          }
+          frontier = next;
+        }
+      }
+
+      const inScope = (f) =>
+        !included || included.has(normTok(f.subject)) || included.has(normTok(f.object));
+      const scopedFacts = facts.filter(inScope);
+
+      // Build nodes + edges.
+      const nodeMap = new Map();
+      const addNode = (label) => {
+        const id = normTok(label);
+        if (!nodeMap.has(id)) {
+          nodeMap.set(id, { id, label, degree: 0, isFocus: id === focus });
+        }
+        return id;
+      };
+      const edges = [];
+      for (const f of scopedFacts) {
+        const sId = addNode(f.subject);
+        const oId = addNode(f.object);
+        nodeMap.get(sId).degree++;
+        nodeMap.get(oId).degree++;
+        edges.push({
+          id: f.id, source: sId, target: oId,
+          relation: f.relation,
+          label: RELATION_INDEX[f.relation]?.label || f.relation,
+          weight: f.confidence,
+        });
+      }
+
+      // Optionally enrich the focus node with live ConceptNet edges.
+      let conceptNetEdges = [];
+      if (focus && params.includeConceptNet) {
+        try {
+          const data = await cachedFetchJson(
+            `${CONCEPTNET_BASE}/c/en/${encodeURIComponent(focus)}?limit=20`,
+            { ttlMs: 600000 },
+          );
+          for (const e of (data.edges || [])) {
+            if (!e.start?.label || !e.end?.label) continue;
+            const sId = addNode(e.start.label);
+            const oId = addNode(e.end.label);
+            nodeMap.get(sId).degree++;
+            nodeMap.get(oId).degree++;
+            const ce = {
+              id: `cn_${conceptNetEdges.length}`,
+              source: sId, target: oId,
+              relation: normTok(e.rel?.label || "related_to"),
+              label: e.rel?.label || "RelatedTo",
+              weight: typeof e.weight === "number" ? Math.min(1, e.weight / 5) : 0.5,
+              source_kind: "conceptnet",
+            };
+            edges.push(ce);
+            conceptNetEdges.push(ce);
+          }
+        } catch {
+          // ConceptNet unreachable — graceful: keep local graph only.
+          conceptNetEdges = [];
+        }
+      }
+
+      const nodes = [...nodeMap.values()].sort((a, b) => b.degree - a.degree);
+      return {
+        ok: true,
+        result: {
+          focus: focus || null,
+          depth,
+          nodes,
+          edges,
+          stats: {
+            nodeCount: nodes.length,
+            edgeCount: edges.length,
+            conceptNetEdges: conceptNetEdges.length,
+            maxDegree: nodes[0]?.degree || 0,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * inferChain — derive new facts from existing ones via transitive-relation
+   * closure (IsA, PartOf, Causes, HasPrerequisite, Synonym chains). Backs the
+   * inference chaining UI.
+   * params: { maxHops?: 1-5, minConfidence?: 0-1, relation?: filter }
+   */
+  registerLensAction("commonsense", "inferChain", (ctx, _artifact, params = {}) => {
+    try {
+      const facts = [...factBucket(userIdOf(ctx)).values()];
+      const maxHops = Math.max(1, Math.min(5, Number(params.maxHops) || 3));
+      const minConf = Math.max(0, Math.min(1, Number(params.minConfidence) || 0.3));
+      const relFilter = params.relation ? normTok(params.relation) : null;
+
+      // Transitive relations only — these are the ones we can chain.
+      const transitiveRels = new Set(
+        Object.values(RELATION_INDEX).filter(r => r.transitive).map(r => r.id),
+      );
+
+      // Index facts by (subject, relation) for chaining lookups.
+      const known = new Set(
+        facts.map(f => `${normTok(f.subject)}|${f.relation}|${normTok(f.object)}`),
+      );
+      const bySubjectRel = new Map();
+      for (const f of facts) {
+        if (!transitiveRels.has(f.relation)) continue;
+        const k = `${normTok(f.subject)}|${f.relation}`;
+        if (!bySubjectRel.has(k)) bySubjectRel.set(k, []);
+        bySubjectRel.get(k).push(f);
+      }
+
+      const derived = [];
+      const derivedKeys = new Set();
+
+      // For each transitive relation, walk chains up to maxHops.
+      for (const rel of transitiveRels) {
+        if (relFilter && rel !== relFilter) continue;
+        for (const seed of facts) {
+          if (seed.relation !== rel) continue;
+          // BFS chain: seed.subject --rel--> ... --rel--> endpoint
+          let frontier = [{
+            node: normTok(seed.object),
+            label: seed.object,
+            hops: 1,
+            conf: seed.confidence,
+            path: [seed],
+          }];
+          while (frontier.length) {
+            const next = [];
+            for (const st of frontier) {
+              if (st.hops >= maxHops) continue;
+              const cont = bySubjectRel.get(`${st.node}|${rel}`) || [];
+              for (const f of cont) {
+                const endNode = normTok(f.object);
+                const startNode = normTok(seed.subject);
+                if (endNode === startNode) continue; // skip cycles
+                const newConf = st.conf * f.confidence;
+                const key = `${startNode}|${rel}|${endNode}`;
+                if (known.has(key) || derivedKeys.has(key)) {
+                  next.push({
+                    node: endNode, label: f.object,
+                    hops: st.hops + 1, conf: newConf,
+                    path: [...st.path, f],
+                  });
+                  continue;
+                }
+                if (newConf >= minConf) {
+                  derivedKeys.add(key);
+                  derived.push({
+                    subject: seed.subject,
+                    relation: rel,
+                    relationLabel: RELATION_INDEX[rel]?.label || rel,
+                    object: f.object,
+                    confidence: Math.round(newConf * 1000) / 1000,
+                    hops: st.path.length + 1,
+                    derivation: [...st.path, f].map(p => ({
+                      subject: p.subject, relation: p.relation, object: p.object,
+                      confidence: p.confidence,
+                    })),
+                    rationale: `transitive ${RELATION_INDEX[rel]?.label || rel} over ${st.path.length + 1} known facts`,
+                  });
+                }
+                next.push({
+                  node: endNode, label: f.object,
+                  hops: st.hops + 1, conf: newConf,
+                  path: [...st.path, f],
+                });
+              }
+            }
+            frontier = next;
+          }
+        }
+      }
+
+      derived.sort((a, b) => b.confidence - a.confidence);
+      return {
+        ok: true,
+        result: {
+          inferences: derived,
+          count: derived.length,
+          baseFactCount: facts.length,
+          maxHops,
+          minConfidence: minConf,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * contradictionScan — detect contradictions across the fact store:
+   *  - antonym-property conflicts (X has_property hot + X has_property cold)
+   *  - exclusive IsA conflicts (transitive classes that are antonymic)
+   *  - direct negation pairs across relations
+   * Backs the contradiction detection feature.
+   */
+  registerLensAction("commonsense", "contradictionScan", (ctx, _artifact, _params = {}) => {
+    try {
+      const facts = [...factBucket(userIdOf(ctx)).values()];
+      const contradictions = [];
+
+      // Antonym lookup.
+      const antonymOf = new Map();
+      for (const [a, b] of ANTONYM_PAIRS) {
+        antonymOf.set(a, b);
+        antonymOf.set(b, a);
+      }
+
+      // Group facts by subject for same-subject conflict checks.
+      const bySubject = new Map();
+      for (const f of facts) {
+        const s = normTok(f.subject);
+        if (!bySubject.has(s)) bySubject.set(s, []);
+        bySubject.get(s).push(f);
+      }
+
+      for (const [, subjFacts] of bySubject) {
+        for (let i = 0; i < subjFacts.length; i++) {
+          for (let j = i + 1; j < subjFacts.length; j++) {
+            const a = subjFacts[i];
+            const b = subjFacts[j];
+            if (a.relation !== b.relation) continue;
+            const objA = normTok(a.object);
+            const objB = normTok(b.object);
+            if (objA === objB) continue;
+
+            // Antonymic objects under the same relation = contradiction.
+            if (antonymOf.get(objA) === objB) {
+              contradictions.push({
+                kind: a.relation === "is_a" ? "exclusive-class" : "antonym-property",
+                severity: "high",
+                subject: a.subject,
+                relation: a.relation,
+                factA: { id: a.id, object: a.object, confidence: a.confidence },
+                factB: { id: b.id, object: b.object, confidence: b.confidence },
+                description: `"${a.subject}" cannot be both "${a.object}" and "${b.object}" under ${RELATION_INDEX[a.relation]?.label || a.relation}`,
+              });
+            }
+          }
+        }
+      }
+
+      // Negation-pair contradiction: a fact and its explicit negation
+      // ("not X", "no X") under the same subject+relation.
+      for (const [, subjFacts] of bySubject) {
+        for (const f of subjFacts) {
+          const obj = normTok(f.object);
+          const isNeg = /^(not_|no_|non_)/.test(obj);
+          const bare = obj.replace(/^(not_|no_|non_)/, "");
+          for (const g of subjFacts) {
+            if (g.id === f.id || g.relation !== f.relation) continue;
+            if (isNeg && normTok(g.object) === bare) {
+              contradictions.push({
+                kind: "direct-negation",
+                severity: "high",
+                subject: f.subject,
+                relation: f.relation,
+                factA: { id: f.id, object: f.object, confidence: f.confidence },
+                factB: { id: g.id, object: g.object, confidence: g.confidence },
+                description: `"${f.subject}" asserted as both "${g.object}" and its negation "${f.object}"`,
+              });
+            }
+          }
+        }
+      }
+
+      // Deduplicate (A,B) == (B,A).
+      const seen = new Set();
+      const unique = contradictions.filter(c => {
+        const k = [c.subject, c.relation, c.factA.id, c.factB.id].sort().join("|");
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+
+      return {
+        ok: true,
+        result: {
+          contradictions: unique,
+          count: unique.length,
+          factsScanned: facts.length,
+          consistent: unique.length === 0,
+          highSeverity: unique.filter(c => c.severity === "high").length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * relationTaxonomy — return the canonical relation taxonomy, annotated
+   * with usage counts from the calling user's fact store. Backs the
+   * IsA / PartOf / Causes / UsedFor browsing UI.
+   */
+  registerLensAction("commonsense", "relationTaxonomy", (ctx, _artifact, _params = {}) => {
+    try {
+      const facts = [...factBucket(userIdOf(ctx)).values()];
+      const counts = {};
+      for (const f of facts) counts[f.relation] = (counts[f.relation] || 0) + 1;
+      const groups = RELATION_TAXONOMY.map(g => ({
+        group: g.group,
+        description: g.description,
+        relations: g.relations.map(r => ({
+          ...r,
+          usageCount: counts[r.id] || 0,
+        })),
+      }));
+      return {
+        ok: true,
+        result: {
+          taxonomy: groups,
+          totalRelationTypes: Object.keys(RELATION_INDEX).length,
+          relationsInUse: Object.keys(counts).length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * confidenceQuery — confidence-weighted query: "things very likely true
+   * about X". Combines the local fact store with live ConceptNet edge
+   * weights, ranked by a unified confidence score.
+   * params: { subject: string, minConfidence?: 0-1, relation?: filter, useConceptNet?: bool }
+   */
+  registerLensAction("commonsense", "confidenceQuery", async (ctx, _artifact, params = {}) => {
+    try {
+      const subject = String(params.subject || "").trim();
+      if (!subject) return { ok: false, error: "subject required" };
+      const subjNorm = normTok(subject);
+      const minConf = Math.max(0, Math.min(1, Number(params.minConfidence) || 0.5));
+      const relFilter = params.relation ? normTok(params.relation) : null;
+
+      const facts = [...factBucket(userIdOf(ctx)).values()];
+      const matches = [];
+
+      for (const f of facts) {
+        if (normTok(f.subject) !== subjNorm) continue;
+        if (relFilter && f.relation !== relFilter) continue;
+        if (f.confidence < minConf) continue;
+        matches.push({
+          subject: f.subject,
+          relation: f.relation,
+          relationLabel: RELATION_INDEX[f.relation]?.label || f.relation,
+          object: f.object,
+          confidence: f.confidence,
+          source: f.source || "user",
+          origin: "local",
+        });
+      }
+
+      // Pull ConceptNet edges and convert their weights into a 0-1 confidence.
+      let conceptNetCount = 0;
+      if (params.useConceptNet !== false) {
+        try {
+          const data = await cachedFetchJson(
+            `${CONCEPTNET_BASE}/c/en/${encodeURIComponent(subjNorm)}?limit=60`,
+            { ttlMs: 600000 },
+          );
+          for (const e of (data.edges || [])) {
+            // Keep only assertions where the subject is the start node.
+            if (normTok(e.start?.label || "") !== subjNorm) continue;
+            const rel = normTok(e.rel?.label || "related_to");
+            if (relFilter && rel !== relFilter) continue;
+            // ConceptNet weight ~ 1..10; map to a saturating confidence.
+            const w = typeof e.weight === "number" ? e.weight : 1;
+            const conf = Math.round(Math.min(0.99, 1 - Math.exp(-w / 3)) * 1000) / 1000;
+            if (conf < minConf) continue;
+            matches.push({
+              subject,
+              relation: rel,
+              relationLabel: e.rel?.label || rel,
+              object: e.end?.label || "",
+              confidence: conf,
+              source: "conceptnet",
+              origin: "conceptnet",
+            });
+            conceptNetCount++;
+          }
+        } catch {
+          conceptNetCount = 0;
+        }
+      }
+
+      matches.sort((a, b) => b.confidence - a.confidence);
+      return {
+        ok: true,
+        result: {
+          subject,
+          minConfidence: minConf,
+          matches,
+          count: matches.length,
+          localCount: matches.length - conceptNetCount,
+          conceptNetCount,
+          interpretation: matches.length === 0
+            ? `No assertions about "${subject}" meet the ${(minConf * 100).toFixed(0)}% confidence threshold`
+            : `${matches.length} assertion(s) likely true about "${subject}" (≥${(minConf * 100).toFixed(0)}% confidence)`,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * extractFacts — extract subject-relation-object triples from free text
+   * via pattern matching. Optionally commit them to the fact store.
+   * params: { text: string, commit?: bool, defaultConfidence?: 0-1 }
+   */
+  registerLensAction("commonsense", "extractFacts", (ctx, _artifact, params = {}) => {
+    try {
+      const text = String(params.text || "").trim();
+      if (!text) return { ok: false, error: "text required" };
+      const defConf = Math.max(0, Math.min(1, Number(params.defaultConfidence) || 0.6));
+
+      // Pattern → relation extraction rules. Each captures (subject, object).
+      const patterns = [
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+is\s+a\s+(?:kind\s+of\s+|type\s+of\s+)?([a-z][\w\s-]{1,40}?)\b/gi, relation: "is_a", conf: 0.85 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+(?:are|is)\s+([a-z][\w\s-]{1,40}?)\b/gi, relation: "is_a", conf: 0.55 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+is\s+part\s+of\s+(?:a\s+|an\s+|the\s+)?([a-z][\w\s-]{1,40}?)\b/gi, relation: "part_of", conf: 0.85 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+(?:has|have)\s+(?:a\s+|an\s+)?([a-z][\w\s-]{1,40}?)\b/gi, relation: "has_a", conf: 0.7 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+is\s+used\s+(?:for|to)\s+([a-z][\w\s-]{1,40}?)\b/gi, relation: "used_for", conf: 0.8 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+can\s+([a-z][\w\s-]{1,40}?)\b/gi, relation: "capable_of", conf: 0.75 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+causes?\s+([a-z][\w\s-]{1,40}?)\b/gi, relation: "causes", conf: 0.8 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+is\s+located\s+(?:in|at|on)\s+(?:a\s+|an\s+|the\s+)?([a-z][\w\s-]{1,40}?)\b/gi, relation: "located_at", conf: 0.8 },
+        { re: /\b([a-z][\w\s-]{1,40}?)\s+is\s+([a-z][\w-]{2,20})\b/gi, relation: "has_property", conf: 0.5 },
+      ];
+
+      const STOP = new Set(["the", "a", "an", "this", "that", "it", "they", "there", "and", "or", "but"]);
+      const clean = (s) => s.trim().replace(/^(the|a|an)\s+/i, "").trim();
+
+      const extracted = [];
+      const seen = new Set();
+      for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
+        for (const p of patterns) {
+          p.re.lastIndex = 0;
+          let m;
+          while ((m = p.re.exec(sentence)) !== null) {
+            const subject = clean(m[1]);
+            const object = clean(m[2]);
+            if (!subject || !object) continue;
+            if (subject.length < 2 || object.length < 2) continue;
+            if (STOP.has(subject.toLowerCase()) || STOP.has(object.toLowerCase())) continue;
+            if (normTok(subject) === normTok(object)) continue;
+            const key = `${normTok(subject)}|${p.relation}|${normTok(object)}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            extracted.push({
+              subject, relation: p.relation,
+              relationLabel: RELATION_INDEX[p.relation]?.label || p.relation,
+              object,
+              confidence: Math.round(Math.min(p.conf, defConf + 0.25) * 1000) / 1000,
+              sourceSentence: sentence.trim().slice(0, 160),
+            });
+          }
+        }
+      }
+
+      // Optionally commit to the fact store.
+      let committed = 0;
+      if (params.commit && extracted.length) {
+        const bucket = factBucket(userIdOf(ctx));
+        for (const e of extracted) {
+          const id = rid("fact");
+          bucket.set(id, {
+            id, subject: e.subject, relation: e.relation, object: e.object,
+            confidence: e.confidence, source: "text-extraction",
+            createdAt: new Date().toISOString(),
+            provenance: { method: "extraction", sentence: e.sourceSentence },
+          });
+          committed++;
+        }
+      }
+
+      return {
+        ok: true,
+        result: {
+          extracted,
+          count: extracted.length,
+          committed,
+          charactersAnalyzed: text.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * provenanceChain — trace the citation / derivation chain for a fact.
+   * Walks: the fact's own source/provenance, then (for derived facts) the
+   * inference chain that would produce it, then the supporting base facts.
+   * params: { factId: string }
+   */
+  registerLensAction("commonsense", "provenanceChain", (ctx, _artifact, params = {}) => {
+    try {
+      const factId = String(params.factId || "");
+      const bucket = factBucket(userIdOf(ctx));
+      const fact = bucket.get(factId);
+      if (!fact) return { ok: false, error: "fact not found" };
+
+      const facts = [...bucket.values()];
+      const chain = [];
+
+      // Step 1: the fact's declared origin.
+      chain.push({
+        step: 1,
+        kind: "assertion",
+        fact: { id: fact.id, subject: fact.subject, relation: fact.relation, object: fact.object },
+        source: fact.source || "user",
+        confidence: fact.confidence,
+        detail: fact.provenance
+          ? `${fact.provenance.method}${fact.provenance.sentence ? `: "${fact.provenance.sentence}"` : ""}`
+          : `Directly asserted (source: ${fact.source || "user"})`,
+      });
+
+      // Step 2: supporting evidence — other stored facts that share the
+      // subject or object, forming the local evidential neighbourhood.
+      const s = normTok(fact.subject), o = normTok(fact.object);
+      const supporting = facts
+        .filter(f => f.id !== fact.id &&
+          (normTok(f.subject) === s || normTok(f.object) === o ||
+           normTok(f.object) === s || normTok(f.subject) === o))
+        .slice(0, 12)
+        .map(f => ({
+          id: f.id, subject: f.subject, relation: f.relation, object: f.object,
+          confidence: f.confidence, source: f.source || "user",
+        }));
+      if (supporting.length) {
+        chain.push({
+          step: 2,
+          kind: "supporting-evidence",
+          count: supporting.length,
+          facts: supporting,
+          detail: `${supporting.length} related fact(s) in the local neighbourhood`,
+        });
+      }
+
+      // Step 3: derivability — could this fact also be inferred transitively?
+      let derivable = null;
+      if (RELATION_INDEX[fact.relation]?.transitive) {
+        // Look for a 2-hop path subject --rel--> mid --rel--> object.
+        for (const f1 of facts) {
+          if (f1.id === fact.id || f1.relation !== fact.relation) continue;
+          if (normTok(f1.subject) !== s) continue;
+          for (const f2 of facts) {
+            if (f2.relation !== fact.relation) continue;
+            if (normTok(f2.subject) === normTok(f1.object) && normTok(f2.object) === o) {
+              derivable = {
+                path: [
+                  { subject: f1.subject, relation: f1.relation, object: f1.object, confidence: f1.confidence },
+                  { subject: f2.subject, relation: f2.relation, object: f2.object, confidence: f2.confidence },
+                ],
+                inferredConfidence: Math.round(f1.confidence * f2.confidence * 1000) / 1000,
+              };
+              break;
+            }
+          }
+          if (derivable) break;
+        }
+      }
+      if (derivable) {
+        chain.push({
+          step: chain.length + 1,
+          kind: "alternative-derivation",
+          derivation: derivable.path,
+          inferredConfidence: derivable.inferredConfidence,
+          detail: `Independently derivable via transitive ${RELATION_INDEX[fact.relation]?.label} chain`,
+        });
+      }
+
+      return {
+        ok: true,
+        result: {
+          factId,
+          fact: {
+            subject: fact.subject, relation: fact.relation, object: fact.object,
+            confidence: fact.confidence,
+          },
+          chain,
+          depth: chain.length,
+          independentlyVerified: !!derivable,
+          rootSource: fact.source || "user",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
 }

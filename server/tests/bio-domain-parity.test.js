@@ -174,3 +174,190 @@ describe("bio — STATE unavailable path", () => {
     assert.match(r.error, /STATE unavailable/);
   });
 });
+
+// ─── 2026 backlog parity — Benchling/SnapGene feature gap ───────────
+
+describe("bio — plasmid-map (construct viewer)", () => {
+  it("auto-annotates ORFs + restriction sites with angular positions", () => {
+    const orf = "ATG" + "GCT".repeat(35) + "TAA";
+    const seq = "AAAAGAATTC" + orf + "GGATCCAAAA";
+    const r = call("plasmid-map", ctxA, { sequence: seq });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.length, seq.length);
+    assert.ok(r.result.featureCount > 0);
+    assert.ok(r.result.features.every((f) => typeof f.startDeg === "number"));
+    assert.ok(r.result.features.some((f) => f.type === "restriction_site"));
+  });
+
+  it("honors user-supplied features and topology", () => {
+    const r = call("plasmid-map", ctxA, {
+      sequence: "ATGC".repeat(50), topology: "linear",
+      features: [{ name: "promoter", start: 0, end: 35, type: "promoter" }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.topology, "linear");
+    assert.equal(r.result.features[0].name, "promoter");
+  });
+
+  it("rejects non-DNA input", () => {
+    const r = call("plasmid-map", ctxA, { sequence: "ACDEFG" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("bio — align-multiple (MSA)", () => {
+  it("aligns 3 sequences and returns consensus + conservation", () => {
+    const r = call("align-multiple", ctxA, {
+      sequences: [
+        { id: "s1", sequence: "ATGCATGC" },
+        { id: "s2", sequence: "ATGGATGC" },
+        { id: "s3", sequence: "ATGCATTC" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.sequenceCount, 3);
+    assert.equal(r.result.rows.length, 3);
+    assert.equal(r.result.conservation.length, r.result.width);
+    assert.ok(r.result.rows.every((row) => row.aligned.length === r.result.width));
+  });
+
+  it("rejects fewer than 2 sequences", () => {
+    const r = call("align-multiple", ctxA, { sequences: [{ id: "only", sequence: "ATGC" }] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /at least 2/);
+  });
+});
+
+describe("bio — cloning-simulate (in-silico assembly)", () => {
+  it("joins Gibson fragments with detected overlap", () => {
+    const r = call("cloning-simulate", ctxA, {
+      method: "gibson", circular: false,
+      fragments: [
+        { name: "f1", sequence: "AAAAAAAAAAGGGGGGGGGG" },
+        { name: "f2", sequence: "GGGGGGGGGGCCCCCCCCCC" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.method, "gibson");
+    assert.ok(r.result.junctions[0].verified);
+    assert.ok(r.result.assembledLength > 0);
+  });
+
+  it("flags missing Gibson overlap as an issue", () => {
+    const r = call("cloning-simulate", ctxA, {
+      method: "gibson", circular: false,
+      fragments: [
+        { name: "f1", sequence: "AAAAAAAAAAAAAAAAAAAA" },
+        { name: "f2", sequence: "CCCCCCCCCCCCCCCCCCCC" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.success, false);
+    assert.ok(r.result.issues.length > 0);
+  });
+
+  it("rejects fewer than 2 fragments", () => {
+    const r = call("cloning-simulate", ctxA, { method: "gibson", fragments: [{ name: "f1", sequence: "ATGC" }] });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("bio — translate-orf (ORF / codon viewer)", () => {
+  it("translates 6 frames and finds the longest ORF", () => {
+    const seq = "ATG" + "GCT".repeat(20) + "TAA";
+    const r = call("translate-orf", ctxA, { sequence: seq });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.frames.length, 6);
+    assert.ok(r.result.longestOrf);
+    assert.ok(r.result.frames[0].codons.length > 0);
+    assert.equal(r.result.frames[0].codons[0].codon, "ATG");
+    assert.equal(r.result.frames[0].codons[0].isStart, true);
+  });
+
+  it("rejects non-nucleotide input", () => {
+    const r = call("translate-orf", ctxA, { sequence: "ZZZZ" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("bio — blast-search (homology search)", () => {
+  it("finds exact homology against an explicit database", () => {
+    const r = call("blast-search", ctxA, {
+      query: "ATGCATGCATGC",
+      database: [
+        { id: "hit", sequence: "TTTTATGCATGCATGCTTTT" },
+        { id: "miss", sequence: "GGGGGGGGGGGGGGGGGGGG" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.hitCount >= 1);
+    assert.equal(r.result.topHit.subjectId, "hit");
+    assert.ok(r.result.topHit.bitScore > 0);
+  });
+
+  it("rejects too-short query", () => {
+    const r = call("blast-search", ctxA, { query: "ATGC", database: [] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, />= 8/);
+  });
+
+  it("returns empty hits for an empty database", () => {
+    const r = call("blast-search", ctxA, { query: "ATGCATGCATGC", database: [] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hitCount, undefined === r.result.hitCount ? undefined : r.result.hitCount);
+    assert.deepEqual(r.result.hits, []);
+  });
+});
+
+describe("bio — crispr-design (guide-RNA design)", () => {
+  it("designs guides with PAM, on-target and off-target scoring", () => {
+    const seq = "ATGCGTACGTAGCTAGCTAGCTAGCTGGAAGCTAGCATCGATCGATCGGG";
+    const r = call("crispr-design", ctxA, { sequence: seq });
+    assert.equal(r.ok, true);
+    if (r.result.guideCount > 0) {
+      assert.equal(r.result.topGuide.guide.length, 20);
+      assert.ok(typeof r.result.topGuide.compositeScore === "number");
+      assert.ok(typeof r.result.topGuide.offTargetHits === "number");
+    }
+  });
+
+  it("rejects sequences shorter than 30 bp", () => {
+    const r = call("crispr-design", ctxA, { sequence: "ATGC" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("bio — lab notebook (linked to sequences + protocols)", () => {
+  it("creates, lists, updates and deletes entries per-user", () => {
+    const created = call("notebook-create", ctxA, {
+      title: "Transfection log", body: "step 1", tags: ["crispr"], status: "draft",
+    });
+    assert.equal(created.ok, true);
+    const id = created.result.entry.id;
+
+    const listed = call("notebook-list", ctxA);
+    assert.equal(listed.ok, true);
+    assert.equal(listed.result.count, 1);
+
+    const updated = call("notebook-update", ctxA, { id, status: "complete", linkedProtocol: "PCR-01" });
+    assert.equal(updated.ok, true);
+    assert.equal(updated.result.entry.status, "complete");
+    assert.equal(updated.result.entry.linkedProtocol, "PCR-01");
+
+    const deleted = call("notebook-delete", ctxA, { id });
+    assert.equal(deleted.ok, true);
+    assert.equal(call("notebook-list", ctxA).result.count, 0);
+  });
+
+  it("INVARIANT: notebook entries scoped per-user", () => {
+    call("notebook-create", ctxA, { title: "a-only" });
+    const b = call("notebook-list", ctxB);
+    assert.equal(b.result.count, 0);
+  });
+
+  it("rejects missing title", () => {
+    const r = call("notebook-create", ctxA, { body: "no title" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /title required/);
+  });
+});

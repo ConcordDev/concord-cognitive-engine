@@ -52,6 +52,7 @@ import { CDNStatus } from '@/components/admin/CDNStatus';
 import { CodeEngineStatus } from '@/components/admin/CodeEngineStatus';
 import { RepairDashboard } from '@/components/admin/RepairDashboard';
 import { LiveSystemHealth } from '@/components/admin/LiveSystemHealth';
+import { OpsConsole } from '@/components/admin/OpsConsole';
 import {
   Download,
   Globe,
@@ -65,6 +66,7 @@ import {
   Shield,
   Code2,
   Wrench,
+  Gauge,
 } from 'lucide-react';
 
 interface DashboardData {
@@ -277,6 +279,7 @@ export default function AdminDashboardPage() {
   const [showBackupHealth, setShowBackupHealth] = useState(false);
   const [showCDNStatus, setShowCDNStatus] = useState(false);
   const [showCodeEngine, setShowCodeEngine] = useState(false);
+  const [showOpsConsole, setShowOpsConsole] = useState(false);
 
   // Admin shortcuts: a/p/m/k/o/q/l toggle the inspect panels (matches
   // the order they appear in the sidebar), space toggles auto-refresh.
@@ -293,8 +296,9 @@ export default function AdminDashboardPage() {
       { id: 'orgs',         keys: 'o', description: 'Organizations',      category: 'view', action: () => setShowOrgs((v) => !v) },
       { id: 'quality',      keys: 'q', description: 'Quality',            category: 'view', action: () => setShowQuality((v) => !v) },
       { id: 'sys-health',   keys: 'h', description: 'System health',      category: 'view', action: () => setShowSysHealth((v) => !v) },
+      { id: 'ops-console',  keys: 'g', description: 'Ops console',        category: 'view', action: () => setShowOpsConsole((v) => !v) },
       { id: 'panic-close',  keys: 'esc', description: 'Close all panels', category: 'navigation',
-        action: () => { setShowTreasury(false); setShowPlugins(false); setShowMacros(false); setShowApiKeys(false); setShowOrgs(false); setShowQuality(false); setShowAuditLog(false); setShowPermMatrix(false); setShowSysHealth(false); setShowBackupHealth(false); setShowCDNStatus(false); setShowCodeEngine(false); } },
+        action: () => { setShowTreasury(false); setShowPlugins(false); setShowMacros(false); setShowApiKeys(false); setShowOrgs(false); setShowQuality(false); setShowAuditLog(false); setShowPermMatrix(false); setShowSysHealth(false); setShowBackupHealth(false); setShowCDNStatus(false); setShowCodeEngine(false); setShowOpsConsole(false); } },
     ],
     { lensId: 'admin' }
   );
@@ -952,6 +956,41 @@ export default function AdminDashboardPage() {
 
       {/* System Monitoring — request rate, latency, error rate, circuit breakers */}
       <MonitoringPanel />
+
+      {/* Ops Console — Datadog/Grafana parity: time-series history, alert rules,
+          tenant admin, log search, trace waterfalls, feature flags, incidents */}
+      <div className="border-t border-white/10">
+        <button
+          onClick={() => setShowOpsConsole(!showOpsConsole)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+        >
+          <span className="flex items-center gap-2">
+            <Gauge className="w-4 h-4 text-neon-cyan" />
+            Ops Console
+            <span className="text-xs px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan/70 font-mono">
+              datadog parity
+            </span>
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showOpsConsole ? 'rotate-180' : ''}`}
+          />
+        </button>
+        <AnimatePresence>
+          {showOpsConsole && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 pb-4 pt-2">
+                <OpsConsole />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Nervous System — live brain/circuit/event/trace/integrity monitoring */}
       <NervousSystem />

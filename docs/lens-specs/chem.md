@@ -12,13 +12,22 @@ Backend: `server/domains/chem.js` — macros `molecularAnalysis`, `balanceReacti
 - Compound + reaction tracking (catalyst/reagent/product, stability)
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` 2D structure drawing editor (draw molecules, not just look them up)
-- [ ] `[M]` 3D molecule viewer (PubChem provides free conformer data)
-- [ ] `[M]` SMILES/InChI parsing + structure rendering
-- [ ] `[S]` Reaction mechanism / electron-pushing diagrams
-- [ ] `[M]` Stoichiometry calculator (limiting reagent, yield from a balanced eq)
-- [ ] `[S]` Spectroscopy reference (NMR/IR/MS peak tables)
-- [ ] `[S]` Lab notebook for reaction logs
+- [x] `[L]` 2D structure drawing editor (draw molecules, not just look them up)
+- [x] `[M]` 3D molecule viewer (PubChem provides free conformer data)
+- [x] `[M]` SMILES/InChI parsing + structure rendering
+- [x] `[S]` Reaction mechanism / electron-pushing diagrams
+- [x] `[M]` Stoichiometry calculator (limiting reagent, yield from a balanced eq)
+- [x] `[S]` Spectroscopy reference (NMR/IR/MS peak tables)
+- [x] `[S]` Lab notebook for reaction logs
 
 ## Parity
-~50% of ChemDraw's surface. The calculator suite (molarity/pH/dilution/gas-law) and live PubChem lookup are real and useful, but the defining feature — drawing and rendering chemical structures — is absent.
+Backlog fully shipped. `ChemStructureLab` (7-tab surface in `components/chem/`) wires
+the structure-layout / parse-smiles / save-structure / list-structures /
+delete-structure / resolve-structure / conformer-3d / stoichiometry /
+spectroscopy-reference / reaction-mechanism / notebook-* macros into a real UI:
+SVG skeletal renderer with double/triple/aromatic bonds, auto-rotating PubChem
+3D conformer viewer, SMILES/InChI resolver, limiting-reagent + percent-yield
+stoichiometry, IR/¹H/¹³C-NMR/MS peak tables, curved-arrow mechanism outlines,
+and a persistent per-user lab notebook.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
