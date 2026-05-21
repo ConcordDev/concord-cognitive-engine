@@ -19,6 +19,6 @@ Backend: `server/domains/quantum.js` — 13 macros: a real state-vector simulato
 - [x] `[S]` Noise model presets — `noisePresets` + `errorAnalysis` macros (ideal / IBM Eagle / IBM Heron / superconducting / trapped-ion)
 
 ## Parity
-Full interactive workbench. A real gate-based state-vector simulator (complex amplitude vector + unitary application — `simulateCircuit`, verified by tests: H on |0⟩ → 50/50, Bell → maximally entangled), a visual circuit composer, Bloch-sphere + histogram visualization, the full gate library, QASM interop, algorithm templates, step-through animation, and device noise modelling. No LLM in the math path. Persistent per-user saved circuits via `saveCircuit`/`listCircuits`/`loadCircuit`/`deleteCircuit`.
+~90% parity. Full interactive workbench. A real gate-based state-vector simulator (complex amplitude vector + unitary application — `simulateCircuit`, verified by tests: H on |0⟩ → 50/50, Bell → maximally entangled), a visual circuit composer, Bloch-sphere + histogram visualization, the full gate library, QASM interop, algorithm templates, step-through animation, and device noise modelling. No LLM in the math path. Persistent per-user saved circuits via `saveCircuit`/`listCircuits`/`loadCircuit`/`deleteCircuit`.
 
 _Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

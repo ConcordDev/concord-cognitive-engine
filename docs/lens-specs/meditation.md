@@ -13,13 +13,15 @@ Backend: `server/domains/meditation.js` — 12 macros: pickTrack, sessionLog, st
 - Meditation dashboard — sessions/minutes/streak by category; MeditationStudio + journal
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Audio playback — actual narrated/ambient audio for sessions (music lens has audio infra to reuse)
-- [ ] `[M]` Multi-session courses / programs — structured day-by-day learning paths
-- [ ] `[M]` Animated breathing visual — guided expand/contract animation synced to pacer
-- [ ] `[S]` Reminders / scheduled practice notifications
-- [ ] `[M]` Sleep timer + sleep-story mode with fade-out
-- [ ] `[S]` Personalized recommendations — adapt track suggestions to mood + history
-- [ ] `[S]` Milestones / achievements — streak badges, total-minutes rewards
+- [x] `[M]` Audio playback — actual narrated/ambient audio for sessions (music lens has audio infra to reuse)
+- [x] `[M]` Multi-session courses / programs — structured day-by-day learning paths
+- [x] `[M]` Animated breathing visual — guided expand/contract animation synced to pacer
+- [x] `[S]` Reminders / scheduled practice notifications
+- [x] `[M]` Sleep timer + sleep-story mode with fade-out
+- [x] `[S]` Personalized recommendations — adapt track suggestions to mood + history
+- [x] `[S]` Milestones / achievements — streak badges, total-minutes rewards
 
 ## Parity
-~50% of Calm/Headspace's surface. Real session library, breathwork pacer, streaks, mood check-in, and dashboard, but missing audio playback, multi-session courses, animated breathing visuals, and reminders that make a meditation app a daily habit.
+~90% of Calm/Headspace's surface. Real session library, breathwork pacer, streaks, mood check-in, dashboard, audio playback, multi-session courses, animated breathing visuals, reminders, sleep timer, personalized recommendations, and milestones all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

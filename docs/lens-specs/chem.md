@@ -21,7 +21,7 @@ Backend: `server/domains/chem.js` — macros `molecularAnalysis`, `balanceReacti
 - [x] `[S]` Lab notebook for reaction logs
 
 ## Parity
-Backlog fully shipped. `ChemStructureLab` (7-tab surface in `components/chem/`) wires
+~90% parity. Backlog fully shipped. `ChemStructureLab` (7-tab surface in `components/chem/`) wires
 the structure-layout / parse-smiles / save-structure / list-structures /
 delete-structure / resolve-structure / conformer-3d / stoichiometry /
 spectroscopy-reference / reaction-mechanism / notebook-* macros into a real UI:

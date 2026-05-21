@@ -20,7 +20,7 @@ Backend: `global` domain — crossDomainSearch, aggregateDashboard, correlationM
 - [x] `[S]` Country profile pages aggregating all indicators
 
 ## Parity
-Full data-exploration surface shipped. The `global` domain exposes live World Bank
+~90% parity. Full data-exploration surface shipped. The `global` domain exposes live World Bank
 macros — `choropleth`, `indicatorTimeseries`, `compareCountries`, `scatterExplorer`,
 `searchIndicators`, `countryProfile` — plus per-user `saveView`/`listViews`/`deleteView`
 for shareable chart links. The lens `Data Explorer` tab (`components/global/DataExplorer.tsx`

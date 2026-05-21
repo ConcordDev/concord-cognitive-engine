@@ -12,34 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~75%**
-- Total buildable features in the backlog (sum of all "Missing" items): **729**
+- Average feature parity: **~77%**
+- Total buildable features in the backlog (sum of all "Missing" items): **687**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 125 |
+| 80–100% (near-complete) | 139 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 43 |
+| 40–59% (partial) | 37 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| bridge | (cross-world federation console) | ~?% | 0 |
-| chem | ChemDraw / PubChem | ~?% | 0 |
-| collab | Figma / Google Docs (real-time collaboration) | ~?% | 0 |
-| global | Our World in Data / World Bank DataBank | ~?% | 0 |
-| organ | ChartHop | ~?% | 0 |
-| personas | Character.AI | ~?% | 0 |
-| quantum | IBM Quantum Composer | ~?% | 0 |
-| sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| meditation | Calm / Headspace | ~50% | 7 |
-| ocean | Windy / MarineTraffic | ~50% | 7 |
-| philosophy | Are.na / IEP | ~50% | 7 |
-| photography | Adobe Lightroom | ~50% | 7 |
-| physics | PhET / Algodoo | ~50% | 7 |
-| reasoning | Rationale / argument-mapping tools | ~50% | 7 |
 | security | Splunk / a SOC console | ~50% | 7 |
 | self | Apple Health / Gyroscope | ~50% | 7 |
 | space | NASA Eyes / Stellarium / Flightradar-for-launches | ~50% | 8 |
@@ -229,13 +215,17 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | worldmodel | Palantir Foundry / digital-twin platforms | ~88% | 0 |
 | agents | OpenAI Assistants / CrewAI | ~90% | 0 |
 | audit | Vanta / Drata | ~90% | 0 |
+| bridge | (cross-world federation console) | ~90% | 0 |
+| chem | ChemDraw / PubChem | ~90% | 0 |
 | classroom | Google Classroom | ~90% | 0 |
+| collab | Figma / Google Docs (real-time collaboration) | ~90% | 0 |
 | debug | Sentry / Datadog | ~90% | 0 |
 | defense | Palantir Gotham (analog) | ~90% | 0 |
 | desert | field-survey / arid-environment tooling | ~90% | 0 |
 | entity | Palantir Foundry / knowledge-graph tools | ~90% | 0 |
 | event-timeline | activity-feed / audit-log viewers | ~90% | 0 |
 | experience | Maze / UserTesting | ~90% | 0 |
+| global | Our World in Data / World Bank DataBank | ~90% | 0 |
 | hypothesis | JASP / GraphPad Prism | ~90% | 0 |
 | integrations | Zapier | ~90% | 0 |
 | invariant | TLA+ / formal-verification tools | ~90% | 0 |
@@ -244,11 +234,21 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | markets | Polymarket / Kalshi (prediction markets) | ~90% | 0 |
 | masonry | Buildertrend / masonry estimating tools | ~90% | 0 |
 | math | Wolfram Alpha | ~90% | 0 |
+| meditation | Calm / Headspace | ~90% | 0 |
 | mentorship | MentorcliQ / ADPList | ~90% | 0 |
 | meta | Backstage / system-introspection tools | ~90% | 0 |
 | mining | MineHub / Micromine | ~90% | 0 |
+| ocean | Windy / MarineTraffic | ~90% | 0 |
+| organ | ChartHop | ~90% | 0 |
+| personas | Character.AI | ~90% | 0 |
+| philosophy | Are.na / IEP | ~90% | 0 |
+| photography | Adobe Lightroom | ~90% | 0 |
+| physics | PhET / Algodoo | ~90% | 0 |
+| quantum | IBM Quantum Composer | ~90% | 0 |
 | queue | RabbitMQ / BullMQ dashboard | ~90% | 0 |
+| reasoning | Rationale / argument-mapping tools | ~90% | 0 |
 | saved | Twitter/X Bookmarks | ~90% | 0 |
+| sentinel | CrowdStrike Falcon / threat console | ~90% | 0 |
 | settings | OS/App Settings panels (macOS System Settings / Steam Settings) | ~90% | 0 |
 | society | Our World in Data / Gapminder | ~90% | 0 |
 | suffering | Productboard / pain-point analysis tools | ~90% | 0 |

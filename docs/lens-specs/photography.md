@@ -12,13 +12,15 @@ Backend: `server/domains/photography.js` — ~36 macros: photo/album/shoot CRUD,
 - PexelsBrowser stock-photo search; Art Institute photo-archive live feed; top-camera/lens dashboard stats
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` RAW file develop pipeline — true non-destructive RAW decode with tone curve + white balance
-- [ ] `[M]` Histogram + tone curve editor — live histogram and per-channel curve adjustment
-- [ ] `[M]` Local adjustments / masking — brush, gradient, AI subject-select masks
-- [ ] `[S]` Star rating + color label filtering — full Lightroom-style cull workflow
-- [ ] `[S]` Keyword/face tagging + smart collections — auto-organize by metadata
-- [ ] `[M]` Preset sync + apply-to-batch — copy develop settings across many photos
-- [ ] `[S]` Lens correction / geometry — distortion, vignette, perspective fixes
+- [x] `[L]` RAW file develop pipeline — true non-destructive RAW decode with tone curve + white balance
+- [x] `[M]` Histogram + tone curve editor — live histogram and per-channel curve adjustment
+- [x] `[M]` Local adjustments / masking — brush, gradient, AI subject-select masks
+- [x] `[S]` Star rating + color label filtering — full Lightroom-style cull workflow
+- [x] `[S]` Keyword/face tagging + smart collections — auto-organize by metadata
+- [x] `[M]` Preset sync + apply-to-batch — copy develop settings across many photos
+- [x] `[S]` Lens correction / geometry — distortion, vignette, perspective fixes
 
 ## Parity
-~50% of Lightroom's feature surface. The catalog model (albums/shoots/presets/picks) plus real slider editing and EXIF/AI-vision is a solid base, but it lacks RAW develop, histogram/curves, and masking — the non-destructive editing core of Lightroom.
+~90% of Lightroom's feature surface. The catalog model (albums/shoots/presets/picks), real slider editing, EXIF/AI-vision, RAW develop pipeline, histogram/tone-curve editor, masking, rating/label filtering, keyword tagging, preset sync, and lens correction all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

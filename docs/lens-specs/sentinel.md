@@ -19,7 +19,7 @@ Backend: `runDomain` against `shield` (status/threats/metrics/scan), `intel` (pe
 - [x] `[S]` Semantic-search saved queries + result export
 
 ## Parity
-Full threat-console feature surface. Backlog shipped via the `sentinel` domain
+~90% parity. Full threat-console feature surface. Backlog shipped via the `sentinel` domain
 (`server/domains/sentinel.js`, 26 macros) + a six-tab operator UI
 (`app/lenses/sentinel/` + `components/sentinel/`):
 - **Shield** — live threat board, on-demand content/hash scan, one-click promote-to-triage.

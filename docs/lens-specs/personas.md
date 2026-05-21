@@ -20,6 +20,6 @@ Backend: `npc_persona` domain macros (`list_for_user`, `package`, `install`) —
 - [x] `[S]` Tags + categories for discovery. `personas.facets`; normalised tags + category filtering in the marketplace.
 
 ## Parity
-Full conversational-character surface shipped: from-scratch visual editor, in-lens chat preview, browseable marketplace with tag/category facets, ratings + usage stats, versioning with installer notification, and per-persona portraits. The legacy `npc_persona` packaging + royalty pipeline is retained alongside.
+~90% parity. Full conversational-character surface shipped: from-scratch visual editor, in-lens chat preview, browseable marketplace with tag/category facets, ratings + usage stats, versioning with installer notification, and per-persona portraits. The legacy `npc_persona` packaging + royalty pipeline is retained alongside.
 
 _Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

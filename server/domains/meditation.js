@@ -279,4 +279,426 @@ export default function registerMeditationActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Audio playback — synthesized ambient soundscape descriptors ─────
+  // Licensed audio is excluded by design; instead we ship deterministic
+  // Web-Audio synthesis recipes the client renders locally (noise tint +
+  // oscillator layers + LFO). One descriptor per soundscape / category.
+
+  const SOUNDSCAPES = {
+    "sc-rain":   { noise: "pink",  cutoffHz: 1800, layers: [{ type: "noise", gain: 0.42, lfoHz: 0.08, lfoDepth: 0.12 }], droplets: true,  label: "Rainfall" },
+    "sc-ocean":  { noise: "brown", cutoffHz: 900,  layers: [{ type: "noise", gain: 0.5,  lfoHz: 0.12, lfoDepth: 0.3 }],  swell: true,     label: "Ocean Waves" },
+    "sc-white":  { noise: "white", cutoffHz: 8000, layers: [{ type: "noise", gain: 0.3,  lfoHz: 0,    lfoDepth: 0 }],                     label: "White Noise" },
+    "sc-forest": { noise: "pink",  cutoffHz: 4200, layers: [{ type: "noise", gain: 0.28, lfoHz: 0.05, lfoDepth: 0.1 }], birdsong: true,  label: "Forest at Dawn" },
+  };
+  // Tone bed for guided / sleep / breathwork / sos — a calm drone the
+  // client layers under the (silent, text-paced) session.
+  const TONE_BEDS = {
+    guided:      { drone: [110, 165, 220], gain: 0.16, noise: "pink",  noiseGain: 0.06 },
+    sleep_story: { drone: [73.4, 110, 146.8], gain: 0.2, noise: "brown", noiseGain: 0.1 },
+    breathwork:  { drone: [98, 147, 196], gain: 0.14, noise: "pink",  noiseGain: 0.04 },
+    sos:         { drone: [130.8, 196], gain: 0.12, noise: "pink",  noiseGain: 0.05 },
+  };
+
+  registerLensAction("meditation", "soundscapeConfig", (_ctx, _a, params = {}) => {
+    const sessionId = String(params.sessionId || "");
+    const track = sessionId ? LIBRARY.find((x) => x.id === sessionId) : null;
+    if (sessionId && !track) return { ok: false, error: "session not found in library" };
+    if (track && SOUNDSCAPES[track.id]) {
+      return { ok: true, result: { kind: "soundscape", sessionId: track.id, ...SOUNDSCAPES[track.id] } };
+    }
+    if (track) {
+      const bed = TONE_BEDS[track.category] || TONE_BEDS.guided;
+      return { ok: true, result: { kind: "tone_bed", sessionId: track.id, category: track.category, ...bed } };
+    }
+    // Bare-pattern request (e.g. from the breathwork pacer)
+    const cat = String(params.category || "guided");
+    const bed = TONE_BEDS[cat] || TONE_BEDS.guided;
+    return { ok: true, result: { kind: "tone_bed", category: cat, ...bed } };
+  });
+
+  // ─── Multi-session courses / programs ───────────────────────────────
+  // Structured day-by-day learning paths. Enrollment + per-day progress
+  // are persisted per user in STATE.
+
+  const COURSES = [
+    {
+      id: "course-basics-7",
+      title: "Meditation Basics",
+      subtitle: "A 7-day on-ramp to a daily sit",
+      goal: "focus",
+      days: [
+        { day: 1, title: "Arriving", sessionId: "g-morn-7", note: "Just notice you are here." },
+        { day: 2, title: "The breath as anchor", sessionId: "g-focus-10", note: "Return, gently, every time." },
+        { day: 3, title: "Box breathing", sessionId: "b-box-5", note: "Let the count carry you." },
+        { day: 4, title: "Body awareness", sessionId: "g-body-15", note: "Scan from crown to feet." },
+        { day: 5, title: "Working with anxiety", sessionId: "g-anx-8", note: "Soften toward what is hard." },
+        { day: 6, title: "Coherent breathing", sessionId: "b-coh-6", note: "Find the 5.5-second wave." },
+        { day: 7, title: "Gratitude close", sessionId: "g-grat-5", note: "Name what held you this week." },
+      ],
+    },
+    {
+      id: "course-sleep-5",
+      title: "Sleep Deeper",
+      subtitle: "A 5-night wind-down program",
+      goal: "sleep",
+      days: [
+        { day: 1, title: "Letting the day go", sessionId: "b-478-4", note: "Exhale longer than you inhale." },
+        { day: 2, title: "A walk in light rain", sessionId: "s-rain-30", note: "Let the story carry you under." },
+        { day: 3, title: "Yoga nidra descent", sessionId: "s-nidra-20", note: "Stay just at the edge of sleep." },
+        { day: 4, title: "The midnight train", sessionId: "s-train-45", note: "Rhythm of the rails." },
+        { day: 5, title: "Nighttime SOS", sessionId: "sos-night-3", note: "A reset for the 3am wake." },
+      ],
+    },
+    {
+      id: "course-stress-10",
+      title: "Stress Less",
+      subtitle: "A 10-day course for an overloaded mind",
+      goal: "anxiety",
+      days: [
+        { day: 1, title: "Naming the load", sessionId: "g-anx-8", note: "What is heavy right now?" },
+        { day: 2, title: "Grounding breath", sessionId: "b-box-5", note: "Four corners, steady." },
+        { day: 3, title: "SOS reset", sessionId: "sos-panic-3", note: "A 3-minute circuit-breaker." },
+        { day: 4, title: "Full body scan", sessionId: "g-body-15", note: "Where do you hold tension?" },
+        { day: 5, title: "Coherent breathing", sessionId: "b-coh-6", note: "Slow the nervous system." },
+        { day: 6, title: "Single-pointed focus", sessionId: "g-focus-10", note: "One thing at a time." },
+        { day: 7, title: "Morning intention", sessionId: "g-morn-7", note: "Set the tone early." },
+        { day: 8, title: "4-7-8 wind down", sessionId: "b-478-4", note: "Down-regulate on demand." },
+        { day: 9, title: "Gratitude shift", sessionId: "g-grat-5", note: "Redirect the spotlight." },
+        { day: 10, title: "Integration", sessionId: "g-focus-10", note: "Carry one practice forward." },
+      ],
+    },
+  ];
+
+  function courseEnrollMap(s) {
+    if (!(s.courseEnrollments instanceof Map)) s.courseEnrollments = new Map(); // userId -> Map(courseId -> {completedDays:[], startedAt})
+    return s.courseEnrollments;
+  }
+
+  registerLensAction("meditation", "courses", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userEnroll = courseEnrollMap(s).get(medActor(ctx)) || new Map();
+    const list = COURSES.map((c) => {
+      const e = userEnroll.get(c.id);
+      return {
+        id: c.id, title: c.title, subtitle: c.subtitle, goal: c.goal,
+        dayCount: c.days.length,
+        enrolled: !!e,
+        completedDays: e ? e.completedDays.length : 0,
+        startedAt: e ? e.startedAt : null,
+      };
+    });
+    return { ok: true, result: { courses: list, count: list.length } };
+  });
+
+  registerLensAction("meditation", "enrollCourse", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const course = COURSES.find((c) => c.id === params.courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const map = courseEnrollMap(s);
+    const userId = medActor(ctx);
+    if (!map.has(userId)) map.set(userId, new Map());
+    const userEnroll = map.get(userId);
+    if (!userEnroll.has(course.id)) {
+      userEnroll.set(course.id, { completedDays: [], startedAt: medNow() });
+      saveMed();
+    }
+    return { ok: true, result: { courseId: course.id, enrolled: true } };
+  });
+
+  registerLensAction("meditation", "courseProgress", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const course = COURSES.find((c) => c.id === params.courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const userEnroll = courseEnrollMap(s).get(medActor(ctx)) || new Map();
+    const e = userEnroll.get(course.id) || { completedDays: [], startedAt: null };
+    const completed = new Set(e.completedDays);
+    const days = course.days.map((d) => ({ ...d, completed: completed.has(d.day) }));
+    const nextDay = days.find((d) => !d.completed) || null;
+    return {
+      ok: true,
+      result: {
+        courseId: course.id,
+        title: course.title,
+        subtitle: course.subtitle,
+        goal: course.goal,
+        startedAt: e.startedAt,
+        enrolled: userEnroll.has(course.id),
+        days,
+        completedCount: completed.size,
+        dayCount: days.length,
+        nextDay: nextDay ? nextDay.day : null,
+        finished: completed.size >= days.length,
+      },
+    };
+  });
+
+  registerLensAction("meditation", "completeCourseDay", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const course = COURSES.find((c) => c.id === params.courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const day = parseInt(params.day, 10);
+    const dayDef = course.days.find((d) => d.day === day);
+    if (!dayDef) return { ok: false, error: "day not in course" };
+    const map = courseEnrollMap(s);
+    const userId = medActor(ctx);
+    if (!map.has(userId)) map.set(userId, new Map());
+    const userEnroll = map.get(userId);
+    if (!userEnroll.has(course.id)) userEnroll.set(course.id, { completedDays: [], startedAt: medNow() });
+    const e = userEnroll.get(course.id);
+    if (!e.completedDays.includes(day)) e.completedDays.push(day);
+    // Also log the underlying session into the practice ledger.
+    const track = LIBRARY.find((x) => x.id === dayDef.sessionId);
+    if (track) {
+      medList(s.sessions, userId).push({
+        id: medId("ms"),
+        sessionId: track.id,
+        title: track.title,
+        category: track.category,
+        durationMin: track.durationMin,
+        moodAfter: null,
+        completedAt: medNow(),
+        courseId: course.id,
+        courseDay: day,
+      });
+    }
+    saveMed();
+    return {
+      ok: true,
+      result: {
+        courseId: course.id,
+        day,
+        completedCount: e.completedDays.length,
+        finished: e.completedDays.length >= course.days.length,
+      },
+    };
+  });
+
+  // ─── Reminders / scheduled practice ─────────────────────────────────
+
+  function reminderMap(s) {
+    if (!(s.reminders instanceof Map)) s.reminders = new Map(); // userId -> Array<reminder>
+    return s.reminders;
+  }
+  const DOW = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+  registerLensAction("meditation", "setReminder", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const time = String(params.time || "");
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { ok: false, error: "time must be HH:MM (24h)" };
+    let days = Array.isArray(params.days) ? params.days.map((d) => String(d).toLowerCase()).filter((d) => DOW.includes(d)) : [];
+    if (days.length === 0) days = [...DOW];
+    const entry = {
+      id: medId("rm"),
+      time,
+      days,
+      label: String(params.label || "Time to meditate").trim().slice(0, 80),
+      enabled: true,
+      createdAt: medNow(),
+    };
+    medList(reminderMap(s), medActor(ctx)).push(entry);
+    saveMed();
+    return { ok: true, result: { reminder: entry } };
+  });
+
+  registerLensAction("meditation", "reminders", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = medList(reminderMap(s), medActor(ctx));
+    const now = new Date();
+    const todayKey = DOW[now.getDay()];
+    // Compute the next reminder fire, considering only enabled ones.
+    let next = null;
+    for (const r of list) {
+      if (!r.enabled) continue;
+      const [h, m] = r.time.split(":").map(Number);
+      for (let off = 0; off < 8; off++) {
+        const d = new Date(now);
+        d.setDate(d.getDate() + off);
+        if (!r.days.includes(DOW[d.getDay()])) continue;
+        d.setHours(h, m, 0, 0);
+        if (d.getTime() <= now.getTime()) continue;
+        if (!next || d.getTime() < next.at) next = { reminderId: r.id, label: r.label, at: d.getTime(), iso: d.toISOString() };
+        break;
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        reminders: [...list].reverse(),
+        count: list.length,
+        nextFire: next,
+        dueToday: list.filter((r) => r.enabled && r.days.includes(todayKey)).length,
+      },
+    };
+  });
+
+  registerLensAction("meditation", "toggleReminder", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = medList(reminderMap(s), medActor(ctx));
+    const r = list.find((x) => x.id === params.reminderId);
+    if (!r) return { ok: false, error: "reminder not found" };
+    r.enabled = params.enabled != null ? !!params.enabled : !r.enabled;
+    saveMed();
+    return { ok: true, result: { reminderId: r.id, enabled: r.enabled } };
+  });
+
+  registerLensAction("meditation", "deleteReminder", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = medList(reminderMap(s), medActor(ctx));
+    const idx = list.findIndex((x) => x.id === params.reminderId);
+    if (idx < 0) return { ok: false, error: "reminder not found" };
+    list.splice(idx, 1);
+    saveMed();
+    return { ok: true, result: { deleted: params.reminderId, count: list.length } };
+  });
+
+  // ─── Sleep timer + sleep-story mode with fade-out ───────────────────
+
+  registerLensAction("meditation", "sleepTimerConfig", (_ctx, _a, params = {}) => {
+    const minutes = Math.max(1, Math.min(480, Math.round(Number(params.minutes) || 20)));
+    const fadeSeconds = Math.max(5, Math.min(300, Math.round(Number(params.fadeSeconds) || 45)));
+    const sessionId = String(params.sessionId || "");
+    let track = null;
+    if (sessionId) {
+      track = LIBRARY.find((x) => x.id === sessionId);
+      if (!track) return { ok: false, error: "session not found in library" };
+    }
+    const totalSeconds = minutes * 60;
+    const fadeStartSeconds = Math.max(0, totalSeconds - fadeSeconds);
+    return {
+      ok: true,
+      result: {
+        sessionId: track ? track.id : null,
+        sleepStory: track ? track.category === "sleep_story" : false,
+        minutes,
+        totalSeconds,
+        fadeSeconds,
+        fadeStartSeconds,
+        // Eased volume curve points the client can interpolate against.
+        fadeCurve: [
+          { atSeconds: fadeStartSeconds, volume: 1 },
+          { atSeconds: fadeStartSeconds + fadeSeconds * 0.5, volume: 0.45 },
+          { atSeconds: totalSeconds, volume: 0 },
+        ],
+      },
+    };
+  });
+
+  // ─── Personalized recommendations — mood + history adaptive ─────────
+
+  registerLensAction("meditation", "recommendations", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = medActor(ctx);
+    const sessions = medList(s.sessions, userId);
+    const moods = medList(s.moods, userId);
+    const hour = Number.isFinite(Number(params.hour)) ? Math.max(0, Math.min(23, Math.round(Number(params.hour)))) : new Date().getHours();
+    const recentMood = moods.length ? moods[moods.length - 1].mood : null;
+    const playedIds = new Set(sessions.map((x) => x.sessionId));
+    const catCount = {};
+    for (const x of sessions) catCount[x.category] = (catCount[x.category] || 0) + 1;
+
+    // Goal inference: low mood → anxiety; late hours → sleep;
+    // morning → focus; otherwise lean toward a balanced session.
+    let goal, reason;
+    if (recentMood != null && recentMood <= 2) {
+      goal = "anxiety"; reason = "Your last check-in was low — something soothing.";
+    } else if (hour >= 21 || hour < 5) {
+      goal = "sleep"; reason = "It's late — a wind-down before bed.";
+    } else if (hour >= 5 && hour < 11) {
+      goal = "focus"; reason = "Morning is a strong time to set your attention.";
+    } else if (recentMood != null && recentMood >= 4) {
+      goal = "gratitude"; reason = "You're in a good place — savour it.";
+    } else {
+      goal = "calm"; reason = "A balanced session to reset the middle of your day.";
+    }
+
+    const scored = LIBRARY
+      .map((t) => {
+        let score = 0;
+        if (t.goal === goal) score += 5;
+        if (!playedIds.has(t.id)) score += 2;          // favour fresh tracks
+        if ((catCount[t.category] || 0) === 0) score += 1; // nudge toward unexplored categories
+        if (recentMood != null && recentMood <= 2 && t.category === "sos") score += 3;
+        if ((hour >= 21 || hour < 5) && (t.category === "sleep_story" || t.category === "soundscape")) score += 2;
+        return { track: t, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map((x) => ({ ...x.track, matchScore: x.score }));
+
+    return {
+      ok: true,
+      result: {
+        goal,
+        reason,
+        basedOn: { recentMood, totalSessions: sessions.length, hour },
+        recommendations: scored,
+      },
+    };
+  });
+
+  // ─── Milestones / achievements ──────────────────────────────────────
+
+  const MILESTONE_DEFS = [
+    { id: "first-sit", label: "First Sit", kind: "sessions", threshold: 1, icon: "🌱", blurb: "You showed up." },
+    { id: "ten-sessions", label: "Ten Sessions", kind: "sessions", threshold: 10, icon: "🪴", blurb: "A practice is forming." },
+    { id: "fifty-sessions", label: "Fifty Sessions", kind: "sessions", threshold: 50, icon: "🌳", blurb: "Deeply rooted." },
+    { id: "streak-3", label: "Three-Day Spark", kind: "streak", threshold: 3, icon: "✨", blurb: "Three days running." },
+    { id: "streak-7", label: "Week of Calm", kind: "streak", threshold: 7, icon: "🔥", blurb: "A full week unbroken." },
+    { id: "streak-30", label: "Month of Stillness", kind: "streak", threshold: 30, icon: "🏔️", blurb: "Thirty days — extraordinary." },
+    { id: "min-60", label: "First Hour", kind: "minutes", threshold: 60, icon: "⏳", blurb: "An hour of presence banked." },
+    { id: "min-600", label: "Ten Hours Deep", kind: "minutes", threshold: 600, icon: "💎", blurb: "Ten hours of practice." },
+    { id: "explorer", label: "Explorer", kind: "categories", threshold: 4, icon: "🧭", blurb: "Sampled four kinds of practice." },
+  ];
+
+  function computeStreak(sessions) {
+    const days = new Set(sessions.map((x) => x.completedAt.slice(0, 10)));
+    let streak = 0;
+    for (let i = 0; i < 366; i++) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      if (days.has(d)) streak++;
+      else if (i === 0) continue;
+      else break;
+    }
+    return streak;
+  }
+
+  registerLensAction("meditation", "milestones", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = medList(s.sessions, medActor(ctx));
+    const totalSessions = sessions.length;
+    const totalMinutes = sessions.reduce((n, x) => n + x.durationMin, 0);
+    const streak = computeStreak(sessions);
+    const categories = new Set(sessions.map((x) => x.category)).size;
+    const metrics = { sessions: totalSessions, minutes: totalMinutes, streak, categories };
+
+    const badges = MILESTONE_DEFS.map((m) => {
+      const value = metrics[m.kind] || 0;
+      return {
+        id: m.id,
+        label: m.label,
+        icon: m.icon,
+        blurb: m.blurb,
+        kind: m.kind,
+        threshold: m.threshold,
+        progress: Math.min(1, value / m.threshold),
+        value,
+        unlocked: value >= m.threshold,
+      };
+    });
+    const unlocked = badges.filter((b) => b.unlocked);
+    const nextUp = badges
+      .filter((b) => !b.unlocked)
+      .sort((a, b) => b.progress - a.progress)[0] || null;
+    return {
+      ok: true,
+      result: {
+        badges,
+        unlockedCount: unlocked.length,
+        totalCount: badges.length,
+        nextUp,
+        metrics,
+      },
+    };
+  });
 }

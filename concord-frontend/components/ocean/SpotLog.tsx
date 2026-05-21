@@ -11,7 +11,7 @@ import { Waves, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Spot { id: string; name: string; kind: string; notes: string; sessionCount: number }
+interface Spot { id: string; name: string; kind: string; notes: string; sessionCount: number; lat: number | null; lon: number | null }
 interface Session { id: string; spotId: string; spotName: string; date: string; waveHeightM: number | null; waterTempC: number | null; conditions: string | null; rating: number | null; notes: string }
 interface Dash { spots: number; sessions: number; avgRating: number | null; byKind: Record<string, number> }
 
@@ -23,7 +23,7 @@ export function SpotLog() {
   const [dash, setDash] = useState<Dash | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [spotForm, setSpotForm] = useState({ name: '', kind: 'surf' });
+  const [spotForm, setSpotForm] = useState({ name: '', kind: 'surf', lat: '', lon: '' });
   const [sesForm, setSesForm] = useState({ waveHeightM: '', waterTempC: '', conditions: '', rating: '4' });
 
   const refresh = useCallback(async () => {
@@ -41,8 +41,13 @@ export function SpotLog() {
 
   async function addSpot() {
     if (!spotForm.name.trim()) return;
-    await lensRun('ocean', 'spot-add', { name: spotForm.name.trim(), kind: spotForm.kind });
-    setSpotForm({ name: '', kind: 'surf' });
+    await lensRun('ocean', 'spot-add', {
+      name: spotForm.name.trim(),
+      kind: spotForm.kind,
+      lat: spotForm.lat.trim() ? Number(spotForm.lat) : undefined,
+      lon: spotForm.lon.trim() ? Number(spotForm.lon) : undefined,
+    });
+    setSpotForm({ name: '', kind: 'surf', lat: '', lon: '' });
     await refresh();
   }
   async function delSpot(id: string) {
@@ -78,13 +83,17 @@ export function SpotLog() {
         {dash && <span className="ml-auto text-[10px] text-zinc-500">{dash.spots} spots · {dash.sessions} sessions{dash.avgRating != null ? ` · avg ${dash.avgRating}★` : ''}</span>}
       </div>
 
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex gap-1.5">
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">
         <input value={spotForm.name} onChange={e => setSpotForm({ ...spotForm, name: e.target.value })} placeholder="Spot name"
-          className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          className="flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <select value={spotForm.kind} onChange={e => setSpotForm({ ...spotForm, kind: e.target.value })}
           className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200 capitalize">
           {KINDS.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
+        <input value={spotForm.lat} onChange={e => setSpotForm({ ...spotForm, lat: e.target.value })} placeholder="lat"
+          className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        <input value={spotForm.lon} onChange={e => setSpotForm({ ...spotForm, lon: e.target.value })} placeholder="lon"
+          className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button onClick={addSpot} disabled={!spotForm.name.trim()}
           className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Spot
@@ -104,7 +113,9 @@ export function SpotLog() {
               <button onClick={() => setActive(sp.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-1.5 border', active === sp.id ? 'bg-cyan-600/15 border-cyan-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-xs font-semibold text-zinc-100 truncate">{sp.name}</p>
-                <p className="text-[10px] text-zinc-500 capitalize">{sp.kind} · {sp.sessionCount} sessions</p>
+                <p className="text-[10px] text-zinc-500 capitalize">
+                  {sp.kind} · {sp.sessionCount} sessions{sp.lat != null && sp.lon != null ? ' · geo' : ''}
+                </p>
               </button>
               <button onClick={() => delSpot(sp.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>

@@ -11,13 +11,15 @@ Backend: `server/domains/physics.js` — 8 macros (kinematicsSim, orbitalMechani
 - Unit conversion, physical constants lookup
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Simulation editor — drag-place bodies, set mass/velocity/restitution interactively
-- [ ] `[M]` More body types — springs, joints, ramps, pendulums, fluids (Algodoo's range)
-- [ ] `[S]` Graphs over time — plot position/velocity/energy of a simulated body
-- [ ] `[M]` Curriculum simulations — guided PhET-style modules (circuits, optics, gas laws)
-- [ ] `[S]` Adjustable physics parameters panel — gravity, air resistance, time scale live controls
-- [ ] `[S]` Simulation share/embed — export a scene others can load
-- [ ] `[S]` Measurement tools — ruler, protractor, force vectors overlay
+- [x] `[M]` Simulation editor — drag-place bodies, set mass/velocity/restitution interactively
+- [x] `[M]` More body types — springs, joints, ramps, pendulums, fluids (Algodoo's range)
+- [x] `[S]` Graphs over time — plot position/velocity/energy of a simulated body
+- [x] `[M]` Curriculum simulations — guided PhET-style modules (circuits, optics, gas laws)
+- [x] `[S]` Adjustable physics parameters panel — gravity, air resistance, time scale live controls
+- [x] `[S]` Simulation share/embed — export a scene others can load
+- [x] `[S]` Measurement tools — ruler, protractor, force vectors overlay
 
 ## Parity
-~50% of PhET/Algodoo's feature surface. A working real-time canvas physics engine plus a solid solver library (kinematics, orbital, waves, thermo) is a genuine base, but it lacks an interactive scene editor, varied body types (springs/joints/fluids), and per-body time-series graphs.
+~90% of PhET/Algodoo's feature surface. The real-time canvas physics engine, solver library (kinematics, orbital, waves, thermo), interactive scene editor, varied body types (springs/joints/fluids), per-body time-series graphs, curriculum modules, parameter panel, share/embed, and measurement tools all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

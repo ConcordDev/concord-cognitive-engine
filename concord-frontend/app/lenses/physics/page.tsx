@@ -44,6 +44,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
+import { PhysicsLab } from '@/components/physics/PhysicsLab';
 import { PhysicsActionPanel } from '@/components/physics/PhysicsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -1625,6 +1626,10 @@ export default function PhysicsLensPage() {
         </>
       )}
       </div>
+
+      {/* PhET / Algodoo parity — persistent server-backed scene editor,
+          simulator, curriculum labs, measurement tools, share/embed. */}
+      <PhysicsLab />
 
       {/* Backend Action Panel */}
       <div className="panel p-4 space-y-3">

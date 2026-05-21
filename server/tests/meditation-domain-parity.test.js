@@ -96,3 +96,108 @@ describe("meditation — legacy macros still intact", () => {
     assert.equal(call("dailyPrompt", ctxA, {}).ok, true);
   });
 });
+
+describe("meditation.soundscapeConfig", () => {
+  it("returns a synthesis recipe for a soundscape track", () => {
+    const r = call("soundscapeConfig", ctxA, { sessionId: "sc-rain" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.kind, "soundscape");
+    assert.equal(r.result.noise, "pink");
+    assert.ok(Array.isArray(r.result.layers) && r.result.layers.length > 0);
+  });
+  it("returns a tone bed for a guided track", () => {
+    const r = call("soundscapeConfig", ctxA, { sessionId: "g-focus-10" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.kind, "tone_bed");
+    assert.ok(Array.isArray(r.result.drone));
+  });
+  it("falls back to a tone bed for a bare category", () => {
+    assert.equal(call("soundscapeConfig", ctxA, { category: "breathwork" }).result.kind, "tone_bed");
+  });
+  it("rejects an unknown session id", () => {
+    assert.equal(call("soundscapeConfig", ctxA, { sessionId: "nope" }).ok, false);
+  });
+});
+
+describe("meditation.courses", () => {
+  it("lists courses with enrollment state", () => {
+    const r = call("courses", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.count >= 3);
+    assert.ok(r.result.courses.every((c) => c.enrolled === false));
+  });
+  it("enroll → progress → complete a day", () => {
+    assert.equal(call("enrollCourse", ctxA, { courseId: "course-basics-7" }).ok, true);
+    const prog = call("courseProgress", ctxA, { courseId: "course-basics-7" });
+    assert.equal(prog.ok, true);
+    assert.equal(prog.result.enrolled, true);
+    assert.equal(prog.result.nextDay, 1);
+    const done = call("completeCourseDay", ctxA, { courseId: "course-basics-7", day: 1 });
+    assert.equal(done.ok, true);
+    assert.equal(done.result.completedCount, 1);
+    const prog2 = call("courseProgress", ctxA, { courseId: "course-basics-7" });
+    assert.equal(prog2.result.completedCount, 1);
+    assert.equal(prog2.result.nextDay, 2);
+    // completing a day also logs a practice session
+    assert.equal(call("history", ctxA, {}).result.count, 1);
+  });
+  it("rejects an unknown course / day", () => {
+    assert.equal(call("enrollCourse", ctxA, { courseId: "nope" }).ok, false);
+    assert.equal(call("completeCourseDay", ctxA, { courseId: "course-basics-7", day: 99 }).ok, false);
+  });
+});
+
+describe("meditation reminders", () => {
+  it("sets, lists, toggles and deletes a reminder", () => {
+    const set = call("setReminder", ctxA, { time: "07:30", days: ["mon", "wed"], label: "Morning sit" });
+    assert.equal(set.ok, true);
+    const id = set.result.reminder.id;
+    const list = call("reminders", ctxA, {});
+    assert.equal(list.result.count, 1);
+    const off = call("toggleReminder", ctxA, { reminderId: id, enabled: false });
+    assert.equal(off.result.enabled, false);
+    const del = call("deleteReminder", ctxA, { reminderId: id });
+    assert.equal(del.ok, true);
+    assert.equal(call("reminders", ctxA, {}).result.count, 0);
+  });
+  it("rejects a malformed time", () => {
+    assert.equal(call("setReminder", ctxA, { time: "25:99" }).ok, false);
+  });
+});
+
+describe("meditation.sleepTimerConfig", () => {
+  it("returns a fade curve ending at zero volume", () => {
+    const r = call("sleepTimerConfig", ctxA, { minutes: 20, fadeSeconds: 45 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalSeconds, 1200);
+    assert.equal(r.result.fadeStartSeconds, 1155);
+    assert.equal(r.result.fadeCurve[r.result.fadeCurve.length - 1].volume, 0);
+  });
+  it("rejects an unknown session id", () => {
+    assert.equal(call("sleepTimerConfig", ctxA, { sessionId: "nope" }).ok, false);
+  });
+});
+
+describe("meditation.recommendations", () => {
+  it("recommends sleep content late at night", () => {
+    const r = call("recommendations", ctxA, { hour: 23 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.goal, "sleep");
+    assert.ok(r.result.recommendations.length > 0);
+  });
+  it("recommends focus content in the morning", () => {
+    assert.equal(call("recommendations", ctxA, { hour: 8 }).result.goal, "focus");
+  });
+});
+
+describe("meditation.milestones", () => {
+  it("reports the first-sit badge once a session is logged", () => {
+    call("play", ctxA, { sessionId: "g-focus-10" });
+    const r = call("milestones", ctxA, {});
+    assert.equal(r.ok, true);
+    const first = r.result.badges.find((b) => b.id === "first-sit");
+    assert.equal(first.unlocked, true);
+    assert.ok(r.result.unlockedCount >= 1);
+    assert.ok(r.result.nextUp);
+  });
+});

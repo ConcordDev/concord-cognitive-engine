@@ -4695,6 +4695,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    domain: 'meditation',
+    label: 'Meditation',
+    artifacts: ['session', 'track', 'course', 'reminder', 'mood_checkin', 'milestone'],
+    macros: { list: 'lens.meditation.list', get: 'lens.meditation.get', run: 'lens.meditation.run', export: 'lens.meditation.export' },
+    exports: ['json'],
+    actions: ['play', 'sessionLog', 'breathwork', 'mood-checkin', 'enrollCourse', 'completeCourseDay', 'setReminder', 'recommendations'],
+    category: 'lifestyle',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Begin your practice.',
+      caption: 'Pick a track, run a breathwork pattern, log a session. Streaks, courses, and mood check-ins build your practice substrate.',
+      firstActionLabel: 'Start a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Pick a track or breathwork pattern from the library and play it through.' },
+        { caption: 'Log each session — streaks and milestones roll up automatically.' },
+        { caption: 'mood-checkin pairs your practice with how you feel; recommendations adapt over time.' },
+      ],
+    },
+  },
+  {
     domain: 'sentinel',
     label: 'Sentinel',
     artifacts: ['intel_report', 'shield_event', 'semantic_alert'],

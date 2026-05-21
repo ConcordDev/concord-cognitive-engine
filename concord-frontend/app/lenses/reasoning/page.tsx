@@ -40,6 +40,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ArgumentWorkbench } from '@/components/reasoning/ArgumentWorkbench';
+import { ArgumentMapStudio } from '@/components/reasoning/ArgumentMapStudio';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1117,6 +1118,10 @@ export default function ReasoningLensPage() {
       {/*  TAB: ARGUMENTS                                                  */}
       {/* ================================================================ */}
       {mode === 'arguments' && (
+        <div className="space-y-6">
+        {/* Kialo-style persistent visual argument map — fully backend-wired */}
+        <ArgumentMapStudio />
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Map List + Chain Builder */}
           <div className="space-y-4">
@@ -1414,6 +1419,7 @@ export default function ReasoningLensPage() {
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 

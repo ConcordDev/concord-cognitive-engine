@@ -12,6 +12,7 @@ import { NoaaTidesPanel } from '@/components/ocean/NoaaTidesPanel';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { WaveEcosystemPanel } from '@/components/ocean/WaveEcosystemPanel';
 import { SpotLog } from '@/components/ocean/SpotLog';
+import { LiveMarinePanel } from '@/components/ocean/LiveMarinePanel';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { TideActionStack } from '@/components/ocean/TideActionStack';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -549,6 +550,12 @@ export default function OceanLensPage() {
       {/* NOAA-shape action surface: mint / DM brief / publish / agent / CSV */}
       <section className="mt-6">
         <TideActionStack />
+      </section>
+
+      {/* Live marine data — Open-Meteo marine forecast / NDBC buoys /
+          AIS vessels / surf scoring / SST / tide alerts / logbook export */}
+      <section className="mt-6">
+        <LiveMarinePanel />
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

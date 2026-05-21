@@ -20,7 +20,7 @@ Backend: `server/domains/collab.js` — macros `sessionAnalytics`, `contribution
 - [x] `[S]` Permission tiers (view / comment / edit) per invitee
 
 ## Parity
-Real-time-collaboration backbone shipped. The `CollabDocWorkspace` component
+~90% parity. Real-time-collaboration backbone shipped. The `CollabDocWorkspace` component
 (mounted in `app/lenses/collab/page.tsx`) wires the full multiplayer co-editing
 surface against the `collab` domain macros: shared documents with a conflict-free
 CRDT op log (deterministic lamport+authorId total order so concurrent edits

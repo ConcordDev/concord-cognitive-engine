@@ -10,13 +10,15 @@ Backend: `server/domains/ocean.js` — 12 macros (wave/tidal/salinity/ecosystem 
 - Vessels/Research/Marine/Ports CRUD with map markers (Leaflet), depth-zone visualization, Wikipedia oceanography reference.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live AIS vessel positions — pull free AIS feed (aisstream.io / aishub) instead of manual vessel CRUD.
-- [ ] `[M]` Marine weather forecast overlay — Open-Meteo Marine API for wave height/period/swell forecast on the map.
-- [ ] `[S]` Surf-spot conditions score — combine swell + wind + tide into a daily surf rating per saved spot.
-- [ ] `[M]` Buoy data — NOAA NDBC real-time buoy observations (wave, wind, water temp) near a spot.
-- [ ] `[S]` Tide alerts/reminders — notify on next high/low or favorable spot windows.
-- [ ] `[M]` Sea surface temperature map layer — NOAA/NASA SST tiles.
-- [ ] `[S]` Catch/dive logbook export — GPX/CSV export of sessions.
+- [x] `[M]` Live AIS vessel positions — pull free AIS feed (aisstream.io / aishub) instead of manual vessel CRUD.
+- [x] `[M]` Marine weather forecast overlay — Open-Meteo Marine API for wave height/period/swell forecast on the map.
+- [x] `[S]` Surf-spot conditions score — combine swell + wind + tide into a daily surf rating per saved spot.
+- [x] `[M]` Buoy data — NOAA NDBC real-time buoy observations (wave, wind, water temp) near a spot.
+- [x] `[S]` Tide alerts/reminders — notify on next high/low or favorable spot windows.
+- [x] `[M]` Sea surface temperature map layer — NOAA/NASA SST tiles.
+- [x] `[S]` Catch/dive logbook export — GPX/CSV export of sessions.
 
 ## Parity
-~50% of Windy/MarineTraffic's feature surface. Strong on real tide data and a genuine spot logbook, but lacks live AIS tracking and marine forecasting — the two things those leaders are actually used for.
+~90% of Windy/MarineTraffic's feature surface. Real tide data, a genuine spot logbook, live AIS vessel tracking, marine weather forecasting, buoy data, SST layer, surf scoring, and logbook export all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

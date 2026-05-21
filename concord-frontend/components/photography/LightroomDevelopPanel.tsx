@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, SlidersHorizontal, RotateCcw, Save, Wand2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Photo { id: string; title: string; develop: Record<string, number>; appliedPreset?: string | null }
 interface Preset { id: string; name: string; category: string; adjustments: Record<string, number> }

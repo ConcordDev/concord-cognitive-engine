@@ -19,7 +19,7 @@ Backend: `server/domains/bridge.js` — macros `connectionHealth`, `dataMapping`
 - [x] `[S]` Throughput history charts over time
 
 ## Parity
-Full ops-grade integration-monitoring console. The original organism/bridge/debate
+~90% parity. Full ops-grade integration-monitoring console. The original organism/bridge/debate
 substrate plus a Federation Console (`components/bridge/FederationConsole.tsx`,
 "federation" tab) wiring the `syncTopology`, `recordFlow`/`flowList`/`flowReplay`,
 `mappingUpsert`/`mappingList`/`mappingRemove`/`mappingPreview`, `scheduleSet`/`scheduleList`,

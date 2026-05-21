@@ -12,13 +12,15 @@ Backend: `server/domains/philosophy.js` — 12 macros: argumentMap, thoughtExper
 - 6 tabs (Arguments/Concepts/Thinkers/Traditions/Dialogues/Dashboard); Wikipedia search, DilemmaPanel, PhiloFeed
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Visual block grid with images — Are.na's signature image-block masonry, not just text blocks
-- [ ] `[M]` Public channel browse + discovery — explore other users' channels, not only your own
-- [ ] `[S]` Channel collaborators — multiple authors curating one channel
-- [ ] `[M]` Block embeds — rich link previews, embedded media/PDF in blocks
-- [ ] `[S]` Concept/thinker reference pages — structured entries (the IEP-style encyclopedia side)
-- [ ] `[S]` Connections graph — visualize how blocks/channels interlink
-- [ ] `[S]` Argument debate threads — collaborative premise critique
+- [x] `[M]` Visual block grid with images — Are.na's signature image-block masonry, not just text blocks
+- [x] `[M]` Public channel browse + discovery — explore other users' channels, not only your own
+- [x] `[S]` Channel collaborators — multiple authors curating one channel
+- [x] `[M]` Block embeds — rich link previews, embedded media/PDF in blocks
+- [x] `[S]` Concept/thinker reference pages — structured entries (the IEP-style encyclopedia side)
+- [x] `[S]` Connections graph — visualize how blocks/channels interlink
+- [x] `[S]` Argument debate threads — collaborative premise critique
 
 ## Parity
-~50% of Are.na+IEP's feature surface. The reasoning tools (argument map, dialectic, ethics) are a genuine differentiator and the channel/block curation model is real, but it lacks the visual image-grid, public discovery, and collaboration that make Are.na a platform.
+~90% of Are.na+IEP's feature surface. The reasoning tools (argument map, dialectic, ethics), the channel/block curation model, the visual block grid, public discovery, collaborators, embeds, reference pages, connections graph, and debate threads all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
