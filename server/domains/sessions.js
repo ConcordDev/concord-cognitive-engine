@@ -334,4 +334,310 @@ export default function registerSessionsMacros(register) {
 
     return { ok: true, sessionId, status: outcome, closedAt: now };
   }, { note: "close a session" });
+
+  // ───────────────────────────────────────────────────────────────────
+  // Phase 5 feature-parity backlog — session-manager surface.
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * sessions.search — search + sort the caller's sessions.
+   * input: { query?, lensId?, status?, sort?, limit? }
+   *   sort ∈ recent | oldest | title | lens | steps  (default recent)
+   *   query matches title OR lens_id (case-insensitive substring).
+   */
+  register("sessions", "search", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+
+    const query = input.query != null ? String(input.query).trim().slice(0, 120) : "";
+    const lensId = input.lensId ? String(input.lensId).slice(0, 64) : null;
+    const status = input.status ? String(input.status).slice(0, 16) : null;
+    const sort = String(input.sort || "recent");
+    const limit = Math.min(Math.max(Number(input.limit) || MAX_LIST_LIMIT, 1), MAX_LIST_LIMIT);
+
+    const conds = ["user_id = ?"];
+    const args = [userId];
+    if (lensId) { conds.push("lens_id = ?"); args.push(lensId); }
+    if (status) { conds.push("status = ?"); args.push(status); }
+    if (query) {
+      conds.push("(LOWER(COALESCE(title,'')) LIKE ? OR LOWER(lens_id) LIKE ?)");
+      const like = `%${query.toLowerCase()}%`;
+      args.push(like, like);
+    }
+
+    const orderBy = ({
+      recent: "updated_at DESC",
+      oldest: "created_at ASC",
+      title: "LOWER(COALESCE(title, lens_id)) ASC",
+      lens: "lens_id ASC, updated_at DESC",
+      steps: "step_count DESC, updated_at DESC",
+    })[sort] || "updated_at DESC";
+
+    let rows;
+    try {
+      rows = db.prepare(`
+        SELECT id, lens_id, title, status, current_step, step_count, created_at, updated_at, closed_at
+        FROM lens_sessions
+        WHERE ${conds.join(" AND ")}
+        ORDER BY ${orderBy}
+        LIMIT ?
+      `).all(...args, limit);
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+
+    return {
+      ok: true,
+      sort,
+      query,
+      sessions: rows.map(r => ({
+        id: r.id, lensId: r.lens_id, title: r.title, status: r.status,
+        currentStep: r.current_step, stepCount: r.step_count,
+        createdAt: r.created_at, updatedAt: r.updated_at, closedAt: r.closed_at,
+      })),
+      total: rows.length,
+    };
+  }, { note: "search + sort caller's sessions" });
+
+  /**
+   * sessions.pause — transition an open session to 'paused'.
+   * input: { sessionId, note? }
+   */
+  register("sessions", "pause", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+
+    const sessionId = String(input.sessionId || "").trim();
+    if (!sessionId) return { ok: false, reason: "missing_session_id" };
+
+    const row = db.prepare(`SELECT id, status, current_step FROM lens_sessions WHERE id = ? AND user_id = ?`).get(sessionId, userId);
+    if (!row) return { ok: false, reason: "not_found" };
+    if (row.status === "paused") return { ok: false, reason: "already_paused" };
+    if (row.status !== "open") return { ok: false, reason: "session_not_active", status: row.status };
+
+    const note = input.note != null ? String(input.note).slice(0, 500) : null;
+    const now = Math.floor(Date.now() / 1000);
+    try {
+      db.prepare(`UPDATE lens_sessions SET status = 'paused', updated_at = ? WHERE id = ? AND user_id = ?`)
+        .run(now, sessionId, userId);
+      db.prepare(`
+        INSERT INTO lens_session_events (session_id, event_kind, from_step, to_step, note, payload_json, created_at)
+        VALUES (?, 'paused', ?, ?, ?, NULL, ?)
+      `).run(sessionId, row.current_step, row.current_step, note, now);
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+    return { ok: true, sessionId, status: "paused", updatedAt: now };
+  }, { note: "pause an open session" });
+
+  /**
+   * sessions.resume — transition a paused session back to 'open'.
+   * input: { sessionId, note? }
+   */
+  register("sessions", "resume", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+
+    const sessionId = String(input.sessionId || "").trim();
+    if (!sessionId) return { ok: false, reason: "missing_session_id" };
+
+    const row = db.prepare(`SELECT id, status, current_step FROM lens_sessions WHERE id = ? AND user_id = ?`).get(sessionId, userId);
+    if (!row) return { ok: false, reason: "not_found" };
+    if (row.status === "open") return { ok: false, reason: "already_open" };
+    if (row.status !== "paused") return { ok: false, reason: "session_not_paused", status: row.status };
+
+    const note = input.note != null ? String(input.note).slice(0, 500) : null;
+    const now = Math.floor(Date.now() / 1000);
+    try {
+      db.prepare(`UPDATE lens_sessions SET status = 'open', updated_at = ? WHERE id = ? AND user_id = ?`)
+        .run(now, sessionId, userId);
+      db.prepare(`
+        INSERT INTO lens_session_events (session_id, event_kind, from_step, to_step, note, payload_json, created_at)
+        VALUES (?, 'resumed', ?, ?, ?, NULL, ?)
+      `).run(sessionId, row.current_step, row.current_step, note, now);
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+    return { ok: true, sessionId, status: "open", updatedAt: now };
+  }, { note: "resume a paused session" });
+
+  /**
+   * sessions.rename — change a session's title.
+   * input: { sessionId, title }
+   */
+  register("sessions", "rename", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+
+    const sessionId = String(input.sessionId || "").trim();
+    if (!sessionId) return { ok: false, reason: "missing_session_id" };
+    const title = input.title != null ? String(input.title).trim().slice(0, 200) : "";
+    if (!title) return { ok: false, reason: "missing_title" };
+
+    const row = db.prepare(`SELECT id, current_step FROM lens_sessions WHERE id = ? AND user_id = ?`).get(sessionId, userId);
+    if (!row) return { ok: false, reason: "not_found" };
+
+    const now = Math.floor(Date.now() / 1000);
+    try {
+      db.prepare(`UPDATE lens_sessions SET title = ?, updated_at = ? WHERE id = ? AND user_id = ?`)
+        .run(title, now, sessionId, userId);
+      db.prepare(`
+        INSERT INTO lens_session_events (session_id, event_kind, from_step, to_step, note, payload_json, created_at)
+        VALUES (?, 'annotated', ?, ?, ?, ?, ?)
+      `).run(sessionId, row.current_step, row.current_step, `renamed to "${title}"`,
+        JSON.stringify({ kind: "rename", title }).slice(0, MAX_EVENT_PAYLOAD_BYTES), now);
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+    return { ok: true, sessionId, title, updatedAt: now };
+  }, { note: "rename a session" });
+
+  /**
+   * sessions.annotate — append a free-text annotation event to a session.
+   * input: { sessionId, note }
+   */
+  register("sessions", "annotate", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+
+    const sessionId = String(input.sessionId || "").trim();
+    if (!sessionId) return { ok: false, reason: "missing_session_id" };
+    const note = input.note != null ? String(input.note).trim().slice(0, 500) : "";
+    if (!note) return { ok: false, reason: "missing_note" };
+
+    const row = db.prepare(`SELECT id, current_step FROM lens_sessions WHERE id = ? AND user_id = ?`).get(sessionId, userId);
+    if (!row) return { ok: false, reason: "not_found" };
+
+    const now = Math.floor(Date.now() / 1000);
+    let eventId;
+    try {
+      const r = db.prepare(`
+        INSERT INTO lens_session_events (session_id, event_kind, from_step, to_step, note, payload_json, created_at)
+        VALUES (?, 'annotated', ?, ?, ?, ?, ?)
+      `).run(sessionId, row.current_step, row.current_step, note,
+        JSON.stringify({ kind: "annotation" }).slice(0, MAX_EVENT_PAYLOAD_BYTES), now);
+      eventId = Number(r.lastInsertRowid);
+      db.prepare(`UPDATE lens_sessions SET updated_at = ? WHERE id = ? AND user_id = ?`).run(now, sessionId, userId);
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+    return { ok: true, sessionId, eventId, note, createdAt: now };
+  }, { note: "append an annotation to a session" });
+
+  /**
+   * sessions.stale — find long-idle open/paused sessions that should be
+   * resumed or closed.
+   * input: { idleDays? } — default 7, clamped [1, 365].
+   */
+  register("sessions", "stale", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+
+    const idleDays = Math.min(Math.max(Number(input.idleDays) || 7, 1), 365);
+    const now = Math.floor(Date.now() / 1000);
+    const cutoff = now - idleDays * 86400;
+
+    let rows;
+    try {
+      rows = db.prepare(`
+        SELECT id, lens_id, title, status, current_step, step_count, created_at, updated_at
+        FROM lens_sessions
+        WHERE user_id = ? AND status IN ('open','paused') AND updated_at < ?
+        ORDER BY updated_at ASC
+        LIMIT ?
+      `).all(userId, cutoff, MAX_LIST_LIMIT);
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+
+    return {
+      ok: true,
+      idleDays,
+      cutoff,
+      sessions: rows.map(r => ({
+        id: r.id, lensId: r.lens_id, title: r.title, status: r.status,
+        currentStep: r.current_step, stepCount: r.step_count,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+        idleDays: Math.floor((now - r.updated_at) / 86400),
+      })),
+      total: rows.length,
+    };
+  }, { note: "list long-idle sessions needing attention" });
+
+  /**
+   * sessions.bulk_close — close many sessions in one sweep.
+   * input: { sessionIds?: string[], outcome: 'completed'|'abandoned',
+   *          scope?: 'stale', idleDays?, note? }
+   *   When scope='stale' and no sessionIds, closes every open/paused
+   *   session idle past idleDays.
+   */
+  register("sessions", "bulk_close", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+
+    const outcome = String(input.outcome || "").trim();
+    if (outcome !== "completed" && outcome !== "abandoned") {
+      return { ok: false, reason: "invalid_outcome" };
+    }
+    const note = input.note != null ? String(input.note).slice(0, 500) : null;
+    const now = Math.floor(Date.now() / 1000);
+
+    let targets = [];
+    if (Array.isArray(input.sessionIds) && input.sessionIds.length) {
+      const ids = input.sessionIds.map(s => String(s || "").trim()).filter(Boolean).slice(0, MAX_LIST_LIMIT);
+      if (!ids.length) return { ok: false, reason: "no_targets" };
+      const placeholders = ids.map(() => "?").join(",");
+      targets = db.prepare(`
+        SELECT id, status, current_step FROM lens_sessions
+        WHERE user_id = ? AND id IN (${placeholders}) AND status IN ('open','paused')
+      `).all(userId, ...ids);
+    } else if (input.scope === "stale") {
+      const idleDays = Math.min(Math.max(Number(input.idleDays) || 7, 1), 365);
+      const cutoff = now - idleDays * 86400;
+      targets = db.prepare(`
+        SELECT id, status, current_step FROM lens_sessions
+        WHERE user_id = ? AND status IN ('open','paused') AND updated_at < ?
+        LIMIT ?
+      `).all(userId, cutoff, MAX_LIST_LIMIT);
+    } else {
+      return { ok: false, reason: "no_targets" };
+    }
+
+    if (!targets.length) return { ok: true, closed: 0, sessionIds: [] };
+
+    const closedIds = [];
+    try {
+      const upd = db.prepare(`UPDATE lens_sessions SET status = ?, closed_at = ?, updated_at = ? WHERE id = ? AND user_id = ?`);
+      const ins = db.prepare(`
+        INSERT INTO lens_session_events (session_id, event_kind, from_step, to_step, note, payload_json, created_at)
+        VALUES (?, ?, ?, NULL, ?, NULL, ?)
+      `);
+      const tx = db.transaction(() => {
+        for (const t of targets) {
+          upd.run(outcome, now, now, t.id, userId);
+          ins.run(t.id, outcome, t.current_step, note, now);
+          closedIds.push(t.id);
+        }
+      });
+      tx();
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+
+    return { ok: true, closed: closedIds.length, outcome, sessionIds: closedIds };
+  }, { note: "bulk-close many sessions" });
 }

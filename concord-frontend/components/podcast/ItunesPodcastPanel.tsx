@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { Headphones, RefreshCw, AlertTriangle, ExternalLink, Search, Rss } from 'lucide-react';
+import { Headphones, RefreshCw, AlertTriangle, Search, Rss } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

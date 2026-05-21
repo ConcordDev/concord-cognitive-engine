@@ -4983,6 +4983,30 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'lens.crisis-ops.list', get: 'lens.crisis-ops.get', run: 'lens.crisis-ops.run' }, exports: ['json'], actions: ['active_for_player', 'resolve'], category: 'social' },
   { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
   { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'lens.ghost-tracker.list', get: 'lens.ghost-tracker.get', run: 'lens.ghost-tracker.run' }, exports: ['json'], actions: ['residues', 'confront'], category: 'knowledge' },
+  // Phase 5 — cross-lens multi-step workflow session index.
+  {
+    domain: 'sessions',
+    label: 'Sessions',
+    artifacts: ['lens_session'],
+    macros: { list: 'sessions.list_mine', get: 'sessions.get', run: 'sessions.search' },
+    exports: ['json'],
+    actions: ['search', 'pause', 'resume', 'rename', 'annotate', 'detail', 'stale', 'bulk_close'],
+    category: 'productivity',
+    dataTier: 'REAL_LIVE',
+    sessionTable: 'lens_sessions',
+    emptyState: {
+      headline: 'No sessions yet.',
+      caption: 'Sessions persist multi-step work across visits — open a war campaign in kingdoms, a research arc in paper. Visit any session-aware lens to start one.',
+      firstActionLabel: 'Browse lenses',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Every session-aware lens records its multi-step state here so you can leave and resume across days.' },
+        { caption: 'Filter by status, search by lens or title, and open a session to see its full step-transition timeline.' },
+        { caption: 'Pause idle work, rename sessions, annotate them, and bulk-close abandoned ones in one sweep.' },
+      ],
+    },
+  },
 ];
 
 // ---- Sub-lens auto-registration ----

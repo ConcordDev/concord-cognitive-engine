@@ -12,6 +12,7 @@ import { PodcastPlayerSection } from '@/components/podcast/PodcastPlayerSection'
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { ItunesSearch } from '@/components/podcast/ItunesSearch';
 import { PodcastActionPanel } from '@/components/podcast/PodcastActionPanel';
+import { PodcastListeningHub } from '@/components/podcast/PodcastListeningHub';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -922,6 +923,12 @@ export default function PodcastLensPage() {
           )}
         </div>
       </main>
+
+      {/* Listening hub — RSS ingestion, streaming player + chapters,
+          transcripts, recommendations, cross-device sync, smart downloads */}
+      <section className="mt-6 mx-4">
+        <PodcastListeningHub />
+      </section>
 
       {/* Bespoke iTunes podcast search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">

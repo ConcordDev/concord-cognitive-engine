@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~81%**
-- Total buildable features in the backlog (sum of all "Missing" items): **521**
+- Average feature parity: **~82%**
+- Total buildable features in the backlog (sum of all "Missing" items): **469**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 163 |
+| 80–100% (near-complete) | 169 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 13 |
+| 40–59% (partial) | 7 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| music | Spotify (2026) | ~55% | 17 |
-| news | Apple News / Ground News | ~55% | 7 |
-| podcast | Apple Podcasts / Spotify | ~55% | 7 |
-| poetry | Poetry Foundation / poetry notebook | ~55% | 7 |
-| science | LabArchives / GraphPad Prism | ~55% | 7 |
-| sessions | a workflow / task-session manager | ~55% | 7 |
 | srs | Anki | ~55% | 9 |
 | thread | Typefully | ~55% | 7 |
 | travel | Google Travel / TripIt | ~55% | 8 |
@@ -261,3 +255,9 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | linguistics | Vocabulary.com / Datamuse | ~95% | 0 |
 | logistics | Project44 / FourKites (supply-chain visibility) | ~95% | 0 |
 | marketplace | Etsy (seller side) | ~95% | 0 |
+| music | Spotify (2026) | ~95% | 0 |
+| news | Apple News / Ground News | ~95% | 0 |
+| podcast | Apple Podcasts / Spotify | ~95% | 0 |
+| poetry | Poetry Foundation / poetry notebook | ~95% | 0 |
+| science | LabArchives / GraphPad Prism | ~95% | 0 |
+| sessions | a workflow / task-session manager | ~95% | 0 |

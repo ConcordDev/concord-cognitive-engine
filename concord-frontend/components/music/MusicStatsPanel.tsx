@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Sparkles, TrendingUp, Play, UserPlus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Stats { totalPlays: number; listenedMinutes: number; listenedHours: number; byGenre: Record<string, number>; libraryTracks: number }
 interface Wrapped { year: string; totalPlays: number; minutesListened: number; topTracks: { title: string; plays: number }[]; topArtists: { artist: string; plays: number }[] }

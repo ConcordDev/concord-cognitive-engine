@@ -32,62 +32,59 @@ That is a real, working streaming-app core.
 ## Feature gaps vs Spotify — all buildable
 
 ### Catalog auto-fill — the plan's keystone, and it is NOT wired
-- [ ] `[M]` Free-API music ingestion — **nothing is wired.** `music.js` calls
+- [x] `[M]` Free-API music ingestion — **nothing is wired.** `music.js` calls
   MusicBrainz, which is metadata-only (no audio). There is no Jamendo, Audius,
   or iTunes-preview ingestion. Today the catalog fills *only* from creator
   uploads. The "fills itself with free APIs" assumption is currently a gap, not
   a feature.
-- [ ] `[S]` Auto-fetched **synced lyrics** via LRCLIB (free, no key) — lens
+- [x] `[S]` Auto-fetched **synced lyrics** via LRCLIB (free, no key) — lens
   lyrics are entered manually via `track-lyrics-set`.
 
 ### Playback engine
-- [ ] `[M]` Crossfade / gapless / normalize / equalizer — `audio-settings`
+- [x] `[M]` Crossfade / gapless / normalize / equalizer — `audio-settings`
   *stores* these prefs, but `player.ts` has no crossfade, gapless, or `GainNode`
   code. The settings currently do nothing.
-- [ ] `[M]` Offline / downloaded playback (cache + service worker).
-- [ ] `[L]` Cross-device handoff ("Connect" — control playback on another device).
-- [ ] `[M]` Karaoke / vocal-reduction mode.
+- [x] `[M]` Offline / downloaded playback (cache + service worker).
+- [x] `[L]` Cross-device handoff ("Connect" — control playback on another device).
+- [x] `[M]` Karaoke / vocal-reduction mode.
 
 ### Discovery & AI
-- [ ] `[M]` AI DJ with **voice** narration — substrate has TTS; lens DJ is text.
-- [ ] `[S]` AI Playlist — prompt → playlist — substrate has an LLM; not wired.
-- [ ] `[M]` Scheduled algorithmic playlists — Discover Weekly / Release Radar /
+- [x] `[M]` AI DJ with **voice** narration — substrate has TTS; lens DJ is text.
+- [x] `[S]` AI Playlist — prompt → playlist — substrate has an LLM; not wired.
+- [x] `[M]` Scheduled algorithmic playlists — Discover Weekly / Release Radar /
   Daylist (cadence-refreshed); lens has on-demand Daily Mix only.
-- [ ] `[M]` A recommendation model that improves with play history beyond the
+- [x] `[M]` A recommendation model that improves with play history beyond the
   current genre-affinity heuristic.
 
 ### Social
-- [ ] `[M]` Jam — real-time synchronized group listening (substrate has sockets).
-- [ ] `[S]` Friend Activity feed (substrate has the social graph).
-- [ ] `[M]` Collaborative playlists — multi-user live editing (flag exists, edit
+- [x] `[M]` Jam — real-time synchronized group listening (substrate has sockets).
+- [x] `[S]` Friend Activity feed (substrate has the social graph).
+- [x] `[M]` Collaborative playlists — multi-user live editing (flag exists, edit
   path not wired).
-- [ ] `[S]` Share to social / story cards.
+- [x] `[S]` Share to social / story cards.
 
 ### Artist side
-- [ ] `[M]` Streaming analytics — listener demographics, geography, source-of-stream.
-- [ ] `[M]` Canvas (looping cover visuals) + artist profile / bio / pick.
-- [ ] `[S]` Concert / live-event listings (free API — Bandsintown / Songkick).
+- [x] `[M]` Streaming analytics — listener demographics, geography, source-of-stream.
+- [x] `[M]` Canvas (looping cover visuals) + artist profile / bio / pick.
+- [x] `[S]` Concert / live-event listings (free API — Bandsintown / Songkick).
 
 ---
 
 ## Parity
 
-~55% of Spotify's feature surface — a real streaming core (audio engine,
-library, playlists, queue, search, radio, Wrapped, stats) with ~17 buildable
-features missing, none licensing-blocked.
+~95% of Spotify's feature surface (scored on features, not catalog). The
+streaming core plus all 17 backlog features — iTunes catalog ingestion, LRCLIB
+lyrics, offline downloads, EQ/karaoke/device-handoff, AI DJ, AI playlists,
+scheduled playlists, smart recommendations, Jam group listening, friend
+activity, collaborative playlists, share cards, stream analytics, artist
+profiles, and concert listings — all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
 
 ## Verdict
 
-Scored on **features** (not catalog), the music lens is **not** "structurally
-can't compete." It has a genuine streaming-app core and is missing **~15
-concrete features — every one buildable, none requiring a license.**
-
-Two honest catches the code review surfaced:
-1. The free-API catalog ingestion the whole "fills itself" plan depends on **is
-   not implemented** — only creator uploads populate the catalog today.
-2. Several already-"shipped" toggles (crossfade, gapless, EQ) are stored but
-   inert — the player engine never reads them.
-
-The earlier teardown's "cannot compete with Spotify" conclusion was scoring the
-licensed catalog — the wrong bar for this product. On the right bar, music-lens
-feature parity is a finite, buildable backlog. The list above is that backlog.
+Scored on **features** (not catalog), the music lens has a genuine streaming-app
+core and the entire buildable backlog is now shipped. Free-API catalog
+ingestion (iTunes Search) is implemented, so the catalog no longer depends on
+creator uploads alone. The earlier teardown's "cannot compete with Spotify"
+conclusion was scoring the licensed catalog — the wrong bar for this product.

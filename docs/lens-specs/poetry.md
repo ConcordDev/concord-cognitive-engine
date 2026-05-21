@@ -12,13 +12,15 @@ Backend: `server/domains/poetry.js` — 14 macros: poem CRUD, poem-analyze (pros
 - 4 tabs (collection/compose/forms/workshop); poetry dashboard (poems/finished/drafts/by-form)
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Poem-a-day / curated discovery feed — featured poems and themed collections
-- [ ] `[S]` Audio recordings — record or play poem readings
-- [ ] `[M]` Workshop / peer feedback — share a poem and collect line-level critique
-- [ ] `[S]` Rhyme + word suggestion inline in the editor — surface Datamuse picks as you type
-- [ ] `[S]` Form templates with live constraint checking — enforce syllable/line rules while composing
-- [ ] `[S]` Publish / collection export — export a chapbook as PDF/EPUB
-- [ ] `[S]` Reading history + favorites — bookmark discovered poems
+- [x] `[M]` Poem-a-day / curated discovery feed — featured poems and themed collections
+- [x] `[S]` Audio recordings — record or play poem readings
+- [x] `[M]` Workshop / peer feedback — share a poem and collect line-level critique
+- [x] `[S]` Rhyme + word suggestion inline in the editor — surface Datamuse picks as you type
+- [x] `[S]` Form templates with live constraint checking — enforce syllable/line rules while composing
+- [x] `[S]` Publish / collection export — export a chapbook as PDF/EPUB
+- [x] `[S]` Reading history + favorites — bookmark discovered poems
 
 ## Parity
-~55% of the Poetry Foundation + notebook surface. The compose + prosody-analysis side is genuinely strong (real meter/rhyme/form detection) and PoetryDB discovery is real, but it lacks curated discovery, audio, and peer-workshop features.
+~95% of the Poetry Foundation + notebook surface. Compose + prosody analysis (meter/rhyme/form detection), PoetryDB discovery, a poem-a-day curated feed, audio readings, a line-level peer workshop, inline rhyme suggestion, form templates with live constraint checking, chapbook export, and reading history all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

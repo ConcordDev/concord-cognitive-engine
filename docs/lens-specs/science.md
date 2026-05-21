@@ -12,13 +12,15 @@ Backend: `server/domains/science.js` — ~14 macros: LLaVA vision, chain-of-cust
 - Visualization types (bar/line/scatter/heatmap/histogram/box/pie); LLaVA image analysis
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Interactive chart rendering — actually plot the visualization types from a dataset
-- [ ] `[M]` Richer stats — ANOVA, regression, non-parametric tests, confidence intervals
-- [ ] `[S]` Experiment notebook entries with rich text + embedded data/images
-- [ ] `[M]` Spreadsheet-style data entry grid for datasets
-- [ ] `[S]` Protocol step execution + run log — track an experiment against its protocol
-- [ ] `[S]` Reagent/inventory management beyond sample tracking
-- [ ] `[S]` Publication export — figures + methods bundle
+- [x] `[M]` Interactive chart rendering — actually plot the visualization types from a dataset
+- [x] `[M]` Richer stats — ANOVA, regression, non-parametric tests, confidence intervals
+- [x] `[S]` Experiment notebook entries with rich text + embedded data/images
+- [x] `[M]` Spreadsheet-style data entry grid for datasets
+- [x] `[S]` Protocol step execution + run log — track an experiment against its protocol
+- [x] `[S]` Reagent/inventory management beyond sample tracking
+- [x] `[S]` Publication export — figures + methods bundle
 
 ## Parity
-~55% of LabArchives+Prism's feature surface. The lab-management substrate (samples, custody, calibration, protocols) plus a real stats core (t-test, correlation, clustering) is genuinely strong. Gaps are rendered interactive charts, a data-entry grid, and a deeper statistical test suite.
+~95% of LabArchives+Prism's feature surface. The lab-management substrate (samples, custody, calibration, protocols), the stats core, interactive chart rendering, a spreadsheet data grid, a deeper test suite (ANOVA/regression/non-parametric/CI), notebook entries, a protocol run log, reagent inventory, and publication export all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

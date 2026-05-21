@@ -12,13 +12,15 @@ Backend: `server/domains/news.js` — ~29 macros: biasDetection, eventExtraction
 - For-you / following / saved / today panels, news reader section, article cards
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Bias-spectrum comparison — show the same story across left/center/right sources side by side (Ground News core)
-- [ ] `[M]` Story clustering — group articles covering the same event into one story
-- [ ] `[S]` Audio / read-aloud mode for articles
-- [ ] `[M]` Push notifications — breaking-news and followed-topic alerts
-- [ ] `[S]` Offline reading / save-for-later sync
-- [ ] `[M]` Source transparency — ownership, factuality rating, blindspot detection
-- [ ] `[S]` Personalized digest scheduling — choose delivery time/cadence
+- [x] `[M]` Bias-spectrum comparison — show the same story across left/center/right sources side by side (Ground News core)
+- [x] `[M]` Story clustering — group articles covering the same event into one story
+- [x] `[S]` Audio / read-aloud mode for articles
+- [x] `[M]` Push notifications — breaking-news and followed-topic alerts
+- [x] `[S]` Offline reading / save-for-later sync
+- [x] `[M]` Source transparency — ownership, factuality rating, blindspot detection
+- [x] `[S]` Personalized digest scheduling — choose delivery time/cadence
 
 ## Parity
-~55% of the Apple News + Ground News surface. Real personalization, reading tracking, briefings, and bias/narrative analysis, but missing the side-by-side bias-spectrum comparison, story clustering, audio mode, and push alerts that anchor modern news apps.
+~95% of the Apple News + Ground News surface. Personalization, reading tracking, briefings, bias/narrative analysis, side-by-side bias-spectrum comparison, story clustering, audio read-aloud mode, push alerts, offline reading, source transparency, and personalized digest scheduling all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

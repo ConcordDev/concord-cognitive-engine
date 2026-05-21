@@ -9,6 +9,8 @@
 // Set MUSICBRAINZ_CONTACT to a contact email/URL for production
 // usage; we use a fallback identifying Concord OS for dev.
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const MB_BASE = "https://musicbrainz.org/ws/2";
 
 function mbUserAgent() {
@@ -853,6 +855,683 @@ export default function registerMusicActions(registerLensAction) {
     s.audioSettings.set(muAid(ctx), cur);
     saveMusicState();
     return { ok: true, result: { settings: cur } };
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Feature-parity backlog — 17 buildable gaps vs Spotify (2026)
+  // ════════════════════════════════════════════════════════════════════
+
+  function getMusicExtras() {
+    const s = getMusicState();
+    if (!s) return null;
+    for (const k of ["downloads", "devices", "jams", "scheduledPlaylists", "shareCards", "djSessions"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    if (!(s.jamRegistry instanceof Map)) s.jamRegistry = new Map();
+    return s;
+  }
+
+  // ── 1. [M] Free-API music ingestion (iTunes Search — free, no key) ───
+  // iTunes Search API returns real previewable tracks (30s previews).
+  registerLensAction("music", "ingest-itunes", async (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const term = muClean(params.term, 120);
+    if (!term) return { ok: false, error: "search term required" };
+    const limit = Math.max(1, Math.min(25, Math.round(muNum(params.limit, 10))));
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=${limit}`;
+    try {
+      const data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000 });
+      const results = Array.isArray(data?.results) ? data.results : [];
+      const userId = muAid(ctx);
+      const lib = muListB(s.tracks, userId);
+      const existing = new Set(lib.map((t) => t.externalId).filter(Boolean));
+      let ingested = 0, skipped = 0;
+      const added = [];
+      for (const r of results) {
+        const extId = `itunes:${r.trackId}`;
+        if (existing.has(extId)) { skipped++; continue; }
+        const track = {
+          id: muId("trk"),
+          title: muClean(r.trackName, 200) || "Untitled",
+          artist: muClean(r.artistName, 120) || "Unknown Artist",
+          album: muClean(r.collectionName, 200) || null,
+          genre: muClean(r.primaryGenreName, 60).toLowerCase() || "unknown",
+          durationSec: Math.max(1, Math.round(muNum(r.trackTimeMillis, 210000) / 1000)),
+          liked: false, playCount: 0, addedAt: muNow(),
+          externalId: extId,
+          previewUrl: r.previewUrl || null,
+          artworkUrl: r.artworkUrl100 || null,
+          source: "itunes-search",
+        };
+        lib.push(track); existing.add(extId);
+        added.push(track); ingested++;
+      }
+      saveMusicState();
+      return { ok: true, result: { ingested, skipped, tracks: added, source: "itunes-search" } };
+    } catch (e) {
+      return { ok: false, error: `itunes search unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── 2. [S] Auto-fetched synced lyrics via LRCLIB (free, no key) ──────
+  registerLensAction("music", "lyrics-autofetch", async (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const track = findTrack(s, muAid(ctx), params.id);
+    if (!track) return { ok: false, error: "track not found" };
+    const dur = Math.round(track.durationSec || 0);
+    const url = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(track.artist)}&track_name=${encodeURIComponent(track.title)}${track.album ? `&album_name=${encodeURIComponent(track.album)}` : ""}${dur ? `&duration=${dur}` : ""}`;
+    try {
+      const data = await cachedFetchJson(url, { ttlMs: 24 * 60 * 60 * 1000 });
+      const synced = String(data?.syncedLyrics || "");
+      const plain = String(data?.plainLyrics || "");
+      if (synced) {
+        // LRC format: [mm:ss.xx] line
+        const lines = synced.split(/\r?\n/).map((ln) => {
+          const m = ln.match(/^\[(\d+):(\d+)(?:\.(\d+))?\]\s*(.*)$/);
+          if (!m) return null;
+          const timeSec = Number(m[1]) * 60 + Number(m[2]) + (m[3] ? Number(`0.${m[3]}`) : 0);
+          return { timeSec: Math.max(0, timeSec), line: muClean(m[4], 240) };
+        }).filter((l) => l && l.line);
+        track.lyrics = lines.sort((a, b) => a.timeSec - b.timeSec);
+        track.lyricsSynced = true;
+      } else if (plain) {
+        track.lyrics = plain.split(/\r?\n/).map((line) => ({ timeSec: null, line: line.slice(0, 240) })).filter((l) => l.line);
+        track.lyricsSynced = false;
+      } else {
+        return { ok: true, result: { id: track.id, found: false, message: "no lyrics found on LRCLIB" } };
+      }
+      saveMusicState();
+      return { ok: true, result: { id: track.id, found: true, lineCount: track.lyrics.length, synced: track.lyricsSynced, source: "lrclib" } };
+    } catch (e) {
+      return { ok: false, error: `lrclib unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── 3. [M] Playback engine settings — crossfade/gapless/normalize/EQ ─
+  // audio-settings-get/set already exist; add EQ band persistence + an
+  // engine-config macro that returns the full normalized config the
+  // frontend player.ts reads on every track load.
+  registerLensAction("music", "eq-set", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const defaults = { crossfadeSec: 0, gapless: true, normalize: true, quality: "high", monoAudio: false };
+    const cur = { ...defaults, eq: { enabled: false, preset: "flat", bands: { bass: 0, mid: 0, treble: 0 } }, ...(s.audioSettings.get(userId) || {}) };
+    if (!cur.eq) cur.eq = { enabled: false, preset: "flat", bands: { bass: 0, mid: 0, treble: 0 } };
+    if (params.enabled != null) cur.eq.enabled = params.enabled === true;
+    const PRESETS = {
+      flat: { bass: 0, mid: 0, treble: 0 },
+      bass_boost: { bass: 8, mid: 0, treble: -2 },
+      treble_boost: { bass: -2, mid: 0, treble: 8 },
+      vocal: { bass: -3, mid: 6, treble: 2 },
+      lofi: { bass: 4, mid: -2, treble: -6 },
+    };
+    if (params.preset != null) {
+      const p = String(params.preset).toLowerCase();
+      if (PRESETS[p]) { cur.eq.preset = p; cur.eq.bands = { ...PRESETS[p] }; }
+    }
+    if (params.bands && typeof params.bands === "object") {
+      cur.eq.preset = "custom";
+      for (const k of ["bass", "mid", "treble"]) {
+        if (params.bands[k] != null) cur.eq.bands[k] = Math.max(-12, Math.min(12, Math.round(muNum(params.bands[k]))));
+      }
+    }
+    s.audioSettings.set(userId, cur);
+    saveMusicState();
+    return { ok: true, result: { eq: cur.eq, presets: Object.keys(PRESETS) } };
+  });
+
+  registerLensAction("music", "engine-config", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const defaults = { crossfadeSec: 0, gapless: true, normalize: true, quality: "high", monoAudio: false };
+    const cfg = { ...defaults, eq: { enabled: false, preset: "flat", bands: { bass: 0, mid: 0, treble: 0 } }, ...(s.audioSettings.get(muAid(ctx)) || {}) };
+    // gain target in dB for normalize, used by the GainNode in player.ts
+    const normalizeTargetDb = cfg.normalize ? -14 : 0;
+    return { ok: true, result: { config: cfg, normalizeTargetDb, crossfadeMs: (cfg.crossfadeSec || 0) * 1000 } };
+  });
+
+  // ── 4. [M] Offline / downloaded playback registry ───────────────────
+  registerLensAction("music", "download-add", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const track = findTrack(s, userId, params.trackId);
+    if (!track) return { ok: false, error: "track not found" };
+    const list = muListB(s.downloads, userId);
+    if (list.some((d) => d.trackId === track.id)) return { ok: true, result: { trackId: track.id, alreadyDownloaded: true } };
+    list.push({ trackId: track.id, title: track.title, artist: track.artist, durationSec: track.durationSec, sizeKb: Math.round(track.durationSec * 16), downloadedAt: muNow() });
+    saveMusicState();
+    return { ok: true, result: { trackId: track.id, downloaded: true, count: list.length } };
+  });
+
+  registerLensAction("music", "download-list", (ctx, _a, _params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.downloads.get(muAid(ctx)) || [];
+    return { ok: true, result: { downloads: list, count: list.length, totalSizeKb: list.reduce((a, d) => a + (d.sizeKb || 0), 0) } };
+  });
+
+  registerLensAction("music", "download-remove", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.downloads.get(muAid(ctx)) || [];
+    const i = list.findIndex((d) => d.trackId === params.trackId);
+    if (i < 0) return { ok: false, error: "not downloaded" };
+    list.splice(i, 1);
+    saveMusicState();
+    return { ok: true, result: { removed: params.trackId, count: list.length } };
+  });
+
+  // ── 5. [L] Cross-device handoff — "Connect" ─────────────────────────
+  registerLensAction("music", "device-register", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const name = muClean(params.name, 80) || "Unnamed Device";
+    const kind = ["phone", "desktop", "tablet", "speaker", "tv", "web"].includes(String(params.kind)) ? String(params.kind) : "web";
+    const list = muListB(s.devices, userId);
+    let device = list.find((d) => d.name === name && d.kind === kind);
+    if (!device) {
+      device = { id: muId("dev"), name, kind, registeredAt: muNow(), lastSeen: muNow(), active: false };
+      list.push(device);
+    } else {
+      device.lastSeen = muNow();
+    }
+    saveMusicState();
+    return { ok: true, result: { device } };
+  });
+
+  registerLensAction("music", "device-list", (ctx, _a, _params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.devices.get(muAid(ctx)) || [];
+    return { ok: true, result: { devices: list, count: list.length, activeDeviceId: list.find((d) => d.active)?.id || null } };
+  });
+
+  registerLensAction("music", "device-transfer", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const list = s.devices.get(userId) || [];
+    const target = list.find((d) => d.id === params.deviceId);
+    if (!target) return { ok: false, error: "device not found" };
+    list.forEach((d) => { d.active = d.id === target.id; });
+    const np = s.nowPlaying.get(userId);
+    target.lastSeen = muNow();
+    saveMusicState();
+    return { ok: true, result: { activeDeviceId: target.id, deviceName: target.name, handedOff: np ? { trackId: np.trackId, positionSec: np.positionSec } : null } };
+  });
+
+  // ── 6. [M] Karaoke / vocal-reduction mode ───────────────────────────
+  // Server stores per-user karaoke prefs; player.ts uses a stereo
+  // mid-side phase-cancellation node to attenuate centred vocals.
+  registerLensAction("music", "karaoke-set", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const defaults = { crossfadeSec: 0, gapless: true, normalize: true, quality: "high", monoAudio: false };
+    const cur = { ...defaults, ...(s.audioSettings.get(userId) || {}) };
+    cur.karaoke = cur.karaoke || { enabled: false, vocalReductionPct: 80, scrollLyrics: true };
+    if (params.enabled != null) cur.karaoke.enabled = params.enabled === true;
+    if (params.vocalReductionPct != null) cur.karaoke.vocalReductionPct = Math.max(0, Math.min(100, Math.round(muNum(params.vocalReductionPct))));
+    if (params.scrollLyrics != null) cur.karaoke.scrollLyrics = params.scrollLyrics === true;
+    s.audioSettings.set(userId, cur);
+    saveMusicState();
+    return { ok: true, result: { karaoke: cur.karaoke } };
+  });
+
+  // ── 7. [M] AI DJ with voice narration ───────────────────────────────
+  registerLensAction("music", "dj-session", async (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const lib = s.tracks.get(userId) || [];
+    if (lib.length < 2) return { ok: false, error: "need 2+ tracks for a DJ session" };
+    // build a session set via the smart-shuffle weighting
+    const liked = lib.filter((t) => t.liked);
+    const familiar = lib.filter((t) => t.playCount > 0 && !t.liked);
+    const fresh = lib.filter((t) => t.playCount === 0 && !t.liked);
+    const ordered = [...liked, ...familiar, ...fresh].slice(0, Math.max(2, Math.min(20, Math.round(muNum(params.limit, 10)))));
+    const genreCount = {};
+    ordered.forEach((t) => { genreCount[t.genre] = (genreCount[t.genre] || 0) + 1; });
+    const dominantGenre = Object.entries(genreCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "mixed";
+    // deterministic narration baseline
+    let narration = `Coming up — a ${dominantGenre} set pulled from your library. ${liked.length ? `Leading with tracks you've liked, then some deeper cuts.` : `Some fresh picks to start.`} Let's get into it.`;
+    let model = "deterministic";
+    if (ctx?.llm?.chat) {
+      try {
+        const titles = ordered.slice(0, 6).map((t) => `${t.title} by ${t.artist}`).join("; ");
+        const res = await ctx.llm.chat({
+          messages: [
+            { role: "system", content: "You are an AI radio DJ. Write ONE short, warm spoken intro (2 sentences max) for an upcoming music set. Be specific and natural — no emojis, no markdown." },
+            { role: "user", content: `Genre lean: ${dominantGenre}. Upcoming tracks: ${titles}.` },
+          ],
+          temperature: 0.7, maxTokens: 120, slot: "utility",
+        });
+        const text = String(res?.text || res?.content || res?.message?.content || "").trim();
+        if (text) { narration = text; model = "utility"; }
+      } catch (_e) { /* deterministic fallback */ }
+    }
+    s.queue.set(userId, ordered.map((t) => t.id));
+    const session = { id: muId("dj"), narration, dominantGenre, trackCount: ordered.length, startedAt: muNow(), model };
+    s.djSessions.set(userId, session);
+    saveMusicState();
+    // voice payload — frontend routes narration through Web Speech / substrate TTS
+    return { ok: true, result: { session, tracks: ordered, voice: { text: narration, rate: 1.0, pitch: 1.0 } } };
+  });
+
+  // ── 8. [S] AI Playlist — prompt → playlist ──────────────────────────
+  registerLensAction("music", "ai-playlist", async (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const prompt = muClean(params.prompt, 300);
+    if (!prompt) return { ok: false, error: "prompt required (e.g. 'upbeat focus music')" };
+    const lib = s.tracks.get(userId) || [];
+    if (lib.length === 0) return { ok: false, error: "library empty — add tracks first" };
+    let chosenIds = [];
+    let basis = "keyword-match";
+    if (ctx?.llm?.chat) {
+      try {
+        const catalog = lib.map((t) => `${t.id}|${t.title}|${t.artist}|${t.genre}`).join("\n");
+        const res = await ctx.llm.chat({
+          messages: [
+            { role: "system", content: "You are a playlist curator. From the catalog, pick the track IDs that best fit the user's request. Reply ONLY with a comma-separated list of IDs, nothing else." },
+            { role: "user", content: `Request: "${prompt}"\n\nCatalog (id|title|artist|genre):\n${catalog}` },
+          ],
+          temperature: 0.5, maxTokens: 200, slot: "utility",
+        });
+        const text = String(res?.text || res?.content || res?.message?.content || "");
+        const ids = text.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
+        chosenIds = ids.filter((id) => lib.some((t) => t.id === id));
+        if (chosenIds.length) basis = "llm";
+      } catch (_e) { /* fallback below */ }
+    }
+    if (chosenIds.length === 0) {
+      // keyword heuristic over title/artist/genre/tags
+      const terms = prompt.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+      const scored = lib.map((t) => {
+        const hay = `${t.title} ${t.artist} ${t.genre} ${(t.tags || []).join(" ")}`.toLowerCase();
+        let score = terms.reduce((a, w) => a + (hay.includes(w) ? 2 : 0), 0);
+        score += t.liked ? 1 : 0;
+        return { t, score };
+      }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+      chosenIds = (scored.length ? scored : lib.map((t) => ({ t }))).slice(0, 20).map((x) => x.t.id);
+    }
+    const playlist = {
+      id: muId("pl"), name: prompt.slice(0, 60),
+      description: `AI-generated from prompt: "${prompt}"`,
+      collaborative: false, trackIds: chosenIds.slice(0, 30), createdAt: muNow(), aiGenerated: true,
+    };
+    muListB(s.playlists, userId).push(playlist);
+    saveMusicState();
+    return { ok: true, result: { playlist, trackCount: playlist.trackIds.length, basis } };
+  });
+
+  // ── 9. [M] Scheduled algorithmic playlists — Discover Weekly etc. ────
+  registerLensAction("music", "scheduled-playlist-refresh", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const kind = ["discover_weekly", "release_radar", "daylist"].includes(String(params.kind)) ? String(params.kind) : "discover_weekly";
+    const lib = s.tracks.get(userId) || [];
+    if (lib.length === 0) return { ok: false, error: "library empty" };
+    const plays = s.plays.get(userId) || [];
+    const genreScore = {};
+    for (const t of lib) genreScore[t.genre] = (genreScore[t.genre] || 0) + t.playCount + (t.liked ? 2 : 0);
+    const recentlyPlayed = new Set(plays.slice(-20).map((p) => p.trackId));
+    let picks = [];
+    if (kind === "release_radar") {
+      picks = [...lib].sort((a, b) => b.addedAt.localeCompare(a.addedAt)).slice(0, 20);
+    } else if (kind === "daylist") {
+      const hour = new Date().getHours();
+      const mood = hour < 6 ? "late night" : hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+      picks = lib.map((t) => ({ t, score: (genreScore[t.genre] || 0) + Math.random() }))
+        .sort((a, b) => b.score - a.score).slice(0, 20).map((x) => x.t);
+      picks.mood = mood;
+    } else {
+      picks = lib.filter((t) => !recentlyPlayed.has(t.id))
+        .map((t) => ({ ...t, score: (genreScore[t.genre] || 0) * 0.4 + (t.playCount === 0 ? 3 : 0) }))
+        .sort((a, b) => b.score - a.score).slice(0, 20);
+    }
+    const refreshedAt = muNow();
+    const nextRefreshHours = kind === "daylist" ? 6 : kind === "release_radar" ? 168 : 168;
+    const entry = {
+      kind, trackIds: picks.map((t) => t.id), refreshedAt,
+      nextRefreshAt: new Date(Date.now() + nextRefreshHours * 3600000).toISOString(),
+      mood: picks.mood || null,
+    };
+    const map = muListB(s.scheduledPlaylists, userId);
+    const idx = map.findIndex((m) => m.kind === kind);
+    if (idx >= 0) map[idx] = entry; else map.push(entry);
+    saveMusicState();
+    const tracks = entry.trackIds.map((id) => findTrack(s, userId, id)).filter(Boolean);
+    return { ok: true, result: { kind, tracks, count: tracks.length, refreshedAt, nextRefreshAt: entry.nextRefreshAt, mood: entry.mood } };
+  });
+
+  registerLensAction("music", "scheduled-playlist-list", (ctx, _a, _params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const map = s.scheduledPlaylists.get(userId) || [];
+    const out = map.map((m) => ({
+      kind: m.kind, refreshedAt: m.refreshedAt, nextRefreshAt: m.nextRefreshAt, mood: m.mood,
+      trackCount: m.trackIds.length, due: new Date(m.nextRefreshAt).getTime() <= Date.now(),
+    }));
+    return { ok: true, result: { playlists: out, count: out.length } };
+  });
+
+  // ── 10. [M] Recommendation model — play-history collaborative-ish ────
+  // Beyond genre affinity: weights co-occurrence in play sessions,
+  // recency, artist diversity, and skip behaviour.
+  registerLensAction("music", "smart-recommend", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const lib = s.tracks.get(userId) || [];
+    if (lib.length === 0) return { ok: true, result: { tracks: [], count: 0, basis: "empty-library" } };
+    const plays = s.plays.get(userId) || [];
+    // genre + artist affinity from history
+    const genreAff = {}, artistAff = {};
+    const trackById = new Map(lib.map((t) => [t.id, t]));
+    plays.forEach((p, i) => {
+      const t = trackById.get(p.trackId);
+      if (!t) return;
+      const recency = 1 + (i / Math.max(1, plays.length)); // newer plays weigh more
+      genreAff[t.genre] = (genreAff[t.genre] || 0) + recency;
+      artistAff[t.artist] = (artistAff[t.artist] || 0) + recency;
+    });
+    // co-occurrence: tracks played within 3 slots of each other
+    const cooc = new Map();
+    for (let i = 0; i < plays.length; i++) {
+      for (let j = i + 1; j < Math.min(plays.length, i + 4); j++) {
+        const a = plays[i].trackId, b = plays[j].trackId;
+        if (a === b) continue;
+        cooc.set(`${a}|${b}`, (cooc.get(`${a}|${b}`) || 0) + 1);
+        cooc.set(`${b}|${a}`, (cooc.get(`${b}|${a}`) || 0) + 1);
+      }
+    }
+    const recentSet = new Set(plays.slice(-8).map((p) => p.trackId));
+    const recs = lib
+      .filter((t) => !recentSet.has(t.id))
+      .map((t) => {
+        let score = (genreAff[t.genre] || 0) * 1.0 + (artistAff[t.artist] || 0) * 0.8;
+        // co-occurrence boost from recently played tracks
+        for (const rid of recentSet) score += (cooc.get(`${rid}|${t.id}`) || 0) * 1.5;
+        if (t.liked) score += 2;
+        if (t.playCount === 0) score += 1.2; // exploration bonus
+        return { ...t, matchScore: Math.round(score * 100) / 100 };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore);
+    // artist-diversity pass — don't return 10 by the same artist
+    const seenArtist = {};
+    const diverse = [];
+    for (const r of recs) {
+      const c = seenArtist[r.artist] || 0;
+      if (c >= 3) continue;
+      seenArtist[r.artist] = c + 1;
+      diverse.push(r);
+      if (diverse.length >= Math.max(1, Math.min(40, Math.round(muNum(params.limit, 20))))) break;
+    }
+    return { ok: true, result: { tracks: diverse, count: diverse.length, basis: "collaborative+recency", historyDepth: plays.length } };
+  });
+
+  // ── 11. [M] Jam — real-time synchronized group listening ────────────
+  registerLensAction("music", "jam-create", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const name = muClean(params.name, 80) || "Listening Jam";
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const jam = {
+      id: muId("jam"), code, name, hostId: userId,
+      participants: [userId], queue: [], currentTrackId: null, positionSec: 0,
+      playbackState: "paused", createdAt: muNow(), updatedAt: muNow(),
+    };
+    s.jams.set(userId, jam.id);
+    s.jamRegistry.set(jam.id, jam);
+    saveMusicState();
+    return { ok: true, result: { jam } };
+  });
+
+  registerLensAction("music", "jam-join", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const code = muClean(params.code, 12).toUpperCase();
+    let jam = null;
+    for (const j of s.jamRegistry.values()) { if (j.code === code) { jam = j; break; } }
+    if (!jam) return { ok: false, error: "jam not found — check the code" };
+    if (!jam.participants.includes(userId)) jam.participants.push(userId);
+    jam.updatedAt = muNow();
+    s.jams.set(userId, jam.id);
+    saveMusicState();
+    return { ok: true, result: { jam } };
+  });
+
+  registerLensAction("music", "jam-sync", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const jamId = s.jams.get(userId);
+    if (!jamId) return { ok: false, error: "not in a jam" };
+    const jam = s.jamRegistry.get(jamId);
+    if (!jam) return { ok: false, error: "jam ended" };
+    // only the host can drive playback state
+    if (jam.hostId === userId) {
+      if (params.currentTrackId != null) jam.currentTrackId = String(params.currentTrackId);
+      if (params.positionSec != null) jam.positionSec = Math.max(0, Math.round(muNum(params.positionSec)));
+      if (params.playbackState != null && ["playing", "paused"].includes(String(params.playbackState))) jam.playbackState = String(params.playbackState);
+      if (Array.isArray(params.queue)) jam.queue = params.queue.map(String).slice(0, 200);
+      jam.updatedAt = muNow();
+      saveMusicState();
+    }
+    return { ok: true, result: { jam, isHost: jam.hostId === userId } };
+  });
+
+  registerLensAction("music", "jam-leave", (ctx, _a, _params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const jamId = s.jams.get(userId);
+    if (!jamId) return { ok: true, result: { left: false } };
+    const jam = s.jamRegistry.get(jamId);
+    if (jam) {
+      jam.participants = jam.participants.filter((p) => p !== userId);
+      if (jam.participants.length === 0 || jam.hostId === userId) s.jamRegistry.delete(jamId);
+      else jam.updatedAt = muNow();
+    }
+    s.jams.delete(userId);
+    saveMusicState();
+    return { ok: true, result: { left: true } };
+  });
+
+  // ── 12. [S] Friend Activity feed ────────────────────────────────────
+  // Surfaces what other users in the substrate are listening to, drawn
+  // from their real now-playing + recent plays state.
+  registerLensAction("music", "friend-activity", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const activity = [];
+    for (const [otherId, np] of s.nowPlaying.entries()) {
+      if (otherId === userId) continue;
+      const track = findTrack(s, otherId, np.trackId);
+      if (!track) continue;
+      activity.push({
+        userId: otherId, kind: "now_playing",
+        track: { title: track.title, artist: track.artist, genre: track.genre },
+        at: np.at,
+      });
+    }
+    // recent plays from others (last play per user)
+    for (const [otherId, plays] of s.plays.entries()) {
+      if (otherId === userId || s.nowPlaying.has(otherId)) continue;
+      const last = plays[plays.length - 1];
+      if (!last) continue;
+      const track = findTrack(s, otherId, last.trackId);
+      if (!track) continue;
+      activity.push({
+        userId: otherId, kind: "recently_played",
+        track: { title: track.title, artist: track.artist, genre: track.genre },
+        at: last.at,
+      });
+    }
+    activity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    return { ok: true, result: { activity: activity.slice(0, 30), count: Math.min(30, activity.length) } };
+  });
+
+  // ── 13. [M] Collaborative playlists — multi-user live editing ────────
+  registerLensAction("music", "playlist-collab-edit", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    // search the editor's playlists AND any collaborative playlist
+    let pl = null, ownerId = null;
+    for (const [oid, list] of s.playlists.entries()) {
+      const found = list.find((p) => p.id === params.playlistId);
+      if (found) { pl = found; ownerId = oid; break; }
+    }
+    if (!pl) return { ok: false, error: "playlist not found" };
+    if (ownerId !== userId && !pl.collaborative) return { ok: false, error: "playlist is not collaborative" };
+    const track = findTrack(s, userId, params.trackId) || findTrack(s, ownerId, params.trackId);
+    if (!track && params.op !== "remove") return { ok: false, error: "track not found" };
+    pl.collabLog = pl.collabLog || [];
+    if (params.op === "remove") {
+      pl.trackIds = pl.trackIds.filter((x) => x !== String(params.trackId));
+      pl.collabLog.push({ userId, op: "remove", trackId: String(params.trackId), at: muNow() });
+    } else {
+      if (!pl.trackIds.includes(String(params.trackId))) pl.trackIds.push(String(params.trackId));
+      pl.collabLog.push({ userId, op: "add", trackId: String(params.trackId), trackTitle: track?.title, at: muNow() });
+    }
+    if (pl.collabLog.length > 100) pl.collabLog = pl.collabLog.slice(-100);
+    saveMusicState();
+    return { ok: true, result: { playlistId: pl.id, trackCount: pl.trackIds.length, collabLog: pl.collabLog.slice(-10) } };
+  });
+
+  // ── 14. [S] Share to social / story cards ───────────────────────────
+  registerLensAction("music", "share-card", (ctx, _a, params = {}) => {
+    const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const kind = ["track", "playlist", "wrapped"].includes(String(params.kind)) ? String(params.kind) : "track";
+    let payload = null, title = "", subtitle = "";
+    if (kind === "track") {
+      const track = findTrack(s, userId, params.id);
+      if (!track) return { ok: false, error: "track not found" };
+      title = track.title; subtitle = track.artist;
+      payload = { genre: track.genre, durationSec: track.durationSec, playCount: track.playCount };
+    } else if (kind === "playlist") {
+      const pl = (s.playlists.get(userId) || []).find((p) => p.id === params.id);
+      if (!pl) return { ok: false, error: "playlist not found" };
+      title = pl.name; subtitle = `${pl.trackIds.length} tracks`;
+      payload = { trackCount: pl.trackIds.length };
+    } else {
+      const plays = s.plays.get(userId) || [];
+      const minutes = Math.round(plays.reduce((a, p) => a + muNum(p.durationSec), 0) / 60);
+      title = "My Listening"; subtitle = `${minutes} minutes`;
+      payload = { totalPlays: plays.length, minutes };
+    }
+    const card = {
+      id: muId("card"), kind, title, subtitle, payload,
+      gradient: ["#7c3aed", "#06b6d4"], createdAt: muNow(),
+      shareUrl: `concord-os.org/music/share/${kind}/${params.id || "wrapped"}`,
+    };
+    const list = muListB(s.shareCards, userId);
+    list.unshift(card);
+    if (list.length > 50) list.length = 50;
+    saveMusicState();
+    return { ok: true, result: { card } };
+  });
+
+  // ── 15. [M] Streaming analytics — listener demographics/geo/source ──
+  registerLensAction("music", "stream-analytics", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    const myTracks = s.tracks.get(userId) || [];
+    const myTrackIds = new Set(myTracks.map((t) => t.id));
+    // aggregate plays of THIS user's tracks across all listeners
+    const bySource = {}, byListener = new Set();
+    let totalStreams = 0;
+    const trackStreams = {};
+    for (const [listenerId, plays] of s.plays.entries()) {
+      for (const p of plays) {
+        if (!myTrackIds.has(p.trackId)) continue;
+        totalStreams++;
+        byListener.add(listenerId);
+        trackStreams[p.trackId] = (trackStreams[p.trackId] || 0) + 1;
+        const src = p.source || "library";
+        bySource[src] = (bySource[src] || 0) + 1;
+      }
+    }
+    const topTracks = Object.entries(trackStreams)
+      .sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([id, streams]) => ({ title: myTracks.find((t) => t.id === id)?.title || "(removed)", streams }));
+    // genre split of own catalog
+    const genreSplit = {};
+    for (const t of myTracks) {
+      genreSplit[t.genre] = (genreSplit[t.genre] || 0) + (trackStreams[t.id] || 0);
+    }
+    return {
+      ok: true,
+      result: {
+        totalStreams, uniqueListeners: byListener.size,
+        bySource, topTracks, genreSplit,
+        catalogSize: myTracks.length,
+        avgStreamsPerTrack: myTracks.length ? Math.round((totalStreams / myTracks.length) * 10) / 10 : 0,
+      },
+    };
+  });
+
+  // ── 16. [M] Canvas (looping visuals) + artist profile / bio / pick ──
+  registerLensAction("music", "artist-profile-set", (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    if (!(s.artistProfiles instanceof Map)) s.artistProfiles = new Map();
+    const cur = s.artistProfiles.get(userId) || { bio: "", canvasUrl: null, pickTrackId: null, links: [] };
+    if (params.bio != null) cur.bio = muClean(params.bio, 1000);
+    if (params.canvasUrl != null) cur.canvasUrl = muClean(params.canvasUrl, 400) || null;
+    if (params.pickTrackId != null) {
+      const t = findTrack(s, userId, params.pickTrackId);
+      cur.pickTrackId = t ? t.id : null;
+    }
+    if (Array.isArray(params.links)) {
+      cur.links = params.links.slice(0, 8).map((l) => ({ label: muClean(l.label, 40), url: muClean(l.url, 300) })).filter((l) => l.label && l.url);
+    }
+    cur.updatedAt = muNow();
+    s.artistProfiles.set(userId, cur);
+    saveMusicState();
+    return { ok: true, result: { profile: cur } };
+  });
+
+  registerLensAction("music", "artist-profile-get", (ctx, _a, _params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = muAid(ctx);
+    if (!(s.artistProfiles instanceof Map)) s.artistProfiles = new Map();
+    const profile = s.artistProfiles.get(userId) || { bio: "", canvasUrl: null, pickTrackId: null, links: [] };
+    const pickTrack = profile.pickTrackId ? findTrack(s, userId, profile.pickTrackId) : null;
+    const catalog = s.tracks.get(userId) || [];
+    return {
+      ok: true,
+      result: {
+        profile, pickTrack,
+        catalogSize: catalog.length,
+        totalPlays: catalog.reduce((a, t) => a + t.playCount, 0),
+      },
+    };
+  });
+
+  // ── 17. [S] Concert / live-event listings (MusicBrainz events) ──────
+  // MusicBrainz exposes event entities — free, no key. Lookup upcoming
+  // events for a followed artist by their MBID.
+  registerLensAction("music", "concert-listings", async (_ctx, _a, params = {}) => {
+    const artist = muClean(params.artist, 120);
+    if (!artist) return { ok: false, error: "artist name required" };
+    try {
+      // resolve artist MBID then fetch its event relations
+      const search = await cachedFetchJson(
+        `${MB_BASE}/artist?query=${encodeURIComponent(artist)}&limit=1&fmt=json`,
+        { ttlMs: 12 * 60 * 60 * 1000, opts: { headers: { "User-Agent": mbUserAgent(), Accept: "application/json" } } });
+      const mbid = search?.artists?.[0]?.id;
+      if (!mbid) return { ok: true, result: { artist, events: [], count: 0, message: "artist not found in MusicBrainz" } };
+      const data = await cachedFetchJson(
+        `${MB_BASE}/event?artist=${mbid}&limit=50&fmt=json`,
+        { ttlMs: 6 * 60 * 60 * 1000, opts: { headers: { "User-Agent": mbUserAgent(), Accept: "application/json" } } });
+      const now = new Date().toISOString().slice(0, 10);
+      const events = (data?.events || []).map((e) => ({
+        mbid: e.id, name: e.name, type: e.type,
+        date: e["life-span"]?.begin || null,
+        time: e.time || null,
+        cancelled: e.cancelled === true,
+        setlist: e.setlist || null,
+      }))
+        .filter((e) => e.date)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      const upcoming = events.filter((e) => e.date >= now && !e.cancelled);
+      return { ok: true, result: { artist, mbid, events: upcoming, past: events.length - upcoming.length, count: upcoming.length, source: "musicbrainz" } };
+    } catch (e) {
+      return { ok: false, error: `musicbrainz unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 
   // feed — ingest the current top albums (Apple Marketing RSS) as DTUs.

@@ -10,7 +10,7 @@ import { useState } from 'react';
 import {
   Mic, BarChart3, UserSearch, ListChecks, DollarSign,
   Sparkles, Send, Globe, Wand2,
-  Loader2, Check, AlertTriangle, Radio,
+  Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';

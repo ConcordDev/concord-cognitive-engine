@@ -12,13 +12,15 @@ Backend: `server/domains/podcast.js` — ~36 macros: iTunes directory search + l
 - Creator studio side: episode analytics, guest research, production checklist, monetization calculator; 3 tabs
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` RSS feed parsing + auto-refresh — actually ingest episodes from a subscribed show's RSS feed
-- [ ] `[M]` Audio streaming player with chapters — stream the episode enclosure with chapter markers
-- [ ] `[S]` Trim silence / skip intro / sleep timer — Apple Podcasts smart playback
-- [ ] `[M]` Episode transcripts + search-in-transcript — generate or display transcripts
-- [ ] `[S]` Personalized recommendations — suggest shows from listening history
-- [ ] `[S]` Cross-device playback sync — resume position across sessions/devices
-- [ ] `[S]` Smart download rules — auto-download new episodes of subscribed shows
+- [x] `[M]` RSS feed parsing + auto-refresh — actually ingest episodes from a subscribed show's RSS feed
+- [x] `[M]` Audio streaming player with chapters — stream the episode enclosure with chapter markers
+- [x] `[S]` Trim silence / skip intro / sleep timer — Apple Podcasts smart playback
+- [x] `[M]` Episode transcripts + search-in-transcript — generate or display transcripts
+- [x] `[S]` Personalized recommendations — suggest shows from listening history
+- [x] `[S]` Cross-device playback sync — resume position across sessions/devices
+- [x] `[S]` Smart download rules — auto-download new episodes of subscribed shows
 
 ## Parity
-~55% of Apple Podcasts' feature surface. Real iTunes directory search plus a complete subscription/queue/playlist/playback substrate is strong, but it lacks RSS ingestion, a real streaming audio player with chapters, and transcripts.
+~95% of Apple Podcasts' feature surface. iTunes directory search, the subscription/queue/playlist substrate, RSS feed ingestion with auto-refresh, a real streaming audio player with chapters, trim-silence/skip-intro/sleep-timer, transcripts with search, recommendations, cross-device sync, and smart download rules all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

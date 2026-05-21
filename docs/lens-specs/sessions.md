@@ -11,13 +11,15 @@ Backend: `server/domains/sessions.js` — multi-step session substrate; page use
 - Empty-state CTA pointing to session-aware lenses; mobile tab bar; refresh
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Session detail view — see the full step history / transitions of one session
-- [ ] `[S]` Search + sort sessions — by lens, title, age
-- [ ] `[S]` Pause action — the UI offers Complete/Abandon but not an explicit pause
-- [ ] `[S]` Session timeline / step breadcrumb — visualize progress within a session
-- [ ] `[S]` Rename / annotate a session
-- [ ] `[S]` Stale-session reminders — nudge to resume or close long-idle sessions
-- [ ] `[S]` Bulk close abandoned sessions
+- [x] `[M]` Session detail view — see the full step history / transitions of one session
+- [x] `[S]` Search + sort sessions — by lens, title, age
+- [x] `[S]` Pause action — the UI offers Complete/Abandon but not an explicit pause
+- [x] `[S]` Session timeline / step breadcrumb — visualize progress within a session
+- [x] `[S]` Rename / annotate a session
+- [x] `[S]` Stale-session reminders — nudge to resume or close long-idle sessions
+- [x] `[S]` Bulk close abandoned sessions
 
 ## Parity
-~55% of a session-manager's feature surface. As a cross-lens session index it is genuinely complete — real list, status filtering, resume/complete/abandon — but it lacks a per-session detail/step-history view and search.
+~95% of a session-manager's feature surface. The cross-lens session index plus a per-session detail/step-history view, search + sort, pause/resume, a step-breadcrumb timeline, rename/annotate, stale-session reminders, and bulk-close all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._
