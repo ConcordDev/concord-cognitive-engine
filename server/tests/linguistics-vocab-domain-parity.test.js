@@ -17,50 +17,53 @@ before(() => { registerLinguisticsActions(register); });
 beforeEach(() => {
   globalThis._concordSTATE = { dtus: new Map() };
   globalThis._concordSaveStateDebounced = () => {};
+  // vocab-add auto-fetches a definition when none is supplied — disable
+  // the network so these contract tests stay deterministic and offline.
+  globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
 describe("linguistics.vocab CRUD", () => {
-  it("adds a word scoped per user", () => {
-    call("vocab-add", ctxA, { word: "Petrichor", definition: "the smell of rain on dry earth" });
+  it("adds a word scoped per user", async () => {
+    await call("vocab-add", ctxA, { word: "Petrichor", definition: "the smell of rain on dry earth" });
     assert.equal(call("vocab-list", ctxA, {}).result.count, 1);
     assert.equal(call("vocab-list", ctxB, {}).result.count, 0);
   });
-  it("rejects an empty or duplicate word", () => {
-    assert.equal(call("vocab-add", ctxA, {}).ok, false);
-    call("vocab-add", ctxA, { word: "ephemeral" });
-    assert.equal(call("vocab-add", ctxA, { word: "Ephemeral" }).ok, false); // case-insensitive dup
+  it("rejects an empty or duplicate word", async () => {
+    assert.equal((await call("vocab-add", ctxA, {})).ok, false);
+    await call("vocab-add", ctxA, { word: "ephemeral", definition: "lasting briefly" });
+    assert.equal((await call("vocab-add", ctxA, { word: "Ephemeral", definition: "x" })).ok, false); // case-insensitive dup
   });
-  it("updates and deletes a word", () => {
-    const w = call("vocab-add", ctxA, { word: "limn" }).result.word;
+  it("updates and deletes a word", async () => {
+    const w = (await call("vocab-add", ctxA, { word: "limn", definition: "tmp" })).result.word;
     call("vocab-update", ctxA, { id: w.id, definition: "to depict or describe" });
     assert.equal(call("vocab-list", ctxA, {}).result.words[0].definition, "to depict or describe");
     call("vocab-delete", ctxA, { id: w.id });
     assert.equal(call("vocab-list", ctxA, {}).result.count, 0);
   });
-  it("filters vocab-list by tag", () => {
-    call("vocab-add", ctxA, { word: "a", tags: ["latin"] });
-    call("vocab-add", ctxA, { word: "b", tags: ["greek"] });
+  it("filters vocab-list by tag", async () => {
+    await call("vocab-add", ctxA, { word: "a", definition: "x", tags: ["latin"] });
+    await call("vocab-add", ctxA, { word: "b", definition: "y", tags: ["greek"] });
     assert.equal(call("vocab-list", ctxA, { tag: "latin" }).result.count, 1);
   });
 });
 
 describe("linguistics.vocab spaced review", () => {
-  it("a new word is due immediately", () => {
-    call("vocab-add", ctxA, { word: "quotidian" });
+  it("a new word is due immediately", async () => {
+    await call("vocab-add", ctxA, { word: "quotidian", definition: "daily" });
     assert.equal(call("vocab-review-due", ctxA, {}).result.count, 1);
   });
-  it("knowing a word promotes its level and pushes the due date out", () => {
-    const w = call("vocab-add", ctxA, { word: "sonder" }).result.word;
+  it("knowing a word promotes its level and pushes the due date out", async () => {
+    const w = (await call("vocab-add", ctxA, { word: "sonder", definition: "x" })).result.word;
     const r = call("vocab-review", ctxA, { id: w.id, known: true });
     assert.equal(r.result.level, 1);
     assert.equal(r.result.nextReviewInDays, 1);
     assert.equal(call("vocab-review-due", ctxA, {}).result.count, 0); // no longer due
   });
-  it("missing a word resets it to level 0", () => {
-    const w = call("vocab-add", ctxA, { word: "apricity" }).result.word;
+  it("missing a word resets it to level 0", async () => {
+    const w = (await call("vocab-add", ctxA, { word: "apricity", definition: "x" })).result.word;
     call("vocab-review", ctxA, { id: w.id, known: true });
     call("vocab-review", ctxA, { id: w.id, known: true });
     const miss = call("vocab-review", ctxA, { id: w.id, known: false });
@@ -69,9 +72,9 @@ describe("linguistics.vocab spaced review", () => {
 });
 
 describe("linguistics.vocab-dashboard", () => {
-  it("aggregates mastery buckets", () => {
-    const w1 = call("vocab-add", ctxA, { word: "one" }).result.word;
-    call("vocab-add", ctxA, { word: "two" });
+  it("aggregates mastery buckets", async () => {
+    const w1 = (await call("vocab-add", ctxA, { word: "one", definition: "x" })).result.word;
+    await call("vocab-add", ctxA, { word: "two", definition: "y" });
     for (let i = 0; i < 5; i++) call("vocab-review", ctxA, { id: w1.id, known: true });
     const d = call("vocab-dashboard", ctxA, {});
     assert.equal(d.result.totalWords, 2);

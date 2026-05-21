@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Calendar, Plus, Loader2, Anchor, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,7 @@ export function DockAppointmentsPanel() {
   const [dockForm, setDockForm] = useState({ name: '', facility: '', kind: 'loading' });
   const [aptForm, setAptForm] = useState({ dockId: '', startTime: '09:00', durationMin: '60', truckNumber: '', kind: 'delivery' as 'pickup' | 'delivery' });
 
-  useEffect(() => { refresh(); }, [date]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const [d, a] = await Promise.all([
@@ -29,7 +27,9 @@ export function DockAppointmentsPanel() {
       setAppts((a.data?.result?.appointments || []) as Appt[]);
     } catch (e) { console.error('[Docks] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [date]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function addDock() {
     if (!dockForm.name.trim() || !dockForm.facility.trim()) return;

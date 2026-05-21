@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Warehouse, Plus, Loader2, AlertTriangle, Search } from 'lucide-react';
+import { Warehouse, Loader2, AlertTriangle, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

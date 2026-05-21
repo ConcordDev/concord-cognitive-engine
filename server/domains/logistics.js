@@ -1227,5 +1227,648 @@ export default function registerLogisticsActions(registerLensAction) {
       },
     };
   });
+
+  // ════════════════════════════════════════════════════════════════
+  //  Feature-parity backlog (vs Project44 / FourKites visibility)
+  // ════════════════════════════════════════════════════════════════
+
+  function haversineMi(lat1, lng1, lat2, lng2) {
+    const R = 3958.8;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // ── [L] Real-time GPS / ELD tracking feed with live ETA recalc ──
+  // A shipment carries a tracking record: an origin/destination geo pair,
+  // a list of timestamped GPS pings (real user/ELD input), and a target
+  // distance. Each ping recomputes remaining distance + a live ETA from
+  // the average speed measured between the last two real pings.
+
+  registerLensAction("logistics", "gps-track-init", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "").trim();
+    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    const oLat = Number(params.originLat), oLng = Number(params.originLng);
+    const dLat = Number(params.destLat), dLng = Number(params.destLng);
+    if (![oLat, oLng, dLat, dLng].every(Number.isFinite)) {
+      return { ok: false, error: "originLat, originLng, destLat, destLng required (numeric)" };
+    }
+    const totalDistanceMi = haversineMi(oLat, oLng, dLat, dLng);
+    const track = {
+      id: uidLog("trk"), shipmentId,
+      origin: { lat: oLat, lng: oLng },
+      destination: { lat: dLat, lng: dLng },
+      totalDistanceMi: Math.round(totalDistanceMi * 100) / 100,
+      pings: [],
+      etaIso: null,
+      status: "awaiting_first_ping",
+      createdAt: new Date().toISOString(),
+    };
+    const list = ensureLogBucket(s, "gpsTracks", userId);
+    const existingIdx = list.findIndex(t => t.shipmentId === shipmentId);
+    if (existingIdx >= 0) list.splice(existingIdx, 1);
+    list.push(track);
+    saveLogState();
+    return { ok: true, result: { track } };
+  });
+
+  registerLensAction("logistics", "gps-ping", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "").trim();
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat and lng required (numeric)" };
+    const track = ensureLogBucket(s, "gpsTracks", userId).find(t => t.shipmentId === shipmentId);
+    if (!track) return { ok: false, error: "track not found (call gps-track-init first)" };
+    const at = params.at ? new Date(params.at).toISOString() : new Date().toISOString();
+    const ping = {
+      lat, lng, at,
+      speedMph: params.speedMph != null ? Math.max(0, Number(params.speedMph)) : null,
+      eldStatus: ["driving", "on_duty", "off_duty", "sleeper"].includes(params.eldStatus) ? params.eldStatus : null,
+    };
+    track.pings.push(ping);
+    track.pings.sort((a, b) => new Date(a.at) - new Date(b.at));
+
+    const remainingMi = haversineMi(lat, lng, track.destination.lat, track.destination.lng);
+    // Measured speed: prefer the segment between the last two real pings.
+    let measuredMph = null;
+    if (track.pings.length >= 2) {
+      const a = track.pings[track.pings.length - 2];
+      const b = track.pings[track.pings.length - 1];
+      const segMi = haversineMi(a.lat, a.lng, b.lat, b.lng);
+      const segHr = (new Date(b.at) - new Date(a.at)) / 3_600_000;
+      if (segHr > 0) measuredMph = segMi / segHr;
+    }
+    const speed = (ping.speedMph && ping.speedMph > 0) ? ping.speedMph
+      : (measuredMph && measuredMph > 0) ? measuredMph : null;
+    let etaIso = null, etaMinutes = null;
+    if (speed && speed > 0) {
+      etaMinutes = Math.round((remainingMi / speed) * 60);
+      etaIso = new Date(new Date(at).getTime() + etaMinutes * 60_000).toISOString();
+    }
+    track.etaIso = etaIso;
+    track.lastPingAt = at;
+    track.currentLat = lat;
+    track.currentLng = lng;
+    track.remainingMi = Math.round(remainingMi * 100) / 100;
+    track.progressPct = track.totalDistanceMi > 0
+      ? Math.min(100, Math.round((1 - remainingMi / track.totalDistanceMi) * 100)) : 0;
+    track.status = remainingMi <= 0.5 ? "arrived" : "in_transit";
+    saveLogState();
+    return {
+      ok: true,
+      result: {
+        track,
+        ping,
+        remainingMi: track.remainingMi,
+        measuredSpeedMph: measuredMph != null ? Math.round(measuredMph * 10) / 10 : null,
+        etaIso, etaMinutes,
+        progressPct: track.progressPct,
+      },
+    };
+  });
+
+  registerLensAction("logistics", "gps-track-get", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "").trim();
+    const list = ensureLogBucket(s, "gpsTracks", userId);
+    if (shipmentId) {
+      const track = list.find(t => t.shipmentId === shipmentId);
+      if (!track) return { ok: false, error: "track not found" };
+      return { ok: true, result: { track } };
+    }
+    return { ok: true, result: { tracks: list.slice() } };
+  });
+
+  // ── [M] Predictive ETA + delay-risk scoring per shipment ────────
+  // Combines a shipment's distance, scheduled ETA, GPS progress, and
+  // carrier on-time history into a 0–100 delay-risk score.
+
+  registerLensAction("logistics", "delay-risk-score", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "").trim();
+    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    if (!shp) return { ok: false, error: "shipment not found" };
+    const track = ensureLogBucket(s, "gpsTracks", userId).find(t => t.shipmentId === shipmentId);
+
+    const factors = [];
+    let risk = 0;
+
+    // Factor 1: live ETA vs scheduled ETA
+    let predictedEtaIso = shp.estimatedDelivery || null;
+    if (track && track.etaIso) {
+      predictedEtaIso = track.etaIso;
+      if (shp.estimatedDelivery) {
+        const slipMin = (new Date(track.etaIso) - new Date(shp.estimatedDelivery)) / 60_000;
+        if (slipMin > 0) {
+          const f = Math.min(45, Math.round(slipMin / 30));
+          risk += f;
+          factors.push({ factor: "eta_slip", detail: `live ETA ${Math.round(slipMin)} min past schedule`, points: f });
+        }
+      }
+    }
+    // Factor 2: status-based risk
+    if (shp.status === "exception") { risk += 35; factors.push({ factor: "status_exception", detail: "shipment in exception state", points: 35 }); }
+    if (shp.status === "returned") { risk += 25; factors.push({ factor: "status_returned", detail: "shipment returned", points: 25 }); }
+    // Factor 3: GPS staleness
+    if (track && track.lastPingAt) {
+      const staleHr = (Date.now() - new Date(track.lastPingAt).getTime()) / 3_600_000;
+      if (staleHr > 6) {
+        const f = Math.min(30, Math.round(staleHr * 2));
+        risk += f;
+        factors.push({ factor: "stale_gps", detail: `${Math.round(staleHr)}h since last GPS ping`, points: f });
+      }
+    } else if (shp.status === "in_transit" || shp.status === "out_for_delivery") {
+      risk += 20;
+      factors.push({ factor: "no_gps", detail: "in transit with no GPS track", points: 20 });
+    }
+    // Factor 4: carrier on-time history
+    if (shp.carrierId) {
+      const delivered = ensureLogBucket(s, "shipments", userId)
+        .filter(x => x.carrierId === shp.carrierId && x.status === "delivered" && x.estimatedDelivery && x.actualDelivery);
+      if (delivered.length >= 2) {
+        const onTime = delivered.filter(x =>
+          new Date(x.actualDelivery).getTime() <= new Date(x.estimatedDelivery).getTime() + 12 * 3600_000).length;
+        const otRate = onTime / delivered.length;
+        if (otRate < 0.85) {
+          const f = Math.round((0.85 - otRate) * 60);
+          risk += f;
+          factors.push({ factor: "carrier_history", detail: `carrier on-time ${Math.round(otRate * 100)}%`, points: f });
+        }
+      }
+    }
+
+    risk = Math.min(100, Math.max(0, risk));
+    const tier = risk >= 60 ? "high" : risk >= 30 ? "medium" : "low";
+    return {
+      ok: true,
+      result: {
+        shipmentId, riskScore: risk, riskTier: tier,
+        predictedEtaIso, scheduledEtaIso: shp.estimatedDelivery || null,
+        factors, scoredAt: new Date().toISOString(),
+      },
+    };
+  });
+
+  // ── [M] VRP — multi-stop optimization with capacity constraints ─
+  // Sweep-then-nearest-neighbour: splits stops across vehicles by
+  // capacity, then nearest-neighbour orders each vehicle's route.
+
+  registerLensAction("logistics", "vrp-optimize", (ctx, _a, params = {}) => {
+    const depot = params.depot || {};
+    const dLat = Number(depot.lat), dLng = Number(depot.lng);
+    if (!Number.isFinite(dLat) || !Number.isFinite(dLng)) return { ok: false, error: "depot {lat,lng} required" };
+    const stops = Array.isArray(params.stops) ? params.stops.filter(st =>
+      Number.isFinite(Number(st.lat)) && Number.isFinite(Number(st.lng))) : [];
+    if (stops.length === 0) return { ok: false, error: "stops required (each with numeric lat,lng)" };
+    const vehicleCount = Math.max(1, Math.floor(Number(params.vehicleCount) || 1));
+    const vehicleCapacity = Math.max(0, Number(params.vehicleCapacity) || 0);
+    const avgSpeedMph = Math.max(1, Number(params.avgSpeedMph) || 35);
+
+    // Sort stops by polar angle from depot (sweep algorithm).
+    const enriched = stops.map((st, i) => ({
+      stopId: st.stopId || `stop_${i + 1}`,
+      name: String(st.name || st.stopId || `Stop ${i + 1}`),
+      lat: Number(st.lat), lng: Number(st.lng),
+      demand: Math.max(0, Number(st.demand) || 0),
+      serviceMins: Math.max(0, Number(st.serviceMins) || 15),
+      angle: Math.atan2(Number(st.lat) - dLat, Number(st.lng) - dLng),
+    })).sort((a, b) => a.angle - b.angle);
+
+    // Assign to vehicles by capacity, sweeping around the depot.
+    const routes = [];
+    let cur = [], curLoad = 0;
+    for (const st of enriched) {
+      const wouldOverflow = vehicleCapacity > 0 && curLoad + st.demand > vehicleCapacity && cur.length > 0;
+      const wouldExceedVehicles = routes.length >= vehicleCount - 1;
+      if (wouldOverflow && !wouldExceedVehicles) {
+        routes.push(cur); cur = []; curLoad = 0;
+      }
+      cur.push(st); curLoad += st.demand;
+    }
+    if (cur.length > 0) routes.push(cur);
+
+    let overCapacity = false;
+    const vehicleRoutes = routes.map((routeStops, vIdx) => {
+      // Nearest-neighbour order within the route, starting from depot.
+      const remaining = routeStops.slice();
+      const ordered = [];
+      let curLat = dLat, curLng = dLng, total = 0;
+      while (remaining.length > 0) {
+        let best = 0, bestD = Infinity;
+        for (let i = 0; i < remaining.length; i++) {
+          const d = haversineMi(curLat, curLng, remaining[i].lat, remaining[i].lng);
+          if (d < bestD) { bestD = d; best = i; }
+        }
+        total += bestD;
+        const st = remaining[best];
+        ordered.push({
+          sequence: ordered.length + 1,
+          stopId: st.stopId, name: st.name, lat: st.lat, lng: st.lng,
+          demand: st.demand, serviceMins: st.serviceMins,
+          legDistanceMi: Math.round(bestD * 100) / 100,
+        });
+        curLat = st.lat; curLng = st.lng;
+        remaining.splice(best, 1);
+      }
+      const returnMi = haversineMi(curLat, curLng, dLat, dLng);
+      total += returnMi;
+      const load = ordered.reduce((sum, st) => sum + st.demand, 0);
+      if (vehicleCapacity > 0 && load > vehicleCapacity) overCapacity = true;
+      const serviceMin = ordered.reduce((sum, st) => sum + st.serviceMins, 0);
+      const driveMin = Math.round((total / avgSpeedMph) * 60);
+      return {
+        vehicleIndex: vIdx + 1,
+        stopCount: ordered.length,
+        load,
+        capacity: vehicleCapacity || null,
+        utilizationPct: vehicleCapacity > 0 ? Math.round((load / vehicleCapacity) * 100) : null,
+        routeDistanceMi: Math.round(total * 100) / 100,
+        returnToDepotMi: Math.round(returnMi * 100) / 100,
+        estimatedMinutes: driveMin + serviceMin,
+        stops: ordered,
+      };
+    });
+
+    return {
+      ok: true,
+      result: {
+        depot: { lat: dLat, lng: dLng },
+        vehiclesUsed: vehicleRoutes.length,
+        vehiclesRequested: vehicleCount,
+        totalStops: enriched.length,
+        totalDistanceMi: Math.round(vehicleRoutes.reduce((s, r) => s + r.routeDistanceMi, 0) * 100) / 100,
+        overCapacity,
+        routes: vehicleRoutes,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  });
+
+  // ── [M] Carrier scorecard — on-time %, damage, tender acceptance ─
+  // Computed entirely from the user's real shipments + carriers +
+  // recorded tender offers. Carriers with no shipments report nulls.
+
+  registerLensAction("logistics", "tender-record", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const carrierId = String(params.carrierId || "").trim();
+    const outcome = ["accepted", "rejected"].includes(params.outcome) ? params.outcome : null;
+    if (!carrierId) return { ok: false, error: "carrierId required" };
+    if (!outcome) return { ok: false, error: "outcome must be 'accepted' or 'rejected'" };
+    const carrier = ensureLogBucket(s, "carriers", userId).find(c => c.id === carrierId);
+    if (!carrier) return { ok: false, error: "carrier not found" };
+    const tender = {
+      id: uidLog("tnd"), carrierId, outcome,
+      shipmentId: params.shipmentId ? String(params.shipmentId) : null,
+      lane: String(params.lane || ""),
+      recordedAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "tenders", userId).push(tender);
+    saveLogState();
+    return { ok: true, result: { tender } };
+  });
+
+  registerLensAction("logistics", "damage-report", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "").trim();
+    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    if (!shp) return { ok: false, error: "shipment not found" };
+    const report = {
+      id: uidLog("dmg"), shipmentId, carrierId: shp.carrierId || "",
+      severity: ["minor", "moderate", "severe", "total_loss"].includes(params.severity) ? params.severity : "minor",
+      description: String(params.description || ""),
+      claimAmountUsd: Math.max(0, Number(params.claimAmountUsd) || 0),
+      reportedAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "damageReports", userId).push(report);
+    saveLogState();
+    return { ok: true, result: { report } };
+  });
+
+  registerLensAction("logistics", "carrier-scorecard", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const carriers = ensureLogBucket(s, "carriers", userId);
+    const shipments = ensureLogBucket(s, "shipments", userId);
+    const tenders = ensureLogBucket(s, "tenders", userId);
+    const damages = ensureLogBucket(s, "damageReports", userId);
+    const onlyId = params.carrierId ? String(params.carrierId) : null;
+
+    const cards = carriers.filter(c => !onlyId || c.id === onlyId).map(c => {
+      const carrierShipments = shipments.filter(x => x.carrierId === c.id);
+      const completed = carrierShipments.filter(x => x.status === "delivered" && x.estimatedDelivery && x.actualDelivery);
+      const onTime = completed.filter(x =>
+        new Date(x.actualDelivery).getTime() <= new Date(x.estimatedDelivery).getTime() + 12 * 3600_000).length;
+      const onTimePct = completed.length > 0 ? Math.round((onTime / completed.length) * 100) : null;
+      const carrierTenders = tenders.filter(t => t.carrierId === c.id);
+      const accepted = carrierTenders.filter(t => t.outcome === "accepted").length;
+      const tenderAcceptancePct = carrierTenders.length > 0
+        ? Math.round((accepted / carrierTenders.length) * 100) : null;
+      const carrierDamages = damages.filter(d => d.carrierId === c.id);
+      const damageRatePct = carrierShipments.length > 0
+        ? Math.round((carrierDamages.length / carrierShipments.length) * 1000) / 10 : null;
+      const exceptions = carrierShipments.filter(x => x.status === "exception").length;
+      // Composite 0–100 grade; null inputs are treated as neutral (no data).
+      const otScore = onTimePct == null ? 70 : onTimePct;
+      const taScore = tenderAcceptancePct == null ? 70 : tenderAcceptancePct;
+      const dmgScore = damageRatePct == null ? 95 : Math.max(0, 100 - damageRatePct * 5);
+      const grade = Math.round(otScore * 0.45 + taScore * 0.30 + dmgScore * 0.25);
+      const letter = grade >= 90 ? "A" : grade >= 80 ? "B" : grade >= 70 ? "C" : grade >= 60 ? "D" : "F";
+      return {
+        carrierId: c.id, carrierName: c.name, carrierCode: c.code,
+        shipmentCount: carrierShipments.length,
+        completedCount: completed.length,
+        onTimePct, tenderAcceptancePct, damageRatePct,
+        exceptionCount: exceptions,
+        tenderOffers: carrierTenders.length,
+        damageReports: carrierDamages.length,
+        grade, letterGrade: letter,
+      };
+    }).sort((a, b) => b.grade - a.grade);
+
+    return { ok: true, result: { scorecards: cards, generatedAt: new Date().toISOString() } };
+  });
+
+  // ── [S] Geofence / milestone auto-events (departed, arrived, dwell) ─
+  // Define a circular geofence; a GPS coordinate is evaluated against
+  // all geofences and milestone events are emitted on enter/exit/dwell.
+
+  registerLensAction("logistics", "geofences-list", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    return { ok: true, result: { geofences: ensureLogBucket(s, "geofences", userId).slice() } };
+  });
+
+  registerLensAction("logistics", "geofence-create", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const name = String(params.name || "").trim();
+    const lat = Number(params.lat), lng = Number(params.lng);
+    const radiusMi = Number(params.radiusMi);
+    if (!name) return { ok: false, error: "name required" };
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat and lng required (numeric)" };
+    if (!Number.isFinite(radiusMi) || radiusMi <= 0) return { ok: false, error: "radiusMi must be > 0" };
+    const geofence = {
+      id: uidLog("geo"), name, lat, lng, radiusMi,
+      kind: ["origin", "destination", "stop", "hub", "checkpoint"].includes(params.kind) ? params.kind : "checkpoint",
+      createdAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "geofences", userId).push(geofence);
+    saveLogState();
+    return { ok: true, result: { geofence } };
+  });
+
+  registerLensAction("logistics", "geofence-delete", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureLogBucket(s, "geofences", userId);
+    const idx = list.findIndex(g => g.id === id);
+    if (idx < 0) return { ok: false, error: "geofence not found" };
+    list.splice(idx, 1);
+    saveLogState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("logistics", "geofence-evaluate", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "").trim();
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat and lng required (numeric)" };
+    const at = params.at ? new Date(params.at).toISOString() : new Date().toISOString();
+    const geofences = ensureLogBucket(s, "geofences", userId);
+    if (geofences.length === 0) return { ok: false, error: "no geofences defined (use geofence-create first)" };
+    if (!s.geofenceState) s.geofenceState = new Map();
+    if (!s.geofenceState.has(userId)) s.geofenceState.set(userId, new Map());
+    const stateMap = s.geofenceState.get(userId);
+    const milestoneEvents = ensureLogBucket(s, "milestoneEvents", userId);
+    const emitted = [];
+
+    for (const g of geofences) {
+      const distMi = haversineMi(lat, lng, g.lat, g.lng);
+      const inside = distMi <= g.radiusMi;
+      const key = `${shipmentId}:${g.id}`;
+      const prior = stateMap.get(key) || null;
+      let event = null;
+      if (inside && (!prior || !prior.inside)) {
+        event = { kind: "arrived", enteredAt: at };
+        stateMap.set(key, { inside: true, enteredAt: at });
+      } else if (inside && prior && prior.inside) {
+        const dwellMin = Math.round((new Date(at) - new Date(prior.enteredAt)) / 60_000);
+        event = { kind: "dwell", enteredAt: prior.enteredAt, dwellMinutes: dwellMin };
+        stateMap.set(key, { inside: true, enteredAt: prior.enteredAt });
+      } else if (!inside && prior && prior.inside) {
+        const dwellMin = Math.round((new Date(at) - new Date(prior.enteredAt)) / 60_000);
+        event = { kind: "departed", departedAt: at, dwellMinutes: dwellMin };
+        stateMap.set(key, { inside: false });
+      }
+      if (event) {
+        const milestone = {
+          id: uidLog("mst"), shipmentId,
+          geofenceId: g.id, geofenceName: g.name, geofenceKind: g.kind,
+          ...event, at,
+          distanceMi: Math.round(distMi * 100) / 100,
+        };
+        milestoneEvents.push(milestone);
+        emitted.push(milestone);
+      }
+    }
+    saveLogState();
+    return { ok: true, result: { shipmentId, evaluatedAt: at, milestones: emitted } };
+  });
+
+  registerLensAction("logistics", "milestones-list", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = params.shipmentId ? String(params.shipmentId) : null;
+    const all = ensureLogBucket(s, "milestoneEvents", userId);
+    const filtered = shipmentId ? all.filter(m => m.shipmentId === shipmentId) : all;
+    return { ok: true, result: { milestones: filtered.slice().reverse() } };
+  });
+
+  // ── [M] Freight-cost audit — invoice reconciliation vs quoted rate ─
+
+  registerLensAction("logistics", "freight-invoices-list", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    return { ok: true, result: { invoices: ensureLogBucket(s, "freightInvoices", userId).slice().reverse() } };
+  });
+
+  registerLensAction("logistics", "freight-invoice-audit", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const carrierId = String(params.carrierId || "").trim();
+    const invoiceNumber = String(params.invoiceNumber || "").trim();
+    const quotedAmountUsd = Number(params.quotedAmountUsd);
+    const invoicedAmountUsd = Number(params.invoicedAmountUsd);
+    if (!invoiceNumber) return { ok: false, error: "invoiceNumber required" };
+    if (!Number.isFinite(quotedAmountUsd) || quotedAmountUsd < 0) return { ok: false, error: "quotedAmountUsd must be >= 0" };
+    if (!Number.isFinite(invoicedAmountUsd) || invoicedAmountUsd < 0) return { ok: false, error: "invoicedAmountUsd must be >= 0" };
+    const tolerancePct = params.tolerancePct != null ? Math.max(0, Number(params.tolerancePct)) : 2;
+    // Accessorial line items the user enters (fuel surcharge, detention, etc.)
+    const accessorials = Array.isArray(params.accessorials)
+      ? params.accessorials.filter(a => a && a.label != null).map(a => ({
+          label: String(a.label),
+          amountUsd: Number(a.amountUsd) || 0,
+          approved: a.approved === true,
+        }))
+      : [];
+    const accessorialTotal = Math.round(accessorials.reduce((s, a) => s + a.amountUsd, 0) * 100) / 100;
+    const unapprovedAccessorial = Math.round(
+      accessorials.filter(a => !a.approved).reduce((s, a) => s + a.amountUsd, 0) * 100) / 100;
+
+    const varianceUsd = Math.round((invoicedAmountUsd - quotedAmountUsd) * 100) / 100;
+    const variancePct = quotedAmountUsd > 0
+      ? Math.round((varianceUsd / quotedAmountUsd) * 10000) / 100
+      : (varianceUsd !== 0 ? 100 : 0);
+    const withinTolerance = Math.abs(variancePct) <= tolerancePct;
+    const status = withinTolerance ? "approved"
+      : (varianceUsd > 0 ? "overbilled" : "underbilled");
+    // Disputable amount = the unfavourable variance not explained by approved accessorials.
+    const disputableUsd = status === "overbilled"
+      ? Math.round(Math.max(0, varianceUsd - (accessorialTotal - unapprovedAccessorial)) * 100) / 100
+      : 0;
+
+    const invoice = {
+      id: uidLog("frt"), invoiceNumber, carrierId,
+      shipmentId: params.shipmentId ? String(params.shipmentId) : null,
+      quotedAmountUsd: Math.round(quotedAmountUsd * 100) / 100,
+      invoicedAmountUsd: Math.round(invoicedAmountUsd * 100) / 100,
+      varianceUsd, variancePct, tolerancePct,
+      accessorials, accessorialTotal, unapprovedAccessorial,
+      withinTolerance, status, disputableUsd,
+      auditedAt: new Date().toISOString(),
+    };
+    ensureLogBucket(s, "freightInvoices", userId).push(invoice);
+    saveLogState();
+    return { ok: true, result: { invoice } };
+  });
+
+  registerLensAction("logistics", "freight-invoice-dispute", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const inv = ensureLogBucket(s, "freightInvoices", userId).find(i => i.id === id);
+    if (!inv) return { ok: false, error: "invoice not found" };
+    const action = ["dispute", "resolve", "accept"].includes(params.action) ? params.action : null;
+    if (!action) return { ok: false, error: "action must be 'dispute', 'resolve', or 'accept'" };
+    inv.status = action === "dispute" ? "disputed" : action === "resolve" ? "resolved" : "approved";
+    inv.disputeNote = String(params.note || inv.disputeNote || "");
+    inv.disputeUpdatedAt = new Date().toISOString();
+    saveLogState();
+    return { ok: true, result: { invoice: inv } };
+  });
+
+  registerLensAction("logistics", "freight-audit-summary", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const invoices = ensureLogBucket(s, "freightInvoices", userId);
+    const totalQuoted = Math.round(invoices.reduce((s, i) => s + i.quotedAmountUsd, 0) * 100) / 100;
+    const totalInvoiced = Math.round(invoices.reduce((s, i) => s + i.invoicedAmountUsd, 0) * 100) / 100;
+    const totalDisputable = Math.round(invoices.reduce((s, i) => s + (i.disputableUsd || 0), 0) * 100) / 100;
+    return {
+      ok: true,
+      result: {
+        invoiceCount: invoices.length,
+        totalQuoted, totalInvoiced,
+        totalVarianceUsd: Math.round((totalInvoiced - totalQuoted) * 100) / 100,
+        totalDisputableUsd: totalDisputable,
+        overbilledCount: invoices.filter(i => i.status === "overbilled").length,
+        disputedCount: invoices.filter(i => i.status === "disputed").length,
+        approvedCount: invoices.filter(i => i.status === "approved").length,
+      },
+    };
+  });
+
+  // ── [S] Exception management dashboard — flag + triage at-risk loads ─
+
+  registerLensAction("logistics", "exceptions-flag", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shipmentId = String(params.shipmentId || "").trim();
+    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    if (!shp) return { ok: false, error: "shipment not found" };
+    const kind = ["delay", "damage", "lost", "weather", "customs_hold", "documentation", "carrier_issue", "other"]
+      .includes(params.kind) ? params.kind : "other";
+    const severity = ["low", "medium", "high", "critical"].includes(params.severity) ? params.severity : "medium";
+    const exception = {
+      id: uidLog("exc"), shipmentId, kind, severity,
+      description: String(params.description || ""),
+      status: "open",
+      assignee: String(params.assignee || ""),
+      flaggedAt: new Date().toISOString(),
+      resolvedAt: null,
+      resolutionNote: "",
+    };
+    ensureLogBucket(s, "exceptions", userId).push(exception);
+    // Reflect the exception on the shipment record.
+    if (shp.status !== "delivered" && shp.status !== "returned") shp.status = "exception";
+    saveLogState();
+    return { ok: true, result: { exception } };
+  });
+
+  registerLensAction("logistics", "exceptions-update", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const exc = ensureLogBucket(s, "exceptions", userId).find(e => e.id === id);
+    if (!exc) return { ok: false, error: "exception not found" };
+    if (params.status != null) {
+      const st = ["open", "investigating", "resolved", "escalated"].includes(params.status) ? params.status : null;
+      if (!st) return { ok: false, error: "invalid status" };
+      exc.status = st;
+      if (st === "resolved") exc.resolvedAt = new Date().toISOString();
+    }
+    if (params.severity != null && ["low", "medium", "high", "critical"].includes(params.severity)) {
+      exc.severity = params.severity;
+    }
+    if (params.assignee != null) exc.assignee = String(params.assignee);
+    if (params.resolutionNote != null) exc.resolutionNote = String(params.resolutionNote);
+    exc.updatedAt = new Date().toISOString();
+    saveLogState();
+    return { ok: true, result: { exception: exc } };
+  });
+
+  registerLensAction("logistics", "exceptions-dashboard", (ctx, _a, _p = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const exceptions = ensureLogBucket(s, "exceptions", userId);
+    const open = exceptions.filter(e => e.status !== "resolved");
+    const sevRank = { critical: 4, high: 3, medium: 2, low: 1 };
+    const triageQueue = open.slice().sort((a, b) =>
+      (sevRank[b.severity] || 0) - (sevRank[a.severity] || 0) ||
+      new Date(a.flaggedAt) - new Date(b.flaggedAt));
+    const byKind = {};
+    for (const e of exceptions) byKind[e.kind] = (byKind[e.kind] || 0) + 1;
+    const bySeverity = { low: 0, medium: 0, high: 0, critical: 0 };
+    for (const e of open) bySeverity[e.severity] = (bySeverity[e.severity] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        totalExceptions: exceptions.length,
+        openCount: open.length,
+        resolvedCount: exceptions.filter(e => e.status === "resolved").length,
+        escalatedCount: exceptions.filter(e => e.status === "escalated").length,
+        criticalCount: bySeverity.critical,
+        byKind, bySeverity,
+        triageQueue,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  });
 };
 

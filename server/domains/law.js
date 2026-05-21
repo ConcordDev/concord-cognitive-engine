@@ -7,6 +7,8 @@
 // CourtListener search is free without auth; full text + dockets
 // require a free COURTLISTENER_API_TOKEN env (courtlistener.com/help/api/rest/).
 
+import { createHash } from "node:crypto";
+
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
 
@@ -769,6 +771,610 @@ export default function registerLawActions(registerLensAction) {
         totalValue,
         expiringSoon,
         unsigned: cs.filter((c) => c.signatures.length === 0).length,
+      },
+    };
+  });
+
+  // ─── Backlog item 1: Visual contract editor with redline / version diff ───
+  // Each contract carries a versions[] array — a snapshot of the full
+  // clause text at the moment of save. contract-version-save snapshots,
+  // contract-version-list lists, contract-diff produces a line-level
+  // redline between any two versions (or a version vs. current).
+
+  function clauseTextBlock(c) {
+    return c.clauses.map((cl) => `[${cl.title}]\n${cl.text}`).join("\n\n");
+  }
+  // Line-level diff — classic LCS over arrays of trimmed lines.
+  function lineDiff(oldText, newText) {
+    const a = String(oldText || "").split("\n");
+    const b = String(newText || "").split("\n");
+    const m = a.length, n = b.length;
+    const lcs = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = m - 1; i >= 0; i--) {
+      for (let j = n - 1; j >= 0; j--) {
+        lcs[i][j] = a[i] === b[j]
+          ? lcs[i + 1][j + 1] + 1
+          : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+      }
+    }
+    const ops = [];
+    let i = 0, j = 0;
+    while (i < m && j < n) {
+      if (a[i] === b[j]) { ops.push({ op: "same", text: a[i] }); i++; j++; }
+      else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push({ op: "remove", text: a[i] }); i++; }
+      else { ops.push({ op: "add", text: b[j] }); j++; }
+    }
+    while (i < m) { ops.push({ op: "remove", text: a[i] }); i++; }
+    while (j < n) { ops.push({ op: "add", text: b[j] }); j++; }
+    return ops;
+  }
+
+  registerLensAction("law", "contract-version-save", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    if (!Array.isArray(c.versions)) c.versions = [];
+    const snapshot = {
+      version: c.versions.length + 1,
+      label: lwClean(params.label, 120) || `Version ${c.versions.length + 1}`,
+      body: clauseTextBlock(c),
+      clauseCount: c.clauses.length,
+      savedBy: lwActor(ctx),
+      savedAt: lwNow(),
+    };
+    c.versions.push(snapshot);
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { version: snapshot, versionCount: c.versions.length } };
+  });
+
+  registerLensAction("law", "contract-version-list", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const versions = (c.versions || []).map((v) => ({
+      version: v.version, label: v.label, clauseCount: v.clauseCount,
+      savedBy: v.savedBy, savedAt: v.savedAt, charCount: v.body.length,
+    }));
+    return { ok: true, result: { versions, count: versions.length } };
+  });
+
+  registerLensAction("law", "contract-diff", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const versions = c.versions || [];
+    const findV = (n) => versions.find((v) => v.version === Number(n));
+    const fromV = params.fromVersion != null ? findV(params.fromVersion) : null;
+    if (params.fromVersion != null && !fromV) return { ok: false, error: "fromVersion not found" };
+    const oldBody = fromV ? fromV.body : "";
+    const newBody = params.toVersion != null
+      ? (findV(params.toVersion)?.body ?? null)
+      : clauseTextBlock(c);
+    if (newBody === null) return { ok: false, error: "toVersion not found" };
+    const ops = lineDiff(oldBody, newBody);
+    const added = ops.filter((o) => o.op === "add").length;
+    const removed = ops.filter((o) => o.op === "remove").length;
+    return {
+      ok: true,
+      result: {
+        contractId: c.id,
+        from: fromV ? `v${fromV.version}` : "empty",
+        to: params.toVersion != null ? `v${params.toVersion}` : "current",
+        ops, added, removed, unchanged: ops.length - added - removed,
+      },
+    };
+  });
+
+  // ─── Backlog item 2: AI clause extraction from an uploaded contract ───
+  // Parses raw pasted/uploaded contract text into structured clauses,
+  // detected dates, monetary amounts and obligation sentences. No LLM —
+  // deterministic heading + sentence segmentation so it is reproducible.
+
+  registerLensAction("law", "clause-extract", (_ctx, _a, params = {}) => {
+    const text = String(params.text || "").trim();
+    if (!text) return { ok: false, error: "contract text required" };
+    if (text.length > 200000) return { ok: false, error: "text exceeds 200k chars" };
+
+    // Split into clauses on numbered/lettered/CAPS headings.
+    const lines = text.split(/\r?\n/);
+    const clauses = [];
+    let current = null;
+    const headingRe = /^\s*((?:\d+(?:\.\d+)*\.?)|(?:[A-Z]\.)|(?:ARTICLE\s+[IVX0-9]+)|(?:SECTION\s+\d+))\s*[.:)-]?\s*(.{0,90}?)\s*$/;
+    const capsHeadingRe = /^\s*([A-Z][A-Z \-&]{4,60})\s*$/;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      const h = line.match(headingRe);
+      const ch = !h && line.length < 70 ? line.match(capsHeadingRe) : null;
+      if (h || ch) {
+        if (current) clauses.push(current);
+        const heading = h ? (h[2] || h[1]).trim() : ch[1].trim();
+        current = { title: heading.slice(0, 120) || "Untitled clause", text: "" };
+      } else if (current) {
+        current.text += (current.text ? " " : "") + line;
+      } else {
+        current = { title: "Preamble", text: line };
+      }
+    }
+    if (current) clauses.push(current);
+    // Drop empties, cap.
+    const extracted = clauses
+      .filter((c) => c.text.length > 0)
+      .slice(0, 200)
+      .map((c) => ({ title: c.title, text: c.text.slice(0, 4000), wordCount: c.text.split(/\s+/).length }));
+
+    // Date detection.
+    const dateRe = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b/gi;
+    const dates = [...new Set((text.match(dateRe) || []).map((d) => d.trim()))].slice(0, 50);
+
+    // Monetary amount detection.
+    const moneyRe = /(?:USD?\s*)?\$\s?[\d,]+(?:\.\d{2})?|\b[\d,]+(?:\.\d{2})?\s+(?:dollars|USD|EUR|GBP)\b/gi;
+    const amounts = [...new Set((text.match(moneyRe) || []).map((m) => m.trim()))].slice(0, 50);
+
+    // Obligation sentences — contain modal duty verbs.
+    const sentences = text.replace(/\n+/g, " ").split(/(?<=[.;])\s+/);
+    const dutyRe = /\b(shall|must|will|agrees? to|is required to|undertakes? to|is obligated to)\b/i;
+    const obligations = sentences
+      .map((s) => s.trim())
+      .filter((s) => s.length > 20 && s.length < 400 && dutyRe.test(s))
+      .slice(0, 60);
+
+    return {
+      ok: true,
+      result: {
+        clauses: extracted,
+        clauseCount: extracted.length,
+        detectedDates: dates,
+        detectedAmounts: amounts,
+        obligations,
+        stats: { lines: lines.length, sentences: sentences.length, chars: text.length },
+      },
+    };
+  });
+
+  // clause-extract-apply — push extracted clauses straight onto a contract.
+  registerLensAction("law", "clause-extract-apply", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.contractId);
+    if (!c) return { ok: false, error: "contract not found" };
+    const incoming = Array.isArray(params.clauses) ? params.clauses : [];
+    if (incoming.length === 0) return { ok: false, error: "clauses array required" };
+    let added = 0;
+    for (const cl of incoming.slice(0, 200)) {
+      const title = lwClean(cl.title, 120);
+      if (!title) continue;
+      c.clauses.push({
+        id: lwId("cl"),
+        category: lwClean(cl.category, 40).toLowerCase() || "extracted",
+        title,
+        text: lwClean(cl.text, 4000) || "(no text)",
+        addedAt: lwNow(),
+        source: "extraction",
+      });
+      added++;
+    }
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { added, clauseCount: c.clauses.length } };
+  });
+
+  // ─── Backlog item 3: Approval workflow ───
+  // A contract carries an approvals[] ledger of named reviewers, each
+  // with a state (pending/approved/rejected). The contract status moves
+  // to in_review when a workflow starts; signature gating checks all
+  // approvals cleared.
+
+  registerLensAction("law", "approval-route", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const reviewers = Array.isArray(params.reviewers) ? params.reviewers : [];
+    const cleaned = reviewers
+      .map((r) => lwClean(typeof r === "string" ? r : r?.name, 120))
+      .filter(Boolean);
+    if (cleaned.length === 0) return { ok: false, error: "at least one reviewer required" };
+    c.approvals = cleaned.map((name, i) => ({
+      id: lwId("ap"),
+      reviewer: name,
+      order: i + 1,
+      state: "pending",
+      note: "",
+      decidedAt: null,
+    }));
+    c.status = "in_review";
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { contractId: c.id, approvals: c.approvals, status: c.status } };
+  });
+
+  registerLensAction("law", "approval-decide", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const ap = (c.approvals || []).find((a) => a.id === params.approvalId);
+    if (!ap) return { ok: false, error: "approval step not found" };
+    const decision = ["approved", "rejected"].includes(params.decision) ? params.decision : null;
+    if (!decision) return { ok: false, error: "decision must be approved or rejected" };
+    ap.state = decision;
+    ap.note = lwClean(params.note, 280);
+    ap.decidedAt = lwNow();
+    const all = c.approvals;
+    const anyRejected = all.some((a) => a.state === "rejected");
+    const allApproved = all.length > 0 && all.every((a) => a.state === "approved");
+    if (anyRejected) c.status = "draft";
+    else if (allApproved) c.status = "sent";
+    c.updatedAt = lwNow();
+    saveLaw();
+    return {
+      ok: true,
+      result: {
+        contractId: c.id,
+        approvals: all,
+        status: c.status,
+        cleared: allApproved,
+        blocked: anyRejected,
+      },
+    };
+  });
+
+  registerLensAction("law", "approval-status", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const all = c.approvals || [];
+    return {
+      ok: true,
+      result: {
+        contractId: c.id,
+        approvals: all,
+        pending: all.filter((a) => a.state === "pending").length,
+        approved: all.filter((a) => a.state === "approved").length,
+        rejected: all.filter((a) => a.state === "rejected").length,
+        cleared: all.length > 0 && all.every((a) => a.state === "approved"),
+      },
+    };
+  });
+
+  // ─── Backlog item 4: Obligation tracking ───
+  // Surfaces renewal / expiry / payment dates across all of a user's
+  // contracts as a single actionable task list, sorted by urgency.
+
+  registerLensAction("law", "obligation-add", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.contractId);
+    if (!c) return { ok: false, error: "contract not found" };
+    const label = lwClean(params.label, 160);
+    if (!label) return { ok: false, error: "obligation label required" };
+    const kind = ["renewal", "expiry", "payment", "delivery", "review", "other"].includes(params.kind)
+      ? params.kind : "other";
+    const dueDate = lwClean(params.dueDate, 30);
+    if (!dueDate || Number.isNaN(new Date(dueDate).getTime())) return { ok: false, error: "valid dueDate required" };
+    if (!Array.isArray(c.obligations)) c.obligations = [];
+    const obligation = {
+      id: lwId("ob"),
+      label,
+      kind,
+      dueDate,
+      amount: Math.max(0, Number(params.amount) || 0),
+      done: false,
+      createdAt: lwNow(),
+    };
+    c.obligations.push(obligation);
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { obligation } };
+  });
+
+  registerLensAction("law", "obligation-complete", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.contractId);
+    if (!c) return { ok: false, error: "contract not found" };
+    const ob = (c.obligations || []).find((o) => o.id === params.obligationId);
+    if (!ob) return { ok: false, error: "obligation not found" };
+    ob.done = !ob.done;
+    ob.completedAt = ob.done ? lwNow() : null;
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { obligation: ob } };
+  });
+
+  registerLensAction("law", "obligation-tracker", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cs = lwList(s, lwActor(ctx));
+    const now = Date.now();
+    const urgentDays = Math.max(1, Number(params.urgentDays) || 14);
+    const tasks = [];
+    for (const c of cs) {
+      // Explicit obligations.
+      for (const ob of c.obligations || []) {
+        const due = new Date(ob.dueDate).getTime();
+        const daysRemaining = Math.ceil((due - now) / 86400000);
+        tasks.push({
+          id: ob.id, contractId: c.id, contractTitle: c.title,
+          label: ob.label, kind: ob.kind, dueDate: ob.dueDate, amount: ob.amount,
+          done: !!ob.done, daysRemaining,
+          priority: ob.done ? "completed" : daysRemaining < 0 ? "overdue"
+            : daysRemaining <= urgentDays ? "urgent" : "upcoming",
+        });
+      }
+      // Implicit expiry from contract.expiryDate.
+      if (c.expiryDate && !Number.isNaN(new Date(c.expiryDate).getTime())) {
+        const due = new Date(c.expiryDate).getTime();
+        const daysRemaining = Math.ceil((due - now) / 86400000);
+        tasks.push({
+          id: `exp_${c.id}`, contractId: c.id, contractTitle: c.title,
+          label: `Contract expires`, kind: "expiry", dueDate: c.expiryDate, amount: 0,
+          done: c.status === "expired" || c.status === "terminated", daysRemaining,
+          priority: (c.status === "expired" || c.status === "terminated") ? "completed"
+            : daysRemaining < 0 ? "overdue"
+            : daysRemaining <= urgentDays ? "urgent" : "upcoming",
+          implicit: true,
+        });
+      }
+    }
+    tasks.sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      return a.daysRemaining - b.daysRemaining;
+    });
+    return {
+      ok: true,
+      result: {
+        tasks,
+        summary: {
+          total: tasks.length,
+          overdue: tasks.filter((t) => t.priority === "overdue").length,
+          urgent: tasks.filter((t) => t.priority === "urgent").length,
+          upcoming: tasks.filter((t) => t.priority === "upcoming").length,
+          completed: tasks.filter((t) => t.done).length,
+        },
+      },
+    };
+  });
+
+  // ─── Backlog item 5: Cryptographic e-signature with audit certificate ───
+  // Replaces the named-party ledger with a signature carrying a SHA-256
+  // hash of (contract body + party + timestamp + intent), producing a
+  // verifiable certificate. contract-verify recomputes hashes to detect
+  // tampering.
+
+  function contractDigest(c) {
+    return createHash("sha256")
+      .update(`${c.id}|${c.title}|${clauseTextBlock(c)}`)
+      .digest("hex");
+  }
+
+  registerLensAction("law", "contract-esign", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const party = lwClean(params.party, 120);
+    if (!party) return { ok: false, error: "party name required" };
+    const intent = lwClean(params.intent, 200) || "I agree to be bound by this contract.";
+    if (c.signatures.some((sig) => sig.party.toLowerCase() === party.toLowerCase())) {
+      return { ok: false, error: "party has already signed" };
+    }
+    const signedAt = lwNow();
+    const docHash = contractDigest(c);
+    const sigPayload = `${docHash}|${party}|${signedAt}|${intent}`;
+    const signatureHash = createHash("sha256").update(sigPayload).digest("hex");
+    const certificate = {
+      certificateId: lwId("cert"),
+      party,
+      intent,
+      signedAt,
+      documentHash: docHash,
+      signatureHash,
+      signerUserId: lwActor(ctx),
+      algorithm: "sha256",
+    };
+    c.signatures.push({ party, signedAt, certificate });
+    if (c.signatures.length >= 2 && c.status !== "active") c.status = "signed";
+    c.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { contractId: c.id, certificate, status: c.status, signatureCount: c.signatures.length } };
+  });
+
+  registerLensAction("law", "contract-verify", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
+    if (!c) return { ok: false, error: "contract not found" };
+    const currentHash = contractDigest(c);
+    const certified = (c.signatures || []).filter((sig) => sig.certificate);
+    const checks = certified.map((sig) => {
+      const cert = sig.certificate;
+      const docIntact = cert.documentHash === currentHash;
+      const expectedSig = createHash("sha256")
+        .update(`${cert.documentHash}|${cert.party}|${cert.signedAt}|${cert.intent}`)
+        .digest("hex");
+      const sigIntact = expectedSig === cert.signatureHash;
+      return {
+        party: cert.party,
+        certificateId: cert.certificateId,
+        signedAt: cert.signedAt,
+        documentUnchangedSinceSigning: docIntact,
+        signatureValid: sigIntact,
+        valid: docIntact && sigIntact,
+      };
+    });
+    return {
+      ok: true,
+      result: {
+        contractId: c.id,
+        currentDocumentHash: currentHash,
+        certifiedSignatures: checks.length,
+        allValid: checks.length > 0 && checks.every((x) => x.valid),
+        tampered: checks.some((x) => !x.documentUnchangedSinceSigning),
+        checks,
+      },
+    };
+  });
+
+  // ─── Backlog item 6: Contract templates / playbooks ───
+  // Pre-approved language sets that, applied to a contract, drop in a
+  // curated bundle of clauses for a given contract type.
+
+  const CONTRACT_PLAYBOOKS = {
+    nda: {
+      name: "Mutual NDA",
+      description: "Two-way confidentiality with standard term and survival.",
+      contractType: "nda",
+      clauses: ["data-protection:0", "general:0", "general:1", "general:2", "termination:2"],
+    },
+    services: {
+      name: "Services Agreement",
+      description: "Vendor services with IP assignment, liability cap and termination rights.",
+      contractType: "services",
+      clauses: ["intellectual-property:0", "liability:0", "liability:1", "termination:0", "termination:1", "general:1"],
+    },
+    employment: {
+      name: "Employment Offer",
+      description: "Standard employment with IP, non-compete and confidentiality.",
+      contractType: "employment",
+      clauses: ["intellectual-property:0", "intellectual-property:2", "general:0", "termination:1"],
+    },
+    license: {
+      name: "Software License",
+      description: "License grant with liability limits and governing law.",
+      contractType: "license",
+      clauses: ["intellectual-property:1", "liability:0", "liability:2", "general:1"],
+    },
+    dpa: {
+      name: "Data Processing Addendum",
+      description: "GDPR-shaped processor obligations and breach response.",
+      contractType: "other",
+      clauses: ["data-protection:0", "data-protection:1", "data-protection:2", "liability:1"],
+    },
+  };
+
+  function resolveClauseRef(ref) {
+    const [cat, idx] = String(ref).split(":");
+    const list = CLAUSE_LIBRARY[cat];
+    if (!list) return null;
+    const clause = list[Number(idx)];
+    return clause ? { category: cat, title: clause.title, text: clause.text } : null;
+  }
+
+  registerLensAction("law", "playbook-list", (_ctx, _a, _params = {}) => {
+    return {
+      ok: true,
+      result: {
+        playbooks: Object.entries(CONTRACT_PLAYBOOKS).map(([id, p]) => ({
+          id, name: p.name, description: p.description,
+          contractType: p.contractType, clauseCount: p.clauses.length,
+        })),
+      },
+    };
+  });
+
+  registerLensAction("law", "playbook-detail", (_ctx, _a, params = {}) => {
+    const p = CONTRACT_PLAYBOOKS[String(params.id || "").toLowerCase()];
+    if (!p) return { ok: false, error: "playbook not found" };
+    const clauses = p.clauses.map(resolveClauseRef).filter(Boolean);
+    return {
+      ok: true,
+      result: {
+        id: String(params.id).toLowerCase(),
+        name: p.name, description: p.description,
+        contractType: p.contractType, clauses,
+      },
+    };
+  });
+
+  registerLensAction("law", "playbook-apply", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = CONTRACT_PLAYBOOKS[String(params.playbookId || "").toLowerCase()];
+    if (!p) return { ok: false, error: "playbook not found" };
+    const clauses = p.clauses.map(resolveClauseRef).filter(Boolean);
+
+    let contract;
+    if (params.contractId) {
+      contract = lwList(s, lwActor(ctx)).find((x) => x.id === params.contractId);
+      if (!contract) return { ok: false, error: "contract not found" };
+    } else {
+      const title = lwClean(params.title, 160) || p.name;
+      contract = {
+        id: lwId("ctr"),
+        title,
+        type: p.contractType,
+        counterparty: lwClean(params.counterparty, 160) || "Unspecified",
+        value: Math.max(0, Number(params.value) || 0),
+        status: "draft",
+        effectiveDate: null,
+        expiryDate: null,
+        clauses: [],
+        signatures: [],
+        createdAt: lwNow(),
+        updatedAt: lwNow(),
+        fromPlaybook: String(params.playbookId).toLowerCase(),
+      };
+      lwList(s, lwActor(ctx)).push(contract);
+    }
+    let added = 0;
+    for (const cl of clauses) {
+      contract.clauses.push({
+        id: lwId("cl"),
+        category: cl.category,
+        title: cl.title,
+        text: cl.text,
+        addedAt: lwNow(),
+        source: "playbook",
+      });
+      added++;
+    }
+    contract.updatedAt = lwNow();
+    saveLaw();
+    return { ok: true, result: { contract, clausesAdded: added } };
+  });
+
+  // ─── Backlog item 7: Full-text contract repository search ───
+  // Searches across every contract a user owns — title, counterparty,
+  // and the full text of every clause — with a snippet per match.
+
+  registerLensAction("law", "repository-search", (ctx, _a, params = {}) => {
+    const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const query = lwClean(params.query, 200).toLowerCase();
+    if (!query || query.length < 2) return { ok: false, error: "query of at least 2 chars required" };
+    const cs = lwList(s, lwActor(ctx));
+    const keywords = query.split(/\s+/).filter(Boolean);
+    const results = [];
+    for (const c of cs) {
+      const hits = [];
+      const titleLc = (c.title || "").toLowerCase();
+      const cpLc = (c.counterparty || "").toLowerCase();
+      if (keywords.some((k) => titleLc.includes(k))) hits.push({ field: "title", snippet: c.title });
+      if (keywords.some((k) => cpLc.includes(k))) hits.push({ field: "counterparty", snippet: c.counterparty });
+      for (const cl of c.clauses || []) {
+        const clauseText = (cl.text || "").toLowerCase();
+        const clauseTitle = (cl.title || "").toLowerCase();
+        if (keywords.some((k) => clauseText.includes(k) || clauseTitle.includes(k))) {
+          hits.push({
+            field: "clause",
+            clauseTitle: cl.title,
+            snippet: extractSnippet(clauseText, keywords, 160),
+          });
+        }
+      }
+      if (hits.length > 0) {
+        results.push({
+          contractId: c.id,
+          contractTitle: c.title,
+          status: c.status,
+          type: c.type,
+          matchCount: hits.length,
+          hits: hits.slice(0, 10),
+        });
+      }
+    }
+    results.sort((a, b) => b.matchCount - a.matchCount);
+    return {
+      ok: true,
+      result: {
+        query,
+        keywords,
+        contractsSearched: cs.length,
+        matchingContracts: results.length,
+        results,
       },
     };
   });

@@ -48,6 +48,7 @@ export function ListingsPanel() {
   const [priceResult, setPriceResult] = useState<PriceResult | null>(null);
   const [aiLoading, setAILoading] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filter]);
 
   async function refresh() {
@@ -161,7 +162,10 @@ export function ListingsPanel() {
                         l.status === 'draft' ? 'bg-amber-500/20 text-amber-300' : 'bg-gray-500/20 text-gray-300',
                       )}>{l.status}</span>
                       <div className="w-12 h-12 rounded bg-black/40 border border-white/10 flex-shrink-0 overflow-hidden">
-                        {l.images?.[0] ? <img src={l.images[0]} alt="" className="w-full h-full object-cover" /> : <Tag className="w-5 h-5 m-auto text-gray-500 mt-3.5" />}
+                        {l.images?.[0]
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={l.images[0]} alt="" className="w-full h-full object-cover" />
+                          : <Tag className="w-5 h-5 m-auto text-gray-500 mt-3.5" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-white truncate flex items-center gap-2">

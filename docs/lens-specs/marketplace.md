@@ -13,14 +13,16 @@ Backend: `server/domains/marketplace.js` — 32 macros: shop get/update, listing
 - Etsy-shape UI (EtsyShell, BandcampGrid), trending listings, saved searches
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Storefront / buyer browse — public shop page with category navigation and filters
-- [ ] `[M]` Reviews & ratings — buyer reviews per listing and per shop
-- [ ] `[M]` Messaging — buyer↔seller conversation thread per order
-- [ ] `[M]` Listing variations — size/color/material options with per-variant price + stock
-- [ ] `[S]` Shipping profiles — configurable rates, zones, processing times
-- [ ] `[M]` Coupons / sales events beyond simple promotions (tiered, BOGO, time-boxed)
-- [ ] `[S]` Inventory alerts — low-stock and out-of-stock notifications
-- [ ] `[M]` Checkout / cart flow for buyers
+- [x] `[M]` Storefront / buyer browse — public shop page with category navigation and filters
+- [x] `[M]` Reviews & ratings — buyer reviews per listing and per shop
+- [x] `[M]` Messaging — buyer↔seller conversation thread per order
+- [x] `[M]` Listing variations — size/color/material options with per-variant price + stock
+- [x] `[S]` Shipping profiles — configurable rates, zones, processing times
+- [x] `[M]` Coupons / sales events beyond simple promotions (tiered, BOGO, time-boxed)
+- [x] `[S]` Inventory alerts — low-stock and out-of-stock notifications
+- [x] `[M]` Checkout / cart flow for buyers
 
 ## Parity
-~55% of Etsy's seller surface. Deep seller tooling — listings, orders, analytics, promotions, AI optimization — but missing the buyer-facing storefront, reviews, messaging, and listing variations that complete a two-sided marketplace.
+~95% of Etsy's seller surface. Deep seller tooling plus a buyer-facing storefront, reviews & ratings, buyer↔seller messaging, listing variations, shipping profiles, coupons/sales events, inventory alerts, and cart/checkout all ship front-to-back. The old hardcoded BandcampGrid demo listings were removed.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

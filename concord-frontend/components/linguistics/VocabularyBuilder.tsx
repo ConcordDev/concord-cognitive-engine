@@ -14,11 +14,13 @@ import { cn } from '@/lib/utils';
 interface Word { id: string; word: string; definition: string; partOfSpeech: string | null; example: string | null; tags: string[]; level: number; reviewCount: number }
 interface Dash { totalWords: number; mastered: number; learning: number; fresh: number; dueNow: number }
 
-export function VocabularyBuilder() {
+export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: number; onChange?: () => void }) {
   const [words, setWords] = useState<Word[]>([]);
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ word: '', definition: '', partOfSpeech: '', example: '' });
+  const [adding, setAdding] = useState(false);
+  const [addMsg, setAddMsg] = useState<string | null>(null);
   // review mode
   const [reviewQueue, setReviewQueue] = useState<Word[] | null>(null);
   const [reviewIdx, setReviewIdx] = useState(0);
@@ -33,20 +35,42 @@ export function VocabularyBuilder() {
     setDash((d.data?.result as Dash) || null);
     setLoading(false);
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh, refreshKey]);
 
   async function add() {
     if (!form.word.trim()) return;
-    await lensRun('linguistics', 'vocab-add', {
-      word: form.word.trim(), definition: form.definition.trim(),
-      partOfSpeech: form.partOfSpeech.trim(), example: form.example.trim(),
-    });
+    setAdding(true);
+    setAddMsg(null);
+    // Auto-fetch the definition from the dictionary when the user
+    // leaves the definition blank — no need to paste it by hand.
+    const r = await lensRun<{ autoFetched: boolean; word: { definition: string } }>(
+      'linguistics',
+      'vocab-add',
+      {
+        word: form.word.trim(),
+        definition: form.definition.trim(),
+        partOfSpeech: form.partOfSpeech.trim(),
+        example: form.example.trim(),
+      },
+    );
+    setAdding(false);
+    if (!r.data?.ok) {
+      setAddMsg(r.data?.error || 'Could not add word.');
+      return;
+    }
+    if (r.data.result?.autoFetched && r.data.result.word?.definition) {
+      setAddMsg('Definition fetched automatically.');
+    } else if (r.data.result?.autoFetched === false && !form.definition.trim() && !r.data.result?.word?.definition) {
+      setAddMsg('Added — no dictionary entry found, edit to add a definition.');
+    }
     setForm({ word: '', definition: '', partOfSpeech: '', example: '' });
     await refresh();
+    onChange?.();
   }
   async function del(id: string) {
     await lensRun('linguistics', 'vocab-delete', { id });
     await refresh();
+    onChange?.();
   }
   async function startReview() {
     const r = await lensRun('linguistics', 'vocab-review-due', {});
@@ -59,7 +83,7 @@ export function VocabularyBuilder() {
     const w = reviewQueue[reviewIdx];
     await lensRun('linguistics', 'vocab-review', { id: w.id, known });
     if (reviewIdx + 1 < reviewQueue.length) { setReviewIdx(reviewIdx + 1); setRevealed(false); }
-    else { setReviewQueue(null); await refresh(); }
+    else { setReviewQueue(null); await refresh(); onChange?.(); }
   }
 
   if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
@@ -130,13 +154,14 @@ export function VocabularyBuilder() {
             className="w-32 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
           <input value={form.partOfSpeech} onChange={e => setForm({ ...form, partOfSpeech: e.target.value })} placeholder="part of speech"
             className="w-28 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-          <input value={form.definition} onChange={e => setForm({ ...form, definition: e.target.value })} placeholder="Definition"
+          <input value={form.definition} onChange={e => setForm({ ...form, definition: e.target.value })} placeholder="Definition (leave blank to auto-fetch)"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-          <button onClick={add} disabled={!form.word.trim()}
+          <button onClick={add} disabled={!form.word.trim() || adding}
             className="px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
-            <Plus className="w-3 h-3" />Add
+            {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Add
           </button>
         </div>
+        {addMsg && <p className="text-[10px] text-indigo-300">{addMsg}</p>}
       </div>
 
       {words.length === 0 ? (

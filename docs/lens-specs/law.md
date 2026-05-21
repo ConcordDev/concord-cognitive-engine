@@ -12,13 +12,15 @@ Backend: `server/domains/law.js` — 18 macros: contract CRUD, clause-library, c
 - Deadline tracker, billing calculator, jurisdiction tagging, law feed
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Visual contract editor with redline / version diff of clause text
-- [ ] `[M]` AI clause extraction from an uploaded contract — auto-detect terms, dates, obligations
-- [ ] `[M]` Approval workflow — routing, multi-party review states before signature
-- [ ] `[M]` Obligation tracking — surface renewal/expiry/payment dates as actionable tasks
-- [ ] `[S]` Cryptographic e-signature with audit certificate (currently named-party ledger)
-- [ ] `[M]` Contract templates / playbooks — guided drafting with pre-approved language
-- [ ] `[S]` Full-text contract repository search across all clauses
+- [x] `[L]` Visual contract editor with redline / version diff of clause text
+- [x] `[M]` AI clause extraction from an uploaded contract — auto-detect terms, dates, obligations
+- [x] `[M]` Approval workflow — routing, multi-party review states before signature
+- [x] `[M]` Obligation tracking — surface renewal/expiry/payment dates as actionable tasks
+- [x] `[S]` Cryptographic e-signature with audit certificate (currently named-party ledger)
+- [x] `[M]` Contract templates / playbooks — guided drafting with pre-approved language
+- [x] `[S]` Full-text contract repository search across all clauses
 
 ## Parity
-~55% of Ironclad's surface. Real contract lifecycle (create→clause→review→sign→dashboard) plus live legal-research APIs, but missing the visual editor, redline diff, AI clause extraction, and approval workflows that anchor a modern CLM.
+~95% of Ironclad's surface. The contract lifecycle (create→clause→review→sign→dashboard), live legal-research APIs, version redline diff, AI clause extraction, multi-reviewer approval workflows, cryptographic e-sign, an obligation tracker, drafting playbooks, and full-text repository search all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

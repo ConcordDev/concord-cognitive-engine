@@ -25,6 +25,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { UniversalImport } from '@/components/import/UniversalImport';
+import { ImportParityWorkbench } from '@/components/import/ImportParityWorkbench';
 
 interface ValidateImportResult {
   totalRows: number;
@@ -1022,6 +1023,10 @@ export default function ImportLens() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ImportParityWorkbench />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ImportToolingGallery />
       </section>

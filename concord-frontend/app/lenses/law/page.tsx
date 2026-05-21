@@ -10,17 +10,19 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LawFeed } from '@/components/law/LawFeed';
-import { LawContracts } from '@/components/law/LawContracts';
+import { LawContracts, type LawContractsHandle } from '@/components/law/LawContracts';
+import { ContractPlaybooks } from '@/components/law/ContractPlaybooks';
+import { ObligationTracker } from '@/components/law/ObligationTracker';
+import { ContractRepositorySearch } from '@/components/law/ContractRepositorySearch';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useMemo, useRef } from 'react';
-import { Scale, Gavel, FileText, CheckCircle, XCircle, AlertTriangle, Plus, Layers, ChevronDown, BookOpen, Shield, Users, Clock, Copy, Globe, Calendar, ChevronRight, Play, Loader2 } from 'lucide-react';
+import { Scale, Gavel, FileText, CheckCircle, XCircle, AlertTriangle, Plus, Layers, ChevronDown, Globe, Calendar, ChevronRight, Play, Loader2 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
-import { api } from '@/lib/api/client';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -72,6 +74,8 @@ export default function LawLensPage() {
   const [jurisdictionFilter, setJurisdictionFilter] = useState<Jurisdiction | 'all'>('all');
   const caseSearchInputRef = useRef<HTMLInputElement>(null);
   const newCaseInputRef = useRef<HTMLInputElement>(null);
+  const contractsRef = useRef<LawContractsHandle>(null);
+  const [contractList, setContractList] = useState<{ id: string; title: string }[]>([]);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('law');
 
   // Lens artifact persistence layer
@@ -511,156 +515,22 @@ export default function LawLensPage() {
 
       {/* Contract lifecycle workbench — Ironclad-shape */}
         <LensFeedButton domain="law" />
-      <LawContracts />
+      <LawContracts ref={contractsRef} onContractsChange={setContractList} />
 
-      {/* Contract Builder - Clause Library (quick reference) */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-neon-purple" />
-          Contract Builder - Clause Library
-        </h2>
-        <p className="text-sm text-gray-400 mb-4">
-          Browse and compose contracts from pre-approved clause templates. All clauses are validated against active legal frameworks.
-        </p>
+      {/* Guided drafting from pre-approved playbooks */}
+      <ContractPlaybooks
+        onApplied={(id) => {
+          void contractsRef.current?.refresh();
+          if (id) void contractsRef.current?.open(id);
+          showToast('success', 'Contract created from playbook');
+        }}
+      />
 
-        {/* Clause Categories */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          {/* Data Protection Clauses */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 hover:border-neon-cyan/30 transition-all">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-neon-cyan/10 rounded-lg">
-                <Shield className="w-5 h-5 text-neon-cyan" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-white">Data Protection</h3>
-                <span className="text-[10px] text-gray-500">12 clauses available</span>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">GDPR</span>
-            </div>
-            <div className="space-y-2">
-              {['Data Processing Agreement', 'Sub-Processor Notification', 'Data Breach Response'].map((clause) => (
-                <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
-                  <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-neon-cyan hover:text-neon-cyan/80 flex items-center gap-1">
-                    <Copy className="w-3 h-3" />
-                    Add
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Obligation tracking — renewal / expiry / payment tasks */}
+      <ObligationTracker contracts={contractList} />
 
-          {/* Intellectual Property Clauses */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 hover:border-neon-purple/30 transition-all">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-neon-purple/10 rounded-lg">
-                <Scale className="w-5 h-5 text-neon-purple" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-white">Intellectual Property</h3>
-                <span className="text-[10px] text-gray-500">8 clauses available</span>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">DMCA</span>
-            </div>
-            <div className="space-y-2">
-              {['IP Assignment', 'License Grant', 'Non-Compete Restriction'].map((clause) => (
-                <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
-                  <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-neon-purple hover:text-neon-purple/80 flex items-center gap-1">
-                    <Copy className="w-3 h-3" />
-                    Add
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Liability Clauses */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 hover:border-neon-green/30 transition-all">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-neon-green/10 rounded-lg">
-                <Users className="w-5 h-5 text-neon-green" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-white">Liability & Indemnity</h3>
-                <span className="text-[10px] text-gray-500">6 clauses available</span>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">Standard</span>
-            </div>
-            <div className="space-y-2">
-              {['Limitation of Liability', 'Indemnification', 'Force Majeure'].map((clause) => (
-                <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
-                  <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-neon-green hover:text-neon-green/80 flex items-center gap-1">
-                    <Copy className="w-3 h-3" />
-                    Add
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Termination Clauses */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 hover:border-yellow-500/30 transition-all">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-yellow-500/10 rounded-lg">
-                <Clock className="w-5 h-5 text-yellow-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-white">Termination & Renewal</h3>
-                <span className="text-[10px] text-gray-500">5 clauses available</span>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-500">Standard</span>
-            </div>
-            <div className="space-y-2">
-              {['Termination for Cause', 'Auto-Renewal Terms', 'Survival Provisions'].map((clause) => (
-                <div key={clause} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
-                  <span className="text-xs text-gray-300">{clause}</span>
-                  <button onClick={() => { navigator.clipboard?.writeText(clause); showToast('success', `Copied "${clause}" — paste it into a contract in the workbench above`); }} className="text-[10px] text-yellow-500 hover:text-yellow-500/80 flex items-center gap-1">
-                    <Copy className="w-3 h-3" />
-                    Add
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Document Category Color Legend */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <span className="text-xs text-gray-500">Document categories:</span>
-          {[
-            { label: 'Data Protection', color: 'text-neon-cyan', dot: 'bg-neon-cyan' },
-            { label: 'Intellectual Property', color: 'text-neon-purple', dot: 'bg-neon-purple' },
-            { label: 'Liability', color: 'text-neon-green', dot: 'bg-neon-green' },
-            { label: 'Termination', color: 'text-yellow-400', dot: 'bg-yellow-400' },
-          ].map(cat => (
-            <span key={cat.label} className="flex items-center gap-1 text-xs text-gray-400">
-              <span className={`w-2 h-2 rounded-full ${cat.dot}`} />
-              {cat.label}
-            </span>
-          ))}
-        </div>
-
-        {/* Contract Assembly Status */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-gray-400 uppercase tracking-wider">Contract Assembly</span>
-            <span className="text-xs text-gray-500">0 clauses selected</span>
-          </div>
-          <div className="flex items-center justify-center py-6 border border-dashed border-white/10 rounded-lg">
-            <p className="text-sm text-gray-500">Add clauses from the library above to start building your contract</p>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button onClick={() => { api.post('/api/lens/run', { domain: 'law', action: 'preview-contract' }).then(() => showToast('success', 'Contract preview generated')).catch(() => showToast('error', 'Add clauses before previewing')); }} className="flex-1 py-2 rounded-lg text-xs bg-neon-purple/10 border border-neon-purple/30 text-neon-purple hover:bg-neon-purple/20 transition-colors disabled:opacity-50" disabled>
-              Preview Contract
-            </button>
-            <button onClick={() => { api.post('/api/lens/run', { domain: 'law', action: 'generate-document' }).then(() => showToast('success', 'Document generation started')).catch(() => showToast('error', 'Add clauses before generating')); }} className="flex-1 py-2 rounded-lg text-xs bg-neon-green/10 border border-neon-green/30 text-neon-green hover:bg-neon-green/20 transition-colors disabled:opacity-50" disabled>
-              Generate Document
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Full-text contract repository search */}
+      <ContractRepositorySearch onOpen={(id) => { void contractsRef.current?.open(id); }} />
 
       {/* Backend Action Panel */}
       <div className="panel p-4 space-y-3">

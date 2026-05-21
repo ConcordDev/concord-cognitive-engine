@@ -30,6 +30,7 @@ export function OrdersPanel() {
   const [loading, setLoading] = useState(true);
   const [shipForm, setShipForm] = useState<{ id: string; trackingNumber: string; carrier: string } | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filter]);
 
   async function refresh() {

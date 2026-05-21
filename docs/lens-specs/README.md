@@ -12,26 +12,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~80%**
-- Total buildable features in the backlog (sum of all "Missing" items): **564**
+- Average feature parity: **~81%**
+- Total buildable features in the backlog (sum of all "Missing" items): **521**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 157 |
+| 80–100% (near-complete) | 163 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 19 |
+| 40–59% (partial) | 13 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| history | TimelineJS / Wikipedia | ~55% | 7 |
-| import | Flatfile / Airbyte (data import) | ~55% | 7 |
-| law | Ironclad (contract lifecycle) | ~55% | 7 |
-| linguistics | Vocabulary.com / Datamuse | ~55% | 7 |
-| logistics | Project44 / FourKites (supply-chain visibility) | ~55% | 7 |
-| marketplace | Etsy (seller side) | ~55% | 8 |
 | music | Spotify (2026) | ~55% | 17 |
 | news | Apple News / Ground News | ~55% | 7 |
 | podcast | Apple Podcasts / Spotify | ~55% | 7 |
@@ -261,3 +255,9 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | fork | GitHub (fork network / insights) | ~95% | 0 |
 | gallery | Google Arts & Culture / Artsy | ~95% | 0 |
 | geology | USGS apps / Rockd | ~95% | 0 |
+| history | TimelineJS / Wikipedia | ~95% | 0 |
+| import | Flatfile / Airbyte (data import) | ~95% | 0 |
+| law | Ironclad (contract lifecycle) | ~95% | 0 |
+| linguistics | Vocabulary.com / Datamuse | ~95% | 0 |
+| logistics | Project44 / FourKites (supply-chain visibility) | ~95% | 0 |
+| marketplace | Etsy (seller side) | ~95% | 0 |

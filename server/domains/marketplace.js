@@ -676,6 +676,633 @@ export default function registerMarketplaceActions(registerLensAction) {
     };
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  //  Etsy seller-surface parity backlog — storefront, reviews,
+  //  messaging, variations, shipping profiles, coupons, inventory
+  //  alerts, cart/checkout. All persisted in marketplaceLens Maps.
+  // ═══════════════════════════════════════════════════════════════
+
+  function extendStore(s) {
+    if (!s.reviews) s.reviews = new Map();        // sellerId -> Array<Review>
+    if (!s.threads) s.threads = new Map();        // sellerId -> Array<Thread>
+    if (!s.variations) s.variations = new Map();  // sellerId -> Map<listingId, Array<Variation>>
+    if (!s.shippingProfiles) s.shippingProfiles = new Map(); // sellerId -> Array<ShippingProfile>
+    if (!s.coupons) s.coupons = new Map();        // sellerId -> Array<Coupon>
+    if (!s.carts) s.carts = new Map();            // buyerId -> Map<sellerId, Array<CartLine>>
+    if (!s.checkouts) s.checkouts = new Map();    // buyerId -> Array<Checkout>
+    return s;
+  }
+  function ensureSeq2(s, userId) {
+    const seq = ensureSeqS(s, userId);
+    for (const k of ['rev','thr','var','ship','cpn','chk']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+
+  // ── Buyer-facing storefront ───────────────────────────────────
+
+  registerLensAction("marketplace", "storefront-browse", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const q = String(params.search || "").toLowerCase().trim();
+    const kind = String(params.kind || "").trim();
+    const sellerId = String(params.sellerId || "").trim();
+    const sort = ['newest','price_asc','price_desc','popular'].includes(params.sort) ? params.sort : 'newest';
+    const minPrice = Number.isFinite(Number(params.minPrice)) ? Number(params.minPrice) : null;
+    const maxPrice = Number.isFinite(Number(params.maxPrice)) ? Number(params.maxPrice) : null;
+    // Aggregate every seller's published listings into a public catalog.
+    const out = [];
+    for (const [sid, listings] of s.listings) {
+      if (sellerId && sid !== sellerId) continue;
+      const shop = s.shops.get(sid);
+      const revList = arrayB(s.reviews, sid);
+      for (const l of listings) {
+        if (l.status !== 'published') continue;
+        if (kind && l.kind !== kind) continue;
+        if (q && !`${l.title} ${l.description} ${(l.tags || []).join(' ')}`.toLowerCase().includes(q)) continue;
+        if (minPrice !== null && l.priceUsd < minPrice) continue;
+        if (maxPrice !== null && l.priceUsd > maxPrice) continue;
+        const lReviews = revList.filter(r => r.targetType === 'listing' && r.targetId === l.id);
+        const avgRating = lReviews.length ? Math.round((lReviews.reduce((sum, r) => sum + r.rating, 0) / lReviews.length) * 10) / 10 : null;
+        const orderCount = arrayB(s.orders, sid).filter(o => o.listingId === l.id && o.status !== 'refunded').length;
+        out.push({
+          listingId: l.id, sellerId: sid, shopName: shop?.name || sid,
+          number: l.number, title: l.title, kind: l.kind,
+          priceUsd: l.priceUsd, currency: l.currency,
+          description: l.description, tags: l.tags || [], images: l.images || [],
+          stockQty: l.stockQty, shippingCostUsd: l.shippingCostUsd,
+          avgRating, reviewCount: lReviews.length, salesCount: orderCount,
+          publishedAt: l.publishedAt,
+        });
+      }
+    }
+    out.sort((a, b) => {
+      if (sort === 'price_asc') return a.priceUsd - b.priceUsd;
+      if (sort === 'price_desc') return b.priceUsd - a.priceUsd;
+      if (sort === 'popular') return b.salesCount - a.salesCount;
+      return (b.publishedAt || '').localeCompare(a.publishedAt || '');
+    });
+    const kinds = Array.from(new Set(out.map(l => l.kind))).sort();
+    return { ok: true, result: { listings: out, total: out.length, categories: kinds } };
+  });
+
+  registerLensAction("marketplace", "storefront-shop", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const sellerId = String(params.sellerId || "").trim();
+    if (!sellerId) return { ok: false, error: "sellerId required" };
+    const shop = s.shops.get(sellerId);
+    if (!shop) return { ok: false, error: "shop not found" };
+    const listings = arrayB(s.listings, sellerId).filter(l => l.status === 'published');
+    const revList = arrayB(s.reviews, sellerId);
+    const shopReviews = revList.filter(r => r.targetType === 'shop');
+    const avgShopRating = shopReviews.length ? Math.round((shopReviews.reduce((sum, r) => sum + r.rating, 0) / shopReviews.length) * 10) / 10 : null;
+    return {
+      ok: true,
+      result: {
+        shop: { id: shop.id, name: shop.name, slug: shop.slug, tagline: shop.tagline, bio: shop.bio, bannerUrl: shop.bannerUrl, avatarUrl: shop.avatarUrl, socials: shop.socials, policies: shop.policies, currency: shop.currency, country: shop.country },
+        listingCount: listings.length,
+        avgShopRating, shopReviewCount: shopReviews.length,
+        listings: listings.map(l => ({ listingId: l.id, number: l.number, title: l.title, kind: l.kind, priceUsd: l.priceUsd, images: l.images || [], stockQty: l.stockQty })),
+      },
+    };
+  });
+
+  // ── Reviews & ratings ─────────────────────────────────────────
+
+  registerLensAction("marketplace", "reviews-list", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const sellerId = String(params.sellerId || aidS(ctx));
+    let list = arrayB(s.reviews, sellerId).slice();
+    if (params.targetType === 'listing' || params.targetType === 'shop') list = list.filter(r => r.targetType === params.targetType);
+    if (params.targetId) list = list.filter(r => r.targetId === String(params.targetId));
+    list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const rated = list.filter(r => r.rating > 0);
+    const avg = rated.length ? Math.round((rated.reduce((sum, r) => sum + r.rating, 0) / rated.length) * 10) / 10 : null;
+    const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    rated.forEach(r => { const k = Math.round(r.rating); if (dist[k] !== undefined) dist[k]++; });
+    return { ok: true, result: { reviews: list, count: list.length, avgRating: avg, distribution: dist } };
+  });
+
+  registerLensAction("marketplace", "reviews-create", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const targetType = ['listing','shop'].includes(params.targetType) ? params.targetType : null;
+    if (!targetType) return { ok: false, error: "targetType must be listing or shop" };
+    const sellerId = String(params.sellerId || "").trim();
+    if (!sellerId) return { ok: false, error: "sellerId required" };
+    const rating = Number(params.rating);
+    if (!(rating >= 1 && rating <= 5)) return { ok: false, error: "rating must be 1-5" };
+    const targetId = String(params.targetId || (targetType === 'shop' ? sellerId : ""));
+    if (targetType === 'listing') {
+      if (!arrayB(s.listings, sellerId).some(l => l.id === targetId)) return { ok: false, error: "listing not found" };
+    }
+    const list = arrayB(s.reviews, sellerId);
+    if (list.some(r => r.reviewerId === userId && r.targetType === targetType && r.targetId === targetId)) {
+      return { ok: false, error: "already reviewed" };
+    }
+    const seq = ensureSeq2(s, userId);
+    const review = {
+      id: uidS("rev"),
+      number: `R-${String(seq.rev).padStart(5, '0')}`,
+      sellerId, targetType, targetId,
+      reviewerId: userId,
+      reviewerName: String(params.reviewerName || ctx?.actor?.displayName || userId).split('@')[0],
+      rating: Math.round(rating),
+      title: String(params.title || "").slice(0, 120),
+      body: String(params.body || "").slice(0, 2000),
+      orderId: String(params.orderId || ""),
+      sellerReply: "",
+      createdAt: isoS(),
+    };
+    seq.rev++;
+    list.push(review);
+    saveStore();
+    return { ok: true, result: { review } };
+  });
+
+  registerLensAction("marketplace", "reviews-reply", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const sellerId = aidS(ctx);
+    const r = arrayB(s.reviews, sellerId).find(x => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "review not found" };
+    r.sellerReply = String(params.reply || "").slice(0, 1000);
+    r.repliedAt = isoS();
+    saveStore();
+    return { ok: true, result: { review: r } };
+  });
+
+  // ── Messaging — buyer↔seller threads ──────────────────────────
+
+  registerLensAction("marketplace", "messages-threads", (ctx, _a, _p = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const list = arrayB(s.threads, aidS(ctx)).slice().sort((a, b) => (b.lastMessageAt || '').localeCompare(a.lastMessageAt || ''));
+    return { ok: true, result: { threads: list.map(t => ({ ...t, messages: undefined, messageCount: t.messages.length, unread: t.messages.some(m => m.from === 'buyer' && !m.read) })) } };
+  });
+
+  registerLensAction("marketplace", "messages-thread-open", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const list = arrayB(s.threads, userId);
+    let thread = list.find(t => t.id === String(params.id || "")) ||
+      (params.orderId ? list.find(t => t.orderId === String(params.orderId)) : null);
+    if (!thread) {
+      // Open a fresh thread, optionally bound to an order.
+      const orderId = String(params.orderId || "");
+      const order = orderId ? arrayB(s.orders, userId).find(o => o.id === orderId) : null;
+      if (orderId && !order) return { ok: false, error: "order not found" };
+      const seq = ensureSeq2(s, userId);
+      thread = {
+        id: uidS("thr"),
+        number: `MSG-${String(seq.thr).padStart(4, '0')}`,
+        sellerId: userId,
+        orderId,
+        subject: String(params.subject || (order ? `Order ${order.number}` : "New conversation")).slice(0, 140),
+        buyerName: String(params.buyerName || order?.buyerName || "Buyer"),
+        messages: [],
+        createdAt: isoS(),
+        lastMessageAt: isoS(),
+      };
+      seq.thr++;
+      list.push(thread);
+      saveStore();
+    } else {
+      thread.messages.forEach(m => { if (m.from === 'buyer') m.read = true; });
+      saveStore();
+    }
+    return { ok: true, result: { thread } };
+  });
+
+  registerLensAction("marketplace", "messages-send", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const thread = arrayB(s.threads, userId).find(t => t.id === String(params.id || ""));
+    if (!thread) return { ok: false, error: "thread not found" };
+    const text = String(params.text || "").trim();
+    if (!text) return { ok: false, error: "text required" };
+    const from = params.from === 'buyer' ? 'buyer' : 'seller';
+    const msg = { id: uidS("m"), from, text: text.slice(0, 4000), at: isoS(), read: from === 'seller' };
+    thread.messages.push(msg);
+    thread.lastMessageAt = msg.at;
+    saveStore();
+    return { ok: true, result: { thread } };
+  });
+
+  // ── Listing variations — size/color/material ──────────────────
+
+  registerLensAction("marketplace", "variations-list", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const listingId = String(params.listingId || "");
+    const map = mapBS(s.variations, userId);
+    return { ok: true, result: { listingId, variations: (map.get(listingId) || []).slice() } };
+  });
+
+  registerLensAction("marketplace", "variations-set", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const listingId = String(params.listingId || "");
+    if (!arrayB(s.listings, userId).some(l => l.id === listingId)) return { ok: false, error: "listing not found" };
+    if (!Array.isArray(params.variations)) return { ok: false, error: "variations array required" };
+    const seq = ensureSeq2(s, userId);
+    const cleaned = params.variations.slice(0, 60).map(v => {
+      const priceUsd = Number(v.priceUsd);
+      return {
+        id: String(v.id || uidS("var")),
+        sku: String(v.sku || `V-${String(seq.var++).padStart(4, '0')}`),
+        optionName: String(v.optionName || "Option").slice(0, 40),
+        optionValue: String(v.optionValue || "").slice(0, 40),
+        priceUsd: Number.isFinite(priceUsd) && priceUsd >= 0 ? priceUsd : 0,
+        stockQty: Number.isFinite(Number(v.stockQty)) ? Number(v.stockQty) : null,
+      };
+    }).filter(v => v.optionValue);
+    mapBS(s.variations, userId).set(listingId, cleaned);
+    saveStore();
+    return { ok: true, result: { listingId, variations: cleaned } };
+  });
+
+  // ── Shipping profiles ─────────────────────────────────────────
+
+  registerLensAction("marketplace", "shipping-profiles-list", (ctx, _a, _p = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    return { ok: true, result: { profiles: arrayB(s.shippingProfiles, aidS(ctx)).slice() } };
+  });
+
+  registerLensAction("marketplace", "shipping-profiles-save", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const list = arrayB(s.shippingProfiles, userId);
+    const zones = (Array.isArray(params.zones) ? params.zones : []).slice(0, 30).map(z => ({
+      region: String(z.region || "Domestic").slice(0, 60),
+      rateUsd: Math.max(0, Number(z.rateUsd) || 0),
+      additionalItemUsd: Math.max(0, Number(z.additionalItemUsd) || 0),
+    }));
+    if (params.id) {
+      const p = list.find(x => x.id === String(params.id));
+      if (!p) return { ok: false, error: "profile not found" };
+      p.name = name;
+      if (Number.isFinite(Number(params.processingDaysMin))) p.processingDaysMin = Math.max(0, Number(params.processingDaysMin));
+      if (Number.isFinite(Number(params.processingDaysMax))) p.processingDaysMax = Math.max(p.processingDaysMin, Number(params.processingDaysMax));
+      if (params.zones) p.zones = zones;
+      if (typeof params.originCountry === 'string') p.originCountry = params.originCountry;
+      saveStore();
+      return { ok: true, result: { profile: p } };
+    }
+    const seq = ensureSeq2(s, userId);
+    const minD = Math.max(0, Number(params.processingDaysMin) || 1);
+    const profile = {
+      id: uidS("ship"),
+      number: `SP-${String(seq.ship).padStart(3, '0')}`,
+      name,
+      originCountry: String(params.originCountry || ""),
+      processingDaysMin: minD,
+      processingDaysMax: Math.max(minD, Number(params.processingDaysMax) || minD + 2),
+      zones,
+      createdAt: isoS(),
+    };
+    seq.ship++;
+    list.push(profile);
+    saveStore();
+    return { ok: true, result: { profile } };
+  });
+
+  registerLensAction("marketplace", "shipping-profiles-delete", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const list = arrayB(s.shippingProfiles, aidS(ctx));
+    const i = list.findIndex(x => x.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "profile not found" };
+    list.splice(i, 1);
+    saveStore();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Coupons — tiered / BOGO / time-boxed sales events ─────────
+
+  const COUPON_KINDS = ['percent', 'fixed', 'free_shipping', 'bogo', 'tiered'];
+
+  registerLensAction("marketplace", "coupons-list", (ctx, _a, _p = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const now = Date.now();
+    const list = arrayB(s.coupons, aidS(ctx)).map(c => ({
+      ...c,
+      live: c.active &&
+        (!c.startsAt || new Date(c.startsAt).getTime() <= now) &&
+        (!c.endsAt || new Date(c.endsAt).getTime() >= now),
+    }));
+    return { ok: true, result: { coupons: list } };
+  });
+
+  registerLensAction("marketplace", "coupons-create", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const code = String(params.code || "").trim().toUpperCase();
+    if (!code) return { ok: false, error: "code required" };
+    const kind = COUPON_KINDS.includes(params.kind) ? params.kind : 'percent';
+    const list = arrayB(s.coupons, userId);
+    if (list.some(c => c.code === code)) return { ok: false, error: "code already exists" };
+    let tiers = [];
+    if (kind === 'tiered') {
+      tiers = (Array.isArray(params.tiers) ? params.tiers : []).slice(0, 8).map(t => ({
+        minSpendUsd: Math.max(0, Number(t.minSpendUsd) || 0),
+        percentOff: Math.max(0, Math.min(100, Number(t.percentOff) || 0)),
+      })).sort((a, b) => a.minSpendUsd - b.minSpendUsd);
+      if (tiers.length === 0) return { ok: false, error: "tiered coupon needs tiers" };
+    }
+    const amount = Number(params.amount);
+    if (kind === 'percent' && !(amount > 0 && amount <= 100)) return { ok: false, error: "percent amount must be 1-100" };
+    if (kind === 'fixed' && !(amount > 0)) return { ok: false, error: "fixed amount must be positive" };
+    const seq = ensureSeq2(s, userId);
+    const coupon = {
+      id: uidS("cpn"),
+      number: `C-${String(seq.cpn).padStart(4, '0')}`,
+      code, kind,
+      amount: kind === 'percent' || kind === 'fixed' ? amount : 0,
+      tiers,
+      buyQty: kind === 'bogo' ? Math.max(1, Number(params.buyQty) || 1) : 0,
+      getQty: kind === 'bogo' ? Math.max(1, Number(params.getQty) || 1) : 0,
+      minOrderUsd: Math.max(0, Number(params.minOrderUsd) || 0),
+      maxRedemptions: Number.isFinite(Number(params.maxRedemptions)) ? Math.max(0, Number(params.maxRedemptions)) : 0,
+      startsAt: String(params.startsAt || ""),
+      endsAt: String(params.endsAt || ""),
+      active: true,
+      redemptions: 0,
+      createdAt: isoS(),
+    };
+    seq.cpn++;
+    list.push(coupon);
+    saveStore();
+    return { ok: true, result: { coupon } };
+  });
+
+  registerLensAction("marketplace", "coupons-toggle", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const c = arrayB(s.coupons, aidS(ctx)).find(x => x.id === String(params.id || ""));
+    if (!c) return { ok: false, error: "coupon not found" };
+    c.active = !c.active;
+    saveStore();
+    return { ok: true, result: { coupon: c } };
+  });
+
+  registerLensAction("marketplace", "coupons-delete", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const list = arrayB(s.coupons, aidS(ctx));
+    const i = list.findIndex(x => x.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "coupon not found" };
+    list.splice(i, 1);
+    saveStore();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // Apply a coupon against a subtotal — pure calculation, no mutation.
+  registerLensAction("marketplace", "coupons-apply", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const sellerId = String(params.sellerId || aidS(ctx));
+    const code = String(params.code || "").trim().toUpperCase();
+    const subtotal = Math.max(0, Number(params.subtotalUsd) || 0);
+    const qty = Math.max(1, Number(params.qty) || 1);
+    const unitPrice = Number(params.unitPriceUsd) || (qty > 0 ? subtotal / qty : 0);
+    const c = arrayB(s.coupons, sellerId).find(x => x.code === code);
+    if (!c) return { ok: false, error: "coupon not found" };
+    const now = Date.now();
+    if (!c.active) return { ok: false, error: "coupon inactive" };
+    if (c.startsAt && new Date(c.startsAt).getTime() > now) return { ok: false, error: "coupon not started" };
+    if (c.endsAt && new Date(c.endsAt).getTime() < now) return { ok: false, error: "coupon expired" };
+    if (c.maxRedemptions > 0 && c.redemptions >= c.maxRedemptions) return { ok: false, error: "coupon fully redeemed" };
+    if (subtotal < c.minOrderUsd) return { ok: false, error: `minimum order $${c.minOrderUsd}` };
+    let discount = 0;
+    if (c.kind === 'percent') discount = subtotal * (c.amount / 100);
+    else if (c.kind === 'fixed') discount = Math.min(subtotal, c.amount);
+    else if (c.kind === 'free_shipping') discount = Math.max(0, Number(params.shippingUsd) || 0);
+    else if (c.kind === 'bogo') {
+      const sets = Math.floor(qty / (c.buyQty + c.getQty));
+      discount = Math.min(subtotal, sets * c.getQty * unitPrice);
+    } else if (c.kind === 'tiered') {
+      let pct = 0;
+      for (const t of c.tiers) if (subtotal >= t.minSpendUsd) pct = t.percentOff;
+      discount = subtotal * (pct / 100);
+    }
+    discount = Math.round(Math.min(subtotal, discount) * 100) / 100;
+    return {
+      ok: true,
+      result: {
+        code: c.code, kind: c.kind,
+        discountUsd: discount,
+        subtotalUsd: Math.round(subtotal * 100) / 100,
+        totalAfterDiscountUsd: Math.round((subtotal - discount) * 100) / 100,
+      },
+    };
+  });
+
+  // ── Inventory alerts ──────────────────────────────────────────
+
+  registerLensAction("marketplace", "inventory-alerts", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const userId = aidS(ctx);
+    const threshold = Number.isFinite(Number(params.lowStockThreshold)) ? Math.max(0, Number(params.lowStockThreshold)) : 5;
+    const variationMap = mapBS(s.variations, userId);
+    const out = [];
+    for (const l of arrayB(s.listings, userId)) {
+      if (l.status === 'archived') continue;
+      if (l.stockQty !== null) {
+        if (l.stockQty <= 0) out.push({ listingId: l.id, title: l.title, level: 'out_of_stock', stockQty: 0, scope: 'listing' });
+        else if (l.stockQty <= threshold) out.push({ listingId: l.id, title: l.title, level: 'low_stock', stockQty: l.stockQty, scope: 'listing' });
+      }
+      for (const v of (variationMap.get(l.id) || [])) {
+        if (v.stockQty === null) continue;
+        if (v.stockQty <= 0) out.push({ listingId: l.id, title: `${l.title} — ${v.optionValue}`, level: 'out_of_stock', stockQty: 0, scope: 'variation', sku: v.sku });
+        else if (v.stockQty <= threshold) out.push({ listingId: l.id, title: `${l.title} — ${v.optionValue}`, level: 'low_stock', stockQty: v.stockQty, scope: 'variation', sku: v.sku });
+      }
+    }
+    const outOfStock = out.filter(a => a.level === 'out_of_stock').length;
+    const lowStock = out.filter(a => a.level === 'low_stock').length;
+    return { ok: true, result: { threshold, alerts: out, outOfStock, lowStock, total: out.length } };
+  });
+
+  // ── Cart & checkout (buyer side) ──────────────────────────────
+
+  registerLensAction("marketplace", "cart-get", (ctx, _a, _p = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const buyerId = aidS(ctx);
+    const byShop = mapBS(s.carts, buyerId);
+    const shops = [];
+    let itemTotal = 0;
+    for (const [sellerId, lines] of byShop) {
+      const shop = s.shops.get(sellerId);
+      const subtotal = lines.reduce((sum, ln) => sum + ln.unitPriceUsd * ln.qty, 0);
+      const shipping = lines.reduce((sum, ln) => sum + ln.shippingCostUsd * ln.qty, 0);
+      itemTotal += subtotal + shipping;
+      shops.push({ sellerId, shopName: shop?.name || sellerId, lines: lines.slice(), subtotalUsd: Math.round(subtotal * 100) / 100, shippingUsd: Math.round(shipping * 100) / 100 });
+    }
+    const count = shops.reduce((n, sh) => n + sh.lines.reduce((q, ln) => q + ln.qty, 0), 0);
+    return { ok: true, result: { shops, itemCount: count, grandTotalUsd: Math.round(itemTotal * 100) / 100 } };
+  });
+
+  registerLensAction("marketplace", "cart-add", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const buyerId = aidS(ctx);
+    const sellerId = String(params.sellerId || "").trim();
+    const listingId = String(params.listingId || "").trim();
+    if (!sellerId || !listingId) return { ok: false, error: "sellerId + listingId required" };
+    const listing = arrayB(s.listings, sellerId).find(l => l.id === listingId);
+    if (!listing || listing.status !== 'published') return { ok: false, error: "listing not available" };
+    const qty = Math.max(1, Number(params.qty) || 1);
+    const variationId = String(params.variationId || "");
+    let unitPrice = listing.priceUsd;
+    let variationLabel = "";
+    if (variationId) {
+      const v = (mapBS(s.variations, sellerId).get(listingId) || []).find(x => x.id === variationId);
+      if (!v) return { ok: false, error: "variation not found" };
+      unitPrice = v.priceUsd;
+      variationLabel = `${v.optionName}: ${v.optionValue}`;
+    }
+    const byShop = mapBS(s.carts, buyerId);
+    const lines = byShop.has(sellerId) ? byShop.get(sellerId) : [];
+    if (!byShop.has(sellerId)) byShop.set(sellerId, lines);
+    const existing = lines.find(ln => ln.listingId === listingId && ln.variationId === variationId);
+    if (existing) existing.qty += qty;
+    else lines.push({
+      id: uidS("ln"), listingId, listingTitle: listing.title, listingKind: listing.kind,
+      variationId, variationLabel,
+      qty, unitPriceUsd: unitPrice, shippingCostUsd: listing.shippingCostUsd || 0,
+      image: (listing.images || [])[0] || "",
+    });
+    saveStore();
+    return { ok: true, result: { added: true } };
+  });
+
+  registerLensAction("marketplace", "cart-update", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const byShop = mapBS(s.carts, aidS(ctx));
+    const lineId = String(params.lineId || "");
+    for (const [sellerId, lines] of byShop) {
+      const i = lines.findIndex(ln => ln.id === lineId);
+      if (i >= 0) {
+        const qty = Number(params.qty);
+        if (qty <= 0 || params.remove) lines.splice(i, 1);
+        else lines[i].qty = Math.max(1, Math.round(qty));
+        if (lines.length === 0) byShop.delete(sellerId);
+        saveStore();
+        return { ok: true, result: { updated: true } };
+      }
+    }
+    return { ok: false, error: "cart line not found" };
+  });
+
+  registerLensAction("marketplace", "checkout-create", (ctx, _a, params = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const buyerId = aidS(ctx);
+    const byShop = mapBS(s.carts, buyerId);
+    if (byShop.size === 0) return { ok: false, error: "cart is empty" };
+    const buyerName = String(params.buyerName || ctx?.actor?.displayName || buyerId).split('@')[0];
+    const buyerEmail = String(params.buyerEmail || "");
+    const buyerAddress = String(params.buyerAddress || "");
+    const couponBySeller = (params.coupons && typeof params.coupons === 'object') ? params.coupons : {};
+    const placedOrders = [];
+    let grandTotal = 0;
+    for (const [sellerId, lines] of byShop) {
+      const seq = ensureSeq2(s, sellerId);
+      for (const ln of lines) {
+        const listing = arrayB(s.listings, sellerId).find(l => l.id === ln.listingId);
+        if (!listing || listing.status !== 'published') continue;
+        const subtotal = ln.unitPriceUsd * ln.qty;
+        const shipping = ln.shippingCostUsd * ln.qty;
+        let discount = 0;
+        const code = String(couponBySeller[sellerId] || "").trim().toUpperCase();
+        if (code) {
+          const c = arrayB(s.coupons, sellerId).find(x => x.code === code && x.active);
+          if (c) {
+            const now = Date.now();
+            const live = (!c.startsAt || new Date(c.startsAt).getTime() <= now) && (!c.endsAt || new Date(c.endsAt).getTime() >= now);
+            const redeemable = c.maxRedemptions === 0 || c.redemptions < c.maxRedemptions;
+            if (live && redeemable && subtotal >= c.minOrderUsd) {
+              if (c.kind === 'percent') discount = subtotal * (c.amount / 100);
+              else if (c.kind === 'fixed') discount = Math.min(subtotal, c.amount);
+              else if (c.kind === 'free_shipping') discount = shipping;
+              else if (c.kind === 'bogo') discount = Math.min(subtotal, Math.floor(ln.qty / (c.buyQty + c.getQty)) * c.getQty * ln.unitPriceUsd);
+              else if (c.kind === 'tiered') { let pct = 0; for (const t of c.tiers) if (subtotal >= t.minSpendUsd) pct = t.percentOff; discount = subtotal * (pct / 100); }
+              discount = Math.min(subtotal, Math.round(discount * 100) / 100);
+              c.redemptions++;
+            }
+          }
+        }
+        const total = Math.max(0, subtotal + shipping - discount);
+        const order = {
+          id: uidS("ord"),
+          number: `O-${String(seq.ord).padStart(5, '0')}`,
+          sellerId,
+          listingId: ln.listingId, listingTitle: ln.listingTitle, listingKind: ln.listingKind,
+          variationId: ln.variationId, variationLabel: ln.variationLabel,
+          qty: ln.qty,
+          unitPriceUsd: ln.unitPriceUsd,
+          subtotalUsd: Math.round(subtotal * 100) / 100,
+          shippingUsd: Math.round(shipping * 100) / 100,
+          discountUsd: Math.round(discount * 100) / 100,
+          totalUsd: Math.round(total * 100) / 100,
+          buyerId, buyerName, buyerEmail, buyerAddress,
+          status: 'paid',
+          placedAt: isoS(),
+          shippedAt: null, deliveredAt: null, trackingNumber: '',
+          notes: String(params.notes || ""),
+        };
+        seq.ord++;
+        arrayB(s.orders, sellerId).push(order);
+        // Decrement variation or listing stock.
+        if (ln.variationId) {
+          const v = (mapBS(s.variations, sellerId).get(ln.listingId) || []).find(x => x.id === ln.variationId);
+          if (v && v.stockQty !== null) v.stockQty = Math.max(0, v.stockQty - ln.qty);
+        } else if (listing.stockQty !== null) {
+          listing.stockQty = Math.max(0, listing.stockQty - ln.qty);
+        }
+        placedOrders.push({ orderId: order.id, number: order.number, sellerId, totalUsd: order.totalUsd });
+        grandTotal += order.totalUsd;
+      }
+    }
+    if (placedOrders.length === 0) return { ok: false, error: "no purchasable items in cart" };
+    const seqB = ensureSeq2(s, buyerId);
+    const checkout = {
+      id: uidS("chk"),
+      number: `CO-${String(seqB.chk).padStart(5, '0')}`,
+      buyerId,
+      orders: placedOrders,
+      grandTotalUsd: Math.round(grandTotal * 100) / 100,
+      placedAt: isoS(),
+    };
+    seqB.chk++;
+    arrayB(s.checkouts, buyerId).push(checkout);
+    byShop.clear();
+    saveStore();
+    return { ok: true, result: { checkout } };
+  });
+
+  registerLensAction("marketplace", "checkout-history", (ctx, _a, _p = {}) => {
+    const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    extendStore(s);
+    const list = arrayB(s.checkouts, aidS(ctx)).slice().sort((a, b) => (b.placedAt || '').localeCompare(a.placedAt || ''));
+    return { ok: true, result: { checkouts: list } };
+  });
+
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("marketplace", "dashboard-summary", (ctx, _a, _p = {}) => {

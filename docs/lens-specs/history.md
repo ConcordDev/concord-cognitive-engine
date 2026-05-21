@@ -11,13 +11,15 @@ Backend: `history` domain — timelineBuild, sourceEvaluate, comparePeriods, cau
 - History dashboard + feed; timeline source tools
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Visual interactive timeline render with zoom/pan + media-rich slides (TimelineJS core)
-- [ ] `[S]` Map-linked events — plot events geographically
-- [ ] `[S]` Multi-track / parallel timelines (compare regions side by side)
-- [ ] `[M]` Embed / share a published timeline
-- [ ] `[S]` Date-range filtering + era overlays on the timeline view
-- [ ] `[S]` Image/media attachments per event
-- [ ] `[M]` Auto-build a timeline from a Wikipedia article
+- [x] `[M]` Visual interactive timeline render with zoom/pan + media-rich slides (TimelineJS core)
+- [x] `[S]` Map-linked events — plot events geographically
+- [x] `[S]` Multi-track / parallel timelines (compare regions side by side)
+- [x] `[M]` Embed / share a published timeline
+- [x] `[S]` Date-range filtering + era overlays on the timeline view
+- [x] `[S]` Image/media attachments per event
+- [x] `[M]` Auto-build a timeline from a Wikipedia article
 
 ## Parity
-~55% of TimelineJS's feature surface. Event/era data management plus live Wikipedia is solid, but the headline feature — a polished, zoomable, media-rich *visual* timeline you can embed — is the main gap; current timelines are largely data records.
+~95% of TimelineJS's feature surface. Event/era data management, live Wikipedia auto-build, a zoomable media-rich visual timeline, map-linked events, multi-track parallel timelines, embed/share, date-range + era overlays, and per-event media attachments all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

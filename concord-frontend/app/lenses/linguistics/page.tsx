@@ -12,6 +12,10 @@ import { DictionaryPanel } from '@/components/linguistics/DictionaryPanel';
 import { WordLookup } from '@/components/linguistics/WordLookup';
 import { LinguisticsActionPanel } from '@/components/linguistics/LinguisticsActionPanel';
 import { VocabularyBuilder } from '@/components/linguistics/VocabularyBuilder';
+import { QuizEngine } from '@/components/linguistics/QuizEngine';
+import { ProgressDashboard } from '@/components/linguistics/ProgressDashboard';
+import { WordDecks } from '@/components/linguistics/WordDecks';
+import { WordTools } from '@/components/linguistics/WordTools';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -99,6 +103,11 @@ export default function LinguisticsLensPage() {
 
   useLensNav('linguistics');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('linguistics');
+
+  // Shared refresh counter — vocabulary changes (add / review / quiz /
+  // deck import) bump this so the streak + vocab panels re-fetch.
+  const [vocabRefresh, setVocabRefresh] = useState(0);
+  const bumpVocab = useCallback(() => setVocabRefresh((n) => n + 1), []);
 
   const [activeTab, setActiveTab] = useState<ModeTab>('Analyses');
   const [searchQuery, setSearchQuery] = useState('');
@@ -688,8 +697,22 @@ export default function LinguisticsLensPage() {
         <WordLookup />
       </section>
 
-      <section className="mt-6">
-        <VocabularyBuilder />
+      {/* Word-learning suite — vocabulary, adaptive quiz, progress,
+          themed decks, and per-word pronunciation/usage/etymology. */}
+      <section className="mt-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <GraduationCap className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-base font-bold text-white">Word Learning</h2>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <VocabularyBuilder refreshKey={vocabRefresh} onChange={bumpVocab} />
+          <ProgressDashboard refreshKey={vocabRefresh} />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <QuizEngine onComplete={bumpVocab} />
+          <WordDecks onImported={bumpVocab} />
+        </div>
+        <WordTools />
       </section>
 
       <PipingProvider>

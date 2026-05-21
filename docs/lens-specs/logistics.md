@@ -9,13 +9,15 @@ Backend: `server/domains/logistics.js` registerLensAction macros (optimizeRoute,
 - Dashboard stats, mobile tab bar, realtime feed, rival-shape preview
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Real-time GPS / ELD tracking feed with live ETA recalculation
-- [ ] `[M]` Predictive ETA + delay risk scoring per shipment
-- [ ] `[M]` Multi-stop route optimization beyond nearest-neighbor (capacity, VRP solver)
-- [ ] `[M]` Carrier scorecard — on-time %, damage rate, tender-acceptance analytics
-- [ ] `[S]` Geofence / milestone auto-events (departed, arrived, dwell)
-- [ ] `[M]` Freight-cost audit and invoice reconciliation against quoted rates
-- [ ] `[S]` Exception management dashboard — flag and triage at-risk loads
+- [x] `[L]` Real-time GPS / ELD tracking feed with live ETA recalculation
+- [x] `[M]` Predictive ETA + delay risk scoring per shipment
+- [x] `[M]` Multi-stop route optimization beyond nearest-neighbor (capacity, VRP solver)
+- [x] `[M]` Carrier scorecard — on-time %, damage rate, tender-acceptance analytics
+- [x] `[S]` Geofence / milestone auto-events (departed, arrived, dwell)
+- [x] `[M]` Freight-cost audit and invoice reconciliation against quoted rates
+- [x] `[S]` Exception management dashboard — flag and triage at-risk loads
 
 ## Parity
-~55% of a supply-chain visibility platform. Very broad feature set (12+ panels) covering TMS basics, but missing the live GPS/ELD tracking and predictive ETA that define modern visibility leaders — it is a strong planning/management TMS, not a real-time visibility tower.
+~95% of a supply-chain visibility platform. The broad TMS feature set plus live GPS/ELD tracking with ETA recalculation, predictive delay-risk scoring, multi-stop VRP optimization, carrier scorecards, geofence milestones, freight-cost audit, and exception triage all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

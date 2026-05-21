@@ -9,21 +9,31 @@
  */
 
 import React from 'react';
-import { Home, Tag, Package, BarChart3, Megaphone, Wallet, Wrench, Search, Sparkles, Store } from 'lucide-react';
+import { Home, Tag, Package, BarChart3, Megaphone, Wallet, Wrench, Search, Sparkles, Store, Star, MessageSquare, Layers, Truck, Ticket, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ShopNav = 'home' | 'listings' | 'orders' | 'stats' | 'visibility' | 'marketing' | 'insights' | 'tools' | 'shop';
+export type ShopNav =
+  | 'home' | 'storefront' | 'listings' | 'variations' | 'orders' | 'messages'
+  | 'reviews' | 'stats' | 'visibility' | 'marketing' | 'coupons' | 'insights'
+  | 'shipping' | 'inventory' | 'tools' | 'shop';
 
 interface NavItem { id: ShopNav; label: string; icon: typeof Home; badge?: number | string }
 
 const NAV: NavItem[] = [
   { id: 'home',       label: 'Home',          icon: Home },
+  { id: 'storefront', label: 'Storefront',    icon: Store },
   { id: 'listings',   label: 'Listings',      icon: Tag },
+  { id: 'variations', label: 'Variations',    icon: Layers },
   { id: 'orders',     label: 'Orders',        icon: Package },
+  { id: 'messages',   label: 'Messages',      icon: MessageSquare },
+  { id: 'reviews',    label: 'Reviews',       icon: Star },
   { id: 'stats',      label: 'Stats',         icon: BarChart3 },
   { id: 'visibility', label: 'Search visibility', icon: Search },
   { id: 'marketing',  label: 'Marketing',     icon: Megaphone },
+  { id: 'coupons',    label: 'Coupons',       icon: Ticket },
   { id: 'insights',   label: 'Insights',      icon: Sparkles },
+  { id: 'shipping',   label: 'Shipping',      icon: Truck },
+  { id: 'inventory',  label: 'Inventory',     icon: AlertTriangle },
   { id: 'tools',      label: 'Tools',         icon: Wrench },
   { id: 'shop',       label: 'Shop settings', icon: Store },
 ];

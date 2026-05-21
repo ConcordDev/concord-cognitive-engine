@@ -12,13 +12,15 @@ Backend: `server/domains/linguistics.js` — 13 macros: textAnalysis, morphology
 - Linguistics artifacts — analyses, lexicon, grammars, corpora, translations; IPA, glosses, morphemes, syntax tree fields
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Adaptive quiz engine — multiple-choice/typing questions that adapt to mastery (Vocabulary.com core)
-- [ ] `[S]` Auto-fetch definition on vocab-add — chain dictionary-lookup so the user doesn't paste
-- [ ] `[M]` Pronunciation audio — TTS playback of words and IPA
-- [ ] `[M]` Word-in-context examples — pull real usage sentences from a corpus API
-- [ ] `[S]` Progress streaks & gamification — daily goals, points, mastery badges
-- [ ] `[M]` Curated word lists / decks — themed packs (SAT, GRE, domain vocab) importable
-- [ ] `[S]` Etymology / word-history view
+- [x] `[M]` Adaptive quiz engine — multiple-choice/typing questions that adapt to mastery (Vocabulary.com core)
+- [x] `[S]` Auto-fetch definition on vocab-add — chain dictionary-lookup so the user doesn't paste
+- [x] `[M]` Pronunciation audio — TTS playback of words and IPA
+- [x] `[M]` Word-in-context examples — pull real usage sentences from a corpus API
+- [x] `[S]` Progress streaks & gamification — daily goals, points, mastery badges
+- [x] `[M]` Curated word lists / decks — themed packs (SAT, GRE, domain vocab) importable
+- [x] `[S]` Etymology / word-history view
 
 ## Parity
-~55% of the Vocabulary.com+Datamuse surface. Strong analysis macros, live dictionary/Datamuse, and a real Leitner spaced-review loop, but missing the adaptive quiz engine, audio pronunciation, and contextual-example richness that make word-learning sticky.
+~95% of the Vocabulary.com+Datamuse surface. Analysis macros, live dictionary/Datamuse, a Leitner spaced-review loop, an adaptive quiz engine, audio pronunciation, contextual examples, etymology, themed word decks, and a progress dashboard all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

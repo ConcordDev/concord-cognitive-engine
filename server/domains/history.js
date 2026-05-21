@@ -251,6 +251,10 @@ export default function registerHistoryActions(registerLensAction) {
     return hsList(s, hsActor(ctx)).find((t) => t.id === id);
   }
 
+  const hsLat = (v) => { const n = Number(v); return Number.isFinite(n) && n >= -90 && n <= 90 ? n : null; };
+  const hsLng = (v) => { const n = Number(v); return Number.isFinite(n) && n >= -180 && n <= 180 ? n : null; };
+  const hsTrack = (v) => hsClean(v, 60) || "main";
+
   registerLensAction("history", "event-add", (ctx, _a, params = {}) => {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const t = findTimeline(s, ctx, params.timelineId);
@@ -266,6 +270,11 @@ export default function registerHistoryActions(registerLensAction) {
       dateLabel: hsClean(params.dateLabel, 60) || (year < 0 ? `${Math.abs(year)} BCE` : String(year)),
       category: hsClean(params.category, 60) || "general",
       description: hsClean(params.description, 2000),
+      track: hsTrack(params.track),
+      lat: hsLat(params.lat),
+      lng: hsLng(params.lng),
+      place: hsClean(params.place, 200),
+      media: [],
       createdAt: hsNow(),
     };
     t.events.push(event);
@@ -284,6 +293,7 @@ export default function registerHistoryActions(registerLensAction) {
     if (params.dateLabel != null) event.dateLabel = hsClean(params.dateLabel, 60) || event.dateLabel;
     if (params.category != null) event.category = hsClean(params.category, 60) || event.category;
     if (params.description != null) event.description = hsClean(params.description, 2000);
+    if (params.track != null) event.track = hsTrack(params.track);
     saveHistory();
     return { ok: true, result: { event } };
   });
@@ -327,15 +337,354 @@ export default function registerHistoryActions(registerLensAction) {
     return { ok: true, result: { deleted: params.eraId } };
   });
 
+  // ─── Map-linked events — plot events geographically ──────────────────
+  registerLensAction("history", "event-set-location", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const event = t.events.find((e) => e.id === params.eventId);
+    if (!event) return { ok: false, error: "event not found" };
+    if (params.clear) {
+      event.lat = null; event.lng = null; event.place = "";
+      saveHistory();
+      return { ok: true, result: { event } };
+    }
+    const lat = hsLat(params.lat);
+    const lng = hsLng(params.lng);
+    if (lat == null) return { ok: false, error: "lat must be a number in [-90, 90]" };
+    if (lng == null) return { ok: false, error: "lng must be a number in [-180, 180]" };
+    event.lat = lat;
+    event.lng = lng;
+    event.place = hsClean(params.place, 200);
+    saveHistory();
+    return { ok: true, result: { event } };
+  });
+
+  // map-points — every located event across all of a user's timelines.
+  registerLensAction("history", "map-points", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = hsList(s, hsActor(ctx));
+    const scope = params.timelineId ? list.filter((t) => t.id === params.timelineId) : list;
+    const points = [];
+    for (const t of scope) {
+      for (const e of t.events) {
+        if (typeof e.lat === "number" && typeof e.lng === "number") {
+          points.push({
+            id: e.id, timelineId: t.id, timelineTitle: t.title,
+            title: e.title, year: e.year, dateLabel: e.dateLabel,
+            lat: e.lat, lng: e.lng, place: e.place || "", category: e.category,
+          });
+        }
+      }
+    }
+    return { ok: true, result: { points, count: points.length } };
+  });
+
+  // ─── Image / media attachments per event ─────────────────────────────
+  registerLensAction("history", "event-add-media", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const event = t.events.find((e) => e.id === params.eventId);
+    if (!event) return { ok: false, error: "event not found" };
+    const url = hsClean(params.url, 1000);
+    if (!url) return { ok: false, error: "media url required" };
+    if (!/^https?:\/\//i.test(url)) return { ok: false, error: "media url must be http(s)" };
+    const kind = ["image", "video", "audio", "link"].includes(params.kind) ? params.kind : "image";
+    if (!Array.isArray(event.media)) event.media = [];
+    const media = {
+      id: hsId("md"), url, kind,
+      caption: hsClean(params.caption, 300),
+      credit: hsClean(params.credit, 200),
+      addedAt: hsNow(),
+    };
+    event.media.push(media);
+    saveHistory();
+    return { ok: true, result: { media, event } };
+  });
+
+  registerLensAction("history", "event-remove-media", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const event = t.events.find((e) => e.id === params.eventId);
+    if (!event) return { ok: false, error: "event not found" };
+    if (!Array.isArray(event.media)) event.media = [];
+    const i = event.media.findIndex((m) => m.id === params.mediaId);
+    if (i < 0) return { ok: false, error: "media not found" };
+    event.media.splice(i, 1);
+    saveHistory();
+    return { ok: true, result: { deleted: params.mediaId, event } };
+  });
+
+  // ─── Visual render — zoomable timeline data with range + era overlays ─
+  registerLensAction("history", "timeline-render", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const fromYear = params.fromYear != null ? hsYear(params.fromYear) : null;
+    const toYear = params.toYear != null ? hsYear(params.toYear) : null;
+    const trackFilter = params.track ? hsTrack(params.track) : null;
+    let events = t.events.filter((e) => typeof e.year === "number");
+    if (fromYear != null) events = events.filter((e) => e.year >= fromYear);
+    if (toYear != null) events = events.filter((e) => e.year <= toYear);
+    if (trackFilter) events = events.filter((e) => (e.track || "main") === trackFilter);
+    events = events.slice().sort((a, b) => a.year - b.year);
+    const eras = t.eras
+      .slice()
+      .filter((era) => {
+        if (fromYear != null && era.endYear != null && era.endYear < fromYear) return false;
+        if (toYear != null && era.startYear != null && era.startYear > toYear) return false;
+        return true;
+      })
+      .sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0));
+    const years = events.map((e) => e.year);
+    const minYear = years.length ? Math.min(...years) : null;
+    const maxYear = years.length ? Math.max(...years) : null;
+    const tracks = [...new Set(t.events.map((e) => e.track || "main"))].sort();
+    const categories = [...new Set(events.map((e) => e.category || "general"))].sort();
+    return {
+      ok: true,
+      result: {
+        timelineId: t.id, title: t.title, description: t.description,
+        events: events.map((e) => ({
+          id: e.id, title: e.title, year: e.year, dateLabel: e.dateLabel,
+          category: e.category || "general", description: e.description || "",
+          track: e.track || "main",
+          lat: typeof e.lat === "number" ? e.lat : null,
+          lng: typeof e.lng === "number" ? e.lng : null,
+          place: e.place || "",
+          media: Array.isArray(e.media) ? e.media : [],
+        })),
+        eras, tracks, categories,
+        span: minYear != null ? { minYear, maxYear } : null,
+        range: { fromYear, toYear },
+        totalEvents: events.length,
+      },
+    };
+  });
+
+  // ─── Multi-track / parallel timeline comparison ──────────────────────
+  registerLensAction("history", "timeline-compare", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ids = Array.isArray(params.timelineIds) ? params.timelineIds.slice(0, 6) : [];
+    if (ids.length < 2) return { ok: false, error: "provide at least 2 timelineIds to compare" };
+    const list = hsList(s, hsActor(ctx));
+    const tracks = [];
+    for (const id of ids) {
+      const t = list.find((x) => x.id === id);
+      if (!t) return { ok: false, error: `timeline not found: ${id}` };
+      const events = t.events
+        .filter((e) => typeof e.year === "number")
+        .slice()
+        .sort((a, b) => a.year - b.year)
+        .map((e) => ({
+          id: e.id, title: e.title, year: e.year, dateLabel: e.dateLabel,
+          category: e.category || "general",
+        }));
+      const years = events.map((e) => e.year);
+      tracks.push({
+        timelineId: t.id, title: t.title, events,
+        eras: t.eras.slice().sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0)),
+        span: years.length ? { minYear: Math.min(...years), maxYear: Math.max(...years) } : null,
+        eventCount: events.length,
+      });
+    }
+    const allYears = tracks.flatMap((tr) => tr.events.map((e) => e.year));
+    return {
+      ok: true,
+      result: {
+        tracks,
+        combinedSpan: allYears.length
+          ? { minYear: Math.min(...allYears), maxYear: Math.max(...allYears) }
+          : null,
+        trackCount: tracks.length,
+      },
+    };
+  });
+
+  // ─── Publish / share a timeline; public read-only fetch ──────────────
+  function getPublicMap(s) {
+    if (!(s.publishedTimelines instanceof Map)) s.publishedTimelines = new Map(); // shareId -> snapshot
+    return s.publishedTimelines;
+  }
+
+  registerLensAction("history", "timeline-publish", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const pub = getPublicMap(s);
+    // reuse an existing share id if this timeline was already published
+    let shareId = null;
+    for (const [sid, snap] of pub) {
+      if (snap.timelineId === t.id && snap.owner === hsActor(ctx)) { shareId = sid; break; }
+    }
+    if (!shareId) shareId = hsId("share");
+    const snapshot = {
+      shareId, timelineId: t.id, owner: hsActor(ctx),
+      title: t.title, description: t.description,
+      events: t.events
+        .filter((e) => typeof e.year === "number")
+        .slice()
+        .sort((a, b) => a.year - b.year)
+        .map((e) => ({
+          title: e.title, year: e.year, dateLabel: e.dateLabel,
+          category: e.category || "general", description: e.description || "",
+          track: e.track || "main",
+          lat: typeof e.lat === "number" ? e.lat : null,
+          lng: typeof e.lng === "number" ? e.lng : null,
+          place: e.place || "",
+          media: Array.isArray(e.media) ? e.media : [],
+        })),
+      eras: t.eras.slice().sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0)),
+      publishedAt: hsNow(),
+    };
+    pub.set(shareId, snapshot);
+    saveHistory();
+    const base = process.env.PUBLIC_BASE_URL || "https://concord-os.org";
+    return {
+      ok: true,
+      result: {
+        shareId,
+        shareUrl: `${base}/lenses/history?share=${shareId}`,
+        embedCode: `<iframe src="${base}/embed/history/${shareId}" width="100%" height="480" frameborder="0" title="${t.title}"></iframe>`,
+        eventCount: snapshot.events.length,
+        publishedAt: snapshot.publishedAt,
+      },
+    };
+  });
+
+  registerLensAction("history", "timeline-unpublish", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pub = getPublicMap(s);
+    const snap = pub.get(params.shareId);
+    if (!snap) return { ok: false, error: "published timeline not found" };
+    if (snap.owner !== hsActor(ctx)) return { ok: false, error: "not the owner of this share" };
+    pub.delete(params.shareId);
+    saveHistory();
+    return { ok: true, result: { unpublished: params.shareId } };
+  });
+
+  // public read — no owner scoping (this is the shareable surface).
+  registerLensAction("history", "timeline-public-get", (_ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pub = getPublicMap(s);
+    const snap = pub.get(hsClean(params.shareId, 80));
+    if (!snap) return { ok: false, error: "published timeline not found" };
+    return {
+      ok: true,
+      result: {
+        shareId: snap.shareId, title: snap.title, description: snap.description,
+        events: snap.events, eras: snap.eras, publishedAt: snap.publishedAt,
+        eventCount: snap.events.length,
+      },
+    };
+  });
+
+  // ─── Auto-build a timeline from a Wikipedia article ──────────────────
+  // Pulls the article's full plaintext via the MediaWiki API and extracts
+  // every year-bearing sentence as a timeline event. No LLM, no fake data.
+  registerLensAction("history", "timeline-from-wikipedia", async (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = hsClean(params.title, 200);
+    if (!title) return { ok: false, error: "wikipedia article title required" };
+    let data;
+    try {
+      const url = `${WIKI_API}?action=query&format=json&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}`;
+      data = await wikiFetch(url);
+    } catch (e) {
+      return { ok: false, error: `wikipedia unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    const pages = data?.query?.pages || {};
+    const page = Object.values(pages)[0];
+    if (!page || page.missing !== undefined || !page.extract) {
+      return { ok: false, error: `Wikipedia article not found or empty: ${title}` };
+    }
+    const text = String(page.extract);
+    // Split into sentences and keep ones that name a 1-4 digit year, optionally BC/BCE.
+    const sentences = text
+      .replace(/\n+/g, " ")
+      .split(/(?<=[.!?])\s+/)
+      .map((x) => x.trim())
+      .filter((x) => x.length >= 12 && x.length <= 400);
+    const yearRe = /\b(\d{1,4})\s?(BCE?|BC)?\b/;
+    const seenYears = new Set();
+    const extracted = [];
+    for (const sent of sentences) {
+      const m = sent.match(yearRe);
+      if (!m) continue;
+      let year = parseInt(m[1], 10);
+      if (!Number.isFinite(year) || year === 0) continue;
+      if (m[2]) year = -Math.abs(year); // BC / BCE
+      // Filter implausible page/section numbers: positive years above current+1.
+      if (year > new Date().getFullYear() + 1) continue;
+      const key = `${year}|${sent.slice(0, 40)}`;
+      if (seenYears.has(key)) continue;
+      seenYears.add(key);
+      extracted.push({
+        year,
+        dateLabel: year < 0 ? `${Math.abs(year)} BCE` : String(year),
+        title: sent.length > 120 ? `${sent.slice(0, 117)}…` : sent,
+        description: sent,
+      });
+    }
+    extracted.sort((a, b) => a.year - b.year);
+    const maxEvents = Math.max(1, Math.min(120, Number(params.maxEvents) || 60));
+    const picked = extracted.slice(0, maxEvents);
+    if (picked.length === 0) {
+      return { ok: false, error: `No dated events could be extracted from "${page.title}".` };
+    }
+    const timeline = {
+      id: hsId("tl"),
+      title: hsClean(params.timelineTitle, 200) || `${page.title} — Timeline`,
+      description: `Auto-built from the Wikipedia article "${page.title}".`,
+      events: picked.map((e) => ({
+        id: hsId("ev"), title: e.title, year: e.year, dateLabel: e.dateLabel,
+        category: "wikipedia", description: e.description,
+        track: "main", lat: null, lng: null, place: "", media: [],
+        createdAt: hsNow(),
+      })),
+      eras: [],
+      source: "wikipedia",
+      sourceArticle: page.title,
+      createdAt: hsNow(),
+    };
+    hsList(s, hsActor(ctx)).push(timeline);
+    saveHistory();
+    return {
+      ok: true,
+      result: {
+        timeline: {
+          id: timeline.id, title: timeline.title, description: timeline.description,
+          eventCount: timeline.events.length, sourceArticle: page.title,
+        },
+        extractedCount: extracted.length,
+        usedCount: picked.length,
+      },
+    };
+  });
+
   registerLensAction("history", "history-dashboard", (ctx, _a, _params = {}) => {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const timelines = hsList(s, hsActor(ctx));
+    const owner = hsActor(ctx);
+    let published = 0, mappedEvents = 0;
+    if (s.publishedTimelines instanceof Map) {
+      for (const snap of s.publishedTimelines.values()) if (snap.owner === owner) published++;
+    }
+    for (const t of timelines) {
+      for (const e of t.events) {
+        if (typeof e.lat === "number" && typeof e.lng === "number") mappedEvents++;
+      }
+    }
     return {
       ok: true,
       result: {
         timelines: timelines.length,
         totalEvents: timelines.reduce((n, t) => n + t.events.length, 0),
         totalEras: timelines.reduce((n, t) => n + t.eras.length, 0),
+        publishedTimelines: published,
+        mappedEvents,
       },
     };
   });

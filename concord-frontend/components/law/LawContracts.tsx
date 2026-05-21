@@ -7,12 +7,17 @@
  * law.clause-* and law.contract-dashboard macros.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useImperativeHandle, forwardRef, useState } from 'react';
 import {
   FileText, Plus, Trash2, ShieldCheck, PenLine, Loader2, AlertTriangle, X,
+  History, Users, PenTool, ScanText,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ContractVersions } from './ContractVersions';
+import { ApprovalWorkflow } from './ApprovalWorkflow';
+import { ContractEsign } from './ContractEsign';
+import { ClauseExtractor } from './ClauseExtractor';
 
 interface ContractSummary {
   id: string; title: string; type: string; counterparty: string; value: number;
@@ -30,7 +35,15 @@ interface LibraryClause { title: string; text: string }
 const TYPES = ['nda', 'services', 'employment', 'license', 'lease', 'sale', 'partnership', 'other'];
 const STATUSES = ['draft', 'in_review', 'sent', 'signed', 'active', 'expired', 'terminated'];
 
-export function LawContracts() {
+type DetailTab = 'clauses' | 'versions' | 'approvals' | 'esign' | 'extract';
+
+export interface LawContractsHandle {
+  refresh: () => Promise<void>;
+  open: (id: string) => Promise<void>;
+}
+
+export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?: (c: { id: string; title: string }[]) => void }>(
+  function LawContracts({ onContractsChange }, ref) {
   const [contracts, setContracts] = useState<ContractSummary[]>([]);
   const [dash, setDash] = useState<Dash | null>(null);
   const [active, setActive] = useState<Contract | null>(null);
@@ -39,26 +52,31 @@ export function LawContracts() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [nt, setNt] = useState({ title: '', type: 'services', counterparty: '' });
+  const [tab, setTab] = useState<DetailTab>('clauses');
 
   const refresh = useCallback(async () => {
     const [cl, d] = await Promise.all([
       lensRun('law', 'contract-list', {}),
       lensRun('law', 'contract-dashboard', {}),
     ]);
-    setContracts((cl.data?.result?.contracts as ContractSummary[]) || []);
+    const list = (cl.data?.result?.contracts as ContractSummary[]) || [];
+    setContracts(list);
     setDash((d.data?.result as Dash) || null);
     setLoading(false);
-  }, []);
+    onContractsChange?.(list.map((c) => ({ id: c.id, title: c.title })));
+  }, [onContractsChange]);
 
   useEffect(() => {
     void refresh();
     void lensRun('law', 'clause-library', {}).then(r => setLibrary((r.data?.result?.library as Record<string, LibraryClause[]>) || {}));
   }, [refresh]);
 
-  async function openContract(id: string) {
+  const openContract = useCallback(async (id: string) => {
     const r = await lensRun('law', 'contract-detail', { id });
-    if (r.data?.ok) { setActive(r.data.result?.contract as Contract); setReview(null); }
-  }
+    if (r.data?.ok) { setActive(r.data.result?.contract as Contract); setReview(null); setTab('clauses'); }
+  }, []);
+
+  useImperativeHandle(ref, () => ({ refresh, open: openContract }), [refresh, openContract]);
   async function reloadActive() {
     if (!active) return;
     const r = await lensRun('law', 'contract-detail', { id: active.id });
@@ -206,36 +224,68 @@ export function LawContracts() {
               </div>
             )}
 
-            {/* Clauses */}
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Clauses ({active.clauses.length})</p>
-              {active.clauses.length === 0 && <p className="text-[11px] text-gray-600 italic">No clauses — add from the library below.</p>}
-              {active.clauses.map(cl => (
-                <div key={cl.id} className="group bg-black/40 rounded px-2 py-1.5 mb-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-semibold text-white flex-1">{cl.title}</span>
-                    <span className="text-[9px] text-gray-600">{cl.category}</span>
-                    <button onClick={() => removeClause(cl.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><X className="w-3 h-3" /></button>
-                  </div>
-                  <p className="text-[10px] text-gray-500">{cl.text}</p>
-                </div>
+            {/* Feature tabs */}
+            <div className="flex gap-1 border-b border-white/10 pb-1.5">
+              {([
+                ['clauses', 'Clauses', FileText],
+                ['extract', 'Extract', ScanText],
+                ['versions', 'Versions', History],
+                ['approvals', 'Approvals', Users],
+                ['esign', 'E-Sign', PenTool],
+              ] as const).map(([id, label, Icon]) => (
+                <button key={id} onClick={() => setTab(id)}
+                  className={cn('px-2 py-1 text-[11px] rounded inline-flex items-center gap-1 transition-colors',
+                    tab === id ? 'bg-neon-cyan/15 text-neon-cyan' : 'text-gray-500 hover:text-gray-300')}>
+                  <Icon className="w-3 h-3" />{label}
+                </button>
               ))}
             </div>
 
-            {/* Clause library */}
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Clause library</p>
-              <div className="space-y-1 max-h-44 overflow-y-auto">
-                {Object.entries(library).map(([cat, clauses]) => clauses.map(c => (
-                  <button key={cat + c.title} onClick={() => addClause(cat, c)}
-                    className="w-full text-left bg-black/40 hover:bg-neon-cyan/10 rounded px-2 py-1 flex items-center gap-1">
-                    <Plus className="w-3 h-3 text-neon-cyan shrink-0" />
-                    <span className="text-[11px] text-gray-300 flex-1 truncate">{c.title}</span>
-                    <span className="text-[9px] text-gray-600">{cat}</span>
-                  </button>
-                )))}
-              </div>
-            </div>
+            {tab === 'clauses' && (
+              <>
+                {/* Clauses */}
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Clauses ({active.clauses.length})</p>
+                  {active.clauses.length === 0 && <p className="text-[11px] text-gray-600 italic">No clauses — add from the library below.</p>}
+                  {active.clauses.map(cl => (
+                    <div key={cl.id} className="group bg-black/40 rounded px-2 py-1.5 mb-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-semibold text-white flex-1">{cl.title}</span>
+                        <span className="text-[9px] text-gray-600">{cl.category}</span>
+                        <button onClick={() => removeClause(cl.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><X className="w-3 h-3" /></button>
+                      </div>
+                      <p className="text-[10px] text-gray-500">{cl.text}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Clause library */}
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">Clause library</p>
+                  <div className="space-y-1 max-h-44 overflow-y-auto">
+                    {Object.entries(library).map(([cat, clauses]) => clauses.map(c => (
+                      <button key={cat + c.title} onClick={() => addClause(cat, c)}
+                        className="w-full text-left bg-black/40 hover:bg-neon-cyan/10 rounded px-2 py-1 flex items-center gap-1">
+                        <Plus className="w-3 h-3 text-neon-cyan shrink-0" />
+                        <span className="text-[11px] text-gray-300 flex-1 truncate">{c.title}</span>
+                        <span className="text-[9px] text-gray-600">{cat}</span>
+                      </button>
+                    )))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {tab === 'extract' && (
+              <ClauseExtractor contractId={active.id} onApplied={() => { void reloadActive(); void refresh(); }} />
+            )}
+            {tab === 'versions' && <ContractVersions contractId={active.id} />}
+            {tab === 'approvals' && (
+              <ApprovalWorkflow contractId={active.id} onChange={() => { void reloadActive(); void refresh(); }} />
+            )}
+            {tab === 'esign' && (
+              <ContractEsign contractId={active.id} onSigned={() => { void reloadActive(); void refresh(); }} />
+            )}
           </div>
         ) : (
           <div className="bg-black/20 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-xs text-gray-500 min-h-[200px]">
@@ -245,4 +295,4 @@ export function LawContracts() {
       </div>
     </div>
   );
-}
+});

@@ -21,13 +21,14 @@ import FleetVehiclesPanel from '@/components/logistics/FleetVehiclesPanel';
 import LoadBoardPanel from '@/components/logistics/LoadBoardPanel';
 import DeliveryProofPanel from '@/components/logistics/DeliveryProofPanel';
 import ShipmentEventsTimeline from '@/components/logistics/ShipmentEventsTimeline';
+import { VisibilityTower } from '@/components/logistics/VisibilityTower';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Truck as MTabTruck, Users as MTabDriver, Package as MTabShip,
   Warehouse as MTabWh, MapPin as MTabRoute, Boxes as MTabInv,
 } from 'lucide-react';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2124,6 +2125,7 @@ export default function LogisticsLensPage() {
       <div className="px-4 mt-2">
         <RivalShapePreview lensId="logistics" defaultOpen={true} />
         <TmsWorkbenchSection />
+        <VisibilityTower />
       </div>
     <LensPageShell
       domain="logistics"
@@ -2658,89 +2660,8 @@ export default function LogisticsLensPage() {
         </>
       )}
 
-      {/* Recent Activity Feed */}
-      <section>
-        <h2 className={cn(ds.heading2, 'mb-3')}>Recent Activity</h2>
-        <div className={ds.panel}>
-          <div className="divide-y divide-lattice-border">
-            {[
-              {
-                icon: Truck,
-                text: 'Cascadia #101 departed Chicago hub en route to New York',
-                time: '2h ago',
-                color: 'text-neon-cyan',
-              },
-              {
-                icon: CheckCircle,
-                text: 'Shipment SH-2026-0005 delivered to Chicago, POD signed',
-                time: '5h ago',
-                color: 'text-green-400',
-              },
-              {
-                icon: AlertTriangle,
-                text: 'Robert Chen: HOS violation flagged - exceeded 14-hour on-duty limit',
-                time: '8h ago',
-                color: 'text-red-400',
-              },
-              {
-                icon: Wrench,
-                text: 'Peterbilt 579 #103 entered maintenance bay - brake service',
-                time: '12h ago',
-                color: 'text-amber-400',
-              },
-              {
-                icon: ShieldCheck,
-                text: 'DOT Level 1 inspection passed for Kenworth T680 #102',
-                time: '1d ago',
-                color: 'text-green-400',
-              },
-              {
-                icon: Fuel,
-                text: 'Fleet fuel cost up 4.2% this week - $3.89/gal avg diesel',
-                time: '1d ago',
-                color: 'text-red-400',
-              },
-              {
-                icon: Route,
-                text: 'Route RT-ATL-PDX-01 optimized - saved 45 miles',
-                time: '1d ago',
-                color: 'text-blue-500',
-              },
-              {
-                icon: FileWarning,
-                text: 'International LT #105 insurance expiring in 26 days',
-                time: '2d ago',
-                color: 'text-amber-400',
-              },
-              {
-                icon: Star,
-                text: 'Diana Martinez achieved 99 safety score - top performer',
-                time: '2d ago',
-                color: 'text-neon-purple',
-              },
-              {
-                icon: MapPin,
-                text: 'Shipment SH-2026-0004 exception: delayed at Denver terminal',
-                time: '2d ago',
-                color: 'text-amber-400',
-              },
-            ].map((evt, i) => {
-              const Icon = evt.icon;
-              return (
-                <div
-                  key={i}
-                  data-lens-theme="logistics"
-                  className="flex items-center gap-3 py-3 px-2"
-                >
-                  <Icon className={cn('w-4 h-4 shrink-0', evt.color)} />
-                  <span className="flex-1 text-sm text-gray-200">{evt.text}</span>
-                  <span className={cn(ds.textMuted, 'shrink-0')}>{evt.time}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      {/* Recent Activity Feed — driven by real shipment events */}
+      <LogisticsActivityFeed />
 
       {/* ==================== MAP TAB ==================== */}
       {mode === 'tracker' && <div className="p-4"><ShipmentTracker /></div>}
@@ -2846,6 +2767,96 @@ function TmsWorkbenchSection() {
         {active === 'loads' && <LoadBoardPanel />}
         {active === 'pod' && <DeliveryProofPanel />}
         {active === 'events' && <ShipmentEventsTimeline />}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Recent Activity — real shipment-event + milestone stream          */
+/* ------------------------------------------------------------------ */
+
+interface ActivityEvent {
+  id: string;
+  kind: string;
+  shipmentId: string;
+  timestamp: string;
+  location?: string;
+}
+
+function LogisticsActivityFeed() {
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [milestones, setMilestones] = useState<
+    Array<{ id: string; kind: string; shipmentId: string; geofenceName: string; at: string }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { lensRun } = await import('@/lib/api/client');
+      const [ev, ms] = await Promise.all([
+        lensRun('logistics', 'shipment-events', {}),
+        lensRun('logistics', 'milestones-list', {}),
+      ]);
+      if (ev.data?.ok) setEvents((ev.data.result?.events || []) as ActivityEvent[]);
+      if (ms.data?.ok)
+        setMilestones(
+          (ms.data.result?.milestones || []) as Array<{
+            id: string;
+            kind: string;
+            shipmentId: string;
+            geofenceName: string;
+            at: string;
+          }>
+        );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const merged = useMemo(() => {
+    const rows = [
+      ...events.map((e) => ({
+        id: e.id,
+        at: e.timestamp,
+        text: `Shipment ${e.shipmentId} — ${e.kind.replace(/_/g, ' ')}${e.location ? ` at ${e.location}` : ''}`,
+      })),
+      ...milestones.map((m) => ({
+        id: m.id,
+        at: m.at,
+        text: `Shipment ${m.shipmentId} ${m.kind} ${m.geofenceName}`,
+      })),
+    ];
+    return rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 12);
+  }, [events, milestones]);
+
+  return (
+    <section>
+      <h2 className={cn(ds.heading2, 'mb-3')}>Recent Activity</h2>
+      <div className={ds.panel}>
+        {loading ? (
+          <p className={cn(ds.textMuted, 'text-center py-6')}>Loading activity…</p>
+        ) : merged.length === 0 ? (
+          <p className={cn(ds.textMuted, 'text-center py-6')}>
+            No activity yet — shipment status changes and geofence milestones appear here.
+          </p>
+        ) : (
+          <div className="divide-y divide-lattice-border">
+            {merged.map((row) => (
+              <div key={row.id} data-lens-theme="logistics" className="flex items-center gap-3 py-3 px-2">
+                <Activity className="w-4 h-4 shrink-0 text-neon-cyan" />
+                <span className="flex-1 text-sm text-gray-200">{row.text}</span>
+                <span className={cn(ds.textMuted, 'shrink-0')}>
+                  {new Date(row.at).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
