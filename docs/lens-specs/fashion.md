@@ -11,13 +11,15 @@ Backend: `fashion` domain — rich STATE-backed macro suite (item CRUD + wear, o
 - AI garment tagging via LLaVA vision macro; Met Museum fashion-piece feed → DTUs
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Auto background-removal on item photos (Whering's signature flat-lay)
-- [ ] `[M]` AI outfit generation by weather / occasion (current outfitSuggest is naive pairing)
-- [ ] `[S]` Calendar weather integration to drive daily outfit picks
-- [ ] `[M]` Style profile quiz → personalized recommendations
-- [ ] `[S]` Resale / declutter flagging with marketplace listing handoff
-- [ ] `[M]` Outfit social feed with likes/saves + community lookbook sharing
-- [ ] `[S]` Capsule-wardrobe planner + #30wears challenge tracking
+- [x] `[M]` Auto background-removal on item photos (Whering's signature flat-lay)
+- [x] `[M]` AI outfit generation by weather / occasion (current outfitSuggest is naive pairing)
+- [x] `[S]` Calendar weather integration to drive daily outfit picks
+- [x] `[M]` Style profile quiz → personalized recommendations
+- [x] `[S]` Resale / declutter flagging with marketplace listing handoff
+- [x] `[M]` Outfit social feed with likes/saves + community lookbook sharing
+- [x] `[S]` Capsule-wardrobe planner + #30wears challenge tracking
 
 ## Parity
-~65% of Whering's feature surface. The closet/outfit/wear/analytics core is genuinely deep and end-to-end, but it lacks photo background-removal, weather-aware outfit AI, and the social/resale layer that make Whering sticky.
+~95% of Whering's feature surface. The closet/outfit/wear/analytics core plus photo background-removal, weather-aware AI outfit generation, calendar weather integration, a style-profile quiz, resale/declutter flagging, an outfit social feed, and a capsule planner with #30wears all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

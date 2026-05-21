@@ -28,6 +28,7 @@ export function NetWorthTracker({ range: initialRange = '1Y' }: NetWorthTrackerP
   const [range, setRange] = useState<'1M' | '6M' | '1Y' | '5Y' | 'all'>(initialRange);
   const [ready, setReady] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [range]);
 
   async function refresh() {

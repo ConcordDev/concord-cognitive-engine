@@ -275,3 +275,191 @@ describe("film-studios — tasks, calendar, markers, approval", () => {
     assert.equal(rep.result.byCategory.props[0].name, "Wrench");
   });
 });
+
+// ── Feature-parity backlog ────────────────────────────────────────────
+
+describe("film-studios — NLE timeline trim / ripple / reorder", () => {
+  function seqWithClips() {
+    const pid = newProject();
+    const seq = call("sequence-create", ctxA, { projectId: pid, name: "Reel", fps: "24" }).result.sequence;
+    const c1 = call("clip-add", ctxA, { sequenceId: seq.id, name: "A", track: "V1", durationSec: 5 }).result.clip;
+    const c2 = call("clip-add", ctxA, { sequenceId: seq.id, name: "B", track: "V1", durationSec: 10 }).result.clip;
+    return { pid, seq, c1, c2 };
+  }
+
+  it("trims a clip via in/out points and updates duration", () => {
+    const { c1 } = seqWithClips();
+    const r = call("clip-update", ctxA, { id: c1.id, inFrame: 24, outFrame: 72 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.clip.durationFrames, 48);
+  });
+
+  it("updates transition and track on a clip", () => {
+    const { c1 } = seqWithClips();
+    const r = call("clip-update", ctxA, { id: c1.id, transition: "dissolve", track: "V2" });
+    assert.equal(r.result.clip.transition, "dissolve");
+    assert.equal(r.result.clip.track, "V2");
+  });
+
+  it("reorders clips on a track", () => {
+    const { seq, c1, c2 } = seqWithClips();
+    const r = call("clip-reorder", ctxA, { sequenceId: seq.id, track: "V1", clipIds: [c2.id, c1.id] });
+    assert.equal(r.ok, true);
+    const cut = call("cut-list", ctxA, { sequenceId: seq.id });
+    assert.equal(cut.result.tracks.V1[0].name, "B");
+  });
+
+  it("ripple-deletes a clip and closes the gap", () => {
+    const { seq, c1, c2 } = seqWithClips();
+    const r = call("clip-ripple-delete", ctxA, { id: c1.id });
+    assert.equal(r.ok, true);
+    const cut = call("cut-list", ctxA, { sequenceId: seq.id });
+    assert.equal(cut.result.tracks.V1.length, 1);
+    assert.equal(cut.result.tracks.V1[0].startTimecode, "00:00:00:00");
+    assert.ok(c2);
+  });
+});
+
+describe("film-studios — collaborative script revisions & locks", () => {
+  it("creates revisions with auto-assigned production colors", () => {
+    const pid = newProject();
+    const r1 = call("revision-create", ctxA, { projectId: pid, label: "Draft" }).result.revision;
+    const r2 = call("revision-create", ctxA, { projectId: pid, label: "Blue Pages" }).result.revision;
+    assert.equal(r1.color, "white");
+    assert.equal(r2.color, "blue");
+    assert.equal(call("revision-list", ctxA, { projectId: pid }).result.count, 2);
+  });
+
+  it("toggles page locks on a revision", () => {
+    const pid = newProject();
+    const rev = call("revision-create", ctxA, { projectId: pid, label: "v2" }).result.revision;
+    let r = call("page-lock-toggle", ctxA, { revisionId: rev.id, page: "12" });
+    assert.equal(r.result.locked, true);
+    assert.deepEqual(r.result.lockedPages, ["12"]);
+    r = call("page-lock-toggle", ctxA, { revisionId: rev.id, page: "12" });
+    assert.equal(r.result.locked, false);
+  });
+
+  it("tags a scene with a revision color", () => {
+    const pid = newProject();
+    const rev = call("revision-create", ctxA, { projectId: pid, label: "pink", color: "pink" }).result.revision;
+    const sid = call("scene-add", ctxA, { projectId: pid, location: "Set" }).result.scene.id;
+    const r = call("scene-revision-tag", ctxA, { sceneId: sid, revisionId: rev.id });
+    assert.equal(r.result.revisionColor, "pink");
+  });
+});
+
+describe("film-studios — shot/storyboard drag-link", () => {
+  it("relinks a shot to another scene", () => {
+    const pid = newProject();
+    const s1 = call("scene-add", ctxA, { projectId: pid, location: "Hall" }).result.scene.id;
+    const s2 = call("scene-add", ctxA, { projectId: pid, location: "Yard" }).result.scene.id;
+    const shot = call("shot-add", ctxA, { sceneId: s1, size: "CU" }).result.shot;
+    const r = call("shot-relink-scene", ctxA, { shotId: shot.id, sceneId: s2 });
+    assert.equal(r.result.sceneId, s2);
+    assert.equal(call("shot-list", ctxA, { sceneId: s2 }).result.count, 1);
+  });
+
+  it("reorders storyboard frames and builds a board sequence", () => {
+    const pid = newProject();
+    const sid = call("scene-add", ctxA, { projectId: pid, location: "Roof" }).result.scene.id;
+    const a = call("shot-add", ctxA, { sceneId: sid, size: "WS" }).result.shot;
+    const b = call("shot-add", ctxA, { sceneId: sid, size: "CU" }).result.shot;
+    call("shot-storyboard-set", ctxA, { shotId: a.id, imageUrl: "https://x.com/a.jpg" });
+    call("storyboard-reorder", ctxA, { sceneId: sid, shotIds: [b.id, a.id] });
+    const board = call("shot-board-sequence", ctxA, { sceneId: sid });
+    assert.equal(board.result.frames[0].shotId, b.id);
+    assert.equal(board.result.framedCount, 1);
+  });
+});
+
+describe("film-studios — watch-party sync & chat", () => {
+  it("creates a party, syncs playback and posts chat", () => {
+    const pid = newProject();
+    const party = call("party-create", ctxA, { projectId: pid, title: "First Cut Screening" }).result.party;
+    assert.ok(party.code.startsWith("FILM-"));
+    call("party-sync", ctxA, { id: party.id, playing: true, positionSec: 42 });
+    const st = call("party-state", ctxA, { id: party.id });
+    assert.equal(st.result.party.playing, true);
+    assert.ok(st.result.party.positionSec >= 42);
+    call("party-chat-post", ctxA, { id: party.id, author: "Dana", text: "Love this beat", atSec: 42 });
+    const chat = call("party-chat-list", ctxA, { id: party.id });
+    assert.equal(chat.result.count, 1);
+    assert.equal(chat.result.messages[0].text, "Love this beat");
+  });
+
+  it("lists and deletes parties", () => {
+    const pid = newProject();
+    const party = call("party-create", ctxA, { projectId: pid, title: "P" }).result.party;
+    assert.equal(call("party-list", ctxA, { projectId: pid }).result.count, 1);
+    call("party-delete", ctxA, { id: party.id });
+    assert.equal(call("party-list", ctxA, { projectId: pid }).result.count, 0);
+  });
+});
+
+describe("film-studios — budget actuals & cost report", () => {
+  it("updates budget actuals and produces a cost report", () => {
+    const pid = newProject();
+    const line = call("budget-line-add", ctxA, {
+      projectId: pid, department: "production", description: "Grip truck", estimated: 2000,
+    }).result.line;
+    call("budget-line-update", ctxA, { id: line.id, actual: 2600 });
+    const rep = call("cost-report", ctxA, { projectId: pid });
+    assert.equal(rep.result.totalActual, 2600);
+    assert.equal(rep.result.variance, 600);
+    assert.equal(rep.result.overBudget, true);
+    assert.equal(rep.result.overrunLines, 1);
+    assert.equal(rep.result.lines[0].status, "over");
+  });
+});
+
+describe("film-studios — multicam / proxy media", () => {
+  it("registers media with proxy and lists with proxy count", () => {
+    const pid = newProject();
+    call("media-register", ctxA, {
+      projectId: pid, name: "A-CAM 0001", kind: "video",
+      sourceUrl: "https://x.com/a.mov", proxyUrl: "https://x.com/a-proxy.mov", camera: "A",
+    });
+    const list = call("media-list", ctxA, { projectId: pid });
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.proxyCount, 1);
+    assert.equal(list.result.media[0].quality, "proxy");
+  });
+
+  it("groups media into a multicam set and attaches to a clip", () => {
+    const pid = newProject();
+    const m1 = call("media-register", ctxA, { projectId: pid, name: "A-CAM", camera: "A" }).result.media;
+    const m2 = call("media-register", ctxA, { projectId: pid, name: "B-CAM", camera: "B" }).result.media;
+    const grp = call("multicam-group", ctxA, { projectId: pid, name: "Interview", mediaIds: [m1.id, m2.id] }).result.group;
+    assert.equal(grp.angleCount, 2);
+    assert.equal(call("multicam-list", ctxA, { projectId: pid }).result.groups[0].angles.length, 2);
+    const seq = call("sequence-create", ctxA, { projectId: pid, name: "S" }).result.sequence;
+    const clip = call("clip-add", ctxA, { sequenceId: seq.id, name: "C", durationSec: 3 }).result.clip;
+    const r = call("clip-set-media", ctxA, { clipId: clip.id, mediaId: m1.id, mcamAngle: 1 });
+    assert.equal(r.result.mediaId, m1.id);
+    assert.equal(r.result.mcamAngle, 1);
+  });
+
+  it("rejects a multicam group with fewer than 2 media", () => {
+    const pid = newProject();
+    const m1 = call("media-register", ctxA, { projectId: pid, name: "Solo" }).result.media;
+    assert.equal(call("multicam-group", ctxA, { projectId: pid, name: "X", mediaIds: [m1.id] }).ok, false);
+  });
+});
+
+describe("film-studios — festival submission tracker", () => {
+  it("submits to festivals and rolls up status counts", () => {
+    const pid = newProject();
+    const sub = call("festival-submit", ctxA, {
+      projectId: pid, festival: "Sundance", category: "Short Film", fee: 65, deadline: "2026-09-01",
+    }).result.submission;
+    assert.equal(sub.status, "researching");
+    call("festival-update", ctxA, { id: sub.id, status: "submitted", submittedDate: "2026-08-15" });
+    const list = call("festival-list", ctxA, { projectId: pid });
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.totalFees, 65);
+    assert.equal(list.result.pending, 1);
+    call("festival-delete", ctxA, { id: sub.id });
+    assert.equal(call("festival-list", ctxA, { projectId: pid }).result.count, 0);
+  });
+});

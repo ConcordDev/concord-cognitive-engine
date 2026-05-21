@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Film, Scissors } from 'lucide-react';
+import { Loader2, Plus, Trash2, Film, Scissors, ChevronUp, ChevronDown, ScissorsLineDashed } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +30,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   const [clipForm, setClipForm] = useState({ name: '', track: 'V1', durationSec: '', transition: 'cut' });
   const [markers, setMarkers] = useState<{ id: string; label: string; frame: number }[]>([]);
   const [markerForm, setMarkerForm] = useState({ label: '', frame: '' });
+  const [editingClip, setEditingClip] = useState<string | null>(null);
 
   const loadSequences = useCallback(async () => {
     const r = await lensRun('film-studios', 'sequence-list', { projectId });
@@ -81,6 +82,28 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
 
   const delClip = async (id: string) => {
     await lensRun('film-studios', 'clip-delete', { id });
+    await Promise.all([loadCut(), loadSequences()]);
+  };
+
+  // NLE: ripple-delete closes the gap on the track instead of leaving a hole.
+  const rippleDelClip = async (id: string) => {
+    await lensRun('film-studios', 'clip-ripple-delete', { id });
+    await Promise.all([loadCut(), loadSequences()]);
+  };
+
+  // NLE: trim a clip via in/out frames, change its transition or track.
+  const updateClip = async (id: string, patch: Record<string, unknown>) => {
+    await lensRun('film-studios', 'clip-update', { id, ...patch });
+    await Promise.all([loadCut(), loadSequences()]);
+  };
+
+  // NLE: move a clip up/down within its track (reorder = ripple-safe).
+  const moveClip = async (track: string, clips: CutClip[], index: number, dir: -1 | 1) => {
+    const target = index + dir;
+    if (target < 0 || target >= clips.length) return;
+    const ids = clips.map((c) => c.id);
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    await lensRun('film-studios', 'clip-reorder', { sequenceId: activeSeq, track, clipIds: ids });
     await Promise.all([loadCut(), loadSequences()]);
   };
 
@@ -149,16 +172,64 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                     <div key={track}>
                       <p className="text-[10px] font-mono text-zinc-500 mb-1">{track}</p>
                       <ul className="space-y-1">
-                        {clips.map((c) => (
+                        {clips.map((c, idx) => (
                           <li key={c.id}
-                            className={cn('flex items-center gap-2 bg-zinc-900/70 border-l-4 rounded px-2.5 py-1.5', TRACK_COLOR[track] || 'border-zinc-600')}>
-                            <Film className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                            <span className="text-xs text-zinc-100 flex-1 truncate">{c.name}</span>
-                            <span className="text-[10px] text-zinc-500">{c.transition.replace(/_/g, ' ')}</span>
-                            <span className="text-[10px] font-mono text-fuchsia-300">{c.startTimecode}–{c.endTimecode}</span>
-                            <button type="button" onClick={() => delClip(c.id)} className="text-zinc-600 hover:text-rose-400">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            className={cn('bg-zinc-900/70 border-l-4 rounded px-2.5 py-1.5 space-y-1.5', TRACK_COLOR[track] || 'border-zinc-600',
+                              editingClip === c.id && 'ring-1 ring-fuchsia-600/50')}>
+                            <div className="flex items-center gap-2">
+                              <Film className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                              <button type="button" onClick={() => setEditingClip(editingClip === c.id ? null : c.id)}
+                                className="text-xs text-zinc-100 flex-1 truncate text-left hover:text-fuchsia-300">{c.name}</button>
+                              <span className="text-[10px] text-zinc-500">{c.transition.replace(/_/g, ' ')}</span>
+                              <span className="text-[10px] font-mono text-fuchsia-300">{c.startTimecode}–{c.endTimecode}</span>
+                              <button type="button" onClick={() => moveClip(track, clips, idx, -1)} disabled={idx === 0}
+                                className="text-zinc-600 hover:text-zinc-300 disabled:opacity-20" title="Move up">
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => moveClip(track, clips, idx, 1)} disabled={idx === clips.length - 1}
+                                className="text-zinc-600 hover:text-zinc-300 disabled:opacity-20" title="Move down">
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => rippleDelClip(c.id)}
+                                className="text-zinc-600 hover:text-amber-400" title="Ripple delete (close gap)">
+                                <ScissorsLineDashed className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => delClip(c.id)} className="text-zinc-600 hover:text-rose-400" title="Delete">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            {editingClip === c.id && (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1 border-t border-zinc-800">
+                                <label className="flex flex-col gap-0.5">
+                                  <span className="text-[9px] text-zinc-500 uppercase">In frame</span>
+                                  <input inputMode="numeric" defaultValue="0"
+                                    onBlur={(e) => updateClip(c.id, { inFrame: Number(e.target.value) || 0, outFrame: Number(e.target.value) + c.durationFrames })}
+                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
+                                </label>
+                                <label className="flex flex-col gap-0.5">
+                                  <span className="text-[9px] text-zinc-500 uppercase">Out frame</span>
+                                  <input inputMode="numeric" defaultValue={String(c.durationFrames)}
+                                    onBlur={(e) => updateClip(c.id, { inFrame: 0, outFrame: Number(e.target.value) || c.durationFrames })}
+                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
+                                </label>
+                                <label className="flex flex-col gap-0.5">
+                                  <span className="text-[9px] text-zinc-500 uppercase">Transition</span>
+                                  <select defaultValue={c.transition}
+                                    onChange={(e) => updateClip(c.id, { transition: e.target.value })}
+                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                                    {TRANSITIONS.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                                  </select>
+                                </label>
+                                <label className="flex flex-col gap-0.5">
+                                  <span className="text-[9px] text-zinc-500 uppercase">Track</span>
+                                  <select defaultValue={track}
+                                    onChange={(e) => updateClip(c.id, { track: e.target.value })}
+                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                                    {TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
+                                  </select>
+                                </label>
+                              </div>
+                            )}
                           </li>
                         ))}
                       </ul>

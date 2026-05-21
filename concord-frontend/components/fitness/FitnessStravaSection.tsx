@@ -7,21 +7,31 @@
  */
 
 import { useState } from 'react';
-import { Activity, TrendingUp, Mountain, Target, Users } from 'lucide-react';
+import {
+  Activity, TrendingUp, Mountain, Target, Users, MapPin, Watch, Radio, CalendarDays,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StravaActivitiesPanel } from './StravaActivitiesPanel';
 import { StravaTrainingPanel } from './StravaTrainingPanel';
 import { StravaSegmentsPanel } from './StravaSegmentsPanel';
 import { StravaGoalsPanel } from './StravaGoalsPanel';
 import { StravaClubsPanel } from './StravaClubsPanel';
+import { StravaGpsPanel } from './StravaGpsPanel';
+import { StravaWearablePanel } from './StravaWearablePanel';
+import { StravaBeaconPanel } from './StravaBeaconPanel';
+import { StravaPlanPanel } from './StravaPlanPanel';
 
-type TabId = 'activities' | 'training' | 'segments' | 'goals' | 'clubs';
+type TabId = 'activities' | 'gps' | 'training' | 'plan' | 'segments' | 'goals' | 'wearables' | 'beacon' | 'clubs';
 
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
   { id: 'activities', label: 'Activities', icon: Activity },
+  { id: 'gps', label: 'GPS & Heatmap', icon: MapPin },
   { id: 'training', label: 'Training', icon: TrendingUp },
+  { id: 'plan', label: 'Plan', icon: CalendarDays },
   { id: 'segments', label: 'Segments', icon: Mountain },
   { id: 'goals', label: 'Goals & Gear', icon: Target },
+  { id: 'wearables', label: 'Wearables', icon: Watch },
+  { id: 'beacon', label: 'Beacon', icon: Radio },
   { id: 'clubs', label: 'Clubs', icon: Users },
 ];
 
@@ -61,9 +71,13 @@ export function FitnessStravaSection() {
 
       <div className="p-4">
         {tab === 'activities' && <StravaActivitiesPanel />}
+        {tab === 'gps' && <StravaGpsPanel />}
         {tab === 'training' && <StravaTrainingPanel />}
+        {tab === 'plan' && <StravaPlanPanel />}
         {tab === 'segments' && <StravaSegmentsPanel />}
         {tab === 'goals' && <StravaGoalsPanel />}
+        {tab === 'wearables' && <StravaWearablePanel />}
+        {tab === 'beacon' && <StravaBeaconPanel />}
         {tab === 'clubs' && <StravaClubsPanel />}
       </div>
     </div>

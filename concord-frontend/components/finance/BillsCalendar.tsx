@@ -41,6 +41,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
   const [form, setForm] = useState({ name: '', amount: '', dueDay: '1', cadence: 'monthly', autopay: false });
 
   useEffect(() => { refresh(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (bills.length > 0) refreshForecast(); }, [bills.length, startBalance]);
 
   async function refresh() {

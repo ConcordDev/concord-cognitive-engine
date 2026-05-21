@@ -11,13 +11,15 @@ Backend: `food` domain — very deep: recipe scale/substitute, cost-per-plate, P
 - Commercial kitchen ops: menu engineering quadrants, waste reports, pour cost, prep lists, POs, batches, shifts
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Barcode scanner for pantry / nutrition logging (OpenFoodFacts has the data)
-- [ ] `[S]` Recipe photo + step-photo capture and gallery
-- [ ] `[M]` Macro/calorie goal tracking with daily progress rings (logging exists; goals shallow)
-- [ ] `[S]` Recipe rating + cook-it-again history
-- [ ] `[M]` Meal-plan auto-generation from dietary prefs + pantry-aware suggestions
-- [ ] `[S]` Shopping-list aisle grouping + store-aware ordering
-- [ ] `[M]` Restaurant map view with filters + directions
+- [x] `[M]` Barcode scanner for pantry / nutrition logging (OpenFoodFacts has the data)
+- [x] `[S]` Recipe photo + step-photo capture and gallery
+- [x] `[M]` Macro/calorie goal tracking with daily progress rings (logging exists; goals shallow)
+- [x] `[S]` Recipe rating + cook-it-again history
+- [x] `[M]` Meal-plan auto-generation from dietary prefs + pantry-aware suggestions
+- [x] `[S]` Shopping-list aisle grouping + store-aware ordering
+- [x] `[M]` Restaurant map view with filters + directions
 
 ## Parity
-~75% of the combined Paprika+Yelp+MyFitnessPal surface. This is one of the deepest lenses — recipes, nutrition, discovery, and pro kitchen ops all real and wired. Main gaps are barcode scanning, calorie-goal tracking, and a map-based restaurant view.
+~95% of the combined Paprika+Yelp+MyFitnessPal surface. Recipes, nutrition, discovery, and pro kitchen ops plus barcode scanning, recipe/step photos, macro/calorie goal tracking, recipe ratings + cook history, pantry-aware auto meal-planning, aisle-grouped shopping lists, and a map-based restaurant view all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

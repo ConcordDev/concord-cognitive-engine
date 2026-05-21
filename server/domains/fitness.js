@@ -601,6 +601,8 @@ Generate the plan.`;
       elevationGainM: Math.max(0, Math.round(fnum(params.elevationGainM))),
       gradePct: Math.round(fnum(params.gradePct) * 10) / 10,
       location: String(params.location || "").trim() || null,
+      lat: Number.isFinite(Number(params.lat)) ? Number(params.lat) : null,
+      lon: Number.isFinite(Number(params.lon)) ? Number(params.lon) : null,
       createdAt: fnow(),
     };
     s.segments.set(seg.id, seg);
@@ -1218,6 +1220,782 @@ Generate the plan.`;
           activities: acts.length,
           distanceKm: Math.round(acts.reduce((x, a) => x + a.distanceKm, 0) * 100) / 100,
         },
+      },
+    };
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Parity backlog — Strava / Garmin 2026 feature gap closure.
+  // GPS recording + GPX import, wearable sync, map heatmap, photos +
+  // comments, live Beacon, training-plan calendar, fitness-freshness.
+  // All STATE-backed, per-user scoped, real user input only.
+  // ════════════════════════════════════════════════════════════════════
+
+  function getFitState2() {
+    const s = getFitState();
+    if (!s) return null;
+    for (const k of [
+      "gpsTracks", "trainingPlans", "wearableLinks", "beacons",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  // Haversine distance between two [lat,lon] points, metres.
+  function haversineM(a, b) {
+    const R = 6371000;
+    const toRad = (d) => (d * Math.PI) / 180;
+    const dLat = toRad(b[0] - a[0]);
+    const dLon = toRad(b[1] - a[1]);
+    const lat1 = toRad(a[0]);
+    const lat2 = toRad(b[0]);
+    const h = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  // Reduce a GPS point stream to summary metrics: distance, elevation
+  // gain, moving time, bounds. Points: {lat,lon,ele?,t?(epoch ms or ISO)}.
+  function summarizeTrack(points) {
+    let distanceM = 0;
+    let elevationGainM = 0;
+    let movingSec = 0;
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    let firstT = null, lastT = null;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const lat = Number(p.lat), lon = Number(p.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
+      minLon = Math.min(minLon, lon); maxLon = Math.max(maxLon, lon);
+      const t = p.t != null ? new Date(p.t).getTime() : null;
+      if (t != null && Number.isFinite(t)) {
+        if (firstT == null) firstT = t;
+        lastT = t;
+      }
+      if (i > 0) {
+        const prev = points[i - 1];
+        const seg = haversineM([Number(prev.lat), Number(prev.lon)], [lat, lon]);
+        if (Number.isFinite(seg)) distanceM += seg;
+        const ele = Number(p.ele), preEle = Number(prev.ele);
+        if (Number.isFinite(ele) && Number.isFinite(preEle) && ele > preEle) {
+          elevationGainM += ele - preEle;
+        }
+        const pt = prev.t != null ? new Date(prev.t).getTime() : null;
+        if (t != null && pt != null && t > pt && seg > 0.5) {
+          // count only segments where the athlete actually moved
+          movingSec += (t - pt) / 1000;
+        }
+      }
+    }
+    return {
+      distanceKm: Math.round((distanceM / 1000) * 1000) / 1000,
+      elevationGainM: Math.round(elevationGainM),
+      movingSec: Math.round(movingSec),
+      elapsedSec: firstT != null && lastT != null ? Math.round((lastT - firstT) / 1000) : 0,
+      pointCount: points.length,
+      bounds: minLat === Infinity ? null
+        : { minLat, maxLat, minLon, maxLon,
+            centerLat: (minLat + maxLat) / 2, centerLon: (minLon + maxLon) / 2 },
+    };
+  }
+
+  // Minimal GPX <trkpt> parser — no XML library, regex over the track
+  // point elements. Reads lat/lon attributes + nested <ele>/<time>.
+  function parseGpx(xml) {
+    const points = [];
+    const re = /<trkpt\b[^>]*?lat="([-\d.]+)"[^>]*?lon="([-\d.]+)"[^>]*?>([\s\S]*?)<\/trkpt>/gi;
+    const reSelfClose = /<trkpt\b[^>]*?lat="([-\d.]+)"[^>]*?lon="([-\d.]+)"[^>]*?\/>/gi;
+    let m;
+    while ((m = re.exec(xml)) !== null) {
+      const lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+      const inner = m[3] || "";
+      const ele = inner.match(/<ele>([-\d.]+)<\/ele>/i);
+      const time = inner.match(/<time>([^<]+)<\/time>/i);
+      points.push({
+        lat, lon,
+        ele: ele ? parseFloat(ele[1]) : undefined,
+        t: time ? time[1].trim() : undefined,
+      });
+    }
+    while ((m = reSelfClose.exec(xml)) !== null) {
+      points.push({ lat: parseFloat(m[1]), lon: parseFloat(m[2]) });
+    }
+    return points;
+  }
+
+  // ── GPS recording + GPX import ──────────────────────────────────────
+  /**
+   * gps-record — persist a recorded or imported GPS point stream and
+   * create a backing activity from its computed summary. Accepts either
+   * `points` (array of {lat,lon,ele?,t?}) or `gpx` (raw GPX XML string).
+   */
+  registerLensAction("fitness", "gps-record", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    let points = Array.isArray(params.points) ? params.points : null;
+    let imported = false;
+    if (!points && typeof params.gpx === "string" && params.gpx.trim()) {
+      points = parseGpx(params.gpx);
+      imported = true;
+    }
+    if (!points || points.length < 2) {
+      return { ok: false, error: "supply points[] (≥2) or a gpx string with track points" };
+    }
+    const type = ACTIVITY_TYPES.includes(String(params.type || "").toLowerCase())
+      ? String(params.type).toLowerCase() : "run";
+    const summary = summarizeTrack(points);
+    if (summary.distanceKm <= 0) return { ok: false, error: "track has no measurable distance" };
+    const durationSec = summary.movingSec > 0 ? summary.movingSec
+      : summary.elapsedSec > 0 ? summary.elapsedSec
+      : fnum(params.durationSec);
+    if (durationSec <= 0) return { ok: false, error: "track has no timing — pass durationSec" };
+
+    const act = {
+      id: fid("act"),
+      type,
+      name: String(params.name || "").trim()
+        || `${type[0].toUpperCase()}${type.slice(1)} ${imported ? "(GPX import)" : "(GPS)"}`,
+      distanceKm: summary.distanceKm,
+      durationSec: Math.round(durationSec),
+      elevationGainM: summary.elevationGainM,
+      avgHr: Math.max(0, Math.round(fnum(params.avgHr))),
+      maxHr: Math.max(0, Math.round(fnum(params.maxHr))),
+      calories: Math.max(0, Math.round(fnum(params.calories))),
+      date: fday(params.date) || fday(fnow()),
+      gearId: params.gearId ? String(params.gearId) : null,
+      kudos: [], comments: [], photos: [],
+      hasGps: true, source: imported ? "gpx_import" : "gps_recording",
+      createdAt: fnow(),
+    };
+    act.relativeEffort = relativeEffort(act);
+    act.paceSecPerKm = act.distanceKm > 0 ? Math.round(act.durationSec / act.distanceKm) : null;
+    act.speedKmh = act.distanceKm > 0
+      ? Math.round((act.distanceKm / (act.durationSec / 3600)) * 100) / 100 : null;
+    flistB(s.activities, userId).push(act);
+
+    // store the raw track keyed by activity id (downsample huge streams)
+    const stride = points.length > 2000 ? Math.ceil(points.length / 2000) : 1;
+    const track = {
+      activityId: act.id,
+      points: points.filter((_, i) => i % stride === 0).map((p) => ({
+        lat: Number(p.lat), lon: Number(p.lon),
+        ele: Number.isFinite(Number(p.ele)) ? Number(p.ele) : null,
+      })),
+      bounds: summary.bounds,
+      source: act.source,
+      createdAt: fnow(),
+    };
+    s.gpsTracks.set(act.id, track);
+
+    if (act.gearId) {
+      const gear = (s.gear.get(userId) || []).find((g) => g.id === act.gearId);
+      if (gear) gear.distanceKm = Math.round((gear.distanceKm + act.distanceKm) * 100) / 100;
+    }
+    saveStateIfAvailable();
+    return { ok: true, result: { activity: act, summary, imported } };
+  });
+
+  registerLensAction("fitness", "gps-track", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const act = (s.activities.get(faid(ctx)) || []).find((a) => a.id === params.id);
+    if (!act) return { ok: false, error: "activity not found" };
+    const track = s.gpsTracks.get(params.id);
+    if (!track) return { ok: false, error: "no GPS track for this activity" };
+    return { ok: true, result: { track } };
+  });
+
+  // ── Wearable sync (Apple Health / Garmin / Fitbit) ──────────────────
+  const WEARABLE_PROVIDERS = ["apple_health", "garmin", "fitbit", "whoop"];
+
+  registerLensAction("fitness", "wearable-link", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const provider = String(params.provider || "").toLowerCase();
+    if (!WEARABLE_PROVIDERS.includes(provider)) {
+      return { ok: false, error: `provider required (${WEARABLE_PROVIDERS.join("/")})` };
+    }
+    const userId = faid(ctx);
+    const links = flistB(s.wearableLinks, userId);
+    if (params.unlink === true) {
+      const i = links.findIndex((l) => l.provider === provider);
+      if (i < 0) return { ok: false, error: "provider not linked" };
+      links.splice(i, 1);
+      saveStateIfAvailable();
+      return { ok: true, result: { unlinked: provider } };
+    }
+    let link = links.find((l) => l.provider === provider);
+    if (!link) {
+      link = { provider, linkedAt: fnow(), lastSyncAt: null, deviceName: null };
+      links.push(link);
+    }
+    if (params.deviceName) link.deviceName = String(params.deviceName).slice(0, 80);
+    saveStateIfAvailable();
+    return { ok: true, result: { link } };
+  });
+
+  registerLensAction("fitness", "wearable-status", (ctx, _a, _params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const links = s.wearableLinks.get(faid(ctx)) || [];
+    return { ok: true, result: { links, count: links.length } };
+  });
+
+  /**
+   * wearable-sync — ingest a batch of HR / sleep / steps samples pushed
+   * from a linked device bridge. Routes recovery + activity metrics into
+   * the same STATE Maps the existing recovery/activity macros read. No
+   * synthetic data — the bridge supplies real device readings.
+   */
+  registerLensAction("fitness", "wearable-sync", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const provider = String(params.provider || "").toLowerCase();
+    if (!WEARABLE_PROVIDERS.includes(provider)) {
+      return { ok: false, error: `provider required (${WEARABLE_PROVIDERS.join("/")})` };
+    }
+    const userId = faid(ctx);
+    const link = (s.wearableLinks.get(userId) || []).find((l) => l.provider === provider);
+    if (!link) return { ok: false, error: "link the provider first via wearable-link" };
+
+    const samples = Array.isArray(params.samples) ? params.samples : [];
+    if (!samples.length) return { ok: false, error: "samples[] required" };
+
+    if (!(s.recoveryEntries instanceof Map)) s.recoveryEntries = new Map();
+    if (!(s.activityEntries instanceof Map)) s.activityEntries = new Map();
+    const recov = flistB(s.recoveryEntries, userId);
+    const activ = flistB(s.activityEntries, userId);
+    const hrvArr = flistB(s.hrvSamples, userId);
+
+    let recoveryAdded = 0, activityAdded = 0, hrvAdded = 0;
+    for (const sm of samples) {
+      const date = fday(sm.date);
+      if (!date) continue;
+      const restingHr = Math.max(0, Math.round(fnum(sm.restingHr)));
+      const hrv = Math.round(fnum(sm.hrv) * 10) / 10;
+      const sleepHours = Math.round(fnum(sm.sleepHours) * 100) / 100;
+      const recoveryScore = Math.max(0, Math.round(fnum(sm.recoveryScore)));
+      const steps = Math.max(0, Math.round(fnum(sm.steps)));
+      const activeCalories = Math.max(0, Math.round(fnum(sm.activeCalories)));
+      const exerciseMinutes = Math.max(0, Math.round(fnum(sm.exerciseMinutes)));
+
+      // recovery row if any recovery-grade metric present
+      if (restingHr > 0 || hrv > 0 || sleepHours > 0 || recoveryScore > 0) {
+        const ex = recov.find((r) => r.date === date);
+        const row = ex || { date };
+        if (restingHr > 0) row.restingHr = restingHr;
+        if (hrv > 0) row.hrv = hrv;
+        if (sleepHours > 0) row.sleepHours = sleepHours;
+        if (recoveryScore > 0) row.recoveryScore = recoveryScore;
+        row.source = provider;
+        if (!ex) { recov.push(row); recoveryAdded++; }
+      }
+      // activity-ring row if any activity-grade metric present
+      if (steps > 0 || activeCalories > 0 || exerciseMinutes > 0) {
+        const ex = activ.find((r) => r.date === date);
+        const row = ex || { date };
+        if (steps > 0) row.steps = steps;
+        if (activeCalories > 0) row.activeCalories = activeCalories;
+        if (exerciseMinutes > 0) row.exerciseMinutes = exerciseMinutes;
+        row.source = provider;
+        if (!ex) { activ.push(row); activityAdded++; }
+      }
+      // HRV nightly sample so hrv-status / readiness pick it up
+      if (hrv > 0) {
+        if (!hrvArr.some((h) => h.date === date && h.source === provider)) {
+          hrvArr.push({
+            id: fid("hrv"), rmssd: hrv, restingHr,
+            date, source: provider, createdAt: fnow(),
+          });
+          hrvAdded++;
+        }
+      }
+    }
+    link.lastSyncAt = fnow();
+    saveStateIfAvailable();
+    return {
+      ok: true,
+      result: {
+        provider, recoveryAdded, activityAdded, hrvAdded,
+        synced: recoveryAdded + activityAdded + hrvAdded,
+      },
+    };
+  });
+
+  // ── Map heatmap + segment explore ───────────────────────────────────
+  /**
+   * activity-heatmap — aggregates every GPS track's points into a
+   * density grid for a real map render. Cells are ~0.0025° (~250m).
+   */
+  registerLensAction("fitness", "activity-heatmap", (ctx, _a, _params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const myActIds = new Set((s.activities.get(userId) || []).map((a) => a.id));
+    const cellSize = 0.0025;
+    const grid = new Map();
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    let tracks = 0, totalPoints = 0;
+    for (const [actId, track] of s.gpsTracks) {
+      if (!myActIds.has(actId)) continue;
+      tracks++;
+      for (const p of track.points || []) {
+        const lat = Number(p.lat), lon = Number(p.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        totalPoints++;
+        minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
+        minLon = Math.min(minLon, lon); maxLon = Math.max(maxLon, lon);
+        const key = `${Math.round(lat / cellSize)}:${Math.round(lon / cellSize)}`;
+        grid.set(key, (grid.get(key) || 0) + 1);
+      }
+    }
+    const maxCount = grid.size ? Math.max(...grid.values()) : 0;
+    const cells = [...grid.entries()].map(([key, count]) => {
+      const [gy, gx] = key.split(":").map(Number);
+      return {
+        lat: gy * cellSize, lon: gx * cellSize,
+        count, intensity: maxCount > 0 ? Math.round((count / maxCount) * 1000) / 1000 : 0,
+      };
+    }).sort((a, b) => b.count - a.count);
+    return {
+      ok: true,
+      result: {
+        cells, tracks, totalPoints,
+        bounds: minLat === Infinity ? null
+          : { minLat, maxLat, minLon, maxLon,
+              centerLat: (minLat + maxLat) / 2, centerLon: (minLon + maxLon) / 2 },
+      },
+    };
+  });
+
+  /**
+   * segment-explore — segments visible on the map. Optionally bounded
+   * by a bbox {minLat,maxLat,minLon,maxLon}; segments carry an explicit
+   * lat/lon location from segment-create's `location` is a string only,
+   * so we surface those that have geo coords set on `lat`/`lon`.
+   */
+  registerLensAction("fitness", "segment-explore", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const bbox = params.bbox && typeof params.bbox === "object" ? params.bbox : null;
+    const segs = [...s.segments.values()]
+      .filter((seg) => seg.lat != null && seg.lon != null
+        && Number.isFinite(Number(seg.lat)) && Number.isFinite(Number(seg.lon)))
+      .filter((seg) => {
+        if (!bbox) return true;
+        const lat = Number(seg.lat), lon = Number(seg.lon);
+        return lat >= fnum(bbox.minLat, -90) && lat <= fnum(bbox.maxLat, 90)
+            && lon >= fnum(bbox.minLon, -180) && lon <= fnum(bbox.maxLon, 180);
+      })
+      .map((seg) => {
+        const efforts = s.segmentEfforts.get(seg.id) || [];
+        const mine = efforts.filter((e) => e.userId === userId);
+        return {
+          id: seg.id, name: seg.name, lat: Number(seg.lat), lon: Number(seg.lon),
+          activityType: seg.activityType, distanceKm: seg.distanceKm,
+          elevationGainM: seg.elevationGainM, gradePct: seg.gradePct,
+          location: seg.location, effortCount: efforts.length,
+          courseRecordSeconds: efforts.length ? Math.min(...efforts.map((e) => e.timeSeconds)) : null,
+          myBestSeconds: mine.length ? Math.min(...mine.map((e) => e.timeSeconds)) : null,
+        };
+      });
+    return { ok: true, result: { segments: segs, count: segs.length } };
+  });
+
+  // ── Photo attachments + comments thread ─────────────────────────────
+  registerLensAction("fitness", "activity-photo-add", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const act = (s.activities.get(userId) || []).find((a) => a.id === params.id);
+    if (!act) return { ok: false, error: "activity not found" };
+    const url = String(params.url || "").trim();
+    const dataUrl = String(params.dataUrl || "").trim();
+    if (!url && !dataUrl) return { ok: false, error: "url or dataUrl required" };
+    if (!Array.isArray(act.photos)) act.photos = [];
+    const photo = {
+      id: fid("photo"),
+      url: url || null,
+      dataUrl: dataUrl ? dataUrl.slice(0, 2_500_000) : null,
+      caption: String(params.caption || "").slice(0, 200) || null,
+      addedAt: fnow(),
+    };
+    act.photos.push(photo);
+    saveStateIfAvailable();
+    return { ok: true, result: { photo, photoCount: act.photos.length } };
+  });
+
+  registerLensAction("fitness", "activity-photo-remove", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const act = (s.activities.get(userId) || []).find((a) => a.id === params.id);
+    if (!act) return { ok: false, error: "activity not found" };
+    if (!Array.isArray(act.photos)) act.photos = [];
+    const i = act.photos.findIndex((p) => p.id === params.photoId);
+    if (i < 0) return { ok: false, error: "photo not found" };
+    act.photos.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { photoCount: act.photos.length } };
+  });
+
+  registerLensAction("fitness", "activity-comments", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const ownerId = String(params.ownerUserId || userId);
+    const act = (s.activities.get(ownerId) || []).find((a) => a.id === params.id);
+    if (!act) return { ok: false, error: "activity not found" };
+    if (!Array.isArray(act.comments)) act.comments = [];
+    if (!Array.isArray(act.photos)) act.photos = [];
+    return {
+      ok: true,
+      result: {
+        comments: act.comments,
+        photos: act.photos,
+        kudosCount: (act.kudos || []).length,
+      },
+    };
+  });
+
+  registerLensAction("fitness", "activity-comment-delete", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const ownerId = String(params.ownerUserId || userId);
+    const act = (s.activities.get(ownerId) || []).find((a) => a.id === params.id);
+    if (!act) return { ok: false, error: "activity not found" };
+    if (!Array.isArray(act.comments)) act.comments = [];
+    const idx = fnum(params.index, -1);
+    if (idx < 0 || idx >= act.comments.length) return { ok: false, error: "comment index out of range" };
+    // only the comment author or the activity owner may delete
+    const c = act.comments[idx];
+    if (c.userId !== userId && ownerId !== userId) {
+      return { ok: false, error: "not authorised to delete this comment" };
+    }
+    act.comments.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { commentCount: act.comments.length } };
+  });
+
+  // ── Live activity sharing — "Beacon" ────────────────────────────────
+  /**
+   * beacon-start — begin a live-sharing session. Returns a share token
+   * trusted followers use to read live position via beacon-status.
+   */
+  registerLensAction("fitness", "beacon-start", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const type = ACTIVITY_TYPES.includes(String(params.type || "").toLowerCase())
+      ? String(params.type).toLowerCase() : "run";
+    const beacon = {
+      id: fid("beacon"),
+      shareToken: `bcn_${Math.random().toString(36).slice(2, 12)}`,
+      userId, type,
+      status: "live",
+      startedAt: fnow(),
+      endedAt: null,
+      lastUpdate: fnow(),
+      position: null,
+      distanceKm: 0,
+      durationSec: 0,
+      followers: Array.isArray(params.followers)
+        ? params.followers.slice(0, 50).map((f) => String(f)) : [],
+      pings: [],
+    };
+    s.beacons.set(beacon.id, beacon);
+    saveStateIfAvailable();
+    return { ok: true, result: { beacon } };
+  });
+
+  registerLensAction("fitness", "beacon-ping", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const beacon = s.beacons.get(String(params.id));
+    if (!beacon) return { ok: false, error: "beacon not found" };
+    if (beacon.userId !== faid(ctx)) return { ok: false, error: "not your beacon" };
+    if (beacon.status !== "live") return { ok: false, error: "beacon is not live" };
+    const lat = Number(params.lat), lon = Number(params.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return { ok: false, error: "lat and lon required" };
+    }
+    const ping = { lat, lon, at: fnow() };
+    beacon.pings.push(ping);
+    if (beacon.pings.length > 500) beacon.pings = beacon.pings.slice(-500);
+    beacon.position = ping;
+    beacon.lastUpdate = ping.at;
+    beacon.distanceKm = Math.max(0, Math.round(fnum(params.distanceKm, beacon.distanceKm) * 1000) / 1000);
+    beacon.durationSec = Math.max(0, Math.round(fnum(params.durationSec, beacon.durationSec)));
+    saveStateIfAvailable();
+    return { ok: true, result: { position: ping, pingCount: beacon.pings.length } };
+  });
+
+  registerLensAction("fitness", "beacon-status", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    // resolve by share token (follower view) or id (owner view)
+    let beacon = null;
+    if (params.shareToken) {
+      beacon = [...s.beacons.values()].find((b) => b.shareToken === String(params.shareToken));
+    } else if (params.id) {
+      beacon = s.beacons.get(String(params.id));
+    }
+    if (!beacon) return { ok: false, error: "beacon not found" };
+    const isOwner = beacon.userId === userId;
+    const isFollower = beacon.followers.includes(userId);
+    if (!isOwner && !isFollower && !params.shareToken) {
+      return { ok: false, error: "not authorised to view this beacon" };
+    }
+    return {
+      ok: true,
+      result: {
+        beacon: {
+          id: isOwner ? beacon.id : undefined,
+          status: beacon.status,
+          type: beacon.type,
+          startedAt: beacon.startedAt,
+          endedAt: beacon.endedAt,
+          lastUpdate: beacon.lastUpdate,
+          position: beacon.position,
+          distanceKm: beacon.distanceKm,
+          durationSec: beacon.durationSec,
+          followerCount: beacon.followers.length,
+          track: beacon.pings.map((p) => ({ lat: p.lat, lon: p.lon })),
+        },
+        isOwner,
+      },
+    };
+  });
+
+  registerLensAction("fitness", "beacon-stop", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const beacon = s.beacons.get(String(params.id));
+    if (!beacon) return { ok: false, error: "beacon not found" };
+    if (beacon.userId !== faid(ctx)) return { ok: false, error: "not your beacon" };
+    beacon.status = "ended";
+    beacon.endedAt = fnow();
+    saveStateIfAvailable();
+    return { ok: true, result: { beacon: { id: beacon.id, status: beacon.status, endedAt: beacon.endedAt } } };
+  });
+
+  registerLensAction("fitness", "beacon-list", (ctx, _a, _params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const mine = [];
+    const following = [];
+    for (const b of s.beacons.values()) {
+      const summary = {
+        id: b.userId === userId ? b.id : undefined,
+        shareToken: b.userId === userId ? b.shareToken : undefined,
+        userId: b.userId, type: b.type, status: b.status,
+        startedAt: b.startedAt, lastUpdate: b.lastUpdate,
+        distanceKm: b.distanceKm,
+      };
+      if (b.userId === userId) mine.push(summary);
+      else if (b.followers.includes(userId)) following.push(summary);
+    }
+    return { ok: true, result: { mine, following } };
+  });
+
+  // ── Training plan calendar + adaptive rescheduling ──────────────────
+  const PLAN_SESSION_TYPES = ["easy", "long", "tempo", "intervals", "recovery", "race", "rest", "strength", "cross"];
+
+  registerLensAction("fitness", "plan-create", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const sessions = Array.isArray(params.sessions) ? params.sessions : [];
+    if (!sessions.length) return { ok: false, error: "sessions[] required" };
+    const cleaned = [];
+    for (const sess of sessions) {
+      const date = fday(sess.date);
+      if (!date) continue;
+      cleaned.push({
+        id: fid("psess"),
+        date,
+        type: PLAN_SESSION_TYPES.includes(String(sess.type || "").toLowerCase())
+          ? String(sess.type).toLowerCase() : "easy",
+        title: String(sess.title || "").slice(0, 120) || null,
+        targetDistanceKm: Math.max(0, fnum(sess.targetDistanceKm)),
+        targetDurationMin: Math.max(0, fnum(sess.targetDurationMin)),
+        notes: String(sess.notes || "").slice(0, 300) || null,
+        status: "planned",
+        completedActivityId: null,
+      });
+    }
+    if (!cleaned.length) return { ok: false, error: "no valid sessions (each needs a date)" };
+    cleaned.sort((a, b) => a.date.localeCompare(b.date));
+    const plan = {
+      id: fid("plan"), name,
+      goalRace: String(params.goalRace || "").slice(0, 120) || null,
+      goalDate: fday(params.goalDate) || null,
+      sessions: cleaned,
+      createdAt: fnow(),
+    };
+    flistB(s.trainingPlans, userId).push(plan);
+    saveStateIfAvailable();
+    return { ok: true, result: { plan } };
+  });
+
+  function planWithCompletion(plan, acts) {
+    // mark a planned session complete if a matching activity exists that
+    // day; carry adherence metrics for the calendar surface.
+    const byDate = new Map();
+    for (const a of acts) {
+      const d = fday(a.date);
+      if (!byDate.has(d)) byDate.set(d, []);
+      byDate.get(d).push(a);
+    }
+    let done = 0, missed = 0;
+    const today = fday(fnow());
+    const sessions = plan.sessions.map((sess) => {
+      const out = { ...sess };
+      const sameDay = byDate.get(sess.date) || [];
+      if (sess.type === "rest") {
+        out.status = "rest";
+      } else if (sess.completedActivityId
+          && acts.some((a) => a.id === sess.completedActivityId)) {
+        out.status = "completed"; done++;
+      } else if (sameDay.length) {
+        out.status = "completed";
+        out.completedActivityId = sameDay[0].id;
+        out.actualDistanceKm = sameDay.reduce((x, a) => x + a.distanceKm, 0);
+        done++;
+      } else if (sess.date < today) {
+        out.status = "missed"; missed++;
+      } else {
+        out.status = "planned";
+      }
+      return out;
+    });
+    const trackable = sessions.filter((x) => x.type !== "rest");
+    return {
+      sessions,
+      adherence: {
+        completed: done, missed,
+        upcoming: trackable.filter((x) => x.status === "planned").length,
+        rate: trackable.length ? Math.round((done / trackable.length) * 100) : 0,
+      },
+    };
+  }
+
+  registerLensAction("fitness", "plan-list", (ctx, _a, _params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const acts = s.activities.get(userId) || [];
+    const plans = (s.trainingPlans.get(userId) || []).map((p) => {
+      const { sessions, adherence } = planWithCompletion(p, acts);
+      return { ...p, sessions, adherence };
+    });
+    return { ok: true, result: { plans, count: plans.length } };
+  });
+
+  registerLensAction("fitness", "plan-delete", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.trainingPlans.get(faid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "plan not found" };
+    arr.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("fitness", "plan-session-move", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const plan = (s.trainingPlans.get(faid(ctx)) || []).find((p) => p.id === params.planId);
+    if (!plan) return { ok: false, error: "plan not found" };
+    const sess = plan.sessions.find((x) => x.id === params.sessionId);
+    if (!sess) return { ok: false, error: "session not found" };
+    const newDate = fday(params.date);
+    if (!newDate) return { ok: false, error: "valid date required" };
+    sess.date = newDate;
+    plan.sessions.sort((a, b) => a.date.localeCompare(b.date));
+    saveStateIfAvailable();
+    return { ok: true, result: { sessionId: sess.id, date: sess.date } };
+  });
+
+  /**
+   * plan-reschedule — adaptive rescheduling. Pushes every missed
+   * (past, uncompleted, non-rest) session forward by `shiftDays`,
+   * preserving order. Strava/Garmin adaptive-plan behaviour: a missed
+   * key session slides the remaining plan rather than being dropped.
+   */
+  registerLensAction("fitness", "plan-reschedule", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const plan = (s.trainingPlans.get(userId) || []).find((p) => p.id === params.planId);
+    if (!plan) return { ok: false, error: "plan not found" };
+    const shiftDays = fclamp(fnum(params.shiftDays, 1), 1, 28);
+    const acts = s.activities.get(userId) || [];
+    const today = fday(fnow());
+    const completedDates = new Set(acts.map((a) => fday(a.date)));
+    let moved = 0;
+    for (const sess of plan.sessions) {
+      const isMissed = sess.type !== "rest"
+        && sess.date < today
+        && !sess.completedActivityId
+        && !completedDates.has(sess.date);
+      if (isMissed) {
+        const d = new Date(sess.date + "T00:00:00Z");
+        d.setUTCDate(d.getUTCDate() + shiftDays);
+        sess.date = d.toISOString().slice(0, 10);
+        sess.rescheduled = true;
+        moved++;
+      }
+    }
+    plan.sessions.sort((a, b) => a.date.localeCompare(b.date));
+    saveStateIfAvailable();
+    const { sessions, adherence } = planWithCompletion(plan, acts);
+    return { ok: true, result: { moved, shiftDays, plan: { ...plan, sessions, adherence } } };
+  });
+
+  // ── Relative effort / fitness-and-freshness trend ───────────────────
+  /**
+   * fitness-freshness — daily fitness (CTL), fatigue (ATL), form (TSB)
+   * plus per-day relative effort, ready to drive a ChartKit trend. Adds
+   * weekly RE rollups and a form-trend verdict.
+   */
+  registerLensAction("fitness", "fitness-freshness", (ctx, _a, params = {}) => {
+    const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const acts = s.activities.get(faid(ctx)) || [];
+    const tl = trainingLoadSeries(acts);
+    const N = fclamp(fnum(params.days, 90), 14, 365);
+    const daily = tl.daily.slice(-N);
+
+    // weekly relative-effort rollup (Mon-anchored)
+    const weekly = new Map();
+    for (const a of acts) {
+      const d = new Date((a.date || "") + "T00:00:00Z");
+      if (isNaN(d)) continue;
+      const dow = (d.getUTCDay() + 6) % 7;
+      d.setUTCDate(d.getUTCDate() - dow);
+      const wk = d.toISOString().slice(0, 10);
+      const cur = weekly.get(wk) || { week: wk, relativeEffort: 0, activities: 0, distanceKm: 0 };
+      cur.relativeEffort += fnum(a.relativeEffort);
+      cur.activities += 1;
+      cur.distanceKm += a.distanceKm;
+      weekly.set(wk, cur);
+    }
+    const weeklyEffort = [...weekly.values()]
+      .map((w) => ({ ...w, distanceKm: Math.round(w.distanceKm * 100) / 100 }))
+      .sort((a, b) => a.week.localeCompare(b.week));
+
+    // form trend: compare last 7 days' TSB slope
+    let formTrend = "stable";
+    if (daily.length >= 8) {
+      const recent = daily[daily.length - 1].tsb;
+      const weekAgo = daily[daily.length - 8].tsb;
+      const delta = recent - weekAgo;
+      if (delta > 5) formTrend = "freshening";
+      else if (delta < -5) formTrend = "fatiguing";
+    }
+    const last = daily[daily.length - 1] || { ctl: 0, atl: 0, tsb: 0 };
+    return {
+      ok: true,
+      result: {
+        daily,
+        weeklyEffort,
+        fitness: last.ctl,
+        fatigue: last.atl,
+        form: last.tsb,
+        formTrend,
+        rampRate: daily.length >= 8
+          ? Math.round((daily[daily.length - 1].ctl - daily[daily.length - 8].ctl) * 10) / 10
+          : 0,
+        trackedDays: tl.days,
       },
     };
   });

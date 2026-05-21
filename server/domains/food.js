@@ -1290,6 +1290,566 @@ export default function registerFoodActions(registerLensAction) {
     };
   });
 
+  // ─── Parity backlog — barcode, recipe photos/ratings, calorie goals,
+  // pantry-aware auto meal-plans, aisle-grouped shopping, restaurant map ──
+
+  function getFoodState2() {
+    const s = getFoodState();
+    if (!s) return null;
+    for (const k of [
+      "recipes", "recipePhotos", "recipeRatings", "recipeCooks",
+      "nutritionGoals", "storeLayouts",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  /**
+   * barcode-lookup — resolve a product barcode (UPC/EAN) to name +
+   * nutrition via the free, keyless Open Food Facts API.
+   * params: { barcode }
+   */
+  registerLensAction("food", "barcode-lookup", async (_ctx, _a, params = {}) => {
+    const barcode = String(params.barcode || "").replace(/\D/g, "").trim();
+    if (!barcode || barcode.length < 6) {
+      return { ok: false, error: "barcode must be at least 6 digits" };
+    }
+    try {
+      const { cachedFetchJson } = await import("../lib/external-fetch.js");
+      const data = await cachedFetchJson(
+        `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=code,product_name,brands,nutriments,serving_size,nutriscore_grade,categories,image_front_small_url`,
+        { ttlMs: 24 * 60 * 60 * 1000 },
+      );
+      if (!data || data.status === 0 || !data.product) {
+        return { ok: true, result: { found: false, barcode } };
+      }
+      const p = data.product;
+      const n = p.nutriments || {};
+      // raw — the un-rounded per-serving (or per-100g fallback) value in
+      // the source unit. per() rounds to 1 decimal for display macros;
+      // sodium is in grams and tiny, so it must be converted to mg from
+      // the raw value before rounding or the precision is lost.
+      const raw = (key) => {
+        const v = Number(n[`${key}_serving`]);
+        if (Number.isFinite(v)) return v;
+        const v100 = Number(n[`${key}_100g`]);
+        return Number.isFinite(v100) ? v100 : 0;
+      };
+      const per = (key) => Math.round(raw(key) * 10) / 10;
+      return {
+        ok: true,
+        result: {
+          found: true,
+          barcode,
+          name: String(p.product_name || "").trim() || "Unknown product",
+          brand: String(p.brands || "").trim() || null,
+          servingSize: String(p.serving_size || "").trim() || null,
+          nutriScore: (p.nutriscore_grade || "").toUpperCase() || null,
+          imageUrl: p.image_front_small_url || null,
+          nutrition: {
+            calories: per("energy-kcal"),
+            protein_g: per("proteins"),
+            carbs_g: per("carbohydrates"),
+            fat_g: per("fat"),
+            sugar_g: per("sugars"),
+            sodium_mg: Math.round(raw("sodium") * 1000),
+          },
+          source: "openfoodfacts",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `openfoodfacts unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  /**
+   * recipe-add / recipe-list — user recipe library. Recipes carry a
+   * slot so meal-plan-auto and meal-plan-generate can use them.
+   */
+  registerLensAction("food", "recipe-add", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (!s.recipes.has(userId)) s.recipes.set(userId, []);
+    const slot = ["Breakfast", "Lunch", "Dinner", "Snack"].includes(params.slot) ? params.slot : "Dinner";
+    const recipe = {
+      id: `rec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      slot,
+      servings: Math.max(1, Number(params.servings) || 1),
+      calories: Math.max(0, Number(params.calories) || 0),
+      protein: Math.max(0, Number(params.protein) || 0),
+      carbs: Math.max(0, Number(params.carbs) || 0),
+      fat: Math.max(0, Number(params.fat) || 0),
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => String(t).toLowerCase().trim()).filter(Boolean).slice(0, 12) : [],
+      ingredients: Array.isArray(params.ingredients)
+        ? params.ingredients.map((i) => ({
+            item: String(i.item || i.name || "").trim(),
+            qty: Number(i.qty) || 1,
+            unit: String(i.unit || "item"),
+            aisle: String(i.aisle || "").trim() || null,
+          })).filter((i) => i.item)
+        : [],
+      createdAt: new Date().toISOString(),
+    };
+    s.recipes.get(userId).push(recipe);
+    saveStateIfAvailable();
+    return { ok: true, result: { recipe } };
+  });
+
+  registerLensAction("food", "recipe-list", (ctx, _a, _params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const recipes = (s.recipes.get(userId) || []).map((r) => {
+      const ratings = (s.recipeRatings.get(userId) || []).filter((x) => x.recipeId === r.id);
+      const cooks = (s.recipeCooks.get(userId) || []).filter((x) => x.recipeId === r.id);
+      const avgRating = ratings.length
+        ? Math.round((ratings.reduce((a, x) => a + x.rating, 0) / ratings.length) * 10) / 10
+        : 0;
+      return {
+        ...r,
+        avgRating,
+        ratingCount: ratings.length,
+        cookCount: cooks.length,
+        lastCookedAt: cooks.length ? cooks[cooks.length - 1].cookedAt : null,
+        photoCount: (s.recipePhotos.get(userId) || []).filter((x) => x.recipeId === r.id).length,
+      };
+    });
+    return { ok: true, result: { recipes, count: recipes.length } };
+  });
+
+  /**
+   * recipe-photo-add / list / delete — recipe + step photo gallery.
+   * params for add: { recipeId, dataUrl, caption, stepNumber }
+   */
+  registerLensAction("food", "recipe-photo-add", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const recipeId = String(params.recipeId || "").trim();
+    if (!recipeId) return { ok: false, error: "recipeId required" };
+    const dataUrl = String(params.dataUrl || params.url || "").trim();
+    if (!dataUrl) return { ok: false, error: "dataUrl or url required" };
+    if (dataUrl.length > 4_000_000) return { ok: false, error: "image too large (max ~4MB)" };
+    if (!s.recipePhotos.has(userId)) s.recipePhotos.set(userId, []);
+    const photo = {
+      id: `rpho_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      recipeId,
+      dataUrl,
+      caption: String(params.caption || "").trim().slice(0, 240),
+      stepNumber: Number.isFinite(Number(params.stepNumber)) && Number(params.stepNumber) > 0
+        ? Math.round(Number(params.stepNumber)) : null,
+      createdAt: new Date().toISOString(),
+    };
+    s.recipePhotos.get(userId).push(photo);
+    saveStateIfAvailable();
+    return { ok: true, result: { photo } };
+  });
+
+  registerLensAction("food", "recipe-photo-list", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const recipeId = params.recipeId != null ? String(params.recipeId) : null;
+    let photos = s.recipePhotos.get(userId) || [];
+    if (recipeId) photos = photos.filter((p) => p.recipeId === recipeId);
+    photos = [...photos].sort((a, b) => {
+      const sa = a.stepNumber == null ? -1 : a.stepNumber;
+      const sb = b.stepNumber == null ? -1 : b.stepNumber;
+      return sa - sb || a.createdAt.localeCompare(b.createdAt);
+    });
+    return { ok: true, result: { photos, count: photos.length } };
+  });
+
+  registerLensAction("food", "recipe-photo-delete", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const list = s.recipePhotos.get(userId) || [];
+    const i = list.findIndex((p) => p.id === String(params.id));
+    if (i < 0) return { ok: false, error: "photo not found" };
+    list.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: String(params.id) } };
+  });
+
+  /**
+   * recipe-rate — 1–5 star rating (one per user per recipe, upsert).
+   */
+  registerLensAction("food", "recipe-rate", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const recipeId = String(params.recipeId || "").trim();
+    if (!recipeId) return { ok: false, error: "recipeId required" };
+    const rating = Math.round(Number(params.rating));
+    if (!(rating >= 1 && rating <= 5)) return { ok: false, error: "rating must be 1–5" };
+    if (!s.recipeRatings.has(userId)) s.recipeRatings.set(userId, []);
+    const list = s.recipeRatings.get(userId);
+    const existing = list.find((r) => r.recipeId === recipeId);
+    if (existing) {
+      existing.rating = rating;
+      existing.note = String(params.note || "").trim().slice(0, 500);
+      existing.updatedAt = new Date().toISOString();
+      saveStateIfAvailable();
+      return { ok: true, result: { rating: existing, updated: true } };
+    }
+    const entry = {
+      id: `rrat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      recipeId, rating,
+      note: String(params.note || "").trim().slice(0, 500),
+      createdAt: new Date().toISOString(),
+    };
+    list.push(entry);
+    saveStateIfAvailable();
+    return { ok: true, result: { rating: entry, updated: false } };
+  });
+
+  /**
+   * recipe-cooked — record a cook-it-again event with optional notes.
+   * recipe-cook-history — list cook events (all or one recipe).
+   */
+  registerLensAction("food", "recipe-cooked", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const recipeId = String(params.recipeId || "").trim();
+    if (!recipeId) return { ok: false, error: "recipeId required" };
+    if (!s.recipeCooks.has(userId)) s.recipeCooks.set(userId, []);
+    const entry = {
+      id: `rck_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      recipeId,
+      cookedAt: new Date().toISOString(),
+      servings: Math.max(1, Number(params.servings) || 1),
+      note: String(params.note || "").trim().slice(0, 500),
+    };
+    s.recipeCooks.get(userId).push(entry);
+    saveStateIfAvailable();
+    const cooks = s.recipeCooks.get(userId).filter((c) => c.recipeId === recipeId);
+    return { ok: true, result: { cook: entry, cookCount: cooks.length } };
+  });
+
+  registerLensAction("food", "recipe-cook-history", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const recipeId = params.recipeId != null ? String(params.recipeId) : null;
+    const recipeMap = new Map((s.recipes.get(userId) || []).map((r) => [r.id, r.title]));
+    let cooks = s.recipeCooks.get(userId) || [];
+    if (recipeId) cooks = cooks.filter((c) => c.recipeId === recipeId);
+    const history = [...cooks]
+      .sort((a, b) => b.cookedAt.localeCompare(a.cookedAt))
+      .map((c) => ({ ...c, recipeTitle: recipeMap.get(c.recipeId) || "(removed recipe)" }));
+    return { ok: true, result: { history, count: history.length } };
+  });
+
+  /**
+   * nutrition-goal-set / get — daily macro/calorie targets.
+   */
+  registerLensAction("food", "nutrition-goal-set", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const goal = {
+      calories: Math.max(0, Math.round(Number(params.calories) || 0)),
+      protein_g: Math.max(0, Math.round(Number(params.protein_g) || 0)),
+      carbs_g: Math.max(0, Math.round(Number(params.carbs_g) || 0)),
+      fat_g: Math.max(0, Math.round(Number(params.fat_g) || 0)),
+      updatedAt: new Date().toISOString(),
+    };
+    if (goal.calories === 0 && goal.protein_g === 0 && goal.carbs_g === 0 && goal.fat_g === 0) {
+      return { ok: false, error: "at least one of calories/protein_g/carbs_g/fat_g must be > 0" };
+    }
+    s.nutritionGoals.set(userId, goal);
+    saveStateIfAvailable();
+    return { ok: true, result: { goal } };
+  });
+
+  registerLensAction("food", "nutrition-goal-get", (ctx, _a, _params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    return { ok: true, result: { goal: s.nutritionGoals.get(userId) || null } };
+  });
+
+  /**
+   * nutrition-day-summary — aggregate one day's nutrition log against
+   * the user's goal, returning per-macro progress for the rings UI.
+   */
+  registerLensAction("food", "nutrition-day-summary", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const day = String(params.date || new Date().toISOString().slice(0, 10));
+    const log = (s.nutritionLog.get(userId) || []).filter((e) => String(e.loggedAt || "").slice(0, 10) === day);
+    const totals = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+    for (const e of log) {
+      totals.calories += Number(e.calories) || 0;
+      const m = e.macros || {};
+      totals.protein_g += Number(m.protein_g) || 0;
+      totals.carbs_g += Number(m.carbs_g) || 0;
+      totals.fat_g += Number(m.fat_g) || 0;
+    }
+    for (const k of Object.keys(totals)) totals[k] = Math.round(totals[k] * 10) / 10;
+    const goal = s.nutritionGoals.get(userId) || null;
+    const pct = (have, want) => (want > 0 ? Math.round((have / want) * 1000) / 10 : 0);
+    const progress = goal ? {
+      calories: { consumed: totals.calories, goal: goal.calories, pct: pct(totals.calories, goal.calories), remaining: Math.round((goal.calories - totals.calories) * 10) / 10 },
+      protein_g: { consumed: totals.protein_g, goal: goal.protein_g, pct: pct(totals.protein_g, goal.protein_g), remaining: Math.round((goal.protein_g - totals.protein_g) * 10) / 10 },
+      carbs_g: { consumed: totals.carbs_g, goal: goal.carbs_g, pct: pct(totals.carbs_g, goal.carbs_g), remaining: Math.round((goal.carbs_g - totals.carbs_g) * 10) / 10 },
+      fat_g: { consumed: totals.fat_g, goal: goal.fat_g, pct: pct(totals.fat_g, goal.fat_g), remaining: Math.round((goal.fat_g - totals.fat_g) * 10) / 10 },
+    } : null;
+    return { ok: true, result: { date: day, entryCount: log.length, totals, goal, progress, entries: log } };
+  });
+
+  /**
+   * meal-plan-auto — pantry-aware auto meal-plan from the user's real
+   * recipe library, scored by dietary prefs + pantry ingredient match.
+   * params: { startDate, days, mealsPerDay, dietaryPrefs:[], avoidTags:[] }
+   */
+  registerLensAction("food", "meal-plan-auto", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const recipes = s.recipes.get(userId) || [];
+    if (recipes.length === 0) {
+      return { ok: false, error: "No recipes in your library. Add recipes via food.recipe-add first." };
+    }
+    const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
+    const days = Math.max(1, Math.min(14, Number(params.days) || 7));
+    const mealsPerDay = Math.max(1, Math.min(4, Number(params.mealsPerDay) || 3));
+    const slots = ["Breakfast", "Lunch", "Dinner", "Snack"].slice(0, mealsPerDay);
+    const dietaryPrefs = (Array.isArray(params.dietaryPrefs) ? params.dietaryPrefs : []).map((p) => String(p).toLowerCase());
+    const avoidTags = (Array.isArray(params.avoidTags) ? params.avoidTags : []).map((p) => String(p).toLowerCase());
+    const pantryNames = new Set(
+      (s.pantry.get(userId) || []).map((p) => String(p.itemName || "").toLowerCase().trim()),
+    );
+    const ratingsByRecipe = new Map();
+    for (const r of (s.recipeRatings.get(userId) || [])) ratingsByRecipe.set(r.recipeId, r.rating);
+
+    function scoreRecipe(r) {
+      const tags = (r.tags || []).map((t) => t.toLowerCase());
+      if (avoidTags.some((a) => tags.includes(a))) return -1;
+      let score = 1;
+      // dietary preference match
+      score += dietaryPrefs.filter((p) => tags.includes(p)).length * 0.5;
+      // pantry-aware: fraction of ingredients already on hand
+      const ings = (r.ingredients || []).map((i) => String(i.item || "").toLowerCase().trim());
+      if (ings.length) {
+        const onHand = ings.filter((i) => pantryNames.has(i)).length;
+        score += (onHand / ings.length) * 1.5;
+      }
+      // favour higher-rated recipes
+      if (ratingsByRecipe.has(r.id)) score += (ratingsByRecipe.get(r.id) - 3) * 0.2;
+      return score;
+    }
+
+    const bySlot = { Breakfast: [], Lunch: [], Dinner: [], Snack: [] };
+    for (const r of recipes) {
+      const slot = bySlot[r.slot] ? r.slot : "Dinner";
+      if (scoreRecipe(r) >= 0) bySlot[slot].push(r);
+    }
+    const missing = slots.filter((sl) => bySlot[sl].length === 0);
+    if (missing.length) {
+      return { ok: false, error: `No eligible recipes for slot(s): ${missing.join(", ")}. Add recipes with the right slot, or relax avoidTags.` };
+    }
+    const meals = [];
+    const pantryGaps = new Set();
+    for (let d = 0; d < days; d++) {
+      const date = new Date(new Date(startDate).getTime() + d * 86400000).toISOString().slice(0, 10);
+      for (const slot of slots) {
+        const choices = [...bySlot[slot]].sort((a, b) => {
+          const sd = scoreRecipe(b) - scoreRecipe(a);
+          if (Math.abs(sd) > 0.001) return sd;
+          // rotate deterministically across days to avoid repeats
+          return (hashStringFood(`${a.id}_${date}`) % 997) - (hashStringFood(`${b.id}_${date}`) % 997);
+        });
+        const chosen = choices[d % choices.length];
+        for (const ing of (chosen.ingredients || [])) {
+          if (!pantryNames.has(String(ing.item || "").toLowerCase().trim())) pantryGaps.add(ing.item);
+        }
+        meals.push({
+          date, slot, title: chosen.title, recipeId: chosen.id,
+          servings: 1, calories: chosen.calories, protein: chosen.protein,
+          carbs: chosen.carbs, fat: chosen.fat,
+          pantryScore: Math.round(scoreRecipe(chosen) * 100) / 100,
+        });
+      }
+    }
+    if (!s.mealPlans.has(userId)) s.mealPlans.set(userId, []);
+    const existing = s.mealPlans.get(userId);
+    const start = new Date(startDate).getTime();
+    const end = start + days * 86400000;
+    const kept = existing.filter((m) => {
+      const t = new Date(m.date).getTime();
+      return !(t >= start && t < end);
+    });
+    s.mealPlans.set(userId, [...kept, ...meals]);
+    saveStateIfAvailable();
+    return {
+      ok: true,
+      result: {
+        meals, days, mealsPerDay,
+        recipesConsidered: recipes.length,
+        pantryItemsUsed: pantryNames.size,
+        ingredientsToBuy: [...pantryGaps].sort(),
+      },
+    };
+  });
+
+  /**
+   * store-layout-set / get — per-user ordered aisle list for a store, so
+   * shopping lists can be sorted in shop-walk order.
+   */
+  registerLensAction("food", "store-layout-set", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const storeName = String(params.storeName || "My Store").trim().slice(0, 80) || "My Store";
+    const aisleOrder = (Array.isArray(params.aisleOrder) ? params.aisleOrder : [])
+      .map((a) => String(a).trim()).filter(Boolean).slice(0, 40);
+    if (aisleOrder.length === 0) return { ok: false, error: "aisleOrder must be a non-empty array" };
+    if (!s.storeLayouts.has(userId)) s.storeLayouts.set(userId, []);
+    const list = s.storeLayouts.get(userId);
+    const existing = list.find((l) => l.storeName.toLowerCase() === storeName.toLowerCase());
+    if (existing) {
+      existing.aisleOrder = aisleOrder;
+      existing.updatedAt = new Date().toISOString();
+      saveStateIfAvailable();
+      return { ok: true, result: { layout: existing, updated: true } };
+    }
+    const layout = {
+      id: `slay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      storeName, aisleOrder, updatedAt: new Date().toISOString(),
+    };
+    list.push(layout);
+    saveStateIfAvailable();
+    return { ok: true, result: { layout, updated: false } };
+  });
+
+  registerLensAction("food", "store-layout-get", (ctx, _a, _params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    return { ok: true, result: { layouts: s.storeLayouts.get(userId) || [] } };
+  });
+
+  /**
+   * shopping-list-grouped — derive a consolidated, aisle-grouped grocery
+   * list from a meal-plan date range, ordered by a store layout when one
+   * is given. Aisle is read from each recipe's real ingredient data.
+   * params: { startDate, days, storeName }
+   */
+  registerLensAction("food", "shopping-list-grouped", (ctx, _a, params = {}) => {
+    const s = getFoodState2(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const startDate = String(params.startDate || new Date().toISOString().slice(0, 10));
+    const days = Math.max(1, Math.min(31, Number(params.days) || 7));
+    const start = new Date(startDate).getTime();
+    const end = start + days * 86400000;
+    const plan = (s.mealPlans.get(userId) || []).filter((m) => {
+      const t = new Date(m.date).getTime();
+      return t >= start && t < end;
+    });
+    const recipeMap = new Map((s.recipes.get(userId) || []).map((r) => [r.id, r]));
+    const pantryNames = new Set(
+      (s.pantry.get(userId) || []).map((p) => String(p.itemName || "").toLowerCase().trim()),
+    );
+    // consolidate ingredients across the plan
+    const consolidated = new Map();
+    for (const meal of plan) {
+      const recipe = meal.recipeId ? recipeMap.get(meal.recipeId) : null;
+      for (const ing of (recipe?.ingredients || [])) {
+        const key = `${String(ing.item).toLowerCase().trim()}|${ing.unit || "item"}`;
+        const aisle = ing.aisle || "Other";
+        if (consolidated.has(key)) {
+          consolidated.get(key).qty += Number(ing.qty) || 1;
+        } else {
+          consolidated.set(key, {
+            name: ing.item, qty: Number(ing.qty) || 1, unit: ing.unit || "item",
+            aisle, haveInPantry: pantryNames.has(String(ing.item).toLowerCase().trim()),
+          });
+        }
+      }
+    }
+    const items = [...consolidated.values()].map((i) => ({ ...i, qty: Math.round(i.qty * 100) / 100 }));
+    // group by aisle
+    const aisleMap = new Map();
+    for (const it of items) {
+      if (!aisleMap.has(it.aisle)) aisleMap.set(it.aisle, []);
+      aisleMap.get(it.aisle).push(it);
+    }
+    // order aisles by store layout if available
+    const storeName = params.storeName != null ? String(params.storeName) : null;
+    let order = [];
+    if (storeName) {
+      const layout = (s.storeLayouts.get(userId) || [])
+        .find((l) => l.storeName.toLowerCase() === storeName.toLowerCase());
+      if (layout) order = layout.aisleOrder;
+    }
+    const seen = new Set(order.map((a) => a.toLowerCase()));
+    const remaining = [...aisleMap.keys()].filter((a) => !seen.has(a.toLowerCase())).sort();
+    const orderedAisles = [...order, ...remaining];
+    const byAisle = orderedAisles
+      .filter((a) => aisleMap.has(a))
+      .map((aisle) => ({
+        aisle,
+        items: aisleMap.get(aisle).sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+    const totalToBuy = items.filter((i) => !i.haveInPantry).length;
+    return {
+      ok: true,
+      result: {
+        byAisle, totalItems: items.length, totalToBuy,
+        alreadyHave: items.length - totalToBuy,
+        storeName: storeName || null, days,
+      },
+    };
+  });
+
+  /**
+   * biz-map — geo-resolved restaurant markers for a map view, with the
+   * same filters as biz-search plus a directions URL per business.
+   * params: { query, cuisine, priceTier, minRating, openNow, originLat, originLng }
+   */
+  registerLensAction("food", "biz-map", (ctx, _a, params = {}) => {
+    const s = getFoodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = String(params.query || "").trim().toLowerCase();
+    const cuisine = String(params.cuisine || "").trim().toLowerCase();
+    const priceTier = params.priceTier != null ? Math.round(Number(params.priceTier)) : null;
+    const minRating = Number(params.minRating) || 0;
+    const originLat = Number.isFinite(Number(params.originLat)) ? Number(params.originLat) : null;
+    const originLng = Number.isFinite(Number(params.originLng)) ? Number(params.originLng) : null;
+
+    function haversineKm(a, b, c, d) {
+      const R = 6371;
+      const toRad = (x) => (x * Math.PI) / 180;
+      const dLat = toRad(c - a), dLng = toRad(d - b);
+      const h = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(a)) * Math.cos(toRad(c)) * Math.sin(dLng / 2) ** 2;
+      return Math.round(2 * R * Math.asin(Math.sqrt(h)) * 10) / 10;
+    }
+
+    let rows = [...s.businesses.values()].filter((b) => b.lat != null && b.lng != null);
+    const withoutGeo = s.businesses.size - rows.length;
+    rows = rows.map((b) => {
+      const revs = s.reviews.get(b.id) || [];
+      const rating = revs.length
+        ? Math.round((revs.reduce((a, r) => a + (Number(r.rating) || 0), 0) / revs.length) * 10) / 10
+        : 0;
+      const distanceKm = (originLat != null && originLng != null)
+        ? haversineKm(originLat, originLng, b.lat, b.lng) : null;
+      return {
+        id: b.id, name: b.name, cuisine: b.cuisine, priceTier: b.priceTier,
+        neighborhood: b.neighborhood, address: b.address,
+        lat: b.lat, lng: b.lng, rating, reviewCount: revs.length, distanceKm,
+        directionsUrl: `https://www.openstreetmap.org/directions?` +
+          (originLat != null && originLng != null ? `from=${originLat},${originLng}&` : "") +
+          `to=${b.lat},${b.lng}`,
+      };
+    });
+    if (q) rows = rows.filter((b) => b.name.toLowerCase().includes(q) || b.cuisine.includes(q));
+    if (cuisine) rows = rows.filter((b) => b.cuisine === cuisine);
+    if (priceTier) rows = rows.filter((b) => b.priceTier === priceTier);
+    if (minRating > 0) rows = rows.filter((b) => b.rating >= minRating);
+    if (originLat != null && originLng != null) {
+      rows.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+    } else {
+      rows.sort((a, b) => b.rating - a.rating);
+    }
+    return { ok: true, result: { markers: rows, count: rows.length, withoutGeo } };
+  });
+
   // feed — ingest real food products from the Open Food Facts open
   // database as visible DTUs. Free, no key.
   registerLensAction("food", "feed", async (ctx, _a, params = {}) => {

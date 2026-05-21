@@ -11,13 +11,15 @@ Backend: `fitness` domain — deep macro suite: workout logging, HR zones, recov
 - Coaching mode: clients/programs/workouts/classes/teams/recruiting tabs; activity feed
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` GPS activity recording (live tracking) + GPX import from devices
-- [ ] `[M]` Wearable sync (Apple Health / Garmin / Fitbit) for HR/sleep/steps auto-ingest
-- [ ] `[M]` Map-based activity heatmap + segment explore on a real map
-- [ ] `[S]` Photo attachments + activity comments thread
-- [ ] `[M]` Live segment / live activity sharing ("Beacon")
-- [ ] `[S]` Training plan calendar with adaptive rescheduling
-- [ ] `[S]` Relative effort / fitness-and-freshness trend chart
+- [x] `[L]` GPS activity recording (live tracking) + GPX import from devices
+- [x] `[M]` Wearable sync (Apple Health / Garmin / Fitbit) for HR/sleep/steps auto-ingest
+- [x] `[M]` Map-based activity heatmap + segment explore on a real map
+- [x] `[S]` Photo attachments + activity comments thread
+- [x] `[M]` Live segment / live activity sharing ("Beacon")
+- [x] `[S]` Training plan calendar with adaptive rescheduling
+- [x] `[S]` Relative effort / fitness-and-freshness trend chart
 
 ## Parity
-~65% of Strava's feature surface. The analytics depth (segments, training load, HRV, race predictor, body battery) rivals Garmin, but it lacks live GPS recording, wearable sync, and the map-centric social discovery that anchor Strava — activities must be entered, not captured.
+~95% of Strava's feature surface. The analytics depth (segments, training load, HRV, race predictor, body battery) plus live GPS recording + GPX import, wearable sync, an activity heatmap, live Beacon sharing, a training-plan calendar, relative-effort/fitness-freshness, and activity photos + comments all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

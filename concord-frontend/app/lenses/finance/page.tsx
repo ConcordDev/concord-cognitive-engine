@@ -29,6 +29,13 @@ import CategorisationRules from '@/components/finance/CategorisationRules';
 import TaxLossHarvester from '@/components/finance/TaxLossHarvester';
 import AccountsPanel from '@/components/finance/AccountsPanel';
 import FinanceAssistant from '@/components/finance/FinanceAssistant';
+import BankAggregation from '@/components/finance/BankAggregation';
+import TransactionFeed from '@/components/finance/TransactionFeed';
+import HouseholdBudgets from '@/components/finance/HouseholdBudgets';
+import CreditScoreMonitor from '@/components/finance/CreditScoreMonitor';
+import CashFlowSankey from '@/components/finance/CashFlowSankey';
+import BillReminders from '@/components/finance/BillReminders';
+import RolloverRules from '@/components/finance/RolloverRules';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -82,6 +89,13 @@ import {
   Scissors,
   Building2,
   Sparkles,
+  Landmark,
+  Receipt,
+  Users,
+  Gauge,
+  Workflow,
+  BellRing,
+  Recycle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -160,7 +174,7 @@ interface NewsItem {
 }
 
 type TimeRange = '1H' | '24H' | '7D' | '30D' | '90D' | '1Y' | 'ALL';
-type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news' | 'networth' | 'budget' | 'checkup' | 'taxes' | 'retirement' | 'subscriptions' | 'bills' | 'goals' | 'recurring' | 'holdings' | 'dividends' | 'insights' | 'rules' | 'taxloss' | 'accounts' | 'assistant';
+type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news' | 'networth' | 'budget' | 'checkup' | 'taxes' | 'retirement' | 'subscriptions' | 'bills' | 'goals' | 'recurring' | 'holdings' | 'dividends' | 'insights' | 'rules' | 'taxloss' | 'accounts' | 'assistant' | 'banksync' | 'transactions' | 'household' | 'credit' | 'cashflow' | 'reminders' | 'rollover';
 type ChartType = 'line' | 'candle' | 'area';
 
 /** Hook: animates a number from 0 to `target` over `duration` ms on mount / when target changes. */
@@ -2222,13 +2236,20 @@ export default function FinanceLensPage() {
             { id: 'news', label: 'News', icon: Newspaper },
             { id: 'networth', label: 'Net worth', icon: TrendingUp },
             { id: 'accounts', label: 'Accounts', icon: Building2 },
+            { id: 'banksync', label: 'Bank sync', icon: Landmark },
+            { id: 'transactions', label: 'Transactions', icon: Receipt },
             { id: 'holdings', label: 'Holdings', icon: Briefcase },
             { id: 'dividends', label: 'Dividends', icon: Coins },
             { id: 'recurring', label: 'Recurring', icon: Repeat },
             { id: 'budget', label: 'Budget', icon: Wallet },
+            { id: 'rollover', label: 'Rollover', icon: Recycle },
+            { id: 'household', label: 'Household', icon: Users },
             { id: 'bills', label: 'Bills', icon: CalendarIcon },
+            { id: 'reminders', label: 'Reminders', icon: BellRing },
             { id: 'goals', label: 'Goals', icon: Target },
+            { id: 'cashflow', label: 'Cash flow', icon: Workflow },
             { id: 'insights', label: 'Insights', icon: InsightsIcon },
+            { id: 'credit', label: 'Credit', icon: Gauge },
             { id: 'rules', label: 'Rules', icon: FilterIcon },
             { id: 'taxloss', label: 'Tax-loss', icon: Scissors },
             { id: 'taxes', label: 'Taxes', icon: Calculator },
@@ -2275,6 +2296,13 @@ export default function FinanceLensPage() {
       {viewMode === 'rules' && <div className="space-y-4"><CategorisationRules /></div>}
       {viewMode === 'taxloss' && <div className="space-y-4"><TaxLossHarvester /></div>}
       {viewMode === 'assistant' && <div className="space-y-4"><FinanceAssistant /></div>}
+      {viewMode === 'banksync' && <div className="space-y-4"><BankAggregation /></div>}
+      {viewMode === 'transactions' && <div className="space-y-4"><TransactionFeed /></div>}
+      {viewMode === 'household' && <div className="space-y-4"><HouseholdBudgets /></div>}
+      {viewMode === 'credit' && <div className="space-y-4"><CreditScoreMonitor /></div>}
+      {viewMode === 'cashflow' && <div className="space-y-4"><CashFlowSankey /></div>}
+      {viewMode === 'reminders' && <div className="space-y-4"><BillReminders /></div>}
+      {viewMode === 'rollover' && <div className="space-y-4"><RolloverRules /></div>}
       {viewMode === 'news' && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold">Market News & Analysis</h2>

@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Tag } from 'lucide-react';
+import { Loader2, Plus, Trash2, Tag, Lock, Unlock, History } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,11 @@ interface Scene {
   id: string; number: string; slugline: string; intExt: string; location: string;
   timeOfDay: string; description: string | null; pageEighths: number;
   breakdownElements: BreakdownEl[]; shootDayNumber: number | null;
+  revisionId?: string | null; revisionColor?: string | null;
+}
+interface Revision {
+  id: string; label: string; color: string; ordinal: number;
+  author: string; lockedPages: string[];
 }
 
 const INT_EXT = ['INT', 'EXT', 'INT/EXT'];
@@ -29,6 +34,13 @@ const CAT_COLOR: Record<string, string> = {
   sfx: 'bg-sky-600', vfx: 'bg-cyan-600', set_dressing: 'bg-lime-600', special_equipment: 'bg-indigo-600',
   sound: 'bg-teal-600', music: 'bg-violet-600', art_department: 'bg-yellow-600', notes: 'bg-zinc-600',
 };
+// Industry-standard production-draft revision colors, in WGA order.
+const REVISION_COLORS = ['white', 'blue', 'pink', 'yellow', 'green', 'goldenrod', 'buff', 'salmon', 'cherry'];
+const REV_SWATCH: Record<string, string> = {
+  white: 'bg-zinc-100', blue: 'bg-blue-400', pink: 'bg-pink-400', yellow: 'bg-yellow-300',
+  green: 'bg-green-400', goldenrod: 'bg-amber-500', buff: 'bg-orange-200', salmon: 'bg-rose-300',
+  cherry: 'bg-red-500',
+};
 
 export function FsScriptPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -38,12 +50,19 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
   const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState({ intExt: 'INT', location: '', timeOfDay: 'DAY', pageEighths: '', description: '' });
   const [tag, setTag] = useState({ category: 'props', name: '' });
+  const [revisions, setRevisions] = useState<Revision[]>([]);
+  const [revForm, setRevForm] = useState({ label: '', color: 'white', author: '' });
+  const [lockPage, setLockPage] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('film-studios', 'scene-list', { projectId });
+    const [r, rv] = await Promise.all([
+      lensRun('film-studios', 'scene-list', { projectId }),
+      lensRun('film-studios', 'revision-list', { projectId }),
+    ]);
     setScenes(r.data?.result?.scenes || []);
     setTotalPages(r.data?.result?.totalPages || 0);
+    setRevisions(rv.data?.result?.revisions || []);
     setLoading(false);
     onChange();
   }, [projectId, onChange]);
@@ -77,6 +96,35 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
 
   const untag = async (id: string) => {
     await lensRun('film-studios', 'breakdown-untag', { id });
+    await refresh();
+  };
+
+  const addRevision = async () => {
+    if (!revForm.label.trim()) { setError('Revision label is required.'); return; }
+    const r = await lensRun('film-studios', 'revision-create', {
+      projectId, label: revForm.label.trim(), color: revForm.color,
+      author: revForm.author.trim() || undefined,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setRevForm({ label: '', color: 'white', author: '' });
+    setError(null);
+    await refresh();
+  };
+
+  const delRevision = async (id: string) => {
+    await lensRun('film-studios', 'revision-delete', { id });
+    await refresh();
+  };
+
+  const toggleLock = async (revisionId: string, page: string) => {
+    if (!page.trim()) return;
+    await lensRun('film-studios', 'page-lock-toggle', { revisionId, page: page.trim() });
+    setLockPage((p) => ({ ...p, [revisionId]: '' }));
+    await refresh();
+  };
+
+  const tagSceneRevision = async (sceneId: string, revisionId: string) => {
+    await lensRun('film-studios', 'scene-revision-tag', { sceneId, revisionId: revisionId || undefined });
     await refresh();
   };
 
@@ -116,6 +164,64 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
         </div>
       </section>
 
+      {/* Script revisions — collaborative draft tracking */}
+      <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
+          <History className="w-3.5 h-3.5 text-fuchsia-400" /> Script revisions
+          <span className="text-zinc-500 font-normal">· {revisions.length} drafts</span>
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <input placeholder="Revision label" value={revForm.label}
+            onChange={(e) => setRevForm({ ...revForm, label: e.target.value })}
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <select value={revForm.color} onChange={(e) => setRevForm({ ...revForm, color: e.target.value })}
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
+            {REVISION_COLORS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <input placeholder="Author" value={revForm.author}
+            onChange={(e) => setRevForm({ ...revForm, author: e.target.value })}
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <button type="button" onClick={addRevision}
+            className="flex items-center justify-center gap-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg">
+            <Plus className="w-3.5 h-3.5" /> Revision
+          </button>
+        </div>
+        {revisions.length > 0 && (
+          <ul className="space-y-1.5">
+            {revisions.map((rev) => (
+              <li key={rev.id} className="bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className={cn('w-3 h-3 rounded-full border border-zinc-600', REV_SWATCH[rev.color] || 'bg-zinc-500')} />
+                  <span className="text-xs font-semibold text-zinc-100">{rev.label}</span>
+                  <span className="text-[10px] text-zinc-500 capitalize">{rev.color} pages · {rev.author}</span>
+                  <span className="text-[10px] text-zinc-500 ml-auto">{rev.lockedPages.length} locked</span>
+                  <button type="button" onClick={() => delRevision(rev.id)} className="text-zinc-600 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-1 mt-1">
+                  {rev.lockedPages.map((pg) => (
+                    <button key={pg} type="button" onClick={() => toggleLock(rev.id, pg)}
+                      className="flex items-center gap-0.5 text-[10px] bg-amber-800/60 text-amber-100 px-1.5 py-0.5 rounded">
+                      <Lock className="w-2.5 h-2.5" /> p{pg}
+                    </button>
+                  ))}
+                  <div className="flex items-center gap-1">
+                    <input placeholder="page #" value={lockPage[rev.id] || ''}
+                      onChange={(e) => setLockPage((p) => ({ ...p, [rev.id]: e.target.value }))}
+                      className="w-16 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
+                    <button type="button" onClick={() => toggleLock(rev.id, lockPage[rev.id] || '')}
+                      className="flex items-center gap-0.5 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-1.5 py-0.5 rounded">
+                      <Unlock className="w-2.5 h-2.5" /> lock/unlock
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* Scenes */}
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">
@@ -129,6 +235,10 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
               <li key={sc.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl">
                 <div className="flex items-start gap-2 p-3">
                   <span className="text-[10px] font-mono text-fuchsia-400 mt-0.5">{sc.number}</span>
+                  {sc.revisionColor && (
+                    <span className={cn('w-2.5 h-2.5 rounded-full border border-zinc-600 mt-1 shrink-0', REV_SWATCH[sc.revisionColor] || 'bg-zinc-500')}
+                      title={`${sc.revisionColor} revision`} />
+                  )}
                   <button type="button" onClick={() => setExpanded(expanded === sc.id ? null : sc.id)}
                     className="flex-1 text-left min-w-0">
                     <p className="text-sm font-semibold text-zinc-100">{sc.slugline}</p>
@@ -153,6 +263,17 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                 </div>
                 {expanded === sc.id && (
                   <div className="px-3 pb-3 border-t border-zinc-800 pt-2.5">
+                    {revisions.length > 0 && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[11px] font-semibold text-zinc-400">Revision:</span>
+                        <select value={sc.revisionId || ''}
+                          onChange={(e) => tagSceneRevision(sc.id, e.target.value)}
+                          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
+                          <option value="">Unrevised</option>
+                          {revisions.map((rev) => <option key={rev.id} value={rev.id}>{rev.label} ({rev.color})</option>)}
+                        </select>
+                      </div>
+                    )}
                     <p className="flex items-center gap-1 text-[11px] font-semibold text-zinc-400 mb-1.5">
                       <Tag className="w-3 h-3" /> Script breakdown
                     </p>

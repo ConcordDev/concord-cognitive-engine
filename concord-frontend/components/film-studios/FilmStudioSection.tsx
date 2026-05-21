@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Clapperboard, Plus, FileText, Camera, CalendarDays, Wallet, Scissors, MessageSquare, Loader2 } from 'lucide-react';
+import { Clapperboard, Plus, FileText, Camera, CalendarDays, Wallet, Scissors, MessageSquare, Loader2, Monitor, Video, Trophy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { FsScriptPanel } from './FsScriptPanel';
@@ -18,6 +18,9 @@ import { FsEditPanel } from './FsEditPanel';
 import { FsReviewPanel } from './FsReviewPanel';
 import { FsScreenplayPanel } from './FsScreenplayPanel';
 import { FsProductionPanel } from './FsProductionPanel';
+import { FsWatchPartyPanel } from './FsWatchPartyPanel';
+import { FsMediaPanel } from './FsMediaPanel';
+import { FsDistributionPanel } from './FsDistributionPanel';
 
 interface Project { id: string; title: string; format: string; logline: string | null }
 interface Dash {
@@ -25,7 +28,7 @@ interface Dash {
   shootDays: number; cast: number; crew: number; sequences: number;
   versions: number; budgetEstimated: number; budgetActual: number;
 }
-type TabId = 'script' | 'screenplay' | 'shots' | 'schedule' | 'production' | 'budget' | 'edit' | 'review';
+type TabId = 'script' | 'screenplay' | 'shots' | 'schedule' | 'production' | 'budget' | 'edit' | 'media' | 'review' | 'watch' | 'distribution';
 const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'script', label: 'Script', icon: FileText },
   { id: 'screenplay', label: 'Screenplay', icon: FileText },
@@ -33,8 +36,11 @@ const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: 'schedule', label: 'Schedule', icon: CalendarDays },
   { id: 'production', label: 'Production', icon: CalendarDays },
   { id: 'budget', label: 'Budget & Team', icon: Wallet },
+  { id: 'media', label: 'Media', icon: Video },
   { id: 'edit', label: 'Edit', icon: Scissors },
   { id: 'review', label: 'Review', icon: MessageSquare },
+  { id: 'watch', label: 'Watch Party', icon: Monitor },
+  { id: 'distribution', label: 'Distribution', icon: Trophy },
 ];
 
 const FORMATS = ['feature', 'short', 'series', 'spec', 'doc', 'commercial'];
@@ -152,8 +158,11 @@ export function FilmStudioSection() {
                 {tab === 'schedule' && <FsSchedulePanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'production' && <FsProductionPanel projectId={activeProject} />}
                 {tab === 'budget' && <FsBudgetTeamPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'media' && <FsMediaPanel projectId={activeProject} />}
                 {tab === 'edit' && <FsEditPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'review' && <FsReviewPanel projectId={activeProject} onChange={refreshDash} />}
+                {tab === 'watch' && <FsWatchPartyPanel projectId={activeProject} />}
+                {tab === 'distribution' && <FsDistributionPanel projectId={activeProject} />}
               </div>
             </>
           )}

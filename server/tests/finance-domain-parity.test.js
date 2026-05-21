@@ -144,23 +144,46 @@ describe("finance.retirement-monte-carlo", () => {
   });
 });
 
-describe("finance.subscriptions-detect + cancel", () => {
-  it("seeds + lists demo subscriptions; cancel marks as cancelled", () => {
+describe("finance.subscriptions-detect + cancel (real ledger, no seed)", () => {
+  it("empty ledger detects zero subscriptions (no synthetic seed)", () => {
     const r = call("subscriptions-detect", ctxA, {});
     assert.equal(r.ok, true);
-    assert.ok(r.result.subscriptions.length >= 5);
-    const first = r.result.subscriptions[0];
+    assert.equal(r.result.subscriptions.length, 0);
+  });
 
+  it("detects a recurring monthly charge from the real ledger", () => {
+    // Three monthly Netflix debits → one detected subscription.
+    call("transactions-ingest", ctxA, { description: "NETFLIX.COM", amount: -15.49, date: "2026-01-05" });
+    call("transactions-ingest", ctxA, { description: "NETFLIX.COM 8009999", amount: -15.49, date: "2026-02-05" });
+    call("transactions-ingest", ctxA, { description: "Netflix.com", amount: -15.49, date: "2026-03-05" });
+    const r = call("subscriptions-detect", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.subscriptions.length, 1);
+    const sub = r.result.subscriptions[0];
+    assert.equal(sub.cadence, "monthly");
+    assert.equal(sub.occurrences, 3);
+    assert.ok(Math.abs(sub.monthlyAmount - 15.49) < 0.5);
+  });
+
+  it("cancel marks a detected subscription as cancelled and persists across re-detect", () => {
+    call("transactions-ingest", ctxA, { description: "SPOTIFY USA", amount: -10.99, date: "2026-01-10" });
+    call("transactions-ingest", ctxA, { description: "SPOTIFY USA", amount: -10.99, date: "2026-02-10" });
+    const r = call("subscriptions-detect", ctxA, {});
+    const first = r.result.subscriptions[0];
     const cancelled = call("subscriptions-cancel", ctxA, { id: first.id });
     assert.equal(cancelled.ok, true);
-
     const after = call("subscriptions-detect", ctxA, {});
     assert.equal(after.result.subscriptions.find(s => s.id === first.id).status, "cancelled");
   });
 
   it("rejects unknown subscription id", () => {
-    call("subscriptions-detect", ctxA, {});
     assert.equal(call("subscriptions-cancel", ctxA, { id: "nope" }).ok, false);
+  });
+
+  it("ignores one-off charges and unstable amounts", () => {
+    call("transactions-ingest", ctxA, { description: "Random Store", amount: -50, date: "2026-01-01" });
+    const r = call("subscriptions-detect", ctxA, {});
+    assert.equal(r.result.subscriptions.length, 0);
   });
 });
 
@@ -516,6 +539,231 @@ describe("finance.dashboard-summary (FinanceShell data source)", () => {
     const r = call("dashboard-summary", ctxA, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.netWorth, 0);
+  });
+});
+
+// ═══ Parity backlog (Monarch / Empower gap) — 7 buildable items ═══════
+
+describe("backlog 1 — bank aggregation (accounts-sync-link / -pull)", () => {
+  it("sync-link records a sync-enabled account", () => {
+    const r = call("accounts-sync-link", ctxA, { institution: "Chase", name: "Checking", kind: "checking", balance: 4000, provider: "plaid" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.account.synced, true);
+    assert.equal(r.result.account.provider, "plaid");
+    assert.equal(r.result.syncEnabled, true);
+  });
+  it("sync-pull ingests + auto-categorises a transaction batch into the ledger", () => {
+    const linked = call("accounts-sync-link", ctxA, { institution: "Ally", name: "Savings", kind: "savings" });
+    const acctId = linked.result.account.id;
+    const r = call("accounts-sync-pull", ctxA, {
+      accountId: acctId,
+      transactions: [
+        { description: "Whole Foods Market", amount: -82.10, date: "2026-05-01" },
+        { description: "Payroll Deposit", amount: 3000, date: "2026-05-01" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.added, 2);
+    assert.ok(r.result.transactions.every(t => t.autoCategorised));
+    assert.equal(r.result.transactions.find(t => t.amount < 0).category, "Groceries");
+  });
+  it("sync-pull dedupes by externalId on re-sync", () => {
+    const linked = call("accounts-sync-link", ctxA, { institution: "Chase", name: "Checking" });
+    const acctId = linked.result.account.id;
+    const batch = [{ externalId: "ext-1", description: "Netflix", amount: -15.49, date: "2026-05-02" }];
+    const first = call("accounts-sync-pull", ctxA, { accountId: acctId, transactions: batch });
+    assert.equal(first.result.added, 1);
+    const second = call("accounts-sync-pull", ctxA, { accountId: acctId, transactions: batch });
+    assert.equal(second.result.added, 0);
+    assert.equal(second.result.deduped, 1);
+  });
+  it("sync-pull rejects a non-synced account", () => {
+    const manual = call("accounts-link", ctxA, { institution: "Manual", name: "Cash" });
+    const r = call("accounts-sync-pull", ctxA, { accountId: manual.result.account.id, transactions: [{ description: "x", amount: -1 }] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not sync-enabled/);
+  });
+});
+
+describe("backlog 2 — transaction feed + auto-categorisation", () => {
+  it("ingest auto-categorises when no category passed", () => {
+    const r = call("transactions-ingest", ctxA, { description: "UBER TRIP", amount: -24.50, date: "2026-05-03" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.transaction.category, "Transportation");
+    assert.equal(r.result.transaction.autoCategorised, true);
+    assert.equal(r.result.transaction.categorySource, "rules");
+  });
+  it("ingest honours an explicit category", () => {
+    const r = call("transactions-ingest", ctxA, { description: "Mystery", amount: -5, category: "Gifts" });
+    assert.equal(r.result.transaction.category, "Gifts");
+    assert.equal(r.result.transaction.autoCategorised, false);
+  });
+  it("list returns spend + income totals; recategorise + delete work", () => {
+    call("transactions-ingest", ctxA, { description: "Payroll", amount: 5000, date: "2026-05-01" });
+    const ing = call("transactions-ingest", ctxA, { description: "Coffee", amount: -6, date: "2026-05-02" });
+    const list = call("transactions-list", ctxA, {});
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.totalIncome, 5000);
+    assert.equal(list.result.totalSpend, 6);
+    const recat = call("transactions-recategorise", ctxA, { id: ing.result.transaction.id, category: "Dining" });
+    assert.equal(recat.result.transaction.category, "Dining");
+    assert.equal(recat.result.transaction.categorySource, "manual");
+    const del = call("transactions-delete", ctxA, { id: ing.result.transaction.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("transactions-list", ctxA, {}).result.count, 1);
+  });
+  it("a user rule applies at ingest time", () => {
+    call("rules-create", ctxA, { matchText: "acme gym", category: "Fitness" });
+    const r = call("transactions-ingest", ctxA, { description: "ACME GYM MEMBERSHIP", amount: -40 });
+    assert.equal(r.result.transaction.category, "Fitness");
+    assert.equal(r.result.transaction.categorySource, "user_rule");
+  });
+});
+
+describe("backlog 3 — household shared budgets", () => {
+  it("create / add-member / shared budget spend cycle, per-user scoped", () => {
+    const hh = call("household-create", ctxA, { name: "Smith Household" });
+    assert.equal(hh.ok, true);
+    assert.equal(hh.result.household.members.length, 1);
+    const add = call("household-add-member", ctxA, { memberId: userB });
+    assert.equal(add.ok, true);
+    assert.equal(add.result.household.members.length, 2);
+    const budget = call("household-budget-create", ctxA, { category: "Groceries", monthlyTarget: 800 });
+    assert.equal(budget.ok, true);
+    const spend = call("household-budget-spend", ctxA, { budgetId: budget.result.budget.id, amount: 300 });
+    assert.equal(spend.result.budget.spent, 300);
+    assert.equal(spend.result.remaining, 500);
+    assert.equal(spend.result.overBudget, false);
+  });
+  it("rejects duplicate household and unknown member ops", () => {
+    call("household-create", ctxA, { name: "A" });
+    assert.equal(call("household-create", ctxA, { name: "B" }).ok, false);
+    assert.equal(call("household-add-member", ctxB, { memberId: "x" }).ok, false);
+  });
+  it("cannot remove the household owner", () => {
+    call("household-create", ctxA, { name: "A" });
+    assert.equal(call("household-remove-member", ctxA, { memberId: userA }).ok, false);
+  });
+});
+
+describe("backlog 4 — credit-score monitoring", () => {
+  it("record / report computes band, delta and advice", () => {
+    call("credit-score-record", ctxA, { score: 690, bureau: "fico", date: "2026-01-01", utilisationPct: 45 });
+    call("credit-score-record", ctxA, { score: 720, bureau: "fico", date: "2026-04-01", utilisationPct: 22 });
+    const r = call("credit-score-report", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.latest.score, 720);
+    assert.equal(r.result.band, "good");
+    assert.equal(r.result.delta, 30);
+    assert.equal(r.result.deltaFromPrior, 30);
+  });
+  it("flags high utilisation in advice", () => {
+    call("credit-score-record", ctxA, { score: 650, utilisationPct: 60 });
+    const r = call("credit-score-report", ctxA, {});
+    assert.ok(r.result.advice.some(a => /utilisation/i.test(a)));
+  });
+  it("rejects out-of-range score; empty report has no latest", () => {
+    assert.equal(call("credit-score-record", ctxA, { score: 200 }).ok, false);
+    assert.equal(call("credit-score-report", ctxA, {}).result.latest, null);
+  });
+  it("delete removes a reading", () => {
+    const rec = call("credit-score-record", ctxA, { score: 700 });
+    const del = call("credit-score-delete", ctxA, { id: rec.result.entry.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("credit-score-report", ctxA, {}).result.history.length, 0);
+  });
+});
+
+describe("backlog 5 — cash-flow Sankey + monthly trend", () => {
+  it("cashflow-sankey builds income → spending → category links from the ledger", () => {
+    call("transactions-ingest", ctxA, { description: "Payroll", amount: 5000, date: "2026-05-01" });
+    call("transactions-ingest", ctxA, { description: "Whole Foods", amount: -400, date: "2026-05-02" });
+    call("transactions-ingest", ctxA, { description: "Shell Gas", amount: -80, date: "2026-05-03" });
+    const r = call("cashflow-sankey", ctxA, { month: "2026-05" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.income, 5000);
+    assert.equal(r.result.totalSpend, 480);
+    assert.equal(r.result.netCashFlow, 4520);
+    assert.ok(r.result.nodes.some(n => n.id === "spending"));
+    assert.ok(r.result.links.some(l => l.source === "income" && l.target === "savings"));
+  });
+  it("monthly-trend produces a per-month income/spend/net series", () => {
+    call("transactions-ingest", ctxA, { description: "Payroll", amount: 4000, date: "2026-03-01" });
+    call("transactions-ingest", ctxA, { description: "Rent", amount: -1500, date: "2026-03-02" });
+    call("transactions-ingest", ctxA, { description: "Payroll", amount: 4000, date: "2026-04-01" });
+    call("transactions-ingest", ctxA, { description: "Rent", amount: -1500, date: "2026-04-02" });
+    const r = call("monthly-trend", ctxA, { months: 12 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.series.length, 2);
+    assert.equal(r.result.series[0].net, 2500);
+    assert.equal(r.result.avgMonthlyIncome, 4000);
+  });
+  it("empty ledger trend returns empty series", () => {
+    assert.equal(call("monthly-trend", ctxA, {}).result.series.length, 0);
+  });
+});
+
+describe("backlog 6 — bill reminders + snooze", () => {
+  it("bill-reminders surfaces due-soon / overdue bills with notify flags", () => {
+    const today = new Date();
+    const soonDay = Math.min(28, today.getDate() + 2);
+    call("bills-add", ctxA, { name: "Electric", amount: 120, dueDay: soonDay, cadence: "monthly", autopay: false });
+    const r = call("bill-reminders", ctxA, { leadDays: 5 });
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.reminders));
+    assert.ok(r.result.reminders.some(x => x.name === "Electric"));
+  });
+  it("autopay bills do not raise an actionable notification", () => {
+    const today = new Date();
+    const soonDay = Math.min(28, today.getDate() + 1);
+    call("bills-add", ctxA, { name: "Mortgage", amount: 2000, dueDay: soonDay, cadence: "monthly", autopay: true });
+    const r = call("bill-reminders", ctxA, { leadDays: 5 });
+    const m = r.result.reminders.find(x => x.name === "Mortgage");
+    if (m) assert.equal(m.notify, false);
+  });
+  it("snooze stamps a snoozedUntil date; rejects unknown id", () => {
+    const b = call("bills-add", ctxA, { name: "Water", amount: 40, dueDay: 10 });
+    const snz = call("bill-reminder-snooze", ctxA, { id: b.result.bill.id, days: 3 });
+    assert.equal(snz.ok, true);
+    assert.ok(snz.result.snoozedUntil);
+    assert.equal(call("bill-reminder-snooze", ctxA, { id: "nope" }).ok, false);
+  });
+});
+
+describe("backlog 7 — custom rollover rules + category goals", () => {
+  it("rollover-rule-set attaches a rule to an envelope; capped mode splits leftover", () => {
+    const env = call("envelopes-create", ctxA, { category: "Dining", monthlyTarget: 400 });
+    const envId = env.result.envelope.id;
+    const rule = call("rollover-rule-set", ctxA, { envelopeId: envId, mode: "capped", cap: 100, goalTarget: 1000 });
+    assert.equal(rule.ok, true);
+    assert.equal(rule.result.rule.mode, "capped");
+    const applied = call("rollover-apply", ctxA, {});
+    const row = applied.result.applied.find(a => a.envelopeId === envId);
+    assert.equal(row.leftover, 400);
+    assert.equal(row.carried, 100);
+    assert.equal(row.toGoal, 300);
+    assert.ok(row.goalProgress);
+    assert.equal(row.goalProgress.accumulated, 300);
+  });
+  it("reset mode drops leftover; full mode carries everything", () => {
+    const e1 = call("envelopes-create", ctxA, { category: "A", monthlyTarget: 200 });
+    const e2 = call("envelopes-create", ctxA, { category: "B", monthlyTarget: 200 });
+    call("rollover-rule-set", ctxA, { envelopeId: e1.result.envelope.id, mode: "reset" });
+    call("rollover-rule-set", ctxA, { envelopeId: e2.result.envelope.id, mode: "full" });
+    const applied = call("rollover-apply", ctxA, {});
+    const r1 = applied.result.applied.find(a => a.envelopeId === e1.result.envelope.id);
+    const r2 = applied.result.applied.find(a => a.envelopeId === e2.result.envelope.id);
+    assert.equal(r1.carried, 0);
+    assert.equal(r2.carried, 200);
+  });
+  it("rollover-rule-set rejects unknown envelope; list + delete work", () => {
+    assert.equal(call("rollover-rule-set", ctxA, { envelopeId: "nope" }).ok, false);
+    const env = call("envelopes-create", ctxA, { category: "C", monthlyTarget: 100 });
+    const rule = call("rollover-rule-set", ctxA, { envelopeId: env.result.envelope.id, mode: "full" });
+    assert.equal(call("rollover-rules-list", ctxA, {}).result.rules.length, 1);
+    const del = call("rollover-rule-delete", ctxA, { id: rule.result.rule.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("rollover-rules-list", ctxA, {}).result.rules.length, 0);
   });
 });
 

@@ -13,12 +13,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 - Lenses audited: **235**
 - Average feature parity: **~89%**
-- Total buildable features in the backlog (sum of all "Missing" items): **133**
+- Total buildable features in the backlog (sum of all "Missing" items): **91**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 217 |
-| 60–79% (strong) | 18 |
+| 80–100% (near-complete) | 223 |
+| 60–79% (strong) | 12 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,8 +26,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| fashion | Whering / Stylebook | ~65% | 7 |
-| fitness | Strava / Garmin Connect | ~65% | 7 |
 | government | civic portals (Accela / USA.gov) | ~65% | 7 |
 | hr | Workday / Bamboo HR | ~65% | 7 |
 | insurance | Applied Epic / EZLynx (agency management) | ~65% | 7 |
@@ -35,14 +33,10 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | realestate | Zillow | ~65% | 7 |
 | whiteboard | Miro / FigJam | ~65% | 7 |
 | world | a 3D open-world game (Roblox / Genshin Impact) | ~65% | 8 |
-| feed | X (Twitter) / Threads | ~70% | 7 |
-| film-studios | StudioBinder / Final Cut Pro | ~70% | 7 |
-| finance | Monarch Money / Empower | ~70% | 7 |
 | game-design | GameMaker / Tiled + GDD tools | ~70% | 7 |
 | graph | Obsidian (graph view) / Kumu | ~70% | 7 |
 | healthcare | Epic MyChart / Epic EHR | ~70% | 7 |
 | root | a programmer's calculator | ~70% | 6 |
-| food | Paprika / Yelp / MyFitnessPal | ~75% | 7 |
 | retail | Shopify | ~75% | 7 |
 | projects | Linear / Asana | ~80% | 7 |
 | anon | Signal | ~85% | 0 |
@@ -223,6 +217,12 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | energy | Sense / Span Home | ~95% | 0 |
 | environment | Persefoni / Watershed (carbon accounting) | ~95% | 0 |
 | export | Google Takeout / Notion Export | ~95% | 0 |
+| fashion | Whering / Stylebook | ~95% | 0 |
+| feed | X (Twitter) / Threads | ~95% | 0 |
+| film-studios | StudioBinder / Final Cut Pro | ~95% | 0 |
+| finance | Monarch Money / Empower | ~95% | 0 |
+| fitness | Strava / Garmin Connect | ~95% | 0 |
+| food | Paprika / Yelp / MyFitnessPal | ~95% | 0 |
 | forecast | Weather apps (no direct rival) | ~95% | 0 |
 | forestry | SilvAssist / forest-management software | ~95% | 0 |
 | fork | GitHub (fork network / insights) | ~95% | 0 |

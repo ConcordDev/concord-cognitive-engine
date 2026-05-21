@@ -9,13 +9,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, Tooltip, CartesianGrid,
+  BarChart, Bar,
 } from 'recharts';
-import { Loader2, Activity, Battery, HeartPulse, Gauge, Timer } from 'lucide-react';
+import {
+  Loader2, Activity, Battery, HeartPulse, Gauge, Timer, TrendingUp, TrendingDown, Minus, Flame,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface LoadDay { date: string; load: number; ctl: number; atl: number; tsb: number }
 interface TrainingLoad { fitness: number; fatigue: number; form: number; status: string; trackedDays: number; daily: LoadDay[] }
+interface WeekEffort { week: string; relativeEffort: number; activities: number; distanceKm: number }
+interface Freshness {
+  daily: LoadDay[]; weeklyEffort: WeekEffort[]; fitness: number; fatigue: number;
+  form: number; formTrend: string; rampRate: number; trackedDays: number;
+}
 interface Readiness { score: number; label: string; recommendation: string; factors: { factor: string; contribution: number }[] }
 interface BodyBattery { battery: number; state: string; todayDrain: number }
 interface HrvStatus { status: string; recent7Avg?: number; baselineAvg?: number; samples: number; notes?: string }
@@ -28,6 +36,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function StravaTrainingPanel() {
   const [load, setLoad] = useState<TrainingLoad | null>(null);
+  const [freshness, setFreshness] = useState<Freshness | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [battery, setBattery] = useState<BodyBattery | null>(null);
   const [hrv, setHrv] = useState<HrvStatus | null>(null);
@@ -41,8 +50,9 @@ export function StravaTrainingPanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const sleep = Number(sleepHours) || 7.5;
-    const [l, rd, bb, h, v, rp] = await Promise.all([
+    const [l, fr, rd, bb, h, v, rp] = await Promise.all([
       lensRun('fitness', 'training-load', {}),
+      lensRun('fitness', 'fitness-freshness', { days: 90 }),
       lensRun('fitness', 'training-readiness', { sleepHours: sleep }),
       lensRun('fitness', 'body-battery', { sleepHours: sleep }),
       lensRun('fitness', 'hrv-status', {}),
@@ -50,6 +60,7 @@ export function StravaTrainingPanel() {
       lensRun('fitness', 'race-predictor', {}),
     ]);
     setLoad(l.data?.result as TrainingLoad | null);
+    setFreshness(fr.data?.ok === false ? null : (fr.data?.result as Freshness | null));
     setReadiness(rd.data?.result as Readiness | null);
     setBattery(bb.data?.result as BodyBattery | null);
     setHrv(h.data?.result as HrvStatus | null);
@@ -115,6 +126,52 @@ export function StravaTrainingPanel() {
           </p>
         )}
       </div>
+
+      {/* Relative effort / fitness-and-freshness trend */}
+      {freshness && (
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
+              <Flame className="w-3.5 h-3.5 text-amber-400" /> Relative effort &amp; freshness
+            </h3>
+            <span className={cn(
+              'flex items-center gap-1 text-[11px] font-medium capitalize',
+              freshness.formTrend === 'freshening' ? 'text-emerald-400'
+                : freshness.formTrend === 'fatiguing' ? 'text-rose-400' : 'text-zinc-400',
+            )}>
+              {freshness.formTrend === 'freshening' ? <TrendingUp className="w-3 h-3" />
+                : freshness.formTrend === 'fatiguing' ? <TrendingDown className="w-3 h-3" />
+                : <Minus className="w-3 h-3" />}
+              {freshness.formTrend}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <FreshTile label="Fitness" value={freshness.fitness} accent="text-sky-400" />
+            <FreshTile label="Form (TSB)" value={freshness.form}
+              accent={freshness.form >= 0 ? 'text-emerald-400' : 'text-amber-400'} />
+            <FreshTile label="Ramp rate" value={freshness.rampRate}
+              accent={Math.abs(freshness.rampRate) > 8 ? 'text-rose-400' : 'text-zinc-300'} />
+          </div>
+          {freshness.weeklyEffort.length > 0 ? (
+            <ResponsiveContainer width="100%" height={150}>
+              <BarChart data={freshness.weeklyEffort.slice(-12)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#71717a' }} interval="preserveStartEnd" minTickGap={28} />
+                <YAxis tick={{ fontSize: 9, fill: '#71717a' }} width={28} />
+                <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 11 }} />
+                <Bar dataKey="relativeEffort" name="Weekly RE" fill="#fbbf24" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-[11px] text-zinc-500 italic py-6 text-center">
+              Log activities to chart your weekly relative effort.
+            </p>
+          )}
+          <p className="text-[10px] text-zinc-500 mt-1">
+            Ramp rate is the 7-day change in fitness — sustained values above ±8 raise injury risk.
+          </p>
+        </div>
+      )}
 
       {/* Readiness factors + recommendation */}
       {readiness && readiness.factors.length > 0 && (
@@ -187,6 +244,15 @@ export function StravaTrainingPanel() {
       </div>
 
       {note && <div className="text-xs text-rose-400">{note}</div>}
+    </div>
+  );
+}
+
+function FreshTile({ label, value, accent }: { label: string; value: number; accent: string }) {
+  return (
+    <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
+      <p className="text-[10px] uppercase text-zinc-500">{label}</p>
+      <p className={cn('text-lg font-bold', accent)}>{value}</p>
     </div>
   );
 }

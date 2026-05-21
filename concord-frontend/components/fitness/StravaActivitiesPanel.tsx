@@ -6,7 +6,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Heart, Trash2, Flame, Clock, Ruler, TrendingUp, Mountain } from 'lucide-react';
+import {
+  Loader2, Plus, Heart, Trash2, Flame, Clock, Ruler, TrendingUp, Mountain,
+  MessageSquare, ImagePlus, ChevronDown, ChevronUp, Send, X,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +25,8 @@ interface Activity {
   paceSecPerKm: number | null;
   date: string;
   kudos: string[];
+  comments?: { userId: string; text: string; at: string }[];
+  photos?: { id: string; url: string | null; dataUrl: string | null; caption: string | null }[];
 }
 
 const TYPES = ['run', 'ride', 'swim', 'walk', 'hike', 'row', 'workout', 'yoga'];
@@ -44,6 +49,8 @@ export function StravaActivitiesPanel() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ type: 'run', name: '', distanceKm: '', durationMin: '', elevationGainM: '', avgHr: '', calories: '' });
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -85,6 +92,40 @@ export function StravaActivitiesPanel() {
   };
   const remove = async (a: Activity) => {
     await lensRun('fitness', 'activity-delete', { id: a.id });
+    await refresh();
+  };
+
+  const addComment = async (a: Activity) => {
+    const text = commentDraft.trim();
+    if (!text) return;
+    const r = await lensRun('fitness', 'activity-kudos', { id: a.id, comment: text });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not post comment'); return; }
+    setCommentDraft('');
+    await refresh();
+  };
+
+  const deleteComment = async (a: Activity, index: number) => {
+    await lensRun('fitness', 'activity-comment-delete', { id: a.id, index });
+    await refresh();
+  };
+
+  const addPhoto = async (a: Activity, file: File) => {
+    if (file.size > 2_400_000) { setError('Photo is too large (2.4 MB max).'); return; }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error('read failed'));
+      reader.readAsDataURL(file);
+    }).catch(() => null);
+    if (!dataUrl) { setError('Could not read the photo file.'); return; }
+    const r = await lensRun('fitness', 'activity-photo-add', { id: a.id, dataUrl });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not attach photo'); return; }
+    setError(null);
+    await refresh();
+  };
+
+  const removePhoto = async (a: Activity, photoId: string) => {
+    await lensRun('fitness', 'activity-photo-remove', { id: a.id, photoId });
     await refresh();
   };
 
@@ -163,18 +204,108 @@ export function StravaActivitiesPanel() {
                 {a.avgHr > 0 && <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-rose-400" />{a.avgHr} bpm</span>}
                 <span className="flex items-center gap-1"><Flame className="w-3 h-3 text-amber-400" />RE {a.relativeEffort}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => kudos(a)}
-                className={cn(
-                  'mt-2 flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border transition-colors',
-                  (a.kudos?.length || 0) > 0
-                    ? 'border-orange-700/50 bg-orange-950/40 text-orange-300'
-                    : 'border-zinc-800 text-zinc-400 hover:text-orange-300',
-                )}
-              >
-                <Heart className="w-3 h-3" /> {a.kudos?.length || 0} kudos
-              </button>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => kudos(a)}
+                  className={cn(
+                    'flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border transition-colors',
+                    (a.kudos?.length || 0) > 0
+                      ? 'border-orange-700/50 bg-orange-950/40 text-orange-300'
+                      : 'border-zinc-800 text-zinc-400 hover:text-orange-300',
+                  )}
+                >
+                  <Heart className="w-3 h-3" /> {a.kudos?.length || 0} kudos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setExpanded(expanded === a.id ? null : a.id); setCommentDraft(''); }}
+                  className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-zinc-800 text-zinc-400 hover:text-orange-300"
+                >
+                  <MessageSquare className="w-3 h-3" /> {a.comments?.length || 0}
+                  {a.photos && a.photos.length > 0 && (
+                    <><ImagePlus className="w-3 h-3 ml-1" /> {a.photos.length}</>
+                  )}
+                  {expanded === a.id ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+                </button>
+              </div>
+
+              {expanded === a.id && (
+                <div className="mt-2 border-t border-zinc-800 pt-2 space-y-2">
+                  {/* photos */}
+                  <div className="flex flex-wrap gap-2">
+                    {(a.photos || []).map((ph) => (
+                      <div key={ph.id} className="relative group">
+                        <div
+                          className="w-20 h-20 rounded-lg bg-zinc-800 bg-cover bg-center border border-zinc-700"
+                          style={{ backgroundImage: ph.dataUrl || ph.url ? `url(${ph.dataUrl || ph.url})` : undefined }}
+                          role="img"
+                          aria-label={ph.caption || 'Activity photo'}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(a, ph.id)}
+                          aria-label="Remove photo"
+                          className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="w-20 h-20 rounded-lg border border-dashed border-zinc-700 flex flex-col items-center justify-center gap-1 cursor-pointer text-zinc-500 hover:text-orange-300 hover:border-orange-700/60">
+                      <ImagePlus className="w-4 h-4" />
+                      <span className="text-[10px]">Add photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) void addPhoto(a, f); e.target.value = ''; }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* comments thread */}
+                  <ul className="space-y-1.5">
+                    {(a.comments || []).map((c, ci) => (
+                      <li key={ci} className="flex items-start gap-2 text-[11px]">
+                        <div className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5">
+                          <p className="text-zinc-300">{c.text}</p>
+                          <p className="text-[10px] text-zinc-600 mt-0.5">
+                            {c.userId} · {new Date(c.at).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteComment(a, ci)}
+                          aria-label="Delete comment"
+                          className="text-zinc-600 hover:text-rose-400 mt-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </li>
+                    ))}
+                    {(a.comments || []).length === 0 && (
+                      <li className="text-[11px] text-zinc-600 italic">No comments yet.</li>
+                    )}
+                  </ul>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      placeholder="Add a comment…"
+                      value={commentDraft}
+                      onChange={(e) => setCommentDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') void addComment(a); }}
+                      className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-zinc-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addComment(a)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium bg-orange-600 hover:bg-orange-500 text-white rounded-lg"
+                    >
+                      <Send className="w-3 h-3" /> Post
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>

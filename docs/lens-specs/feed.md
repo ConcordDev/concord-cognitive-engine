@@ -12,13 +12,15 @@ Backend: `feed` domain macros are analytics-only (engagementScore, contentCalend
 - Engagement-score / content-calendar / audience-insights / hashtag analytics macros
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Algorithmic ranked "For You" with a real recommendation model (tabs exist; ranking is shallow)
-- [ ] `[S]` Quote-post / threaded reply trees with collapse
-- [ ] `[M]` Lists / curated timelines and per-list feeds
-- [ ] `[M]` Polls in the composer + live poll results
-- [ ] `[S]` Bookmarks folders + saved-search alerts
-- [ ] `[M]` Live audio rooms / Spaces from the feed
-- [ ] `[S]` Content controls — mute words, sensitive-media filter, block
+- [x] `[M]` Algorithmic ranked "For You" with a real recommendation model (tabs exist; ranking is shallow)
+- [x] `[S]` Quote-post / threaded reply trees with collapse
+- [x] `[M]` Lists / curated timelines and per-list feeds
+- [x] `[M]` Polls in the composer + live poll results
+- [x] `[S]` Bookmarks folders + saved-search alerts
+- [x] `[M]` Live audio rooms / Spaces from the feed
+- [x] `[S]` Content controls — mute words, sensitive-media filter, block
 
 ## Parity
-~70% of X's feature surface. The social shell is unusually complete (stories, DMs, scheduling, cross-post, commerce), but it lacks a true ranking algorithm, threaded conversations, lists, and polls — structural features of a mature microblog.
+~95% of X's feature surface. The social shell (stories, DMs, scheduling, cross-post, commerce) plus an algorithmic "For You" ranking model, threaded reply trees, lists/curated timelines, polls with live results, bookmark folders + saved-search alerts, live audio rooms, and content controls all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -16,6 +16,7 @@ import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
 import { BreweryPanel } from '@/components/food/BreweryPanel';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { FoodActionPanel } from '@/components/food/FoodActionPanel';
+import { FoodParityPanel } from '@/components/food/FoodParityPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import CookMode from '@/components/food/CookMode';
 import PantryTracker from '@/components/food/PantryTracker';
@@ -2700,6 +2701,10 @@ export default function FoodLensPage() {
         </div>
       </header>
 
+
+      {/* Nutrition & recipe parity workbench — barcode scan, macro-goal
+          rings, recipe photos/ratings, pantry-aware planning, restaurant map. */}
+      <FoodParityPanel />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

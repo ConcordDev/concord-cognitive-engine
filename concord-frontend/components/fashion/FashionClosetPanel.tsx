@@ -6,13 +6,14 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Shirt, Trash2, Repeat } from 'lucide-react';
+import { Loader2, Plus, Trash2, Repeat, Scissors } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Item {
   id: string; name: string; category: string; brand: string | null; color: string | null;
   season: string; cost: number; timesWorn: number; costPerWear: number | null; valueRating: string;
+  photo: string | null; bgRemoved?: boolean; bgRemovalMode?: string;
 }
 
 const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'accessory', 'bag', 'activewear'];
@@ -27,7 +28,8 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', category: 'top', brand: '', color: '', cost: '' });
+  const [form, setForm] = useState({ name: '', category: 'top', brand: '', color: '', cost: '', photo: '' });
+  const [bgBusy, setBgBusy] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -42,15 +44,22 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
     if (!form.name.trim()) { setError('Item name is required.'); return; }
     const r = await lensRun('fashion', 'item-add', {
       name: form.name.trim(), category: form.category, brand: form.brand.trim(),
-      color: form.color.trim(), cost: Number(form.cost) || 0,
+      color: form.color.trim(), cost: Number(form.cost) || 0, photo: form.photo.trim(),
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ name: '', category: 'top', brand: '', color: '', cost: '' });
+    setForm({ name: '', category: 'top', brand: '', color: '', cost: '', photo: '' });
     setShowAdd(false); setError(null);
     await refresh(); onChange();
   };
   const wear = async (id: string) => { await lensRun('fashion', 'item-wear', { id }); await refresh(); onChange(); };
   const del = async (id: string) => { await lensRun('fashion', 'item-delete', { id }); await refresh(); onChange(); };
+  const removeBg = async (id: string) => {
+    setBgBusy(id); setError(null);
+    const r = await lensRun('fashion', 'item-remove-bg', { id });
+    setBgBusy(null);
+    if (r.data?.ok === false) { setError(r.data?.error || 'Background removal failed'); return; }
+    await refresh();
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
@@ -93,6 +102,8 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Cost ($)" inputMode="decimal" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <input placeholder="Photo URL (optional)" value={form.photo} onChange={(e) => setForm({ ...form, photo: e.target.value })}
+            className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={add}
             className="col-span-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add to closet</button>
         </div>
@@ -106,6 +117,17 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
         <ul className="grid grid-cols-2 gap-2">
           {items.map((i) => (
             <li key={i.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+              {i.photo && (
+                <div className={cn('mb-2 rounded-lg overflow-hidden flex items-center justify-center h-28',
+                  i.bgRemoved
+                    ? 'bg-[conic-gradient(at_50%_50%,#27272a_25%,#18181b_0_50%,#27272a_0_75%,#18181b_0)] bg-[length:16px_16px]'
+                    : i.bgRemovalMode === 'css-mask'
+                      ? 'bg-zinc-100 [mask-image:radial-gradient(ellipse_70%_85%_at_center,#000_60%,transparent_100%)]'
+                      : 'bg-zinc-950')}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- external arbitrary image host */}
+                  <img src={i.photo} alt={i.name} className="max-h-28 object-contain" />
+                </div>
+              )}
               <div className="flex items-start justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{i.name}</p>
@@ -117,6 +139,16 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {i.photo && !i.bgRemoved && (
+                <button type="button" onClick={() => removeBg(i.id)} disabled={bgBusy === i.id}
+                  className="flex items-center gap-1 mt-2 px-2 py-0.5 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-50">
+                  {bgBusy === i.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scissors className="w-3 h-3" />}
+                  {i.bgRemovalMode === 'css-mask' ? 'Re-cut background' : 'Remove background'}
+                </button>
+              )}
+              {i.bgRemoved && (
+                <span className="inline-block mt-2 text-[10px] text-emerald-400">Flat-lay cutout applied</span>
+              )}
               <div className="flex items-center justify-between mt-2">
                 <span className="text-[10px] text-zinc-500">
                   worn {i.timesWorn}× ·{' '}
