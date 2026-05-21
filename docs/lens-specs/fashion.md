@@ -1,25 +1,23 @@
-# fashion — Feature Gap vs Whering / Acloset
+# fashion — Feature Gap vs Whering / Stylebook
 
-Category leader (2026): Whering (digital wardrobe + outfit planning). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: `fashion` domain (462 LOC) — vision tag, styleProfile, outfitSuggest, trendAnalysis, costPerWear, item-add + STATE-backed items/outfits/wearLog/packing/lookbooks Maps.
+Category leader (2026): Whering / Stylebook (digital closet). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `fashion` domain — rich STATE-backed macro suite (item CRUD + wear, outfits CRUD + wear, wear calendar, packing lists, lookbooks, closet stats, wear insights, dashboard), vision macro (LLaVA garment tagging), Met Museum open-access feed.
 
 ## Has (verified in code)
-- Wardrobe — add garments (name, category, color, brand, season, size, cost, photo), archive
-- LLaVA vision tagging of a garment photo (`fashion.vision`)
-- Outfit builder + suggestions (season-aware, picks tops/bottoms/outerwear)
-- Wishlist tab; style-profile analysis (dominant colors/categories)
-- Cost-per-wear analytics with value rating (best/worst value)
-- Trend analysis by category; wear log, packing lists, lookbooks in state
-- FashionClosetSection + FashionFeed components
+- Full digital wardrobe: item catalog with category/brand/color/season/cost/photo, archive
+- Outfit builder linking items, outfit wear tracking that propagates to item wear counts
+- Wear calendar (log + monthly view), packing lists, lookbooks
+- Cost-per-wear analytics with value ratings; closet stats, wear insights (most-worn, dead stock)
+- AI garment tagging via LLaVA vision macro; Met Museum fashion-piece feed → DTUs
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Auto background-removal on uploaded garment photos (Whering's signature flow)
-- [ ] `[M]` Calendar — log/plan what you wore each day, pull from wear log
-- [ ] `[M]` Drag-and-drop outfit canvas / collage maker
-- [ ] `[S]` Weather-aware outfit suggestion (pull forecast lens data)
-- [ ] `[S]` Capsule-wardrobe / "30 wears" sustainability challenges
-- [ ] `[M]` Social outfit sharing + community style feed with reactions (FashionFeed exists but inert)
-- [ ] `[S]` Wishlist price-watch / resale-marketplace links
+- [ ] `[M]` Auto background-removal on item photos (Whering's signature flat-lay)
+- [ ] `[M]` AI outfit generation by weather / occasion (current outfitSuggest is naive pairing)
+- [ ] `[S]` Calendar weather integration to drive daily outfit picks
+- [ ] `[M]` Style profile quiz → personalized recommendations
+- [ ] `[S]` Resale / declutter flagging with marketplace listing handoff
+- [ ] `[M]` Outfit social feed with likes/saves + community lookbook sharing
+- [ ] `[S]` Capsule-wardrobe planner + #30wears challenge tracking
 
 ## Parity
-~55% of Whering. Wardrobe cataloguing, vision tagging, and cost-per-wear analytics are genuinely solid; missing the background-removal upload flow, the wear calendar, and the drag-drop outfit canvas that define the leader's daily-use loop.
+~65% of Whering's feature surface. The closet/outfit/wear/analytics core is genuinely deep and end-to-end, but it lacks photo background-removal, weather-aware outfit AI, and the social/resale layer that make Whering sticky.

@@ -1,35 +1,22 @@
-# fork — Feature Completeness Spec
+# fork — Feature Gap vs GitHub (fork network / insights)
 
-Rival app(s): GitHub, GitHub mobile, Octobox, Sourcegraph (2026)
-Sources:
-- https://api.github.com/ (public repo + events data — live)
-- repository fork-network / divergence analysis
+Category leader (2026): GitHub fork-network + repo insights. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `fork` domain — divergenceAnalysis, mergeComplexity, forkHealth, live `github-forks` / `github-repo` (GitHub public API), watch-list CRUD + refresh + dashboard, feed; ForkNetworkExplorer + RepoWatchlist components.
 
-## Features
+## Has (verified in code)
+- Fork network explorer with tree/list view, status filter (active/merged/abandoned), depth tracking
+- Divergence analysis between a fork and its parent
+- Merge-complexity estimation; fork-health scoring
+- Live GitHub fork-network + repo-metadata fetch via public API
+- Repo watchlist (add/remove/refresh) with a watch dashboard
 
-### Repo-watchlist management
-- [x] Watch repos — owner/repo, reason (upstream / fork / competitor / dependency) (macro: fork.watch-add)
-- [x] List watched repos (macro: fork.watch-list)
-- [x] Delete a watched repo (macro: fork.watch-delete)
-- [x] Refresh live stats — stars, forks, open issues, last push (macro: fork.watch-refresh)
-- [x] Watchlist dashboard — repos, total stars, refreshed, by-reason (macro: fork.watch-dashboard)
+## Missing — buildable feature backlog
+- [ ] `[M]` Commit-level ahead/behind comparison view (diff stats per fork)
+- [ ] `[S]` Pull-request status overlay on the fork network
+- [ ] `[M]` Network graph visualization (commits-over-time across forks, like GitHub's network graph)
+- [ ] `[S]` Contributor activity / stale-fork detection alerts
+- [ ] `[S]` Release / tag tracking on watched repos
+- [ ] `[M]` Cross-fork file-level diff browser
 
-### Live data & analysis
-- [x] GitHub repo events feed — pushes / PRs / issues ingested as DTUs (macro: fork.feed)
-- [x] Fork-network explorer + divergence / merge-complexity / fork-health (macro: fork.github-forks / divergenceAnalysis / mergeComplexity / forkHealth)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Authenticated GitHub API (private repos, higher rate limits) | a GitHub OAuth token | unauthenticated public API; per-user BYO token is a future enhancement |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/fork.js` clean.
-  Watchlist substrate (5 macros) + GitHub events `feed` macro appended to
-  the fork-network domain.
-- 2026-05-20: Tests — `tests/fork-watchlist-domain-parity.test.js` 5/5 green
-  (watch CRUD + per-user scope + URL normalisation + duplicate guard /
-  dashboard by-reason aggregation / events feed → DTUs + dedup on re-run).
-- 2026-05-20: Frontend — new `RepoWatchlist` (watched-repo list with live
-  refresh + GitHub events feed puller + dashboard) mounted in the fork lens
-  page. `npx tsc --noEmit` exit 0.
+## Parity
+~55% of GitHub's fork-network surface. Live GitHub data, divergence/health analysis, and a watchlist are solid, but it lacks the commit-graph visualization, PR overlay, and file-level diff browsing that make GitHub's fork tooling actionable.

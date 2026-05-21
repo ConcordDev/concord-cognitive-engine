@@ -1,82 +1,27 @@
-# art — Feature Completeness Spec
+# art — Feature Gap vs Procreate / Krita
 
-Rival app(s): Procreate, Krita
-Sources:
-- https://procreate.com/procreate/whats-new
-- https://en.wikipedia.org/wiki/Procreate_(software)
-- https://docs.krita.org/en/reference_manual/tools/transform.html
-- https://krita.org/en/release-notes/krita-5-3-release-notes/
+Category leader (2026): Procreate / Krita. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/art.js` — ~50 macros: artwork CRUD/resize/flip, layers (add/update/duplicate/merge/transform/flip/rotate90/adjust-color/reorder), stroke commit/batch/undo/redo, brush presets, palettes + harmony + color-mix, reference boards, Met + AIC open-access search, vision analyze, dashboard.
 
-## Features
+## Has (verified in code)
+- Artwork CRUD with canvas presets, custom size, resize, flip
+- Layers: add/delete/reorder/rename, opacity, 16 blend modes, duplicate, merge-down, lock, clipping mask
+- Brushes (pencil/ink/marker/airbrush) + eraser, custom brush presets save/list/delete
+- Shapes (rect/ellipse), line tool, text elements, fill, eyedropper
+- Layer transform (move/scale), flip, 90° rotate, color adjust (hue/sat/brightness)
+- Marquee selection + element delete; undo/redo per layer
+- Color palettes + theory-harmony generator (5 schemes) + 2-color mixer
+- Reference boards, rotating prompts, Met Museum + Art Institute search; PNG export
+- LLaVA vision analyze of uploaded art; composition scoring; style classify
 
-### Canvas & artworks (DONE — existing)
-- [x] Create / list / open / rename / delete artworks; thumbnails
-- [x] Canvas size presets + custom; paper background colour
-- [x] Resize canvas (artwork-resize)
-- [x] Flip canvas horizontal / vertical (artwork-flip)
+## Missing — buildable feature backlog
+- [ ] `[L]` Raster filters: Gaussian blur, sharpen, liquify (vector model only today)
+- [ ] `[M]` Pressure-sensitive stylus dynamics (size/opacity controls only)
+- [ ] `[M]` Free-angle (non-90°) layer rotation
+- [ ] `[M]` Selection refinement: lasso, magic-wand, feathering
+- [ ] `[S]` Symmetry / drawing guides and perspective assist
+- [ ] `[M]` Timelapse recording of the drawing session
+- [ ] `[S]` Gradient tool + pattern fills
 
-### Layers (DONE)
-- [x] Add / delete / reorder / rename layers
-- [x] Per-layer opacity, visibility, 16 blend modes
-- [x] Duplicate a layer (layer-duplicate)
-- [x] Merge layer down (layer-merge-down)
-- [x] Layer lock (locked flag — blocks edits)
-- [x] Clipping mask (clip layer to the one below)
-- [x] Clear a layer
-
-### Drawing tools (DONE)
-- [x] Brushes — pencil, ink, marker, airbrush + presets
-- [x] Eraser
-- [x] Custom brush presets — save / list / delete (brush-preset-*)
-- [x] Fill — solid layer fill (kind: fill)
-- [x] Shapes — rectangle, ellipse (filled or outlined)
-- [x] Line tool (2-point stroke)
-- [x] Text — place text elements on the canvas (kind: text)
-- [x] Eyedropper — sample colour from the canvas (client-side)
-
-### Transform & adjustments (DONE)
-- [x] Transform a layer — move + uniform scale (layer-transform)
-- [x] Flip a layer horizontal / vertical (layer-flip)
-- [x] Rotate a layer 90° cw/ccw (layer-rotate90)
-- [x] Colour adjustment — hue shift, saturation, brightness (layer-adjust-color)
-
-### Selection (DONE)
-- [x] Rectangular marquee selection (client-side, selects intersecting elements)
-- [x] Delete selected elements (element-delete)
-- [x] Transform applies to a selection or the whole layer
-
-### History (DONE)
-- [x] Undo (stroke-undo)
-- [x] Redo (stroke-redo) — redo buffer per layer
-
-### Colour (DONE — existing + this slice)
-- [x] Colour picker, palettes, palette CRUD
-- [x] Colour-theory harmony generator (5 schemes)
-- [x] Two-colour mixer
-
-### Reference & inspiration (DONE — existing)
-- [x] Reference boards with image URLs
-- [x] Rotating art prompts
-- [x] Met Museum + Art Institute open-access search
-
-### Export (DONE)
-- [x] Export artwork as PNG (client-side flatten + download)
-- [x] Thumbnail save
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Pressure-sensitive stylus dynamics | universal hardware pressure API | pointer-driven brushes; size/opacity controls |
-| Raster filters (Gaussian blur, sharpen, liquify) | GPU raster pipeline | vector model: colour adjust + airbrush soft edges |
-| 3D model painting | 3D engine | 2D layered canvas |
-| Free-angle (non-90°) layer rotation | per-pixel raster transform | move/scale/flip + exact 90° rotation |
-
-## Verification log
-- 2026-05: backend `node --test tests/art-domain-parity.test.js` → 29/29 green (47 macros).
-- 2026-05: ArtCanvas engine rewritten — renders all element kinds (brush strokes, fill,
-  rect, ellipse, text), clipping-mask compositing; tool palette (8 brushes/tools), live
-  shape preview, marquee selection, transform/adjust/canvas panels, redo, PNG export.
-  `npx tsc --noEmit` exit 0.
-- 2026-05: `npm run score-lenses` → art 7/7 PASS.
-- Every spec feature implemented. Boundary register holds only the 4 genuine hardware/GPU
-  items. Zero unchecked non-boundary lines.
+## Parity
+~68% of Procreate's surface. The layer/blend/transform/brush stack is unusually complete for a web canvas; gaps are GPU raster filters, stylus pressure, and the selection/symmetry refinements pro artists rely on.

@@ -1,39 +1,23 @@
-# forestry — Feature Completeness Spec
+# forestry — Feature Gap vs SilvAssist / forest-management software
 
-Rival app(s): forest-management tools, InciWeb, NIFC (2026)
-Sources:
-- https://inciweb.wildfire.gov/ (active US wildfire incidents — live)
-- https://www.nifc.gov/ (fire perimeters)
-- forest stand-management / silviculture record-keeping
+Category leader (2026): no direct consumer rival — closest analog is professional forest-management software (e.g. SilvAssist, ForestMetrix) + wildfire dashboards.
+Backend: `forestry` domain — timber volume, fire risk, harvest plan, carbon sequestration, stand CRUD, activity log, dashboard; live InciWeb active-fires + NIFC fire perimeters (free, no key). iTree + USFS Wildfire Risk data.
 
-## Features
+## Has (verified in code)
+- Stand inventory (species, age, area, density, site index, volume, basal, terrain, geo)
+- Timber-volume estimation (board feet, MBF, value) from DBH/height measurements
+- Fire-risk scoring from temp/humidity/wind/drought/fuel-moisture with recommended actions
+- Harvest planning (clearcut/shelterwood/selective/salvage — removal %, rotation, permits)
+- Carbon sequestration + carbon-credit valuation; live InciWeb wildfire incidents + NIFC perimeters
+- Tabs: Dashboard / Stands / Harvest / Fire / Wildlife / Replanting / Inventory / Map; GBIF wildlife panel
 
-### Stand management
-- [x] Track managed stands — species, acreage, age, density, geo (macro: forestry.stand-add)
-- [x] List stands with derived tree-count estimate + total acreage (macro: forestry.stand-list)
-- [x] Delete a stand (macro: forestry.stand-delete)
-- [x] Log silviculture activities — planting / thinning / harvest / prescribed burn / survey / treatment (macro: forestry.activity-log)
-- [x] Forestry dashboard — stands, acres, activities, by-species (macro: forestry.forestry-dashboard)
+## Missing — buildable feature backlog
+- [ ] `[M]` Growth & yield projection over a rotation (current volume is point-in-time)
+- [ ] `[M]` GIS stand mapping with polygon drawing + acreage calc on the map
+- [ ] `[S]` Inventory cruise plotting — sample plots, expansion factors, statistical summary
+- [ ] `[S]` Pest / disease tracking with treatment scheduling (Wildlife tab is thin)
+- [ ] `[M]` Replanting / silviculture scheduler with seedling orders + survival surveys
+- [ ] `[S]` Carbon-credit registry workflow (verification, vintage, retirement)
 
-### Live data & calculators
-- [x] Active wildfire feed — InciWeb incidents ingested as DTUs (macro: forestry.feed)
-- [x] Active wildfires + perimeters (macro: forestry.inciweb-active-fires / nifc-fire-perimeters)
-- [x] Timber volume estimate (macro: forestry.timberVolume)
-- [x] Fire risk scoring (macro: forestry.fireRisk)
-- [x] Harvest planning (macro: forestry.harvestPlan)
-- [x] Carbon sequestration estimate (macro: forestry.carbonSequestration)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| GIS stand boundaries / mapping | a GIS layer engine | lat-lon point per stand + acreage; the `atlas` lens carries mapping |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/forestry.js` clean. 11 macros
-  (6 calculators/live data + 4 stand-management substrate + 1 feed).
-- 2026-05-20: Tests — `tests/forestry-stand-domain-parity.test.js` 6/6 green
-  (stand CRUD + per-user scope + tree estimate + species fallback / activity
-  log / dashboard by-species / InciWeb feed → DTUs / calculators intact).
-- 2026-05-20: Frontend — new `StandManager` (stand list with activity logging,
-  dashboard, live wildfire feed button) mounted in the forestry lens page.
-  `npx tsc --noEmit` exit 0.
+## Parity
+~55% of professional forest-management software. The compute helpers (volume, fire risk, carbon, harvest) plus live wildfire feeds are solid, but it lacks growth modeling, real GIS stand mapping, and a structured cruise/inventory workflow.

@@ -1,41 +1,24 @@
-# linguistics — Feature Completeness Spec
+# linguistics — Feature Gap vs Vocabulary.com / Datamuse
 
-Rival app(s): Datamuse, Wiktionary, vocabulary apps (Vocabulary.com, Anki-for-words) (2026)
-Sources:
-- https://www.datamuse.com/api/ (word query API — live)
-- https://dictionaryapi.dev/ (free dictionary — live)
-- vocabulary-builder apps with spaced review
+Category leader (2026): Vocabulary.com (word learning) + Datamuse (word query). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/linguistics.js` — 13 macros: textAnalysis, morphologyBreakdown, frequencyAnalysis, sentimentAnalysis, live dictionary-lookup, live datamuse-words, vocab CRUD, vocab-review-due, vocab-review (Leitner), vocab-dashboard.
 
-## Features
+## Has (verified in code)
+- Text analysis — readability metrics, frequency analysis, morphology breakdown, sentiment analysis
+- Live word data — dictionary-lookup (dictionaryapi.dev), datamuse related-words
+- Vocabulary builder — add/list/update/delete words, tags, case-insensitive dedupe
+- Spaced review — Leitner-box 6-level intervals, due-now queue, flashcard review with grade
+- Vocabulary dashboard — mastered/learning/fresh/due-now buckets
+- Linguistics artifacts — analyses, lexicon, grammars, corpora, translations; IPA, glosses, morphemes, syntax tree fields
 
-### Text & word analysis (retained)
-- [x] Text analysis — readability metrics (macro: linguistics.textAnalysis)
-- [x] Morphology breakdown (macro: linguistics.morphologyBreakdown)
-- [x] Frequency analysis (macro: linguistics.frequencyAnalysis)
-- [x] Sentiment analysis (macro: linguistics.sentimentAnalysis)
-- [x] Dictionary lookup (live) (macro: linguistics.dictionary-lookup)
-- [x] Datamuse related-words (live) (macro: linguistics.datamuse-words)
+## Missing — buildable feature backlog
+- [ ] `[M]` Adaptive quiz engine — multiple-choice/typing questions that adapt to mastery (Vocabulary.com core)
+- [ ] `[S]` Auto-fetch definition on vocab-add — chain dictionary-lookup so the user doesn't paste
+- [ ] `[M]` Pronunciation audio — TTS playback of words and IPA
+- [ ] `[M]` Word-in-context examples — pull real usage sentences from a corpus API
+- [ ] `[S]` Progress streaks & gamification — daily goals, points, mastery badges
+- [ ] `[M]` Curated word lists / decks — themed packs (SAT, GRE, domain vocab) importable
+- [ ] `[S]` Etymology / word-history view
 
-### Vocabulary builder (spaced review)
-- [x] Add a word — definition, part of speech, example, tags; case-insensitive dedupe (macro: linguistics.vocab-add)
-- [x] List / filter words by tag or query (macro: linguistics.vocab-list)
-- [x] Update / delete words (macro: linguistics.vocab-update / vocab-delete)
-- [x] Due-for-review queue (macro: linguistics.vocab-review-due)
-- [x] Review a word — Leitner-box promote on known / reset on miss, 6-level intervals (macro: linguistics.vocab-review)
-- [x] Vocabulary dashboard — mastered / learning / fresh / due-now (macro: linguistics.vocab-dashboard)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Auto-fetched definitions when adding a word | inline dictionary API call on add | the dictionary-lookup macro fetches definitions; the user pastes the definition into vocab-add (or the frontend chains the two) |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/linguistics.js` clean. 13 macros
-  (6 analysis/lookup + 7 vocabulary substrate).
-- 2026-05-20: Tests — `tests/linguistics-vocab-domain-parity.test.js` 9/9 green
-  (vocab CRUD + per-user scope + case-insensitive dedupe + tag filter /
-  new-word due-now / known promotes level + pushes due / miss resets to 0 /
-  dashboard mastery buckets / analysis macros intact).
-- 2026-05-20: Frontend — new `VocabularyBuilder` (word list with mastery
-  dots, add form, flashcard review mode with reveal + grade) mounted in the
-  linguistics lens page. `npx tsc --noEmit` exit 0.
+## Parity
+~55% of the Vocabulary.com+Datamuse surface. Strong analysis macros, live dictionary/Datamuse, and a real Leitner spaced-review loop, but missing the adaptive quiz engine, audio pronunciation, and contextual-example richness that make word-learning sticky.

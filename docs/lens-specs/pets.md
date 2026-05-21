@@ -1,26 +1,24 @@
-# pets — Feature Completeness Spec
+# pets — Feature Gap vs 11pets / Pawprint
 
-Rival app(s): Pawprint, 11pets, Rover (2026)
-Sources:
-- https://thedogapi.com/ — The Dog API breed reference (free, no key for breeds list)
+Category leader (2026): 11pets / Pawprint (pet health records + care). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/pets.js` — ~43 macros: pet CRUD, vaccine records, medications, vet visits, weight history, activity, symptoms, reminders, documents, expenses, caregivers, bookings, breed info (The Dog API), dashboard, live dog-breed feed.
 
-## Features
+## Has (verified in code)
+- Pet profiles CRUD; vaccination schedule + records; medication tracking + reminders
+- Vet visit log, weight log + history, activity log + score, symptom log
+- Reminders (create/complete/delete), document storage, expense log + summary
+- Caregivers register + bookings (create/update/list); vet cost analysis, feeding plan
+- 6 mode tabs (profiles/health/feeding/activity/expenses/documents); breed explorer (The Dog API), cat facts, dog panel
+- Live dog-breed reference feed as DTUs; pet care planner, activity/weight dashboard
 
-### Pet-care substrate
-- [x] Pets, vaccines, medications, vet visits, weight history
-- [x] Care activities, symptoms, reminders, documents, expenses
-- [x] Caregivers, bookings, pet-care dashboard
-- (43 macros)
+## Missing — buildable feature backlog
+- [ ] `[M]` Vaccine due-date reminders with calendar export — auto-alert on expiring shots
+- [ ] `[S]` Shareable health record export — PDF/portable record for vet or boarding
+- [ ] `[M]` Multi-caregiver shared access — household members see and edit one pet's record
+- [ ] `[S]` Photo gallery / timeline per pet — visual history beyond document storage
+- [ ] `[M]` Vet appointment booking integration — schedule directly, not just log visits
+- [ ] `[S]` Breed-specific care guidance — surface health risks and care tips from breed data
+- [ ] `[S]` Lost-pet / microchip profile — public-shareable ID card
 
-### Live data & feed
-- [x] Live dog-breed feed — The Dog API breed profiles ingested as DTUs (macro: pets.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| GPS pet trackers | hardware tracker integration | manual location + activity notes |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (The Dog API → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` pets feed green; `tests/pets-domain-parity.test.js` + `tests/pets-breed-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="pets"` mounted in the lens page.
+## Parity
+~65% of 11pets' feature surface. The health-record substrate is unusually complete (vaccines, meds, vet visits, weight, symptoms, expenses, bookings). Gaps are reminders-with-export, shareable records, and multi-caregiver sync.

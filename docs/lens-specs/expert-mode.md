@@ -1,25 +1,23 @@
-# expert-mode — Feature Gap vs Perplexity Pro
+# expert-mode — Feature Gap vs Perplexity
 
-Category leader (2026): Perplexity Pro / ChatGPT with search. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: `expert_mode` domain macros (answer, sources_preview, extract_citations) routed to multi-brain pool; calls `POST /api/lens/run`.
+Category leader (2026): Perplexity. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `expert_mode` domain macros (answer, sources_preview, extract_citations) backed by `server/lib/expert-mode.js`; routes through brainChat() so BYO API keys apply; records royalty-cascade citations per source.
 
 ## Has (verified in code)
-- Cited-answer generation against the DTU corpus (`answer` macro, source-grounded)
-- Sources preview before answering (`sources_preview`)
-- Citation extraction (`extract_citations`)
-- BrainPoolStatus component — shows which of the 4 brains/BYO-key providers served the answer
-- AnswerActionPanel — follow-up actions on a returned answer
-- Provider/model badge (claude/gpt/grok/gemini) on answers
+- Cited-answer surface: query box → numbered answer with `[N]` markers rendered as clickable chips that scroll to source rows
+- Numbered source list with provenance ("via Claude / GPT / Grok / Gemini") provider badges
+- Sources preview macro — shows "about to consult N sources" before committing the brain call
+- BYO-provider routing per brain slot; citation-count → royalty credits to DTU creators
+- BrainPoolStatus + AnswerActionPanel components
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Streaming token-by-token answer rendering (currently appears to be request/response)
-- [ ] `[M]` Follow-up / conversational thread — multi-turn with retained context
-- [ ] `[S]` Inline source citations clickable to the exact passage
-- [ ] `[M]` Focus modes — scope search to academic / news / code / DTU-only
-- [ ] `[M]` "Pro Search" multi-step planner that decomposes a question into sub-queries
+- [ ] `[M]` Follow-up / threaded conversation — Perplexity keeps context across turns; this is single-shot
+- [ ] `[M]` Live web search integration alongside the DTU corpus (corpus is the only source)
+- [ ] `[S]` Focus modes — Academic / Writing / Math / Video scoping of sources
+- [ ] `[M]` "Pages" / Spaces — save answers into shareable collections
 - [ ] `[S]` Related-questions suggestions after each answer
-- [ ] `[M]` Spaces / collections — save answer threads into named research projects
-- [ ] `[S]` Image and file upload as query context
+- [ ] `[M]` File/PDF upload as a query source
+- [ ] `[S]` Answer export (copy as markdown, share link)
 
 ## Parity
-~45% of Perplexity Pro. Core cited-answer + multi-provider routing is genuinely there, but it is single-shot Q&A — no conversation threading, no streaming, no focus modes, no multi-step planning.
+~45% of Perplexity's feature surface. The citation chip + provenance + royalty mechanic is genuinely novel, but it lacks threaded follow-ups, live web search, focus modes, and Spaces — the conversational research loop Perplexity is built around.

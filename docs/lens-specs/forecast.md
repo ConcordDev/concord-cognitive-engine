@@ -1,25 +1,22 @@
-# forecast — Feature Completeness Spec
+# forecast — Feature Gap vs Weather apps (no direct rival)
 
-Rival app(s): none — this is a Concordia world-simulation lens, not a
-domain-app port. It surfaces a 24-hour forecast for a Concordia world.
+Category leader (2026): no direct consumer rival — this is an in-world simulation forecast, closest analog is a weather/predictive-events app.
+Backend: `forecast.{compose, recent}` macros backed by `server/lib/world-forecast.js`; composes 24h outlook from forward-sim + drift-monitor + faction-strategy + embodied climate baselines; persists to `world_forecasts` table.
 
-## Features
+## Has (verified in code)
+- 24h world forecast: weather kind + confidence + temperature + humidity
+- Ecology outlook — ecosystem score, trend, delta
+- Faction next-moves prediction (predicted kind, momentum, ETA, confidence)
+- Premonition events feed (kind, summary, ETA, confidence)
+- Drift forecast (likely drift kind + severity); compose-fresh + persisted recent forecast
 
-### World forecast
-- [x] Compose a 24h forecast — weather + ecology trend + faction next moves + premonition events + drift watch (macro: forecast.compose)
-- [x] Read the most recent composed forecast (macro: forecast.recent)
-- [x] Frontend — weather / ecology / faction-strategy / premonitions / drift-watch panels, per-world selector, `WeatherForecast` component
+## Missing — buildable feature backlog
+- [ ] `[S]` Multi-day / 7-day outlook (currently single 24h window)
+- [ ] `[S]` Hourly breakdown within the window
+- [ ] `[M]` Per-district / per-region forecast instead of whole-world
+- [ ] `[S]` Forecast accuracy tracking — compare past forecasts to realized outcomes
+- [ ] `[M]` Alert subscriptions — push when a high-confidence severe event is predicted
+- [ ] `[S]` Historical forecast archive / trend visualization
 
-The forecast is assembled from the embodied substrate already shipped:
-Layer 7 embodied signals (weather baseline), per-player ecology
-metrics, Layer 11 faction strategy, Layer 10 forward-sim
-(premonitions), and the Layer 12 drift monitor.
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| External real-time feed | a free public data source | **Feed-exempt.** `forecast` is a world-simulation lens — its data is the internal Concordia simulation state (forward-sim, drift, faction strategy, embodied baselines), not external real-world data. There is no rival real-world app and no public API to ingest. Per the Boundary register convention, infrastructure/world lenses are feed-exempt. |
-
-## Verification log
-- 2026-05-20: Backend — `forecast.compose` / `forecast.recent` macros registered inline in `server.js` (lines ~70470). Verified present and exercised by the lens page.
-- 2026-05-20: Frontend — lens page composes + renders forecast panels; no feed button (feed-exempt).
+## Parity
+~60% of a predictive-outlook tool's surface for what it scopes. It is a genuinely novel simulation forecast with no real-world rival; the gaps are range (multi-day/hourly), granularity (per-region), and accuracy feedback — all straightforward extensions.

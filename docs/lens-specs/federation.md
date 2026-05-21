@@ -1,24 +1,23 @@
-# federation — Feature Gap vs Mastodon / ActivityPub clients
+# federation — Feature Gap vs Mastodon / ActivityPub admin
 
-Category leader (2026): Mastodon (fediverse instance + client). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: `federation` domain macros (peers, activity) + REST `/api/federation/*` (status, instances, peers, search, probe, register, remove, sync).
+Category leader (2026): Mastodon / a fediverse server admin console. No direct consumer rival — closest analog is fediverse instance/peer management.
+Backend: `federation` domain macros (peers, activity) + REST routes `/api/federation/{status,instances,peers}`; `server/lib/federation.js` trust graph; cross-instance search; FediverseFeed + TrustGraphView components.
 
 ## Has (verified in code)
-- Network tab — federation status, instances, peer/trust graph
-- Search tab — cross-instance search (`/api/federation/search?q=`)
-- Peers tab — probe / register / remove peers
-- Sync tab — manual sync trigger
-- FediverseFeed component; federated-signal shadow-DTU activity stream
-- Optional Bearer-token gating on the social-shadows export
+- Network tab: trust graph visualization + local instance status (ID, capabilities, peer count)
+- Search tab: full-text query across all federated instances
+- Peers tab: probe / register / remove / inspect peers with last-seen, capabilities
+- Sync tab: manual sync trigger + recent sync events
+- Federated-activity feed (shadow DTUs tagged `federated_signal`), trust scores
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Full ActivityPub actor/inbox/outbox — interoperate with real Mastodon servers, not just Concord peers
-- [ ] `[M]` Follow remote accounts and see their posts in a home timeline
-- [ ] `[M]` Boost / favourite / reply on federated posts
-- [ ] `[M]` Local + federated public timelines (firehose views)
-- [ ] `[S]` Instance blocklist / allowlist moderation controls
-- [ ] `[S]` WebFinger account resolution (`@user@instance`)
-- [ ] `[M]` Post composer that publishes outward to followers across instances
+- [ ] `[M]` Allowlist / blocklist / defederation controls per peer
+- [ ] `[M]` Inbound moderation queue for federated content (report → review)
+- [ ] `[S]` Per-peer sync policy (what content classes flow which direction)
+- [ ] `[M]` Relay support — subscribe to a relay for broader discovery
+- [ ] `[S]` Peer trust-score history / reputation timeline
+- [ ] `[S]` Federation activity metrics dashboard (in/out volume over time)
+- [ ] `[M]` Signed-actor verification + key rotation handling
 
 ## Parity
-~35% of Mastodon. It is a peer-mesh admin console for Concord-to-Concord federation, not an ActivityPub social client — no remote follows, no interaction on federated posts, no real fediverse interop.
+~50% of a fediverse admin console's surface. Peer discovery, trust graph, and cross-instance search are real, but it lacks the moderation, defederation, and relay controls that any production federation deployment needs.

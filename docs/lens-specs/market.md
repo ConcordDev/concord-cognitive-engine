@@ -1,34 +1,24 @@
-# market — Feature Completeness Spec
+# market — Feature Gap vs Crayon / Klue (competitive intelligence)
 
-Rival app(s): Crayon, Klue, SimilarWeb, Yahoo Finance (2026)
-Sources:
-- Yahoo Finance quote API (equity quotes — live)
-- competitive-intelligence / market-research record-keeping
+Category leader (2026): Crayon / Klue (competitive intelligence). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/market.js` — macros: trendAnalysis, competitorMatrix, priceElasticity, sector-performance, quotes-batch (Yahoo Finance), competitor CRUD, market-dashboard.
 
-## Features
+## Has (verified in code)
+- Competitor tracking — segment, market share, pricing, threat level, SWOT notes (CRUD)
+- Competitive-landscape dashboard — competitors, high-threat count, tracked share, segments
+- Competitor matrix — multi-attribute comparison grid
+- Trend analysis, price-elasticity modeling
+- Live data — Yahoo Finance equity quotes batch → DTUs, sector heatmap
+- Market heatmap, watchlist, competitor-tracker components
 
-### Market-research management
-- [x] Track competitors — segment, market share, pricing, threat level (macro: market.competitor-add)
-- [x] List competitors sorted by share, filter by segment (macro: market.competitor-list)
-- [x] Update competitor share / threat / SWOT notes (macro: market.competitor-update)
-- [x] Delete a competitor (macro: market.competitor-delete)
-- [x] Competitive-landscape dashboard — competitors, high-threat, tracked share, segments (macro: market.market-dashboard)
+## Missing — buildable feature backlog
+- [ ] `[M]` Competitor news monitoring — auto-pull and tag competitor mentions from news/RSS feeds
+- [ ] `[M]` Battlecards — structured win/loss positioning sheets per competitor for sales
+- [ ] `[M]` Win/loss analysis — track deal outcomes against competitors with reasons
+- [ ] `[S]` Change alerts — notify when a competitor's pricing/positioning shifts
+- [ ] `[M]` Website-change tracking — diff competitor pages over time (crawl-based)
+- [ ] `[S]` Market sizing / TAM-SAM-SOM calculator
+- [ ] `[M]` Competitive landscape map — 2x2 quadrant positioning visualization
 
-### Live data
-- [x] Equity quotes — Yahoo Finance quotes ingested as DTUs (macro: market.quotes)
-- [x] Sector heatmap (SectorHeatmapPanel)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Automated competitor web-scrape | a crawl/scrape engine | manual competitor records + SWOT; the `news` lens carries headline ingestion |
-
-## Verification log
-- 2026-05-20: Backend — `node --check server/domains/market.js` clean.
-  Competitor substrate (5 macros) appended to the Yahoo-Finance domain.
-- 2026-05-20: Tests — `tests/market-competitor-domain-parity.test.js` 5/5
-  green (competitor CRUD + per-user scope + threat fallback / share-sorted
-  listing + segment filter / dashboard threat + tracked-share aggregation).
-- 2026-05-20: Frontend — new `CompetitorTracker` (competitor list with SWOT
-  editor + threat colouring + dashboard) mounted in the market lens page.
-  `npx tsc --noEmit` exit 0.
+## Parity
+~45% of Crayon/Klue's surface. Competitor records, SWOT, matrix, and trend/elasticity math are real, but missing the automated change-monitoring, battlecards, and win/loss tracking that make a CI platform a sales-enablement tool.

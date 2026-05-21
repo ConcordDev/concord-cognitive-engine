@@ -1,25 +1,24 @@
-# astronomy — Feature Completeness Spec
+# astronomy — Feature Gap vs SkySafari / Stellarium
 
-Rival app(s): SkySafari, Stellarium, NASA app (2026)
-Sources:
-- https://api.nasa.gov/ — NASA APOD (free, DEMO_KEY)
-- https://wheretheiss.at/ — ISS position (free, no key)
+Category leader (2026): SkySafari / Stellarium. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/astronomy.js` — 31 macros: celestialPosition, planObservation, lightTravelTime, orbitalMechanics, APOD, ISS location, near-earth-objects, targets CRUD, observation log, sessions, equipment, wishlist, events, catalog import, dashboard, feed.
 
-## Features
+## Has (verified in code)
+- Celestial object catalog (star/planet/moon/asteroid/comet/galaxy/nebula) with RA/dec/magnitude
+- Observation log, target list, sky-watch sessions, equipment registry, wishlist
+- Celestial-position + light-travel-time + orbital-mechanics calculators
+- ISS pass prediction + live ISS location; near-earth-objects tracking
+- NASA APOD live feed; SpaceflightNews + UpcomingLaunches panels
+- AstronomySkySection sky-map; NasaExplorer; event tracking; dashboard
 
-### Sky-watch substrate
-- [x] Observation log, target list, equipment, sky-watch sessions
-- [x] ISS pass prediction, planet visibility, astronomy calculators
-- (32 macros)
+## Missing — buildable feature backlog
+- [ ] `[L]` Interactive real-time sky chart rendered from observer lat/long/time
+- [ ] `[M]` Tonight's-best / what's-up-now visibility list for the user's location
+- [ ] `[M]` Constellation lines + deep-sky object overlay on the sky map
+- [ ] `[S]` Augmented-reality "point phone at sky" mode (device orientation)
+- [ ] `[M]` Telescope GoTo control via INDI/ASCOM bridge
+- [ ] `[S]` Moon-phase + planet-rise/set ephemeris calendar
+- [ ] `[S]` Light-pollution / observing-conditions forecast integration
 
-### Live data & feed
-- [x] Live astronomy feed — NASA Astronomy Picture of the Day ingested as DTUs (macro: astronomy.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Telescope GoTo control | a hardware mount driver (ASCOM/INDI) | target list + session log |
-
-## Verification log
-- 2026-05-20: `feed` macro verified (NASA APOD → DTUs) by `tests/lens-feeds-domain-parity.test.js`.
-- 2026-05-20: `tests/astronomy-domain-parity.test.js` + `tests/astronomy-skywatch-domain-parity.test.js` green.
+## Parity
+~55% of SkySafari's surface. Strong observation-logging and live-data substrate (ISS, APOD, NEOs), but the defining feature — an interactive real-time rendered sky chart — is the major gap.

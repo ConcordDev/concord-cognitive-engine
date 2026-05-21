@@ -1,23 +1,24 @@
-# export — Feature Gap vs Notion Export / Google Takeout
+# export — Feature Gap vs Google Takeout / Notion Export
 
-Category leader (2026): Google Takeout / Notion workspace export. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: `export` domain macros (generatePackage, validateExport, scheduleExport, diffExport) + REST `/api/export/universal` (`routes/universal-export.js`) + `/api/lens/export/export-dtu`.
+Category leader (2026): Google Takeout / Notion bulk-export. No direct consumer rival — closest analog is a personal-data export tool.
+Backend: `export` domain macros (generatePackage, validateExport, scheduleExport, diffExport) + `/api/lens/export/export-dtu` REST route producing a `.dtu` binary container; page does client-side JSON/CSV/MD/text serialization.
 
 ## Has (verified in code)
-- Multi-format export — JSON / CSV / Markdown / Plain Text / `.dtu` portable container
-- Selectable data categories (DTUs, events, settings) with counts
-- Generate package, validate export (per-item required-field check), schedule export, diff export macros
-- ExportFormatGallery component; universal DTU-content export route
-- Per-DTU export endpoint
+- Multi-format export: JSON, CSV, Markdown, plain text, and Concord `.dtu` portable container
+- Data-source selection (DTUs / events / settings) with counts
+- Export package estimation (size, mime, extension, item count)
+- Export validation against a schema (required-field checks, error list)
+- Scheduled exports (daily/weekly/monthly, destination, next-run calc)
+- Diff export — added/removed/modified/unchanged between two snapshots
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Full account archive — single download bundling everything (Takeout-style)
-- [ ] `[S]` Export progress / job status UI for large archives
-- [ ] `[M]` Email-link delivery when a large export completes
-- [ ] `[S]` Incremental export — only items changed since last export (diff macro exists but not wired to delivery)
-- [ ] `[M]` Per-format options (CSV column picker, Markdown front-matter toggle)
-- [ ] `[S]` Re-import round-trip verification of the produced `.dtu` pack
-- [ ] `[S]` Export history log with re-download links
+- [ ] `[M]` Actual scheduled-export execution — schedule is "configured" but no heartbeat runs it
+- [ ] `[S]` Export to cloud destinations (S3, Google Drive, Dropbox) via OAuth
+- [ ] `[S]` PDF export (listed in format picker but no generator)
+- [ ] `[M]` Incremental / delta exports — only changed records since last run
+- [ ] `[S]` Export history log with re-download of past archives
+- [ ] `[S]` Encrypted / password-protected archive option
+- [ ] `[M]` Selective field-level export (column picker per data type)
 
 ## Parity
-~55% of Takeout. Format coverage and the `.dtu` portable container are strong and validation/scheduling macros exist, but there is no whole-account archive, no async job tracking, and no delivery pipeline.
+~55% of a personal-export tool's surface. Solid format coverage and a unique `.dtu` container, but scheduled exports are not actually executed, there is no cloud delivery, and the PDF format is stubbed.

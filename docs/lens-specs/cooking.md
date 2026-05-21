@@ -1,24 +1,26 @@
-# cooking — Feature Gap vs Paprika / NYT Cooking
+# cooking — Feature Gap vs Paprika / Samsung Food
 
-Category leader (2026): Paprika 3 (recipe manager) + NYT Cooking. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: domain macros (`cooking.scaleRecipe/nutritionEstimate/mealPlan/substitution/feed`); 690-line domain; USDA FoodData Central panel; generic `/api/lens` recipe store.
+Category leader (2026): Paprika 3 + Samsung Food. Content fills via free public APIs (USDA FDC, TheMealDB) + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `cooking` domain macros — pure-compute (scaleRecipe, nutritionEstimate, mealPlan, substitution), real USDA FoodData Central (usda-search/usda-nutrition), and full STATE-backed substrate (recipes, collections, meal-plan calendar, aisle-grouped shopping list, pantry, ai-meal-plan, TheMealDB feed).
 
 ## Has (verified in code)
-- Recipe box CRUD (name, cuisine, difficulty, prep/cook time, servings) with difficulty filter
-- Recipe scaling with serving multipliers (per-recipe scaled ingredient amounts)
-- Nutrition estimate action + bespoke USDA FDC nutrition explorer (3-tier card, save-as-DTU)
-- Cook-mode timer (minutes/seconds, running state) and checkable ingredient list
-- AI actions: scale recipe, nutrition estimate, meal plan, ingredient substitution
-- Realtime data panel + DTU export + lens feed
+- Recipe CRUD with ingredients, steps, prep/cook time, servings, photo/source URL, tags, cuisine
+- Recipe collections (recipe books) with toggle-membership
+- Meal-plan calendar (date|slot keyed: breakfast/lunch/dinner/snack)
+- Auto shopping list — aggregates planned recipes, scales by servings, aisle-classifies, subtracts pantry
+- Pantry tracking + "what can I cook" pantry-coverage ranking
+- AI meal planner (deterministic round-robin from recipe box with preference filter)
+- USDA FDC ingredient search + full nutrient profile; nutrition estimator; recipe scaler with live serving multiplier
+- Kitchen timer (SVG ring), ingredient checklist, difficulty filters, TheMealDB recipe feed
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Recipe import from URL — paste any recipe site link, parse into structured recipe
-- [ ] `[M]` Grocery list generator — aggregate ingredients across a meal plan into a shopping list
-- [ ] `[M]` Step-by-step cook mode — full-screen sequential instruction view with per-step timers
-- [ ] `[S]` Pantry / inventory tracking — what you have, what a recipe needs
-- [ ] `[M]` Weekly meal planner calendar — drag recipes onto days, auto-build grocery list
-- [ ] `[S]` Recipe categories, tags, and ratings — organize and rank your collection
-- [ ] `[S]` Photo per recipe + per step — visual recipe cards
+- [ ] `[M]` Recipe import from URL — parse schema.org/Recipe JSON-LD from any cooking site
+- [ ] `[S]` Cook mode — full-screen step-by-step view with per-step timers
+- [ ] `[M]` Photo-based recipe capture (OCR a cookbook page) — vision brain is available
+- [ ] `[S]` Recipe rating, notes history, and "made it" log with dates
+- [ ] `[M]` Per-recipe nutrition auto-computed from USDA-linked ingredients (not just rough estimate)
+- [ ] `[S]` Shopping list multi-store grouping and quantity-unit normalization
+- [ ] `[S]` Recipe export to PDF / printable card
 
 ## Parity
-~50% of Paprika's feature surface. Strong scaling, nutrition, and timer; missing the URL-import, grocery-list, and meal-planner trio that makes Paprika a daily-driver.
+~75% of Paprika+Samsung Food. One of the deepest lenses — full meal-plan/shopping/pantry loop already works. Main gaps are URL/photo import and a dedicated cook-mode.

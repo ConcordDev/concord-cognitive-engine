@@ -1,27 +1,25 @@
-# agriculture — Feature Completeness Spec
+# agriculture — Feature Gap vs Climate FieldView
 
-Rival app(s): Climate FieldView, FarmLogs, Granular (2026)
-Sources:
-- https://api.worldbank.org/v2/ — World Bank Open Data (crop-yield indicators, free, no key)
+Category leader (2026): Climate FieldView (digital farming platform). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `server/domains/agriculture.js` — 49 macros: fields CRUD, scouting, zones, prescriptions (create/approve), planting + harvest passes/logs, nitrogen plans, imagery attach, tank mixes, work orders, grain bins (load/unload), equipment telemetry, weather-for-field, soil/pest/yield analysis, World Bank crop-yield feed.
 
-## Features
+## Has (verified in code)
+- Eight modes: fields, crops, livestock, equipment, water, harvest, certifications, map
+- Field records (crop, acreage, geo, soil) with FarmMapPanel + MapView geo overlay
+- Variable-rate prescription planner + zones; planting/harvest pass logging
+- Nitrogen planner, tank-mix builder, imagery panel, work orders, grain bins
+- Equipment panel with telemetry tracking; weather hero + per-field weather
+- Pest identifier, soil analysis, crop rotation planner, yield prediction
+- GBIF biodiversity panel; World Bank cereal-yield live feed; dashboard summary
 
-### Farm-record substrate
-- [x] Fields (canonical farm record) — crop, acreage, geo, soil
-- [x] Scouting pins, crop rotation history, season planning
-- [x] Yield + grain-storage tracking, agriculture dashboard
-- (49 macros — full per-(domain,macro) inventory via `npm run cartograph:static`)
+## Missing — buildable feature backlog
+- [ ] `[L]` Satellite NDVI/vegetation imagery layers (open Sentinel-2 data is free — buildable)
+- [ ] `[M]` Equipment data sync from machine APIs (ISOBUS/CAN telemetry import)
+- [ ] `[M]` Profit/cost analysis per field (input costs vs commodity prices)
+- [ ] `[S]` Weather-driven spray-window advisor (wind/temp gating already partly possible)
+- [ ] `[M]` Yield map overlay from harvest-monitor data
+- [ ] `[S]` Side-by-side seed/hybrid trial comparison
+- [ ] `[M]` Soil-sampling grid generator + lab-result import
 
-### Live data & feed
-- [x] Live crop-yield feed — World Bank cereal-yield indicators ingested as DTUs (macro: agriculture.feed)
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Satellite NDVI imagery | a paid imagery provider | scouting pins + manual field records |
-| Per-field real-time soil sensors | hardware IoT integration | manual soil + moisture records |
-
-## Verification log
-- 2026-05-20: Backend — `node --check` clean. `feed` macro added (World Bank crop yields → DTUs).
-- 2026-05-20: Tests — `tests/lens-feeds-domain-parity.test.js` agriculture feed green; `tests/agriculture-domain-parity.test.js` intact.
-- 2026-05-20: Frontend — `LensFeedButton domain="agriculture"` mounted in the lens page.
+## Parity
+~70% of Climate FieldView's feature surface. Genuinely deep precision-ag tooling — prescriptions, zones, passes, nitrogen, grain bins all real. Main gaps are satellite imagery layers and machine-data ingestion.

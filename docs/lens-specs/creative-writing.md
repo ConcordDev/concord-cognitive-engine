@@ -1,22 +1,25 @@
 # creative-writing — Feature Gap vs Scrivener
 
 Category leader (2026): Scrivener (+ Sudowrite for AI). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: domain macros (`creative-writing.manuscriptAnalysis/characterProfile/plotStructure/dialogueCheck/corkboard/compile`); 798-line domain; Gutendex + Datamuse panels; generic `/api/lens` work store.
+Backend: `creative-writing` domain macros — pure-compute (manuscriptAnalysis, characterProfile, plotStructure, dialogueCheck) plus full novel substrate (project CRUD, chapter add/update/delete/reorder, scene add/update/write/delete/reorder/move, character add/list/update/delete, plot-thread create/list); Gutendex + Datamuse panels.
 
 ## Has (verified in code)
-- Works CRUD with genre, full-text editor, focus mode, auto-save, session word-count timer
-- Writing-prompt feed; genre filtering; corkboard + compile macros
+- 4-tab workspace: Editor, Works, Prompts, Workshop; BlockEditor with focus mode + auto-save
+- Project → chapter → scene hierarchy with reorder and cross-chapter scene move
+- Character roster CRUD; plot-thread create/list
+- Genre taxonomy (fiction/nonfiction/screenplay/short-story/novel/essay/blog)
+- Session word-count timer; writing-prompt feed
 - AI actions: manuscript analysis, character profile, plot structure, dialogue check
 - Datamuse word-association panel + Gutendex public-domain text search
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Document binder / chapter tree — hierarchical scene→chapter→manuscript organization
-- [ ] `[M]` Visual corkboard with draggable index cards — synopsis cards reorder the outline
+- [ ] `[M]` Visual corkboard — draggable synopsis index cards that reorder the outline
+- [ ] `[M]` Compile/export — manuscript → DOCX/EPUB/PDF with formatting presets
 - [ ] `[S]` Per-document word-count targets + project progress bar
-- [ ] `[M]` Character & world bible — structured profiles linked into the manuscript
-- [ ] `[M]` Compile/export to formats — manuscript → DOCX/EPUB/PDF with formatting presets
+- [ ] `[M]` World/setting bible — structured location/lore entries linked into scenes
 - [ ] `[S]` Revision snapshots — save and diff document versions
-- [ ] `[S]` Split-screen / reference pane — edit while viewing research or another scene
+- [ ] `[S]` Split-screen reference pane — edit while viewing research or another scene
+- [ ] `[S]` Manuscript statistics — pacing, word frequency, dialogue-vs-prose ratio
 
 ## Parity
-~50% of Scrivener's feature surface. Strong distraction-free editor, sessions, and AI craft tools; missing the binder hierarchy, draggable corkboard, character bible, and real compile/export that make Scrivener a book-length tool.
+~60% of Scrivener's feature surface. The binder hierarchy (project/chapter/scene), character roster, and AI craft tools are real; missing the draggable corkboard, real compile/export, and revision snapshots that make Scrivener a book-length tool.

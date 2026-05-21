@@ -1,23 +1,23 @@
-# experience — Feature Gap vs Notion Portfolio / Behance + Maze (UX research)
+# experience — Feature Gap vs Maze / UserTesting
 
-Category leader (2026): hybrid — Behance/personal-site for portfolio, Maze/Dovetail for UX research. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
-Backend: `experience` domain macros (journeyMap, usabilityScore, heuristicEval, personaBuilder — 31 LOC, thin) + generic `/api/lens` artifact store for portfolio/skill/history items.
+Category leader (2026): Maze (UX research) / UserTesting. Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `experience` domain macros (journeyMap, usabilityScore, heuristicEval, personaBuilder) on the generic artifact store; 1620-line page with portfolio/skills/history/insights tabs (DesignSystemAtlas component).
 
 ## Has (verified in code)
-- Portfolio tab — projects/releases/art/collaboration items with type badges and filters
-- Skills tab + History tab + Insights tab; profile stats (projects, collabs, sales, followers)
-- DesignSystemAtlas component mounted (design-token surface)
-- UX-research macros: journey map (touchpoints/emotions), usability score, heuristic eval, persona builder
-- DTU export, realtime panel, cross-lens recents
+- Customer journey mapping (stages, touchpoints, emotion, pain points, opportunities, satisfaction scoring)
+- System Usability Scale (SUS) calculator with A–D grading + industry benchmark
+- Nielsen 10-heuristic evaluation with severity scoring + critical-issue count
+- Persona builder (goals, frustrations, behaviors, tech-savvy, completeness %)
+- Portfolio/skills radar chart, history timeline, computed insights, design-system atlas
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Public shareable portfolio page — render the profile at a public URL like a Behance/personal site
-- [ ] `[M]` Case-study editor — long-form rich project write-ups with embedded media, not just item cards
-- [ ] `[M]` Usability test sessions — record task flows, success rate, time-on-task per participant
-- [ ] `[S]` Heatmap / click-map view on journey-map touchpoints
-- [ ] `[M]` Survey builder + response collection (Maze-style unmoderated tests)
-- [ ] `[S]` Skill endorsements / verification from collaborators
-- [ ] `[S]` Affinity-diagram clustering of research notes
+- [ ] `[M]` Unmoderated usability test runner — task prompts, screen/click recording playback
+- [ ] `[M]` Click/heatmap tester — first-click + tree-test studies with success metrics
+- [ ] `[M]` Card-sorting / tree-testing tool for IA validation
+- [ ] `[S]` Survey builder with branching logic + NPS/CSAT templates
+- [ ] `[M]` Participant recruitment / panel + screener questionnaires
+- [ ] `[S]` Highlight reels / clip sharing from session recordings
+- [ ] `[M]` Prototype embed (Figma) with interaction analytics overlay
 
 ## Parity
-~40% of a Behance+Maze hybrid. Portfolio cataloguing works and the UX-research macros are real but shallow (no participant sessions, no public share page). A real designer's two core jobs — showing work publicly and running tests — are both stubbed.
+~40% of Maze's feature surface. Strong on analytical UX artifacts (journey maps, SUS, heuristics, personas) but missing the core moderated/unmoderated test-execution loop — recording, recruitment, heatmaps — that defines a modern UX-research suite.
