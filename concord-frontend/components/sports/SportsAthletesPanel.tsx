@@ -18,7 +18,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
   const [form, setForm] = useState({ name: '', team: '', position: '' });
   const [selected, setSelected] = useState<Athlete | null>(null);
   const [lines, setLines] = useState<StatLine[]>([]);
-  const [totals, setTotals] = useState<Record<string, number>>({});
+  const [, setTotals] = useState<Record<string, number>>({});
   const [averages, setAverages] = useState<Record<string, number>>({});
   const [statForm, setStatForm] = useState({ opponent: '', stats: '' });
 

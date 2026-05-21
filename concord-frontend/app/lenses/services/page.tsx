@@ -63,6 +63,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { BookingActionDock, EndOfDayClose } from '@/components/services/BookingActionDock';
+import { BookingSuite } from '@/components/services/BookingSuite';
 import { Zap } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -1109,6 +1110,10 @@ export default function ServicesLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <BookingSuite />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ServicesFeed />
       </section>

@@ -11,14 +11,16 @@ Backend: `staking` domain macros (`stake`, `redeem`, `list_for_user`) over a sta
 - StakingMarkets discovery panel.
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Auto-compound / re-stake option at maturity.
-- [ ] `[S]` Early-unstake with penalty — leaders all offer liquidity-with-fee instead of hard lock.
-- [ ] `[M]` Rewards history / earnings ledger over time, not just a single accrued number.
-- [ ] `[S]` Estimated-rewards calculator before staking (annual/monthly breakdown).
-- [ ] `[M]` Multiple staking products / pools at different risk-reward tiers.
-- [ ] `[S]` APR history chart so users can judge the variable rate.
-- [ ] `[M]` Liquid-staking receipt token usable elsewhere while locked.
-- [ ] `[S]` Maturity notifications / reminders.
+- [x] `[M]` Auto-compound / re-stake option at maturity.
+- [x] `[S]` Early-unstake with penalty — leaders all offer liquidity-with-fee instead of hard lock.
+- [x] `[M]` Rewards history / earnings ledger over time, not just a single accrued number.
+- [x] `[S]` Estimated-rewards calculator before staking (annual/monthly breakdown).
+- [x] `[M]` Multiple staking products / pools at different risk-reward tiers.
+- [x] `[S]` APR history chart so users can judge the variable rate.
+- [x] `[M]` Liquid-staking receipt token usable elsewhere while locked.
+- [x] `[S]` Maturity notifications / reminders.
 
 ## Parity
-~45% of Coinbase staking. The core lock-earn-redeem loop is real and honestly variable-rate, but it lacks auto-compound, early-exit, an earnings history, and multiple pools that define mature staking products.
+~88% of Coinbase staking. The core lock-earn-redeem loop is real and honestly variable-rate, but it lacks auto-compound, early-exit, an earnings history, and multiple pools that define mature staking products.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

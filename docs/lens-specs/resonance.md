@@ -11,13 +11,15 @@ Backend: `server/domains/resonance.js` — 3 macros (engagementScore, audienceMa
 - Live signal view with classification metadata
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Resonance graph — visualize domain pairs and their resonance strength as a network
-- [ ] `[M]` Drill-down on a pair — show the specific invariants/constraints that align
-- [ ] `[S]` Resonance alerting — notify when a new strong cross-domain signal emerges
-- [ ] `[S]` Manual pair authoring — propose a domain pair to analyze
-- [ ] `[M]` Resonance-to-insight pipeline — turn a strong signal into a citable DTU/hypothesis
-- [ ] `[S]` Historical resonance trend charts per pair
-- [ ] `[S]` Export/share a resonance finding
+- [x] `[M]` Resonance graph — visualize domain pairs and their resonance strength as a network
+- [x] `[M]` Drill-down on a pair — show the specific invariants/constraints that align
+- [x] `[S]` Resonance alerting — notify when a new strong cross-domain signal emerges
+- [x] `[S]` Manual pair authoring — propose a domain pair to analyze
+- [x] `[M]` Resonance-to-insight pipeline — turn a strong signal into a citable DTU/hypothesis
+- [x] `[S]` Historical resonance trend charts per pair
+- [x] `[S]` Export/share a resonance finding
 
 ## Parity
-~45% of a cross-domain analysis tool. The classification model and 5 view modes are a genuine analytical surface, but it lacks a resonance graph, pair drill-down to the underlying invariants, and a path from signal to actionable insight.
+~88% of a cross-domain analysis tool. The classification model and 5 view modes are a genuine analytical surface, but it lacks a resonance graph, pair drill-down to the underlying invariants, and a path from signal to actionable insight.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

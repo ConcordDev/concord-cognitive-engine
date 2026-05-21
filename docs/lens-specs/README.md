@@ -12,14 +12,14 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~69%**
-- Total buildable features in the backlog (sum of all "Missing" items): **989**
+- Average feature parity: **~70%**
+- Total buildable features in the backlog (sum of all "Missing" items): **943**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 92 |
+| 80–100% (near-complete) | 98 |
 | 60–79% (strong) | 59 |
-| 40–59% (partial) | 79 |
+| 40–59% (partial) | 73 |
 | <40% (thin) | 0 |
 
 ## Per-lens (sorted weakest → strongest — the build priority order)
@@ -31,12 +31,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | personas | Character.AI | ~?% | 0 |
 | quantum | IBM Quantum Composer | ~?% | 0 |
 | sentinel | CrowdStrike Falcon / threat console | ~?% | 0 |
-| privacy | OneTrust / Apple Privacy settings | ~45% | 7 |
-| resonance | cross-domain analogy / knowledge-graph tool | ~45% | 7 |
-| services | Square Appointments / Vagaro | ~45% | 7 |
-| sim | AnyLogic / Vensim | ~45% | 8 |
-| sports | ESPN | ~45% | 9 |
-| staking | Coinbase / Lido staking | ~45% | 8 |
 | supplychain | SAP IBP / Anaplan | ~45% | 8 |
 | system | Datadog / Grafana (observability) | ~45% | 8 |
 | tick | Datadog / heartbeat monitors (Better Uptime) | ~45% | 7 |
@@ -225,9 +219,15 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | offline | PouchDB/Dexie + Workbox | ~88% | 0 |
 | ops | PagerDuty | ~88% | 0 |
 | plumbing | ServiceTitan / Jobber | ~88% | 0 |
+| privacy | OneTrust / Apple Privacy settings | ~88% | 0 |
 | psyops | threat-intelligence / anomaly-detection console | ~88% | 0 |
 | questmarket | Bountysource / gamified quest board | ~88% | 0 |
+| resonance | cross-domain analogy / knowledge-graph tool | ~88% | 0 |
 | schema | JSON Schema tooling / Hasura console | ~88% | 0 |
+| services | Square Appointments / Vagaro | ~88% | 0 |
+| sim | AnyLogic / Vensim | ~88% | 0 |
+| sports | ESPN | ~88% | 0 |
+| staking | Coinbase / Lido staking | ~88% | 0 |
 | temporal | Prophet / Tableau time-series analysis | ~88% | 0 |
 | tournaments | Challonge / Battlefy | ~88% | 0 |
 | urban-planning | UrbanFootprint / Esri Urban | ~88% | 0 |

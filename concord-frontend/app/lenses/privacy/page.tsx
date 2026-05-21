@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PrivacyFeed } from '@/components/privacy/PrivacyFeed';
+import { DataControlsPanel } from '@/components/privacy/DataControlsPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -840,6 +841,12 @@ export default function PrivacySharingPage() {
           onCancel={() => setConfirmModal(null)}
         />
       </AnimatePresence>
+      {/* Data Controls — DSAR, per-lens sharing, activity log, export,
+          cookie banner, retention, data-flow map (OneTrust parity) */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <DataControlsPanel />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PrivacyFeed />
       </section>

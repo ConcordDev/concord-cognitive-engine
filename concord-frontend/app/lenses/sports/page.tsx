@@ -46,6 +46,7 @@ import { ActivityActionPanel } from '@/components/sports/ActivityActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LiveScoreboard } from '@/components/sports/LiveScoreboard';
+import { SportsSpectatorHub } from '@/components/sports/SportsSpectatorHub';
 
 type Tab = 'games' | 'stats' | 'training';
 
@@ -1038,6 +1039,12 @@ export default function SportsLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <LiveScoreboard />
+      </section>
+
+      {/* ESPN spectator core — play-by-play, schedules, standings, news,
+          rosters, player pages, reminders, brackets, win-probability */}
+      <section className="mt-6">
+        <SportsSpectatorHub />
       </section>
     </div>
           <section className="mt-4"><LensFeedButton domain="sports" label="Live fixtures feed" /></section>

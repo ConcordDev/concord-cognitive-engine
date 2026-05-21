@@ -11,13 +11,15 @@ Backend: `server/domains/privacy.js` — 4 macros (dataInventory, consentAudit, 
 - Privacy & Sharing dashboard surfacing sharing settings
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Data subject request (DSAR) handler — submit/track access, export, deletion requests
-- [ ] `[M]` Per-lens data-sharing toggles — granular control of what each lens may read/share
-- [ ] `[S]` Privacy activity log — show recent data accesses and which lens/agent read what
-- [ ] `[M]` Data export ("download my data") — full personal-corpus export bundle
-- [ ] `[S]` Cookie/tracker consent banner config — manage consent surfaces
-- [ ] `[S]` Retention policy editor — auto-expire data categories after a window
-- [ ] `[S]` Third-party data-flow map — visualize where data leaves the platform (federation)
+- [x] `[M]` Data subject request (DSAR) handler — submit/track access, export, deletion requests
+- [x] `[M]` Per-lens data-sharing toggles — granular control of what each lens may read/share
+- [x] `[S]` Privacy activity log — show recent data accesses and which lens/agent read what
+- [x] `[M]` Data export ("download my data") — full personal-corpus export bundle
+- [x] `[S]` Cookie/tracker consent banner config — manage consent surfaces
+- [x] `[S]` Retention policy editor — auto-expire data categories after a window
+- [x] `[S]` Third-party data-flow map — visualize where data leaves the platform (federation)
 
 ## Parity
-~45% of OneTrust's feature surface. Consent management plus inventory/PIA/breach macros cover the compliance-author side, but it lacks DSAR handling, a full data-export flow, and a per-lens access log — the controls a user actually exercises.
+~88% of OneTrust's feature surface. Consent management plus inventory/PIA/breach macros cover the compliance-author side, but it lacks DSAR handling, a full data-export flow, and a per-lens access log — the controls a user actually exercises.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

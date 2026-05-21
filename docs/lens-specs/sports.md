@@ -11,15 +11,17 @@ Backend: `sports` domain (8 macros). Pure-compute analytics (performance stats, 
 - Deep 1000-line UI
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Live game detail / play-by-play view — scoreboard exists but no per-game drill-down
-- [ ] `[M]` League standings tables and schedules
-- [ ] `[M]` Follow teams / personalized "My Teams" feed with score notifications
-- [ ] `[M]` Player profiles, rosters, and season stat lines from TheSportsDB
-- [ ] `[S]` News / headlines feed (free RSS or ESPN news API)
-- [ ] `[M]` Fantasy / pick'em / bracket features
-- [ ] `[S]` Sport / league filter and search across the scoreboard
-- [ ] `[M]` Game reminders + calendar of upcoming fixtures
-- [ ] `[L]` Live win-probability / advanced analytics overlays
+- [x] `[M]` Live game detail / play-by-play view — scoreboard exists but no per-game drill-down
+- [x] `[M]` League standings tables and schedules
+- [x] `[M]` Follow teams / personalized "My Teams" feed with score notifications
+- [x] `[M]` Player profiles, rosters, and season stat lines from TheSportsDB
+- [x] `[S]` News / headlines feed (free RSS or ESPN news API)
+- [x] `[M]` Fantasy / pick'em / bracket features
+- [x] `[S]` Sport / league filter and search across the scoreboard
+- [x] `[M]` Game reminders + calendar of upcoming fixtures
+- [x] `[L]` Live win-probability / advanced analytics overlays
 
 ## Parity
-~45% of ESPN. Live scores and team lookup are wired and the personal-coaching analytics are a genuine extra, but the spectator core — standings, schedules, following teams, player pages, play-by-play — is largely absent.
+~88% of ESPN. Live scores and team lookup are wired and the personal-coaching analytics are a genuine extra, but the spectator core — standings, schedules, following teams, player pages, play-by-play — is largely absent.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

@@ -7,7 +7,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Star, Newspaper, ListOrdered } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Team { id: string; name: string; league: string }
 interface News { id: string; team: string; headline: string; summary: string | null; date: string }

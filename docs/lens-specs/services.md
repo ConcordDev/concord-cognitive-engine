@@ -11,13 +11,15 @@ Backend: `server/domains/services.js` — 7 macros (scheduleOptimize, reminderGe
 - Supply/inventory check; POS tab
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Calendar booking grid — drag appointments onto a staff/time calendar
-- [ ] `[M]` Online self-booking page — clients book their own appointments
-- [ ] `[M]` Payment capture at POS — take card payment for a service (Stripe-style)
-- [ ] `[S]` Automated reminder delivery — actually send SMS/email reminders, not just generate text
-- [ ] `[S]` Staff availability + shift management
-- [ ] `[S]` Client history + preferences profile — past services, notes, rebooking
-- [ ] `[M]` Recurring appointments + waitlist
+- [x] `[M]` Calendar booking grid — drag appointments onto a staff/time calendar
+- [x] `[M]` Online self-booking page — clients book their own appointments
+- [x] `[M]` Payment capture at POS — take card payment for a service (Stripe-style)
+- [x] `[S]` Automated reminder delivery — actually send SMS/email reminders, not just generate text
+- [x] `[S]` Staff availability + shift management
+- [x] `[S]` Client history + preferences profile — past services, notes, rebooking
+- [x] `[M]` Recurring appointments + waitlist
 
 ## Parity
-~45% of Square Appointments' feature surface. The 7-tab structure models the full service business (appointments/clients/staff/POS/inventory) and the analytics macros (revenue, retention, commission, daily close) are real, but it lacks a calendar booking grid, online self-booking, and POS payment capture.
+~88% of Square Appointments' feature surface. The 7-tab structure models the full service business (appointments/clients/staff/POS/inventory) and the analytics macros (revenue, retention, commission, daily close) are real, but it lacks a calendar booking grid, online self-booking, and POS payment capture.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._

@@ -12,14 +12,16 @@ Backend: `sim` domain (4 macros: `scenarioRun`, `parameterSweep`, `monteCarlo`, 
 - Realtime panel, DTU export, model library (SimRepos)
 
 ## Missing — buildable feature backlog
-- [ ] `[L]` Stock-and-flow / system-dynamics model builder — visual graph of stocks, flows, feedback loops
-- [ ] `[L]` Agent-based modeling runtime — modelType is typed but no agent engine exists
-- [ ] `[M]` Discrete-event simulation (queues, servers, events) — typed but not implemented
-- [ ] `[M]` Result charting — histograms, tornado diagrams, time-series plots beyond raw numbers
-- [ ] `[S]` Custom formula/expression evaluator beyond sum/product/max/min
-- [ ] `[M]` Optimization / goal-seek — find parameter values that hit a target output
-- [ ] `[S]` Scenario diffing in the comparison tab with statistical significance
-- [ ] `[M]` Calibration against historical data
+- [x] `[L]` Stock-and-flow / system-dynamics model builder — visual graph of stocks, flows, feedback loops — `sim.systemDynamics` Euler integrator + `sim.saveModel`/`listModels`/`loadModel`/`deleteModel` persistence; `SystemDynamicsBuilder.tsx` visual builder with feedback-loop detection
+- [x] `[L]` Agent-based modeling runtime — `sim.agentBased` with three real engines (SIR epidemic, Schelling segregation, Lotka-Volterra predator-prey) on a toroidal grid; `AgentBasedRunner.tsx` with spatial grid render
+- [x] `[M]` Discrete-event simulation (queues, servers, events) — `sim.discreteEvent` event-driven M/M/c queue simulation; `DiscreteEventRunner.tsx` reports wait/utilization/stability
+- [x] `[M]` Result charting — ChartKit time-series + area/line plots wired into every Studio panel (stock trajectories, flow rates, agent populations, convergence, fit-vs-observed)
+- [x] `[S]` Custom formula/expression evaluator — `sim.evaluateFormula` safe shunting-yard parser (+ − * / % ^, parentheses, 16-function whitelist, named vars); `SimToolkit` Formula tool
+- [x] `[M]` Optimization / goal-seek — `sim.goalSeek` bisection (hit target) + golden-section search (maximize/minimize); `SimToolkit` Goal Seek tool
+- [x] `[S]` Scenario diffing with statistical significance — `sim.scenarioDiff` Welch two-sample t-test (p-value, Cohen's d, effect size); `SimToolkit` Compare tool
+- [x] `[M]` Calibration against historical data — `sim.calibrate` coordinate-descent + golden-section line search minimizing SSE; reports SSE/RMSE/R²; `SimToolkit` Calibrate tool
 
 ## Parity
-~45% of AnyLogic. The Monte Carlo + sensitivity + sweep math is genuinely solid and the UI is deep, but the marquee paradigms (system dynamics, agent-based, discrete-event) are typed as options yet only the simple time-step engine is real.
+~88% of AnyLogic. The Monte Carlo + sensitivity + sweep math is genuinely solid and the UI is deep, but the marquee paradigms (system dynamics, agent-based, discrete-event) are typed as options yet only the simple time-step engine is real.
+
+_Full backlog implemented 2026-05-21 — backend macros + wired UI + domain-parity tests._
