@@ -12,13 +12,13 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~85%**
-- Total buildable features in the backlog (sum of all "Missing" items): **346**
+- Average feature parity: **~86%**
+- Total buildable features in the backlog (sum of all "Missing" items): **303**
 
 | Parity band | Lenses |
 |---|---|
-| 80–100% (near-complete) | 187 |
-| 60–79% (strong) | 48 |
+| 80–100% (near-complete) | 193 |
+| 60–79% (strong) | 42 |
 | 40–59% (partial) | 0 |
 | <40% (thin) | 0 |
 
@@ -26,12 +26,6 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 
 | Lens | Category leader | Parity | Buildable features missing |
 |---|---|---:|---:|
-| goals | Notion / Weekdone OKR | ~60% | 7 |
-| household | Cozi / Sweepy | ~60% | 7 |
-| legal | Clio (legal practice management) | ~60% | 7 |
-| mental-health | Daylio / Finch / Wysa | ~60% | 8 |
-| message | Slack | ~60% | 7 |
-| paper | Zotero / arXiv | ~60% | 7 |
 | parenting | Huckleberry | ~60% | 7 |
 | pharmacy | Medisafe / GoodRx | ~60% | 7 |
 | productivity | Todoist | ~60% | 7 |
@@ -246,14 +240,20 @@ item in every "Missing" backlog is a buildable feature (no licensing walls).
 | forum | Reddit / Discourse | ~95% | 0 |
 | gallery | Google Arts & Culture / Artsy | ~95% | 0 |
 | geology | USGS apps / Rockd | ~95% | 0 |
+| goals | Notion / Weekdone OKR | ~95% | 0 |
 | history | TimelineJS / Wikipedia | ~95% | 0 |
+| household | Cozi / Sweepy | ~95% | 0 |
 | import | Flatfile / Airbyte (data import) | ~95% | 0 |
 | law | Ironclad (contract lifecycle) | ~95% | 0 |
+| legal | Clio (legal practice management) | ~95% | 0 |
 | linguistics | Vocabulary.com / Datamuse | ~95% | 0 |
 | logistics | Project44 / FourKites (supply-chain visibility) | ~95% | 0 |
 | marketplace | Etsy (seller side) | ~95% | 0 |
+| mental-health | Daylio / Finch / Wysa | ~95% | 0 |
+| message | Slack | ~95% | 0 |
 | music | Spotify (2026) | ~95% | 0 |
 | news | Apple News / Ground News | ~95% | 0 |
+| paper | Zotero / arXiv | ~95% | 0 |
 | podcast | Apple Podcasts / Spotify | ~95% | 0 |
 | poetry | Poetry Foundation / poetry notebook | ~95% | 0 |
 | science | LabArchives / GraphPad Prism | ~95% | 0 |

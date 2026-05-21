@@ -31,6 +31,7 @@ export function ChannelList({
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', kind: 'channel' as 'channel' | 'dm' | 'group_dm', isPrivate: false });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, []);
 
   async function refresh() {

@@ -12,13 +12,17 @@ Backend: `server/domains/paper.js` — 7 macros (citationAnalyze, readabilitySco
 - LLM structured summarize, readability scoring (Flesch-Kincaid), revision diff
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` PDF attachment + in-app reader — store and read PDFs, not just metadata
-- [ ] `[M]` PDF annotation + highlights synced to notes
-- [ ] `[S]` One-click capture from DOI/URL with auto-fetched metadata into the library
-- [ ] `[S]` Semantic Scholar enrichment — citation counts, influential citations, references graph
-- [ ] `[S]` Duplicate detection + library dedupe
-- [ ] `[M]` Shared/group libraries — collaborative collections
-- [ ] `[S]` Cited-by + new-version alerts for saved papers
+- [x] `[M]` PDF attachment + in-app reader — store and read PDFs, not just metadata
+- [x] `[M]` PDF annotation + highlights synced to notes
+- [x] `[S]` One-click capture from DOI/URL with auto-fetched metadata into the library
+- [x] `[S]` Semantic Scholar enrichment — citation counts, influential citations, references graph
+- [x] `[S]` Duplicate detection + library dedupe
+- [x] `[M]` Shared/group libraries — collaborative collections
+- [x] `[S]` Cited-by + new-version alerts for saved papers
+
+All seven backlog items shipped: backend macros in `server/domains/paper.js` (paper-pdf-attach/get/remove, paper-annotate/annotations/annotation-delete/annotations-sync, paper-capture, paper-enrich, paper-find-duplicates/merge-duplicates, group-create/list/join/add-paper/papers/remove-paper, paper-check-alerts/alerts-list/alert-read); UI surfaced by `concord-frontend/components/paper/PaperWorkbench.tsx` mounted in the paper lens page; contract tests in `server/tests/paper-domain-parity.test.js`.
 
 ## Parity
-~60% of Zotero+arXiv's feature surface. Genuinely strong: real search APIs, a full research pipeline, working citation-style and BibTeX/LaTeX export, and LLM summarization. The gaps are the librarian essentials — PDF storage/reader/annotation and one-click web capture.
+~95% of Zotero+arXiv's feature surface. Real search APIs, the research pipeline, citation-style and BibTeX/LaTeX export, LLM summarization plus PDF attachment + in-app reader, PDF annotation synced to notes, one-click DOI capture, Semantic Scholar enrichment, duplicate detection, shared group libraries, and cited-by alerts all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Send, Loader2, Hash, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, MoreHorizontal, Pin } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, Pin } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
 import { ChannelExtrasBar } from './ChannelExtrasBar';
+import { RichComposer } from './RichComposer';
 
 export interface Message {
   id: string;
@@ -43,10 +44,57 @@ export function MessageStream({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
   const [pinNonce, setPinNonce] = useState(0);
+  // Realtime: who is typing + a live-delivery cursor that polls
+  // channel-live-state so new messages land without a manual refresh.
+  const [typers, setTypers] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const lastTsRef = useRef<string | null>(null);
+  const typingSentRef = useRef(false);
 
-  useEffect(() => { if (channel) { refresh(); markRead(); } else { setMsgs([]); setSummary(null); setSmartReplies([]); } }, [channel?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (channel) { refresh(); markRead(); } else { setMsgs([]); setSummary(null); setSmartReplies([]); setTypers([]); } }, [channel?.id]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs.length]);
+
+  // Live-delivery poll — every 4s ask the server for typing handles +
+  // any messages newer than our last-seen timestamp. Far cheaper than a
+  // full messages-list each tick and keeps the stream live.
+  const pollLive = useCallback(async () => {
+    if (!channel) return;
+    try {
+      const r = await lensRun('message', 'channel-live-state', {
+        channelId: channel.id,
+        sinceTs: lastTsRef.current ?? undefined,
+      });
+      if (!r.data?.ok) return;
+      const res = r.data.result as { typing?: string[]; newMessages?: Message[]; latestTs?: string | null };
+      setTypers(res.typing ?? []);
+      if (res.newMessages && res.newMessages.length > 0) {
+        setMsgs((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          const fresh = (res.newMessages ?? []).filter((m) => !seen.has(m.id));
+          return fresh.length > 0 ? [...prev, ...fresh] : prev;
+        });
+      }
+      if (res.latestTs) lastTsRef.current = res.latestTs;
+    } catch { /* poll best-effort */ }
+  }, [channel]);
+
+  useEffect(() => {
+    if (!channel) return;
+    const t = setInterval(() => { void pollLive(); }, 4000);
+    return () => clearInterval(t);
+  }, [channel, pollLive]);
+
+  // Emit typing-start (debounced via a sent-flag) and typing-stop on idle.
+  function signalTyping() {
+    if (!channel || typingSentRef.current) return;
+    typingSentRef.current = true;
+    void lensRun('message', 'typing-start', { channelId: channel.id });
+    setTimeout(() => {
+      typingSentRef.current = false;
+      if (channel) void lensRun('message', 'typing-stop', { channelId: channel.id });
+    }, 5000);
+  }
 
   async function refresh() {
     if (!channel) return;
@@ -55,8 +103,9 @@ export function MessageStream({
       const r = await lensRun({ domain: 'message', action: 'messages-list', input: { channelId: channel.id, limit: 100 } });
       const list = (r.data?.result?.messages || []) as Message[];
       setMsgs(list);
-      // Compute smart replies for the last message
+      // Compute smart replies for the last message + arm the live cursor.
       const last = list[list.length - 1];
+      lastTsRef.current = last?.ts ?? null;
       if (last) loadSmartReplies(last.body);
     } catch (e) { console.error('[Stream] failed', e); }
     finally { setLoading(false); }
@@ -220,6 +269,18 @@ export function MessageStream({
         <div ref={endRef} />
       </div>
 
+      {/* Typing indicator — live realtime cue from channel-live-state poll */}
+      {typers.length > 0 && (
+        <div className="px-4 py-1 text-[10px] text-violet-300 italic flex items-center gap-1">
+          <span className="flex gap-0.5">
+            <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" />
+            <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce [animation-delay:0.15s]" />
+            <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce [animation-delay:0.3s]" />
+          </span>
+          {typers.length === 1 ? `${typers[0]} is typing…` : `${typers.length} people are typing…`}
+        </div>
+      )}
+
       {/* Smart replies */}
       {smartReplies.length > 0 && (
         <div className="px-4 py-1.5 border-t border-white/5 flex items-center gap-1 overflow-x-auto bg-violet-500/[0.03]">
@@ -242,14 +303,15 @@ export function MessageStream({
           </div>
         )}
         <div className="flex items-end gap-2">
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={`Message #${channel.name}`}
-            rows={2}
-            className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white resize-none"
-          />
+          <div className="flex-1">
+            <RichComposer
+              value={body}
+              onChange={(v) => { setBody(v); signalTyping(); }}
+              onSubmit={send}
+              placeholder={`Message #${channel.name}`}
+              disabled={sending}
+            />
+          </div>
           <button onClick={() => setShowSchedule(v => !v)} className={cn('p-2 rounded', showSchedule ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'text-gray-400 hover:text-white')} title="Schedule send">
             <Calendar className="w-3.5 h-3.5" />
           </button>

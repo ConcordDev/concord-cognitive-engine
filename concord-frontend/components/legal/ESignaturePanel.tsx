@@ -23,6 +23,7 @@ export function ESignaturePanel() {
   const [filter, setFilter] = useState<'all' | 'sent' | 'completed'>('all');
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filter]);
 
   async function refresh() {

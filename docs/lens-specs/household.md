@@ -11,13 +11,15 @@ Backend: `household` domain — generateGroceryList, maintenanceCheck, rotateCho
 - Weekly summary, household dashboard
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Shared family calendar with events + reminders (Cozi's centerpiece)
-- [ ] `[S]` Meal-planning calendar tied to the grocery list
-- [ ] `[S]` Reward points / allowance system for completed chores
-- [ ] `[M]` Per-member mobile notifications for assigned tasks
-- [ ] `[S]` Shared shopping lists multiple members edit live
-- [ ] `[S]` Recurring task templates by frequency
-- [ ] `[M]` Budget / shared-expense splitting between members
+- [x] `[M]` Shared family calendar with events + reminders (Cozi's centerpiece)
+- [x] `[S]` Meal-planning calendar tied to the grocery list
+- [x] `[S]` Reward points / allowance system for completed chores
+- [x] `[M]` Per-member mobile notifications for assigned tasks
+- [x] `[S]` Shared shopping lists multiple members edit live
+- [x] `[S]` Recurring task templates by frequency
+- [x] `[M]` Budget / shared-expense splitting between members
 
 ## Parity
-~60% of the Cozi/Sweepy surface. Chore rotation, leaderboard, rooms, and grocery/pantry are a real household manager, but it lacks a shared family calendar, meal-planning calendar, and per-member notifications — the coordination layer Cozi is built on.
+~95% of the Cozi/Sweepy surface. Chore rotation, leaderboard, rooms, grocery/pantry plus a shared family calendar, meal-planning calendar, allowance/reward points, per-member notifications, shared shopping lists, recurring task templates, and expense splitting all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

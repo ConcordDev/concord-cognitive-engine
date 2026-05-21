@@ -13,14 +13,16 @@ Backend: `server/domains/mentalhealth.js` — ~29 macros: moodTracker, copingStr
 - Crisis support — crisis-hotline directory, CrisisPanel; CDC mental-health stats; wellness dashboard; MedlinePlus panel
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Conversational AI check-in companion — supportive chat (Wysa-style) with the cognitive brain
-- [ ] `[M]` Custom mood factors / activity tags — user-defined trackable factors (Daylio core)
-- [ ] `[M]` Correlation insights — surface which activities correlate with better mood
-- [ ] `[S]` Mood calendar / year-in-pixels visualization
-- [ ] `[S]` Reminders for check-ins, breathing, and gratitude
-- [ ] `[M]` Guided CBT/DBT exercise modules — thought records, cognitive reframing worksheets
-- [ ] `[S]` Export / shareable report for a therapist
-- [ ] `[M]` Safety plan builder — personalized crisis coping plan
+- [x] `[M]` Conversational AI check-in companion — supportive chat (Wysa-style) with the cognitive brain
+- [x] `[M]` Custom mood factors / activity tags — user-defined trackable factors (Daylio core)
+- [x] `[M]` Correlation insights — surface which activities correlate with better mood
+- [x] `[S]` Mood calendar / year-in-pixels visualization
+- [x] `[S]` Reminders for check-ins, breathing, and gratitude
+- [x] `[M]` Guided CBT/DBT exercise modules — thought records, cognitive reframing worksheets
+- [x] `[S]` Export / shareable report for a therapist
+- [x] `[M]` Safety plan builder — personalized crisis coping plan
 
 ## Parity
-~60% of the Daylio/Finch surface. Genuinely deep — mood, journal, breathing, sleep, gratitude, goals, courses, crisis resources — but missing the conversational companion, custom mood factors, correlation insights, and CBT worksheet modules that define modern mental-wellness apps.
+~95% of the Daylio/Finch surface. Mood, journal, breathing, sleep, gratitude, goals, courses, crisis resources plus a conversational check-in companion, custom mood factors, correlation insights, a year-in-pixels calendar, reminders, CBT/DBT worksheets, a therapist report export, and a safety-plan builder all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

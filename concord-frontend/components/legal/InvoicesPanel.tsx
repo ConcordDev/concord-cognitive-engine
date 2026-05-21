@@ -25,6 +25,7 @@ export function InvoicesPanel() {
   const [taxRate, setTaxRate] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filter]);
 
   async function refresh() {

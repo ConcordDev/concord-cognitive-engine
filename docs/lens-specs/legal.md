@@ -10,13 +10,15 @@ Backend: `server/domains/legal.js` registerLensAction macros (deadlineCheck, con
 - Case summary, contract-renewal tracking, mobile tab bar, realtime feed, agent FAB
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` Trust accounting / IOLTA — separate client trust ledgers with three-way reconciliation
-- [ ] `[M]` Time-tracking timer with billable-hour capture across activities
-- [ ] `[M]` Calendar with court-rule-driven date computation auto-added to a docket
-- [ ] `[M]` Client intake forms + e-signature engagement letters
-- [ ] `[S]` Document assembly from templates with merge fields
-- [ ] `[M]` Payment processing / online client payment portal
-- [ ] `[S]` Matter budgeting and realization/collection-rate reporting
+- [x] `[M]` Trust accounting / IOLTA — separate client trust ledgers with three-way reconciliation
+- [x] `[M]` Time-tracking timer with billable-hour capture across activities
+- [x] `[M]` Calendar with court-rule-driven date computation auto-added to a docket
+- [x] `[M]` Client intake forms + e-signature engagement letters
+- [x] `[S]` Document assembly from templates with merge fields
+- [x] `[M]` Payment processing / online client payment portal
+- [x] `[S]` Matter budgeting and realization/collection-rate reporting
 
 ## Parity
-~60% of Clio's surface. One of the deepest lenses — matters, documents, contracts, billing, conflict checks all present — but missing trust accounting, a billable-hour timer, and document assembly that anchor a real practice-management system.
+~95% of Clio's surface. Matters, documents, contracts, billing, conflict checks plus trust/IOLTA accounting, a billable-hour timer, a court-rule calendar, intake forms with e-signature, document assembly, a payment portal, and matter budgeting/realization reporting all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

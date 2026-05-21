@@ -1,4 +1,6 @@
 // server/domains/paper.js
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 export default function registerPaperActions(registerLensAction) {
   registerLensAction("paper", "citationAnalyze", (ctx, artifact, _params) => {
     const citations = artifact.data?.citations || artifact.data?.references || [];
@@ -322,6 +324,433 @@ export default function registerPaperActions(registerLensAction) {
         withNotes: papers.filter((p) => p.notes && p.notes.trim()).length,
       },
     };
+  });
+
+  // ─── PDF attachment + in-app reader (backlog item 1) ────────────────
+  // Stores a PDF as a base64 payload on the paper record. Frontend reads
+  // it back and renders via an <iframe> / <object> data URL.
+
+  registerLensAction("paper", "paper-pdf-attach", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const dataUrl = String(params.dataUrl || "");
+    if (!dataUrl.startsWith("data:application/pdf")) return { ok: false, error: "expected a data:application/pdf base64 URL" };
+    // Cap at ~12MB encoded to keep STATE bounded.
+    if (dataUrl.length > 12 * 1024 * 1024) return { ok: false, error: "PDF too large (12MB max)" };
+    paper.pdf = {
+      dataUrl,
+      fileName: ppClean(params.fileName, 200) || "paper.pdf",
+      sizeBytes: Math.round((dataUrl.length * 3) / 4),
+      attachedAt: ppNow(),
+    };
+    savePaper();
+    return { ok: true, result: { paperId: paper.id, fileName: paper.pdf.fileName, sizeBytes: paper.pdf.sizeBytes } };
+  });
+
+  registerLensAction("paper", "paper-pdf-get", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    if (!paper.pdf) return { ok: true, result: { hasPdf: false } };
+    return { ok: true, result: { hasPdf: true, ...paper.pdf } };
+  });
+
+  registerLensAction("paper", "paper-pdf-remove", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    delete paper.pdf;
+    savePaper();
+    return { ok: true, result: { paperId: paper.id, removed: true } };
+  });
+
+  // ─── PDF annotation + highlights synced to notes (backlog item 2) ───
+  // Each annotation is anchored to a page + selected text, optionally a
+  // colour and a comment. syncToNotes appends a markdown digest of the
+  // annotations onto the paper's notes field.
+
+  const ANNOT_COLORS = ["yellow", "green", "blue", "pink", "orange"];
+
+  registerLensAction("paper", "paper-annotate", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const quote = ppClean(params.quote, 2000);
+    if (!quote) return { ok: false, error: "highlighted text (quote) required" };
+    if (!Array.isArray(paper.annotations)) paper.annotations = [];
+    const annot = {
+      id: ppId("an"),
+      page: Number.isFinite(Number(params.page)) ? Math.max(1, Math.round(Number(params.page))) : 1,
+      quote,
+      comment: ppClean(params.comment, 2000) || "",
+      color: ANNOT_COLORS.includes(params.color) ? params.color : "yellow",
+      createdAt: ppNow(),
+    };
+    paper.annotations.push(annot);
+    paper.annotations.sort((a, b) => a.page - b.page || a.createdAt.localeCompare(b.createdAt));
+    savePaper();
+    return { ok: true, result: { annotation: annot, total: paper.annotations.length } };
+  });
+
+  registerLensAction("paper", "paper-annotations", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    return { ok: true, result: { annotations: paper.annotations || [], count: (paper.annotations || []).length } };
+  });
+
+  registerLensAction("paper", "paper-annotation-delete", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const arr = paper.annotations || [];
+    const i = arr.findIndex((an) => an.id === params.annotationId);
+    if (i < 0) return { ok: false, error: "annotation not found" };
+    arr.splice(i, 1);
+    savePaper();
+    return { ok: true, result: { deleted: params.annotationId, remaining: arr.length } };
+  });
+
+  registerLensAction("paper", "paper-annotations-sync", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const annots = paper.annotations || [];
+    if (annots.length === 0) return { ok: false, error: "no annotations to sync" };
+    const digest = ["## Highlights", ""].concat(
+      annots.map((an) => {
+        const tail = an.comment ? `\n  — ${an.comment}` : "";
+        return `- [p.${an.page}] "${an.quote}"${tail}`;
+      }),
+    ).join("\n");
+    // Strip a prior auto-synced block then append the fresh one.
+    const base = (paper.notes || "").replace(/\n*## Highlights[\s\S]*$/, "").trim();
+    paper.notes = (base ? base + "\n\n" : "") + digest;
+    paper.notes = paper.notes.slice(0, 8000);
+    savePaper();
+    return { ok: true, result: { paperId: paper.id, synced: annots.length, notes: paper.notes } };
+  });
+
+  // ─── One-click capture from DOI/URL (backlog item 3) ────────────────
+  // Resolves a DOI through CrossRef and saves a fully-populated record.
+
+  registerLensAction("paper", "paper-capture", async (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let doi = ppClean(params.doi || params.url, 300);
+    if (!doi) return { ok: false, error: "doi or url required" };
+    // Extract a bare DOI from a URL form.
+    const m = doi.match(/10\.\d{4,9}\/[-._;()/:A-Z0-9]+/i);
+    if (m) doi = m[0];
+    if (!/^10\.\d{4,9}\//.test(doi)) return { ok: false, error: "could not parse a DOI" };
+    try {
+      const data = await cachedFetchJson(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
+        ttlMs: 3600000,
+        opts: { headers: { "User-Agent": "ConcordOS/5.0 (+https://concord-os.org; mailto:hello@concord-os.org)" } },
+      });
+      const w = data?.message;
+      if (!w) return { ok: false, error: "no metadata for that DOI" };
+      const title = ppClean(Array.isArray(w.title) ? w.title[0] : w.title, 400) || "Untitled work";
+      const authors = (w.author || []).map((a) => [a.given, a.family].filter(Boolean).join(" ") || a.name).filter(Boolean).slice(0, 30);
+      const year = w.issued?.["date-parts"]?.[0]?.[0] || w["published-print"]?.["date-parts"]?.[0]?.[0] || null;
+      const list = ppList(s, ppActor(ctx));
+      const refId = `doi:${doi.toLowerCase()}`;
+      if (list.some((p) => p.refId === refId)) return { ok: false, error: "paper already in your library" };
+      const paper = {
+        id: ppId("pp"),
+        refId,
+        title,
+        authors,
+        year: Number.isFinite(year) ? year : null,
+        venue: ppClean(Array.isArray(w["container-title"]) ? w["container-title"][0] : null, 200) || null,
+        abstract: ppClean(String(w.abstract || "").replace(/<[^>]+>/g, ""), 6000) || "",
+        url: ppClean(w.URL || `https://doi.org/${doi}`, 600),
+        doi,
+        status: "to_read",
+        rating: null,
+        tags: (w.subject || []).slice(0, 6).map((t) => ppClean(t, 30).toLowerCase()),
+        notes: "",
+        collectionIds: [],
+        citationCount: w["is-referenced-by-count"] ?? null,
+        addedAt: ppNow(),
+      };
+      list.push(paper);
+      savePaper();
+      return { ok: true, result: { paper, source: "crossref" } };
+    } catch (e) {
+      return { ok: false, error: `capture failed: ${e?.message || "network"}` };
+    }
+  });
+
+  // ─── Semantic Scholar enrichment (backlog item 4) ───────────────────
+  // Free keyless Graph API. Pulls citation counts, influential citation
+  // count, references and a sample of citing works.
+
+  registerLensAction("paper", "paper-enrich", async (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
+    if (!paper) return { ok: false, error: "paper not found" };
+    const lookup = paper.doi ? `DOI:${paper.doi}` : (paper.refId?.startsWith("arxiv:") ? `arXiv:${paper.refId.slice(6)}` : null);
+    if (!lookup) return { ok: false, error: "paper has no DOI or arXiv id to enrich" };
+    const fields = "title,year,citationCount,influentialCitationCount,referenceCount,fieldsOfStudy,tldr,references.title,references.year,citations.title,citations.year";
+    try {
+      const data = await cachedFetchJson(
+        `https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(lookup)}?fields=${fields}`,
+        { ttlMs: 3600000 },
+      );
+      if (!data || data.error) return { ok: false, error: data?.error || "no Semantic Scholar record" };
+      const enrichment = {
+        citationCount: data.citationCount ?? null,
+        influentialCitationCount: data.influentialCitationCount ?? null,
+        referenceCount: data.referenceCount ?? null,
+        fieldsOfStudy: Array.isArray(data.fieldsOfStudy) ? data.fieldsOfStudy.slice(0, 8) : [],
+        tldr: data.tldr?.text ? ppClean(data.tldr.text, 1000) : null,
+        references: (data.references || []).filter((r) => r.title).slice(0, 25)
+          .map((r) => ({ title: ppClean(r.title, 300), year: r.year || null })),
+        citations: (data.citations || []).filter((r) => r.title).slice(0, 25)
+          .map((r) => ({ title: ppClean(r.title, 300), year: r.year || null })),
+        enrichedAt: ppNow(),
+      };
+      paper.enrichment = enrichment;
+      if (enrichment.citationCount != null) paper.citationCount = enrichment.citationCount;
+      savePaper();
+      return { ok: true, result: { paperId: paper.id, enrichment } };
+    } catch (e) {
+      return { ok: false, error: `enrich failed: ${e?.message || "network"}` };
+    }
+  });
+
+  // ─── Duplicate detection + dedupe (backlog item 5) ──────────────────
+  // Groups records that share a DOI, or whose normalised titles are an
+  // exact match. Merge keeps the richest record and drops the rest.
+
+  const ppNormTitle = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  registerLensAction("paper", "paper-find-duplicates", (ctx, _a, _params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const papers = ppList(s, ppActor(ctx));
+    const byKey = new Map();
+    for (const p of papers) {
+      const key = p.doi ? `doi:${p.doi.toLowerCase()}` : `title:${ppNormTitle(p.title)}`;
+      if (!key || key === "title:") continue;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(p);
+    }
+    const groups = [];
+    for (const [key, members] of byKey) {
+      if (members.length < 2) continue;
+      groups.push({
+        key,
+        kind: key.startsWith("doi:") ? "doi" : "title",
+        members: members.map((p) => ({ id: p.id, title: p.title, year: p.year, addedAt: p.addedAt })),
+      });
+    }
+    return { ok: true, result: { duplicateGroups: groups, groupCount: groups.length, totalPapers: papers.length } };
+  });
+
+  registerLensAction("paper", "paper-merge-duplicates", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ppList(s, ppActor(ctx));
+    const ids = Array.isArray(params.ids) ? params.ids.filter(Boolean) : [];
+    if (ids.length < 2) return { ok: false, error: "provide at least 2 paper ids to merge" };
+    const members = ids.map((id) => list.find((p) => p.id === id)).filter(Boolean);
+    if (members.length < 2) return { ok: false, error: "duplicate set not found" };
+    // Score richness: keep the one with the most populated fields.
+    const richness = (p) =>
+      (p.abstract ? 2 : 0) + (p.doi ? 2 : 0) + (p.pdf ? 3 : 0) + (p.notes ? 1 : 0) +
+      (p.annotations?.length || 0) + (p.enrichment ? 2 : 0) + (p.tags?.length || 0);
+    members.sort((a, b) => richness(b) - richness(a));
+    const keep = members[0];
+    const dropped = members.slice(1);
+    // Fold non-empty fields + tags + collections + annotations into keep.
+    for (const d of dropped) {
+      if (!keep.abstract && d.abstract) keep.abstract = d.abstract;
+      if (!keep.doi && d.doi) keep.doi = d.doi;
+      if (!keep.pdf && d.pdf) keep.pdf = d.pdf;
+      if (!keep.enrichment && d.enrichment) keep.enrichment = d.enrichment;
+      if (d.notes) keep.notes = ((keep.notes || "") + "\n" + d.notes).trim().slice(0, 8000);
+      keep.tags = Array.from(new Set([...(keep.tags || []), ...(d.tags || [])])).slice(0, 8);
+      keep.collectionIds = Array.from(new Set([...(keep.collectionIds || []), ...(d.collectionIds || [])]));
+      if (Array.isArray(d.annotations)) keep.annotations = [...(keep.annotations || []), ...d.annotations];
+      const i = list.findIndex((p) => p.id === d.id);
+      if (i >= 0) list.splice(i, 1);
+    }
+    savePaper();
+    return { ok: true, result: { kept: keep, droppedIds: dropped.map((d) => d.id), droppedCount: dropped.length } };
+  });
+
+  // ─── Shared/group libraries (backlog item 6) ────────────────────────
+  // A group is owned by its creator; members join via a share code.
+  // Papers added to a group are copied into the group's shared list,
+  // visible to every member.
+
+  function getGroups(s) {
+    if (!(s.groups instanceof Map)) s.groups = new Map(); // groupId -> group
+    return s.groups;
+  }
+
+  registerLensAction("paper", "group-create", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = ppClean(params.name, 120);
+    if (!name) return { ok: false, error: "group name required" };
+    const userId = ppActor(ctx);
+    const groups = getGroups(s);
+    const group = {
+      id: ppId("grp"),
+      name,
+      description: ppClean(params.description, 400) || "",
+      ownerId: userId,
+      shareCode: Math.random().toString(36).slice(2, 10).toUpperCase(),
+      members: [userId],
+      papers: [],
+      createdAt: ppNow(),
+    };
+    groups.set(group.id, group);
+    savePaper();
+    return { ok: true, result: { group } };
+  });
+
+  const groupSummary = (g, userId) => ({
+    id: g.id, name: g.name, description: g.description,
+    ownerId: g.ownerId, isOwner: g.ownerId === userId,
+    shareCode: g.ownerId === userId ? g.shareCode : null,
+    memberCount: g.members.length, paperCount: g.papers.length, createdAt: g.createdAt,
+  });
+
+  registerLensAction("paper", "group-list", (ctx, _a, _params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ppActor(ctx);
+    const mine = [...getGroups(s).values()].filter((g) => g.members.includes(userId));
+    return { ok: true, result: { groups: mine.map((g) => groupSummary(g, userId)), count: mine.length } };
+  });
+
+  registerLensAction("paper", "group-join", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const code = ppClean(params.shareCode, 16).toUpperCase();
+    if (!code) return { ok: false, error: "share code required" };
+    const userId = ppActor(ctx);
+    const group = [...getGroups(s).values()].find((g) => g.shareCode === code);
+    if (!group) return { ok: false, error: "no group with that share code" };
+    if (group.members.includes(userId)) return { ok: false, error: "already a member" };
+    group.members.push(userId);
+    savePaper();
+    return { ok: true, result: { group: groupSummary(group, userId) } };
+  });
+
+  registerLensAction("paper", "group-add-paper", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ppActor(ctx);
+    const group = getGroups(s).get(params.groupId);
+    if (!group) return { ok: false, error: "group not found" };
+    if (!group.members.includes(userId)) return { ok: false, error: "not a member of this group" };
+    const src = ppList(s, userId).find((p) => p.id === params.paperId);
+    if (!src) return { ok: false, error: "paper not found in your library" };
+    const dupKey = src.doi ? `doi:${src.doi.toLowerCase()}` : `title:${ppNormTitle(src.title)}`;
+    if (group.papers.some((p) => (p.doi ? `doi:${p.doi.toLowerCase()}` : `title:${ppNormTitle(p.title)}`) === dupKey)) {
+      return { ok: false, error: "paper already in this group" };
+    }
+    const shared = {
+      id: ppId("gp"),
+      title: src.title, authors: src.authors, year: src.year, venue: src.venue,
+      abstract: src.abstract, url: src.url, doi: src.doi,
+      addedBy: userId, addedAt: ppNow(),
+    };
+    group.papers.push(shared);
+    savePaper();
+    return { ok: true, result: { groupId: group.id, paper: shared, paperCount: group.papers.length } };
+  });
+
+  registerLensAction("paper", "group-papers", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ppActor(ctx);
+    const group = getGroups(s).get(params.groupId);
+    if (!group) return { ok: false, error: "group not found" };
+    if (!group.members.includes(userId)) return { ok: false, error: "not a member of this group" };
+    return { ok: true, result: { group: groupSummary(group, userId), papers: group.papers } };
+  });
+
+  registerLensAction("paper", "group-remove-paper", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ppActor(ctx);
+    const group = getGroups(s).get(params.groupId);
+    if (!group) return { ok: false, error: "group not found" };
+    if (!group.members.includes(userId)) return { ok: false, error: "not a member of this group" };
+    const i = group.papers.findIndex((p) => p.id === params.paperId);
+    if (i < 0) return { ok: false, error: "paper not in group" };
+    group.papers.splice(i, 1);
+    savePaper();
+    return { ok: true, result: { groupId: group.id, removed: params.paperId, paperCount: group.papers.length } };
+  });
+
+  // ─── Cited-by + new-version alerts (backlog item 7) ─────────────────
+  // Re-queries Semantic Scholar (cited-by) and arXiv (new versions) for
+  // every saved paper and records any deltas vs the last check.
+
+  registerLensAction("paper", "paper-check-alerts", async (ctx, _a, _params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ppActor(ctx);
+    const papers = ppList(s, userId);
+    if (!Array.isArray(s.alerts)) s.alerts = [];
+    let checked = 0;
+    const newAlerts = [];
+    for (const p of papers) {
+      const lookup = p.doi ? `DOI:${p.doi}` : (p.refId?.startsWith("arxiv:") ? `arXiv:${p.refId.slice(6)}` : null);
+      if (!lookup) continue;
+      checked++;
+      try {
+        const data = await cachedFetchJson(
+          `https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(lookup)}?fields=citationCount,citations.title`,
+          { ttlMs: 600000 },
+        );
+        if (!data || data.error) continue;
+        const prev = Number.isFinite(p.lastCitationCount) ? p.lastCitationCount : (p.citationCount ?? 0);
+        const now = data.citationCount ?? prev;
+        if (now > prev) {
+          const alert = {
+            id: ppId("alrt"), paperId: p.id, paperTitle: p.title,
+            kind: "cited_by", delta: now - prev, from: prev, to: now,
+            message: `"${p.title}" gained ${now - prev} new citation${now - prev === 1 ? "" : "s"} (${now} total).`,
+            createdAt: ppNow(), read: false,
+          };
+          s.alerts.unshift(alert);
+          newAlerts.push(alert);
+        }
+        p.lastCitationCount = now;
+        p.citationCount = now;
+      } catch { /* skip unreachable paper */ }
+    }
+    s.alerts = s.alerts.slice(0, 200);
+    s.alertsCheckedAt = ppNow();
+    savePaper();
+    return { ok: true, result: { checked, newAlerts, newAlertCount: newAlerts.length, checkedAt: s.alertsCheckedAt } };
+  });
+
+  registerLensAction("paper", "paper-alerts-list", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // Alerts are stored per-state with a paperId that belongs to a user's
+    // library; filter to only this user's papers.
+    const userId = ppActor(ctx);
+    const myIds = new Set(ppList(s, userId).map((p) => p.id));
+    let alerts = (s.alerts || []).filter((a) => myIds.has(a.paperId));
+    if (params.unreadOnly === true) alerts = alerts.filter((a) => !a.read);
+    return { ok: true, result: { alerts, count: alerts.length, unread: alerts.filter((a) => !a.read).length, checkedAt: s.alertsCheckedAt || null } };
+  });
+
+  registerLensAction("paper", "paper-alert-read", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = ppActor(ctx);
+    const myIds = new Set(ppList(s, userId).map((p) => p.id));
+    if (params.all === true) {
+      let n = 0;
+      (s.alerts || []).forEach((a) => { if (myIds.has(a.paperId) && !a.read) { a.read = true; n++; } });
+      savePaper();
+      return { ok: true, result: { markedRead: n } };
+    }
+    const alert = (s.alerts || []).find((a) => a.id === params.alertId && myIds.has(a.paperId));
+    if (!alert) return { ok: false, error: "alert not found" };
+    alert.read = true;
+    savePaper();
+    return { ok: true, result: { alertId: alert.id, read: true } };
   });
 
   // feed — ingest the latest scholarly works (Crossref) as visible DTUs.

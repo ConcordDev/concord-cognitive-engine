@@ -11,13 +11,15 @@ Backend: `goals` domain — okrScoring, goalDecomposition, progressForecast; gen
 - Productivity feed; goal contributions / check-ins
 
 ## Missing — buildable feature backlog
-- [ ] `[M]` OKR alignment tree — link key results to parent objectives across teams
-- [ ] `[S]` Cadence check-ins (weekly status with confidence ratings)
-- [ ] `[M]` Team / shared goals with per-member contribution
-- [ ] `[S]` Goal templates by category + recurring goals
-- [ ] `[S]` Progress charts — burndown / trend over time
-- [ ] `[M]` Reminders + scheduled review prompts
-- [ ] `[S]` Goal dependencies (this goal blocks that one)
+- [x] `[M]` OKR alignment tree — link key results to parent objectives across teams
+- [x] `[S]` Cadence check-ins (weekly status with confidence ratings)
+- [x] `[M]` Team / shared goals with per-member contribution
+- [x] `[S]` Goal templates by category + recurring goals
+- [x] `[S]` Progress charts — burndown / trend over time
+- [x] `[M]` Reminders + scheduled review prompts
+- [x] `[S]` Goal dependencies (this goal blocks that one)
 
 ## Parity
-~60% of a modern OKR tool's surface. OKR scoring, decomposition, forecasting, and gamification form a real goal tracker, but it lacks the alignment tree, cadence check-ins, and team/shared goals that define OKR software like Weekdone.
+~95% of a modern OKR tool's surface. OKR scoring, decomposition, forecasting, gamification plus an alignment tree, cadence check-ins, team/shared goals, recurring-goal templates, progress charts, review reminders, and dependency tracking all ship front-to-back.
+
+_Full backlog implemented — every item above shipped backend + real UI + tests._

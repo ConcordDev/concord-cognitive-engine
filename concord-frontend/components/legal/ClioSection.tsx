@@ -13,6 +13,8 @@ import { InvoicesPanel } from './InvoicesPanel';
 import { DocumentsPanel } from './DocumentsPanel';
 import { ESignaturePanel } from './ESignaturePanel';
 import { CalendarPanel } from './CalendarPanel';
+import { IntakeFormsPanel } from './IntakeFormsPanel';
+import { ReportsPanel } from './ReportsPanel';
 
 export function ClioSection() {
   const [nav, setNav] = useState<ClioNav>('dashboard');
@@ -44,6 +46,7 @@ export function ClioSection() {
       askBar={<LegalAskBar />}
     >
       {nav === 'dashboard' && <LegalDashboard onJumpTo={(n) => setNav(n)} />}
+      {nav === 'intake'    && <IntakeFormsPanel />}
       {nav === 'matters'   && <MattersPanel />}
       {nav === 'contacts'  && <ContactsPanel />}
       {nav === 'calendar'  && <CalendarPanel />}
@@ -53,11 +56,7 @@ export function ClioSection() {
       {nav === 'documents' && <DocumentsPanel defaultTab="documents" />}
       {nav === 'templates' && <DocumentsPanel defaultTab="templates" />}
       {nav === 'esign'     && <ESignaturePanel />}
-      {nav === 'reports'   && (
-        <div className="p-6 text-center text-sm text-gray-400 bg-black/30 border border-white/10 rounded">
-          The Dashboard tab covers the headline numbers. Per-matter reports are in <button onClick={() => setNav('matters')} className="underline text-amber-300">Matters → Detail</button> (financial summary), and trust 3-way reconciliation sits in <button onClick={() => setNav('trust')} className="underline text-amber-300">Trust</button>.
-        </div>
-      )}
+      {nav === 'reports'   && <ReportsPanel />}
     </ClioShell>
   );
 }

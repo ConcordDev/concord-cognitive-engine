@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
 import { PaperLibrary } from '@/components/paper/PaperLibrary';
+import { PaperWorkbench } from '@/components/paper/PaperWorkbench';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import { CrossRefPanel } from '@/components/research/CrossRefPanel';
@@ -1135,6 +1136,11 @@ export default function PaperLensPage() {
     <section className="mt-4 mx-4">
       <LensFeedButton domain="paper" />
       <PaperLibrary />
+    </section>
+    {/* Librarian essentials — PDF reader, annotation, DOI capture,
+        Semantic Scholar enrichment, dedupe, group libraries, alerts. */}
+    <section className="mt-4 mx-4">
+      <PaperWorkbench />
     </section>
     {/* Phase 4 — REAL Open Library book search. */}
     <section className="mt-4 mx-4">

@@ -7,24 +7,43 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sparkles, Flower2, SmilePlus, Moon, NotebookPen, Loader2 } from 'lucide-react';
+import {
+  Sparkles, Flower2, SmilePlus, Moon, NotebookPen, Loader2,
+  MessageCircleHeart, Tags, CalendarDays, Bell, ClipboardList, ShieldCheck, FileText,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { MhPracticePanel } from './MhPracticePanel';
 import { MhMoodPanel } from './MhMoodPanel';
 import { MhSleepPanel } from './MhSleepPanel';
 import { MhReflectPanel } from './MhReflectPanel';
+import { MhCompanionPanel } from './MhCompanionPanel';
+import { MhFactorsPanel } from './MhFactorsPanel';
+import { MhCalendarPanel } from './MhCalendarPanel';
+import { MhRemindersPanel } from './MhRemindersPanel';
+import { MhWorksheetsPanel } from './MhWorksheetsPanel';
+import { MhSafetyPlanPanel } from './MhSafetyPlanPanel';
+import { MhReportPanel } from './MhReportPanel';
 
 interface Dash {
   streak: number; sessionsThisWeek: number; minutesThisWeek: number;
   latestMood: number | null; avgSleepHours: number | null; activeCourses: number; gratitudeEntries: number;
 }
-type TabId = 'practice' | 'mood' | 'sleep' | 'reflect';
+type TabId =
+  | 'practice' | 'mood' | 'sleep' | 'reflect'
+  | 'companion' | 'factors' | 'calendar' | 'reminders' | 'worksheets' | 'safety' | 'report';
 const TABS: { id: TabId; label: string; icon: typeof Flower2 }[] = [
   { id: 'practice', label: 'Practice', icon: Flower2 },
   { id: 'mood', label: 'Mood', icon: SmilePlus },
   { id: 'sleep', label: 'Sleep', icon: Moon },
   { id: 'reflect', label: 'Reflect', icon: NotebookPen },
+  { id: 'companion', label: 'Companion', icon: MessageCircleHeart },
+  { id: 'factors', label: 'Factors', icon: Tags },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  { id: 'reminders', label: 'Reminders', icon: Bell },
+  { id: 'worksheets', label: 'Worksheets', icon: ClipboardList },
+  { id: 'safety', label: 'Safety plan', icon: ShieldCheck },
+  { id: 'report', label: 'Report', icon: FileText },
 ];
 
 export function MentalHealthSection() {
@@ -80,6 +99,13 @@ export function MentalHealthSection() {
         {tab === 'mood' && <MhMoodPanel onChange={refreshDash} />}
         {tab === 'sleep' && <MhSleepPanel onChange={refreshDash} />}
         {tab === 'reflect' && <MhReflectPanel onChange={refreshDash} />}
+        {tab === 'companion' && <MhCompanionPanel />}
+        {tab === 'factors' && <MhFactorsPanel onChange={refreshDash} />}
+        {tab === 'calendar' && <MhCalendarPanel />}
+        {tab === 'reminders' && <MhRemindersPanel />}
+        {tab === 'worksheets' && <MhWorksheetsPanel />}
+        {tab === 'safety' && <MhSafetyPlanPanel />}
+        {tab === 'report' && <MhReportPanel />}
       </div>
     </div>
   );

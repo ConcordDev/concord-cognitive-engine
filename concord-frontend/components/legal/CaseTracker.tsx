@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Gavel, Plus, Loader2, Calendar, Clock, FileText } from 'lucide-react';
+import { Gavel, Plus, Loader2, Calendar, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
