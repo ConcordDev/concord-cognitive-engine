@@ -177,6 +177,7 @@ export function useWorldVoice({ worldId, selfPosition, iceServers = DEFAULT_ICE 
       } catch (_e) { teardownPeer(p.from); }
     });
     return () => { offJoined?.(); offLeft?.(); offSignal?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- ensurePeerConnection is a stable callback; effect keys on enabled/worldId
   }, [enabled, worldId]);
 
   const enable = useCallback(async () => {
@@ -198,6 +199,7 @@ export function useWorldVoice({ worldId, selfPosition, iceServers = DEFAULT_ICE 
       // Clean up the stream we just acquired.
       teardownAll();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- teardownAll is a stable callback; effect keys on enabled/worldId/selfPosition
   }, [enabled, worldId, selfPosition]);
 
   const disable = useCallback(async () => {
@@ -208,6 +210,7 @@ export function useWorldVoice({ worldId, selfPosition, iceServers = DEFAULT_ICE 
     }).catch(() => { /* best effort */ });
     teardownAll();
     lastCellKeyRef.current = null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- teardownAll is a stable callback; effect keys on enabled
   }, [enabled]);
 
   // Position update — let the server know if we crossed a cell boundary.
@@ -243,6 +246,7 @@ export function useWorldVoice({ worldId, selfPosition, iceServers = DEFAULT_ICE 
   // Cleanup on unmount.
   useEffect(() => {
     return () => { teardownAll(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount-only cleanup; teardownAll is stable
   }, []);
 
   return { enabled, peers, enable, disable, updatePosition, isSelfMuted, toggleSelfMute };

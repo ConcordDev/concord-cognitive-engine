@@ -11,7 +11,7 @@
  *     1.0 on exit
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, act, fireEvent } from '@testing-library/react';
 import { PhotoMode, PHOTO_MODE_CONSTANTS } from '@/components/concordia/PhotoMode';
 

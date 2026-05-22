@@ -331,7 +331,7 @@ export default function registerAutomotiveActions(registerLensAction) {
     }
     return STATE.automotiveLens;
   }
-  function saveAuto() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveAuto() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidAu(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidAu(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoAu() { return new Date().toISOString(); }

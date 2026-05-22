@@ -96,8 +96,8 @@ export default function registerAnswersActions(registerLensAction) {
     const m = o.length, k = n.length;
     const lcs = Array.from({ length: m + 1 }, () => new Int32Array(k + 1));
     for (let i = m - 1; i >= 0; i--)
-      for (let j = k - 1; j >= 0; j--)
-        lcs[i][j] = o[i] === n[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+      {for (let j = k - 1; j >= 0; j--)
+        {lcs[i][j] = o[i] === n[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);}}
     const ops = [];
     let i = 0, j = 0;
     while (i < m && j < k) {

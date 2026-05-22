@@ -926,8 +926,8 @@ export default function registerTransferActions(registerLensAction) {
         const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
         for (let i = 0; i <= m; i++) dp[i][0] = i;
         for (let j = 0; j <= n; j++) dp[0][j] = j;
-        for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
-          dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        for (let i = 1; i <= m; i++) {for (let j = 1; j <= n; j++)
+          {dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);}}
         return dp[m][n];
       }
       const norm = (x) => (x || "").toLowerCase().replace(/[_\-\s]+/g, "");
@@ -936,9 +936,9 @@ export default function registerTransferActions(registerLensAction) {
       const usedTargets = new Set();
       const suggested = [];
       const pairs = [];
-      for (const sf of srcSchema) for (const tf of tgtSchema) {
+      for (const sf of srcSchema) {for (const tf of tgtSchema) {
         pairs.push({ source: sf.name, target: tf.name, srcType: sf.type, tgtType: tf.type, score: sim(norm(sf.name), norm(tf.name)) });
-      }
+      }}
       pairs.sort((a, b) => b.score - a.score);
       const usedSrc = new Set();
       for (const p of pairs) {

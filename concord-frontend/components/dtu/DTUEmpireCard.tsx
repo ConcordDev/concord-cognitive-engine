@@ -6,7 +6,6 @@ import { ProvenanceBadge } from './ProvenanceBadge';
 import { TierBadge } from './TierBadge';
 import { ScopeBadge } from '@/components/platform/ScopeControls';
 import { useDtuSurface } from '@/hooks/useDtuSurface';
-import { DownstreamBadge } from './DownstreamBadge';
 
 interface DTU {
   id: string;

@@ -2353,6 +2353,7 @@ export default function AvatarSystem3D({
         });
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- createAvatarMeshSmart is a stable builder; effect keys on the listed avatar deps
   }, [
     playerAvatar,
     otherPlayers,

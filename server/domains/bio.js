@@ -1098,10 +1098,10 @@ export default function registerBioActions(registerLensAction) {
         for (let i = 0; i <= m; i++) sc[i][0] = i * gap;
         for (let j = 0; j <= n; j++) sc[0][j] = j * gap;
         for (let i = 1; i <= m; i++)
-          for (let j = 1; j <= n; j++)
-            sc[i][j] = Math.max(
+          {for (let j = 1; j <= n; j++)
+            {sc[i][j] = Math.max(
               sc[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? match : mismatch),
-              sc[i - 1][j] + gap, sc[i][j - 1] + gap);
+              sc[i - 1][j] + gap, sc[i][j - 1] + gap);}}
         let i = m, j = n, aa = "", bb = "";
         while (i > 0 && j > 0) {
           const cur = sc[i][j];
@@ -1243,12 +1243,12 @@ export default function registerBioActions(registerLensAction) {
           if (i > 0) junctions.push({ between: [frags[i - 1].name, frags[i].name], scar: "Type IIS 4 bp", verified: true });
         }
         if (frags.some((f) => f.sequence.length <= 12))
-          issues.push("Some fragments too short for Type IIS flank trimming.");
+          {issues.push("Some fragments too short for Type IIS flank trimming.");}
       } else {
         // restriction: simple end-to-end ligation, report common cut sites.
         assembled = frags.map((f) => f.sequence).join("");
         for (let i = 1; i < frags.length; i++)
-          junctions.push({ between: [frags[i - 1].name, frags[i].name], scar: "blunt/sticky ligation", verified: true });
+          {junctions.push({ between: [frags[i - 1].name, frags[i].name], scar: "blunt/sticky ligation", verified: true });}
       }
       return {
         ok: true,
@@ -1485,9 +1485,9 @@ export default function registerBioActions(registerLensAction) {
       if (params.body !== undefined) entry.body = String(params.body).slice(0, 20_000);
       if (Array.isArray(params.tags)) entry.tags = params.tags.map((t) => String(t).slice(0, 40)).slice(0, 12);
       if (Array.isArray(params.linkedSequenceIds))
-        entry.linkedSequenceIds = params.linkedSequenceIds.map((x) => String(x)).slice(0, 30);
+        {entry.linkedSequenceIds = params.linkedSequenceIds.map((x) => String(x)).slice(0, 30);}
       if (params.linkedProtocol !== undefined)
-        entry.linkedProtocol = params.linkedProtocol ? String(params.linkedProtocol).slice(0, 200) : null;
+        {entry.linkedProtocol = params.linkedProtocol ? String(params.linkedProtocol).slice(0, 200) : null;}
       if (["draft", "in_progress", "complete"].includes(params.status)) entry.status = params.status;
       entry.updatedAt = nowIsoBio();
       saveBioState();

@@ -36,23 +36,25 @@ export default function registerCombatPolishMacros(register) {
   register("combat_polish", "attempt_parry", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    return attemptParry(db, {
+    const result = attemptParry(db, {
       defenderKind: input.defenderKind || "player",
       defenderId: input.defenderId || ctx?.actor?.userId,
       defenderInputAt: input.defenderInputAt,
       attackArrivesAt: input.attackArrivesAt,
     });
+    return { ok: true, ...result };
   }, { note: "resolve a parry attempt (timing-based)" });
 
   register("combat_polish", "attempt_dodge", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    return attemptDodge(db, {
+    const result = attemptDodge(db, {
       defenderKind: input.defenderKind || "player",
       defenderId: input.defenderId || ctx?.actor?.userId,
       defenderInputAt: input.defenderInputAt,
       attackArrivesAt: input.attackArrivesAt,
     });
+    return { ok: true, ...result };
   }, { note: "resolve a dodge attempt (perfect = time dilation)" });
 
   register("combat_polish", "change_stance", async (ctx, input = {}) => {

@@ -11,6 +11,9 @@ vi.mock('@/lib/api/client', () => ({
     put: vi.fn(),
     delete: vi.fn(),
   },
+  // WalletParityHub (Payments Hub) calls lensRun; resolve it to an empty
+  // ok-result so the panel renders its empty states without rejecting.
+  lensRun: vi.fn(async () => ({ data: { ok: true, result: {} } })),
   apiHelpers: {
     economy: {
       connectStatus: vi.fn(),

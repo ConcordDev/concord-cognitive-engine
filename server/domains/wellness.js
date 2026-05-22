@@ -138,7 +138,7 @@ export default function registerWellnessActions(registerLensAction) {
     }
     return STATE.wellnessLens;
   }
-  function saveWell() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveWell() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidWl(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidWl(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoWl() { return new Date().toISOString(); }

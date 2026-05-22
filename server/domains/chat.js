@@ -2,6 +2,8 @@
 // Domain actions for chat/messaging analysis: thread summarization,
 // participant engagement analysis, and topic shift detection.
 
+import vm from "node:vm";
+
 export default function registerChatActions(registerLensAction) {
   /**
    * threadSummarize
@@ -1190,22 +1192,21 @@ export default function registerChatActions(registerLensAction) {
     let error = null;
     const deadline = startedAt + 1500; // 1.5s wall budget
     try {
-      // Build a function whose only free identifiers are the ones we pass.
-      // No `this`, no closure over server scope. A cooperative deadline
-      // guard is exposed so long loops can be aborted.
-      // eslint-disable-next-line no-new-func
-      const runner = new Function(
-        "console", "Math", "JSON", "Date", "__deadlineCheck",
-        `"use strict";\n${code}`
-      );
-      const deadlineCheck = () => {
-        if (Date.now() > deadline) throw new Error("execution timed out (1.5s budget)");
+      // Execute under node:vm in a restricted context — no process, no
+      // require, no globalThis leak into server scope — with a hard
+      // vm-enforced wall-clock timeout. This is the codebase's audited
+      // sandbox boundary (see tests/platinum-codeql-drift.test.js); it
+      // closes the `.constructor` escape that a bare `new Function` allows.
+      // __deadlineCheck() stays exposed so user loops can cooperatively bail.
+      const sandbox = {
+        console: sandboxConsole, Math, JSON, Date,
+        __deadlineCheck: () => {
+          if (Date.now() > deadline) throw new Error("execution timed out (1.5s budget)");
+        },
       };
-      // Patch a deadline trap onto array iteration is impractical; instead
-      // we expose __deadlineCheck() the AI/user can call inside loops, and
-      // wrap the whole call so a tight infinite loop still surfaces via
-      // the post-hoc duration check below.
-      returnValue = runner(sandboxConsole, Math, JSON, Date, deadlineCheck);
+      const context = vm.createContext(sandbox, { name: "chat-code-run" });
+      const script = new vm.Script(`"use strict";\n${code}`, { filename: "chat-exec.js" });
+      returnValue = script.runInContext(context, { timeout: 1500, displayErrors: true });
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }

@@ -730,11 +730,6 @@ export default function registerLogisticsActions(registerLensAction) {
     if (!state[key].has(userId)) state[key].set(userId, []);
     return state[key].get(userId);
   }
-  function saveLogState() {
-    if (typeof globalThis._concordSaveStateDebounced === "function") {
-      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
-    }
-  }
   function hashLog(s) {
     let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
     return h;

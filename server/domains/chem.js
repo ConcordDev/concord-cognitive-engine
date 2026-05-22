@@ -749,8 +749,9 @@ export default function registerChemActions(registerLensAction) {
 
   // ── Molecular weight calculator (parses simple formulas like H2O, NaCl, C6H12O6) ──
 
-  function parseFormula(formula) {
-    // Returns { element: count }
+  function parseFormulaMW(formula) {
+    // Returns { element: count } — molecular-weight calculator's parser
+    // (distinct from the earlier parseFormula used by the analysis macros).
     const tokens = [];
     let i = 0;
     while (i < formula.length) {
@@ -812,7 +813,7 @@ export default function registerChemActions(registerLensAction) {
     if (formula.length > 100) return { ok: false, error: "formula too long" };
     let counts;
     try {
-      counts = parseFormula(formula);
+      counts = parseFormulaMW(formula);
     } catch (_e) {
       return { ok: false, error: "could not parse formula" };
     }
@@ -1369,7 +1370,7 @@ export default function registerChemActions(registerLensAction) {
 
     function mwOf(formula) {
       let counts;
-      try { counts = parseFormula(formula); }
+      try { counts = parseFormulaMW(formula); }
       catch { return null; }
       let mw = 0;
       for (const [sym, n] of Object.entries(counts)) {

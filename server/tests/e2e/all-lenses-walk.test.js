@@ -132,16 +132,39 @@ describe("Frontend Parity Invariant — every lens dir is wired", () => {
 
 describe("Frontend Parity Invariant — composite lens content checks", () => {
   it("each composite lens calls runDomain or runMacro to wire the backend", async () => {
+    // A composite lens is "wired" if its page.tsx — or any .tsx file in
+    // its app dir or its components/<lens>/ dir — issues a macro call.
+    // lensRun() is the canonical macro-call helper (it POSTs /api/lens/run);
+    // pages that delegate to mounted components are wired through them.
+    const WIRE_RE = /runDomain\s*\(|lensRun\s*[(<]|\/api\/lens\/run/;
+    const COMPONENTS_ROOT = path.resolve(REPO_ROOT, "concord-frontend", "components");
+    async function tsxFiles(dir) {
+      let out = [];
+      let entries;
+      try { entries = await readdir(dir, { withFileTypes: true }); }
+      catch { return out; }
+      for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) out = out.concat(await tsxFiles(full));
+        else if (e.name.endsWith(".tsx") || e.name.endsWith(".ts")) out.push(full);
+      }
+      return out;
+    }
     const fails = [];
     for (const composite of COMPOSITE_LENSES) {
-      const pageTsx = path.join(LENS_ROOT, composite, "page.tsx");
-      try {
-        const content = await readFile(pageTsx, "utf-8");
-        const hasRunMacro = /runDomain\s*\(|\/api\/lens\/run/.test(content);
-        if (!hasRunMacro) {
-          fails.push({ lens: composite, reason: "no runDomain or /api/lens/run call" });
-        }
-      } catch { /* missing file already reported above */ }
+      const candidates = [
+        ...(await tsxFiles(path.join(LENS_ROOT, composite))),
+        ...(await tsxFiles(path.join(COMPONENTS_ROOT, composite))),
+      ];
+      let wired = false;
+      for (const file of candidates) {
+        try {
+          if (WIRE_RE.test(await readFile(file, "utf-8"))) { wired = true; break; }
+        } catch { /* unreadable — skip */ }
+      }
+      if (!wired) {
+        fails.push({ lens: composite, reason: "no runDomain/lensRun/api-lens-run call in page or components" });
+      }
     }
     if (fails.length > 0) {
       console.warn("[lens-walk] composite lenses missing backend wires:");

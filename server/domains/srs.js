@@ -693,10 +693,10 @@ export default function registerSrsActions(registerLensAction) {
     else if (params.state === "due") cards = cards.filter(isDue);
     else if (params.state === "new") cards = cards.filter((c) => c.state === "new");
     else if (params.state && params.state !== "all") cards = cards.filter((c) => c.state === params.state);
-    if (q) cards = cards.filter((c) =>
+    if (q) {cards = cards.filter((c) =>
       (c.front || "").toLowerCase().includes(q) ||
       (c.back || "").toLowerCase().includes(q) ||
-      (c.tags || []).some((t) => t.toLowerCase().includes(q)));
+      (c.tags || []).some((t) => t.toLowerCase().includes(q)));}
     const sort = params.sort || "created";
     cards.sort((a, b) => {
       if (sort === "due") return (a.due || "").localeCompare(b.due || "");

@@ -4,7 +4,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('next/link', () => ({
-  default: ({ href, children, ...rest }: any) =>
+  default: ({ href, children, ...rest }: { href: string; children?: React.ReactNode; [k: string]: unknown }) =>
     React.createElement('a', { href, ...rest }, children),
 }));
 

@@ -148,8 +148,8 @@ export default function registerSubWorldsActions(registerLensAction) {
         all.push(w);
       }
     }
-    if (query) all = all.filter((w) =>
-      w.name.toLowerCase().includes(query) || (w.description || "").toLowerCase().includes(query));
+    if (query) {all = all.filter((w) =>
+      w.name.toLowerCase().includes(query) || (w.description || "").toLowerCase().includes(query));}
     if (kindFilter) all = all.filter((w) => w.kind === kindFilter);
     if (sort === "recent") all.sort((a, b) => (b.spawned_at || 0) - (a.spawned_at || 0));
     else if (sort === "favorites") all.sort((a, b) => (b.favoriteCount || 0) - (a.favoriteCount || 0));

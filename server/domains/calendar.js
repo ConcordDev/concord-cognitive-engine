@@ -264,7 +264,7 @@ export default function registerCalendarActions(registerLensAction) {
     }
     return STATE.calendarLens;
   }
-  function saveCal() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveCal() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidCal(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidCal(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoCal() { return new Date().toISOString(); }

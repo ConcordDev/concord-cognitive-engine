@@ -84,9 +84,9 @@ export default function registerMentorshipActions(registerLensAction) {
       const minRating = mNum(params.minRating, 0);
       const sort = ["rating", "experience", "availability"].includes(params.sort) ? params.sort : "rating";
       let mentors = [...s.mentors.values()].filter((m) => m.listed);
-      if (q) mentors = mentors.filter((m) =>
+      if (q) {mentors = mentors.filter((m) =>
         m.name.toLowerCase().includes(q) || m.headline.toLowerCase().includes(q) ||
-        m.skills.some((sk) => sk.toLowerCase().includes(q)));
+        m.skills.some((sk) => sk.toLowerCase().includes(q)));}
       if (skillFilter) mentors = mentors.filter((m) => m.skills.some((sk) => sk.toLowerCase().includes(skillFilter)));
       if (minRating > 0) mentors = mentors.filter((m) => m.rating >= minRating);
       mentors.sort((a, b) => {
@@ -131,7 +131,7 @@ export default function registerMentorshipActions(registerLensAction) {
       if (mentorId === menteeId) return { ok: false, error: "cannot mentor yourself" };
       const incoming = mList(s.requests, mentorId);
       if (incoming.some((r) => r.menteeId === menteeId && r.status === "pending"))
-        return { ok: false, error: "you already have a pending request to this mentor" };
+        {return { ok: false, error: "you already have a pending request to this mentor" };}
       const request = {
         id: mId("req"),
         mentorId,

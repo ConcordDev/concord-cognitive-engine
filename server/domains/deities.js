@@ -196,10 +196,10 @@ export default function registerDeitiesActions(registerLensAction) {
       const sort = ["popularity", "newest", "tone"].includes(params.sort)
         ? params.sort : "popularity";
       let list = [...s.deities.values()];
-      if (q) list = list.filter((d) =>
+      if (q) {list = list.filter((d) =>
         d.name.toLowerCase().includes(q) ||
         (d.domainTitle || "").toLowerCase().includes(q) ||
-        (d.creed || "").toLowerCase().includes(q));
+        (d.creed || "").toLowerCase().includes(q));}
       if (toneAxis) list = list.filter((d) => d.toneVector[toneAxis] >= minTone);
       if (minPilgrims > 0) list = list.filter((d) => d.pilgrimCount >= minPilgrims);
       list.sort((a, b) => {

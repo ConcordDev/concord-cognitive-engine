@@ -28,7 +28,7 @@
  *   - draft / dtu / session domain helpers (handled by their own widgets)
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';

@@ -24,7 +24,7 @@
  * featured-actions row above whatever was already there.
  */
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -33,7 +33,7 @@ import { getLensManifest } from '@/lib/lenses/manifest';
 import { cn } from '@/lib/utils';
 import {
   Layers, Zap, Activity, Database, Loader2, AlertTriangle, Check,
-  Sparkles, BarChart3, Calculator, ChevronRight, RefreshCw,
+  Sparkles, BarChart3, Calculator,
 } from 'lucide-react';
 
 interface ActionMeta {

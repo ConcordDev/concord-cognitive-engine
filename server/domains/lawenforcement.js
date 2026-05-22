@@ -582,9 +582,9 @@ export default function registerLawEnforcementActions(registerLensAction) {
       const lat = asNum(p.lat, NaN);
       const lon = asNum(p.lon, NaN);
       if (!Number.isFinite(lat) || !Number.isFinite(lon))
-        return { ok: false, error: "lat and lon are required numbers" };
+        {return { ok: false, error: "lat and lon are required numbers" };}
       if (lat < -90 || lat > 90 || lon < -180 || lon > 180)
-        return { ok: false, error: "lat/lon out of range" };
+        {return { ok: false, error: "lat/lon out of range" };}
       const map = userMap("mapIncidents", actorId(ctx));
       const id = uid("mi");
       const rec = {
@@ -696,7 +696,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
       const rec = warrants.get(str(p.warrantId));
       if (!rec) return { ok: false, error: "warrant not found" };
       if (rec.status !== "active")
-        return { ok: false, error: `warrant is ${rec.status}, cannot service` };
+        {return { ok: false, error: `warrant is ${rec.status}, cannot service` };}
       const outcome = ["served", "not_home", "wrong_address", "refused", "failed"].includes(p.outcome)
         ? p.outcome
         : "failed";
@@ -822,7 +822,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
       const rec = userMap("reports", actorId(ctx)).get(str((params || {}).reportId));
       if (!rec) return { ok: false, error: "report not found" };
       if (rec.status !== "draft" && rec.status !== "rejected")
-        return { ok: false, error: `report is ${rec.status}, cannot submit` };
+        {return { ok: false, error: `report is ${rec.status}, cannot submit` };}
       rec.status = "submitted";
       rec.updatedAt = nowISO();
       return { ok: true, result: { report: rec } };
@@ -837,7 +837,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
       const rec = userMap("reports", actorId(ctx)).get(str(p.reportId));
       if (!rec) return { ok: false, error: "report not found" };
       if (rec.status !== "submitted")
-        return { ok: false, error: "only submitted reports can be reviewed" };
+        {return { ok: false, error: "only submitted reports can be reviewed" };}
       const decision = p.decision === "reject" ? "rejected" : "approved";
       rec.status = decision;
       rec.approvedBy = str(p.supervisor) || actorId(ctx);

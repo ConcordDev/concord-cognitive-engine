@@ -357,10 +357,10 @@ export default function registerObserveActions(registerLensAction) {
       let rows = store.filter((r) => r.ts >= cutoff);
       if (level) rows = rows.filter((r) => r.level === level);
       if (service) rows = rows.filter((r) => r.service.toLowerCase().includes(service.toLowerCase()));
-      if (terms.length) rows = rows.filter((r) => {
+      if (terms.length) {rows = rows.filter((r) => {
         const hay = r.message.toLowerCase();
         return terms.every((t) => hay.includes(t));
-      });
+      });}
       rows.sort((a, b) => b.ts - a.ts);
       // facets over the matched set
       const facet = (key) => {

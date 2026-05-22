@@ -564,15 +564,16 @@ export default function registerArtActions(registerLensAction) {
   ];
   const ART_PROMPT_CATEGORIES = [...new Set(ART_PROMPTS.map((p) => p.category))];
 
-  // ── Color theory helpers ────────────────────────────────────────────
-  function hexToRgb(hex) {
+  // ── Color theory helpers (array form — distinct from the {r,g,b}-object
+  //    hexToRgb/rgbToHsl defined earlier; these return tuples) ──────────
+  function hexToRgbArr(hex) {
     return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
   }
   function rgbToHex(r, g, b) {
     const c = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
     return `#${c(r)}${c(g)}${c(b)}`;
   }
-  function rgbToHsl(r, g, b) {
+  function rgbToHslArr(r, g, b) {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
     let h = 0, sat = 0;
@@ -923,7 +924,7 @@ export default function registerArtActions(registerLensAction) {
     const lightScale = atClamp(params.lightScale, 0, 3, 1);
     for (const el of layer.strokes) {
       if (!el.color) continue;
-      const [h, sat, l] = rgbToHsl(...hexToRgb(el.color));
+      const [h, sat, l] = rgbToHslArr(...hexToRgbArr(el.color));
       el.color = hslToHex(h + hueShift, Math.max(0, Math.min(1, sat * satScale)), Math.max(0, Math.min(1, l * lightScale)));
     }
     art.updatedAt = atNow();
@@ -1127,7 +1128,7 @@ export default function registerArtActions(registerLensAction) {
     if (!base) return { ok: false, error: "baseColor must be a #rrggbb hex" };
     const scheme = ["complementary", "analogous", "triadic", "tetradic", "split-complementary", "monochromatic"]
       .includes(String(params.scheme)) ? String(params.scheme) : "analogous";
-    const [h, sat, l] = rgbToHsl(...hexToRgb(base));
+    const [h, sat, l] = rgbToHslArr(...hexToRgbArr(base));
     let colors;
     if (scheme === "complementary") colors = [base, hslToHex(h + 180, sat, l)];
     else if (scheme === "triadic") colors = [base, hslToHex(h + 120, sat, l), hslToHex(h + 240, sat, l)];
@@ -1143,8 +1144,8 @@ export default function registerArtActions(registerLensAction) {
     const a = atHex(params.colorA), b = atHex(params.colorB);
     if (!a || !b) return { ok: false, error: "colorA and colorB must be #rrggbb hex" };
     const ratio = atClamp(params.ratio, 0, 1, 0.5);
-    const [ar, ag, ab] = hexToRgb(a);
-    const [br, bg, bb] = hexToRgb(b);
+    const [ar, ag, ab] = hexToRgbArr(a);
+    const [br, bg, bb] = hexToRgbArr(b);
     const mixed = rgbToHex(
       ar + (br - ar) * ratio, ag + (bg - ag) * ratio, ab + (bb - ab) * ratio,
     );
@@ -1452,12 +1453,12 @@ export default function registerArtActions(registerLensAction) {
     // tolerance is a 0..100 perceptual distance in CIELAB ΔE
     const tolerance = atClamp(params.tolerance, 0, 100, 24);
     const feather = atClamp(params.feather, 0, 200, 0);
-    const [tr, tg, tb] = hexToRgb(target);
+    const [tr, tg, tb] = hexToRgbArr(target);
     const targetLab = rgbToLab(tr, tg, tb);
     const matched = [];
     for (const el of layer.strokes) {
       if (!el.color) continue;
-      const [r, g, b] = hexToRgb(el.color);
+      const [r, g, b] = hexToRgbArr(el.color);
       const d = deltaE(targetLab, rgbToLab(r, g, b));
       if (d <= tolerance) matched.push(el.id);
     }

@@ -626,7 +626,7 @@ export default function registerWhiteboardActions(registerLensAction) {
         }
         return { ok: true, result: { clusters: deterministic, source: 'brain' } };
       }
-    } catch (_e) {}
+    } catch (_e) { /* best-effort: ignore */ }
     return { ok: true, result: { clusters: deterministic, source: 'deterministic_after_brain_error' } };
   });
 
@@ -757,7 +757,7 @@ export default function registerWhiteboardActions(registerLensAction) {
         const frames = base.elements.filter(e => e.kind === 'rect');
         return { ok: true, result: { scene: { elements: [...frames, ...enhanced], appState: { kind, generatedFrom: prompt } }, kind, source: 'brain' } };
       }
-    } catch (_e) {}
+    } catch (_e) { /* best-effort: ignore */ }
     return { ok: true, result: { scene: base, kind, source: 'deterministic_after_brain_error' } };
   });
 

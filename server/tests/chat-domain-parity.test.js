@@ -73,7 +73,7 @@ describe("chat — projects parity", () => {
     const c = call("project-create", ctxA, { name: "v1" });
     const id = c.result.project.id;
     const originalUpdated = c.result.project.updatedAt;
-    await new Promise((r) => setTimeout(r, 2));
+    await new Promise((r) => { setTimeout(r, 2); });
     const u = call("project-update", ctxA, { id, name: "v2", color: "rose" });
     assert.equal(u.ok, true);
     assert.equal(u.result.project.id, id);

@@ -106,7 +106,7 @@ export default function AdminEndpointsPage() {
     staleTime: 60_000,
   });
 
-  const endpoints = data?.endpoints ?? [];
+  const endpoints = useMemo(() => data?.endpoints ?? [], [data]);
   const counters = data?.counters;
 
   const [search, setSearch] = useState('');
@@ -183,11 +183,11 @@ export default function AdminEndpointsPage() {
           reason,
         },
       }));
-    } catch (err: any) {
+    } catch (err) {
       const durationMs = Math.round(performance.now() - t0);
       setTests(prev => ({
         ...prev,
-        [k]: { status: 'fail', reason: err?.message || 'network_error', durationMs },
+        [k]: { status: 'fail', reason: (err instanceof Error ? err.message : null) || 'network_error', durationMs },
       }));
     }
   }, []);

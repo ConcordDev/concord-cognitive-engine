@@ -720,8 +720,8 @@ export default function registerMessageActions(registerLensAction) {
     const items = actionish.slice(0, 10).map((s, i) => ({
       id: `ai_${Date.now()}_${i}`,
       text: s.trim(),
-      owner: (s.match(/@(\w+)/) || [, ''])[1] || null,
-      due: (s.match(/by ([A-Z][a-z]+(?:day)?|\d{4}-\d{2}-\d{2})/) || [, ''])[1] || null,
+      owner: (s.match(/@(\w+)/) || [undefined, ''])[1] || null,
+      due: (s.match(/by ([A-Z][a-z]+(?:day)?|\d{4}-\d{2}-\d{2})/) || [undefined, ''])[1] || null,
     }));
     const brain = ctx?.llm?.chat;
     if (typeof brain !== 'function' || items.length >= 3) {

@@ -720,7 +720,7 @@ Rules:
     }
     return ws;
   }
-  function saveWS() { if (typeof globalThis._concordSaveStateDebounced === 'function') { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveWS() { if (typeof globalThis._concordSaveStateDebounced === 'function') { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidC(ctx) { return ctx?.actor?.userId || ctx?.userId || 'anon'; }
   function uidC(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   // Short but collision-safe id for commits/stashes — keeps the random
@@ -1379,7 +1379,7 @@ Rules:
           maxTokens: 1500,
         });
         const text = String(r?.content || r?.text || '').trim();
-        const parsed = extractJsonCode(text);
+        const parsed = extractJsonObject(text);
         if (parsed?.plan && Array.isArray(parsed.plan)) {
           task.plan = parsed.plan.slice(0, 12).map(p => ({ action: String(p.action || ''), summary: String(p.summary || '') }));
           task.source = 'brain';
@@ -1900,7 +1900,7 @@ Rules:
     const files = ensureFiles(s, userId, projectId);
     // Resolve @-references: explicit list OR parsed from the message.
     const explicit = Array.isArray(params.mentionedFiles) ? params.mentionedFiles.map(String) : [];
-    const parsed = (message.match(/@([\w./\-]+)/g) || []).map(m => m.slice(1));
+    const parsed = (message.match(/@([\w./-]+)/g) || []).map(m => m.slice(1));
     const wanted = [...new Set([...explicit, ...parsed])];
     const resolved = [];
     const missing = [];
@@ -2256,7 +2256,7 @@ function execJavaScript(code, language) {
     src = src
       .replace(/^import\s.+?from\s.+?;\s*$/gm, "")
       .replace(/^export\s+(default\s+)?/gm, "")
-      .replace(/:\s*[A-Za-z_$][\w$<>\[\],\s|&?']*(?=\s*[,)={])/g, "")
+      .replace(/:\s*[A-Za-z_$][\w$<>[\],\s|&?']*(?=\s*[,)={])/g, "")
       .replace(/<[A-Za-z_$][\w$<>,\s|&?']*>(?=\s*\()/g, "");
   }
 
@@ -2495,7 +2495,7 @@ function findDeclaration(content, symbol, lang) {
       let doc = null;
       const params = parseParamList(m[1] || "");
       let returnType = null;
-      const retM = ln.match(/\)\s*:\s*([A-Za-z_$][\w$<>\[\],\s|&]*)/);
+      const retM = ln.match(/\)\s*:\s*([A-Za-z_$][\w$<>[\],\s|&]*)/);
       if (retM) returnType = retM[1].trim();
       if (lang !== "python") {
         const docLines = [];
@@ -2622,7 +2622,7 @@ function runDebugSession(code, language, breakpointSet, watch) {
     src = src
       .replace(/^import\s.+?from\s.+?;\s*$/gm, "")
       .replace(/^export\s+(default\s+)?/gm, "")
-      .replace(/:\s*[A-Za-z_$][\w$<>\[\],\s|&?']*(?=\s*[,)={])/g, "")
+      .replace(/:\s*[A-Za-z_$][\w$<>[\],\s|&?']*(?=\s*[,)={])/g, "")
       .replace(/<[A-Za-z_$][\w$<>,\s|&?']*>(?=\s*\()/g, "");
   }
   const srcLines = src.split("\n");

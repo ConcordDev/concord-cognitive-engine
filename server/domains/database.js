@@ -484,7 +484,11 @@ export default function registerDatabaseActions(registerLensAction) {
     const left = row[cl.col];
     const r = cl.val;
     switch (cl.op) {
+      // SQL-style operators: loose equality is intentional so a text-typed
+      // column value matches a numeric query literal (and vice versa).
+      // eslint-disable-next-line eqeqeq
       case "=": return left == r;
+      // eslint-disable-next-line eqeqeq
       case "!=": case "<>": return left != r;
       case ">": return left > r;
       case "<": return left < r;

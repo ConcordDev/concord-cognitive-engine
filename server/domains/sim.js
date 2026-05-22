@@ -634,26 +634,26 @@ export default function registerSimActions(registerLensAction) {
         const idx = (x, y) => ((y + grid) % grid) * grid + ((x + grid) % grid);
         function happiness(x, y, type) {
           let same = 0, total = 0;
-          for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {for (let dy = -1; dy <= 1; dy++) {
             if (dx === 0 && dy === 0) continue;
             const c = cellState[idx(x + dx, y + dy)];
             if (c) { total++; if (c === type) same++; }
-          }
+          }}
           return total === 0 ? 1 : same / total;
         }
         for (let step = 0; step <= steps; step++) {
           let unhappy = 0, occupied = 0;
           const empties = [];
-          for (let y = 0; y < grid; y++) for (let x = 0; x < grid; x++) {
+          for (let y = 0; y < grid; y++) {for (let x = 0; x < grid; x++) {
             const c = cellState[idx(x, y)];
             if (!c) { empties.push([x, y]); continue; }
             occupied++;
             if (happiness(x, y, c) < threshold) unhappy++;
-          }
+          }}
           series.push({ t: step, unhappy, occupied, satisfaction: occupied ? round3(1 - unhappy / occupied) : 1 });
           if (step === steps || unhappy === 0) break;
           // relocate one unhappy agent per cell scan
-          for (let y = 0; y < grid; y++) for (let x = 0; x < grid; x++) {
+          for (let y = 0; y < grid; y++) {for (let x = 0; x < grid; x++) {
             const c = cellState[idx(x, y)];
             if (!c) continue;
             if (happiness(x, y, c) < threshold && empties.length) {
@@ -663,13 +663,13 @@ export default function registerSimActions(registerLensAction) {
               cellState[idx(x, y)] = null;
               empties[ei] = [x, y];
             }
-          }
+          }}
         }
         const out = [];
-        for (let y = 0; y < grid; y++) for (let x = 0; x < grid; x++) {
+        for (let y = 0; y < grid; y++) {for (let x = 0; x < grid; x++) {
           const c = cellState[idx(x, y)];
           if (c) out.push({ x, y, state: c });
-        }
+        }}
         const last = series[series.length - 1];
         return { ok: true, result: {
           kind: "schelling", steps: series.length - 1, gridSize: grid, seed,

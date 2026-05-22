@@ -119,10 +119,10 @@ export default function registerDebugActions(registerLensAction) {
       if (params.level) list = list.filter((i) => i.level === params.level);
       if (params.release) list = list.filter((i) => (i.releases || []).includes(params.release));
       const q = dbgClean(params.query, 120).toLowerCase();
-      if (q) list = list.filter((i) =>
+      if (q) {list = list.filter((i) =>
         i.message.toLowerCase().includes(q) ||
         (i.type || "").toLowerCase().includes(q) ||
-        (i.culprit || "").toLowerCase().includes(q));
+        (i.culprit || "").toLowerCase().includes(q));}
       const sort = params.sort === "first" ? "firstSeen" : params.sort === "count" ? "count" : "lastSeen";
       list.sort((a, b) => sort === "count"
         ? b.count - a.count

@@ -778,7 +778,7 @@ export default function registerCryptoActions(registerLensAction) {
   }
   function saveCrypto() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
-      try { globalThis._concordSaveStateDebounced(); } catch (_e) {}
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ }
     }
   }
 

@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, act, fireEvent } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import { AmbientLayer } from '@/components/world/concordia-hud/AmbientLayer';
 import { ContextPromptLayer } from '@/components/world/concordia-hud/ContextPromptLayer';

@@ -345,7 +345,7 @@ export default function registerConstructionActions(registerLensAction) {
       if (!item) return { ok: false, error: "item not found" };
       if (params.status) {
         if (!["open", "in_progress", "ready_to_verify", "closed"].includes(params.status))
-          return { ok: false, error: "invalid status" };
+          {return { ok: false, error: "invalid status" };}
         item.status = params.status;
         item.closedAt = params.status === "closed" ? new Date().toISOString() : null;
       }
@@ -415,7 +415,7 @@ export default function registerConstructionActions(registerLensAction) {
       const co = rows.find(r => r.id === params.id);
       if (!co) return { ok: false, error: "change order not found" };
       if (!["approved", "rejected"].includes(params.decision))
-        return { ok: false, error: "decision must be approved or rejected" };
+        {return { ok: false, error: "decision must be approved or rejected" };}
       co.status = params.decision;
       co.decidedBy = params.decidedBy || "Owner";
       co.decidedAt = new Date().toISOString();
@@ -578,7 +578,7 @@ export default function registerConstructionActions(registerLensAction) {
       if (params.committed !== undefined) line.committed = Math.round((parseFloat(params.committed) || 0) * 100) / 100;
       if (params.actual !== undefined) line.actual = Math.round((parseFloat(params.actual) || 0) * 100) / 100;
       if (params.budgetAmount !== undefined && Number.isFinite(parseFloat(params.budgetAmount)))
-        line.budgetAmount = Math.round(parseFloat(params.budgetAmount) * 100) / 100;
+        {line.budgetAmount = Math.round(parseFloat(params.budgetAmount) * 100) / 100;}
       const overBudget = (line.actual || 0) > (line.budgetAmount || 0);
       saveConState();
       return { ok: true, result: { line, overBudget } };

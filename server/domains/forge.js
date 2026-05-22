@@ -720,7 +720,7 @@ export default function registerForgeActions(registerLensAction) {
         }
       }
       const appName = (p.appName || caption.split(/\s+/).slice(0, 3).join("-") || "forge-app")
-        .replace(/[^a-z0-9\-]/gi, "-")
+        .replace(/[^a-z0-9-]/gi, "-")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "")
         .toLowerCase() || "forge-app";

@@ -1243,7 +1243,7 @@ export default function registerAviationActions(registerLensAction) {
     const VALID = ["all", "sectional", "ifr_low", "ifr_high", "terminal"];
     if (!VALID.includes(kind)) return { ok: false, error: `kind must be one of ${VALID.join(", ")}` };
     try {
-      const url = "https://external-api.faa.gov/apra/vfr/sectional/chart?edition=current&format=tiff&geoname=";
+      const _url = "https://external-api.faa.gov/apra/vfr/sectional/chart?edition=current&format=tiff&geoname=";
       // FAA chart-API requires a key; the keyless public path is the
       // chart-currency catalog hosted by aeronav. Use the public
       // chart-supplement currency JSON (no key) for edition dates.
@@ -1282,7 +1282,6 @@ export default function registerAviationActions(registerLensAction) {
           note: "WMS layers are FAA-published charts served by ChartBundle (keyless). Editions reflect current FAA chart cycle.",
         },
       };
-      void url;
     } catch (e) {
       // Catalog is best-effort; still return the layer descriptors so the
       // moving map works even if the edition index is unreachable.

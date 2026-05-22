@@ -133,25 +133,25 @@ function resolvePrefs(userId) {
 }
 
 // Validate a single (key, value) against the schema. Returns the coerced
-// value or throws a string error message.
+// value or throws an Error with a human-readable message.
 function validatePref(key, value) {
   const def = PREF_SCHEMA.find((d) => d.key === key);
-  if (!def) throw `unknown preference key: ${key}`;
+  if (!def) throw new Error(`unknown preference key: ${key}`);
   if (def.type === "boolean") {
     return value === true || value === "true" || value === 1;
   }
   if (def.type === "enum") {
     const v = String(value);
-    if (!def.options.includes(v)) throw `invalid value for ${key}: ${v}`;
+    if (!def.options.includes(v)) throw new Error(`invalid value for ${key}: ${v}`);
     return v;
   }
   if (def.type === "number") {
     const n = Number(value);
-    if (!Number.isFinite(n)) throw `invalid number for ${key}`;
+    if (!Number.isFinite(n)) throw new Error(`invalid number for ${key}`);
     const [lo, hi] = def.range;
     return Math.min(hi, Math.max(lo, n));
   }
-  throw `unsupported type for ${key}`;
+  throw new Error(`unsupported type for ${key}`);
 }
 
 function ensureKeybinds(userId) {

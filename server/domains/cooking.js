@@ -189,7 +189,7 @@ export default function registerCookingActions(registerLensAction) {
     }
     return STATE.cookingLens;
   }
-  function saveCook() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveCook() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidCk(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidCk(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoCk() { return new Date().toISOString(); }

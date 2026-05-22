@@ -96,7 +96,7 @@ export default function registerMarketplaceActions(registerLensAction) {
     }
     return STATE.marketplaceLens;
   }
-  function saveStore() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveStore() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidS(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidS(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoS() { return new Date().toISOString(); }
@@ -1180,12 +1180,12 @@ export default function registerMarketplaceActions(registerLensAction) {
     if (!byShop.has(sellerId)) byShop.set(sellerId, lines);
     const existing = lines.find(ln => ln.listingId === listingId && ln.variationId === variationId);
     if (existing) existing.qty += qty;
-    else lines.push({
+    else {lines.push({
       id: uidS("ln"), listingId, listingTitle: listing.title, listingKind: listing.kind,
       variationId, variationLabel,
       qty, unitPriceUsd: unitPrice, shippingCostUsd: listing.shippingCostUsd || 0,
       image: (listing.images || [])[0] || "",
-    });
+    });}
     saveStore();
     return { ok: true, result: { added: true } };
   });

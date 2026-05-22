@@ -23,7 +23,7 @@ function casTokenize(src) {
     if (/[0-9.]/.test(ch)) {
       let num = "";
       while (i < s.length && /[0-9.]/.test(s[i])) num += s[i++];
-      if (s[i] === "e" && /[0-9+\-]/.test(s[i + 1] || "")) {
+      if (s[i] === "e" && /[0-9+-]/.test(s[i + 1] || "")) {
         num += s[i++];
         if (s[i] === "+" || s[i] === "-") num += s[i++];
         while (i < s.length && /[0-9]/.test(s[i])) num += s[i++];

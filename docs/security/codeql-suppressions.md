@@ -125,8 +125,8 @@ randomBytes in wave 3.4 (Sprint 18.4).
 | | |
 |---|---|
 | Scope | repo |
-| Audit date | 2026-05-11 |
-| Allowlist | `routes/sovereign.js:788` (vm.runInNewContext, gated by `requireSovereign`), `domains/invariant.js` (new Function, AST-validated via acorn), `routes/simulation.js` (new Function for monte-carlo `fn`, same AST validation) |
+| Audit date | 2026-05-22 |
+| Allowlist | `routes/sovereign.js` (vm, gated by `requireSovereign`), `domains/code.js` + `domains/chat.js` (vm-sandbox code lenses — `vm.createContext` with no process/require/globalThis leak + hard vm timeout), `domains/invariant.js` (new Function, AST-validated via acorn), `routes/simulation.js` (new Function for monte-carlo `fn`, same AST validation), `domains/repos.js` (`/eval\s*\(/` detector regex string — not a call) |
 | Drift gate | `platinum-codeql-drift.test.js#vm.runIn* only in audit-approved files`, `#new Function(...) only in audit-approved files`, `#no top-level eval() in any source file` |
 | Re-audit trigger | Any new `eval(`, `new Function(`, `vm.run*` site lands |
 
@@ -134,8 +134,15 @@ randomBytes in wave 3.4 (Sprint 18.4).
 simulation.js) both run through `validateExpressionAST` using `acorn`
 to whitelist only safe arithmetic/comparison AST nodes (CallExpression,
 NewExpression, ArrowFunctionExpression, computed member access ALL
-rejected). The single `vm.runInNewContext` site is sovereign-only
-gated. Documented at `docs/security/threat-model.md` §13.
+rejected). The `vm` sites (sovereign.js, code.js, chat.js) execute
+user-supplied code in a restricted `vm.createContext` — no `process`,
+`require`, or `globalThis` leak into server scope — under a hard
+vm-enforced timeout; sovereign.js is additionally `requireSovereign`-gated.
+The chat lens code interpreter was converted from a bare `new Function`
+to this `vm` boundary on 2026-05-22, closing the `.constructor` escape.
+`domains/repos.js` only contains `/eval\s*\(/` as a detection-rule
+pattern string (a code-review "no-eval" rule), not an eval call.
+Documented at `docs/security/threat-model.md` §13.
 
 ---
 

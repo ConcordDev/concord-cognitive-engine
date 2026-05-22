@@ -717,7 +717,7 @@ export default function registerSportsActions(registerLensAction) {
             teams: entries.map((e) => {
               const stat = (k) => {
                 const s = (e.stats || []).find((x) => x.name === k || x.type === k);
-                return s ? (s.value ?? Number(s.displayValue) ?? null) : null;
+                return s ? (s.value ?? (s.displayValue != null ? Number(s.displayValue) : null)) : null;
               };
               return {
                 team: e.team?.displayName || e.team?.name,

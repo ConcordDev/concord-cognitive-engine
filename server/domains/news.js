@@ -1008,8 +1008,8 @@ export default function registerNewsActions(registerLensAction) {
     const q = nwclean(params.query, 80).toLowerCase();
     let arts = [...s.articles.values()];
     if (topic) arts = arts.filter((a) => a.topic === topic);
-    if (q) arts = arts.filter((a) =>
-      a.title.toLowerCase().includes(q) || (a.summary || "").toLowerCase().includes(q));
+    if (q) {arts = arts.filter((a) =>
+      a.title.toLowerCase().includes(q) || (a.summary || "").toLowerCase().includes(q));}
     if (arts.length === 0) {
       return { ok: true, result: { columns: { left: [], center: [], right: [], count: 0 } } };
     }

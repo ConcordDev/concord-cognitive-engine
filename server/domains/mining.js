@@ -269,7 +269,7 @@ export default function registerMiningActions(registerLensAction) {
       const cutoff = mnNum(params.cutoffGrade) || 0.5;
       const blocks = [];
       let oreBlocks = 0, gradeSum = 0;
-      for (let ix = 0; ix < nx; ix++) for (let iy = 0; iy < ny; iy++) for (let iz = 0; iz < nz; iz++) {
+      for (let ix = 0; ix < nx; ix++) {for (let iy = 0; iy < ny; iy++) {for (let iz = 0; iz < nz; iz++) {
         const cx = minX + (ix + 0.5) * blockSize;
         const cy = minY + (iy + 0.5) * blockSize;
         const cz = minZ + (iz + 0.5) * blockSize;
@@ -286,7 +286,7 @@ export default function registerMiningActions(registerLensAction) {
         const isOre = grade >= cutoff;
         if (isOre) { oreBlocks++; gradeSum += grade; }
         blocks.push({ ix, iy, iz, cx: Math.round(cx), cy: Math.round(cy), cz: Math.round(cz), grade, isOre, confident });
-      }
+      }}}
       return {
         ok: true,
         result: {
@@ -314,12 +314,12 @@ export default function registerMiningActions(registerLensAction) {
       const blockSize = Math.max(2, mnNum(params.blockSize) || 15);
       const tonnesPerInterval = (iv) => (iv.to - iv.from) * blockSize * blockSize * density;
       let totalTonnes = 0;
-      for (const h of holes) for (const iv of h.intervals) {
+      for (const h of holes) {for (const iv of h.intervals) {
         if (iv.assayGrade <= 0) continue;
         const t = tonnesPerInterval(iv);
         grades.push({ grade: iv.assayGrade, tonnes: t });
         totalTonnes += t;
-      }
+      }}
       if (grades.length === 0) return { ok: true, result: { curve: [], note: "log positive-grade intervals first" } };
       const maxGrade = Math.max(...grades.map((g) => g.grade));
       const steps = 12;

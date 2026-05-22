@@ -634,7 +634,7 @@ export default function registerAtlasActions(registerLensAction) {
     }
     return STATE.atlasLens;
   }
-  function saveAtlas() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveAtlas() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidAt(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidAt(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoAt() { return new Date().toISOString(); }
