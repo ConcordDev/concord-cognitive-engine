@@ -36,19 +36,19 @@ export default function IndicatorChart({ data, isLive, lastUpdated, className = 
   const indicators = data?.indicators || [];
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
+  // All hooks must run unconditionally on every render. The early-return
+  // path below would otherwise leave these useMemo calls in a position
+  // that React rejects as react-hooks/rules-of-hooks. SVG geometry consts
+  // also hoisted because the third useMemo closes over them.
+  const W = 600, H = 200, PAD_L = 50, PAD_R = 12, PAD_T = 12, PAD_B = 28;
+  const innerW = W - PAD_L - PAD_R;
+  const innerH = H - PAD_T - PAD_B;
+
   const selected = useMemo(() => {
     if (indicators.length === 0) return null;
     const want = selectedCode || indicators[0].code;
     return indicators.find(i => i.code === want) || indicators[0];
   }, [indicators, selectedCode]);
-
-  if (indicators.length === 0) {
-    return (
-      <section className={`rounded-xl border border-white/10 bg-zinc-900/40 backdrop-blur-sm p-6 ${className}`}>
-        <div className="text-xs text-zinc-500">World Bank economic indicators connecting…</div>
-      </section>
-    );
-  }
 
   const sortedValues = useMemo(() => {
     if (!selected) return [];
@@ -57,18 +57,6 @@ export default function IndicatorChart({ data, isLive, lastUpdated, className = 
       .filter(v => Number.isFinite(v.year) && Number.isFinite(v.value))
       .sort((a, b) => a.year - b.year);
   }, [selected]);
-
-  const latest = sortedValues[sortedValues.length - 1];
-  const prior = sortedValues[sortedValues.length - 2];
-  const yoyDelta = (latest && prior) ? latest.value - prior.value : null;
-  const yoyPct = (yoyDelta != null && prior && prior.value !== 0) ? (yoyDelta / Math.abs(prior.value)) * 100 : null;
-  const TrendIcon = yoyDelta == null ? Minus : (yoyDelta > 0 ? TrendingUp : (yoyDelta < 0 ? TrendingDown : Minus));
-  const trendColor = yoyDelta == null ? 'text-zinc-500' : (yoyDelta > 0 ? 'text-emerald-400' : (yoyDelta < 0 ? 'text-rose-400' : 'text-zinc-400'));
-
-  // SVG geometry — viewBox-driven, no fixed pixels
-  const W = 600, H = 200, PAD_L = 50, PAD_R = 12, PAD_T = 12, PAD_B = 28;
-  const innerW = W - PAD_L - PAD_R;
-  const innerH = H - PAD_T - PAD_B;
 
   const { minY, maxY, path, points } = useMemo(() => {
     if (sortedValues.length < 2) return { minY: 0, maxY: 1, path: '', points: [] as Array<{ x: number; y: number; year: number; value: number }> };
@@ -87,8 +75,22 @@ export default function IndicatorChart({ data, isLive, lastUpdated, className = 
     }));
     const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
     return { minY: minV, maxY: maxV, path: d, points: pts };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedValues]);
+  }, [sortedValues, PAD_L, PAD_T, innerW, innerH]);
+
+  if (indicators.length === 0) {
+    return (
+      <section className={`rounded-xl border border-white/10 bg-zinc-900/40 backdrop-blur-sm p-6 ${className}`}>
+        <div className="text-xs text-zinc-500">World Bank economic indicators connecting…</div>
+      </section>
+    );
+  }
+
+  const latest = sortedValues[sortedValues.length - 1];
+  const prior = sortedValues[sortedValues.length - 2];
+  const yoyDelta = (latest && prior) ? latest.value - prior.value : null;
+  const yoyPct = (yoyDelta != null && prior && prior.value !== 0) ? (yoyDelta / Math.abs(prior.value)) * 100 : null;
+  const TrendIcon = yoyDelta == null ? Minus : (yoyDelta > 0 ? TrendingUp : (yoyDelta < 0 ? TrendingDown : Minus));
+  const trendColor = yoyDelta == null ? 'text-zinc-500' : (yoyDelta > 0 ? 'text-emerald-400' : (yoyDelta < 0 ? 'text-rose-400' : 'text-zinc-400'));
 
   const lineColor = COLORS[indicators.findIndex(i => i.code === (selected?.code ?? '')) % COLORS.length] || COLORS[0];
 

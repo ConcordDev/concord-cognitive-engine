@@ -132,7 +132,8 @@ const DOMAIN_TYPE_MAP = Object.freeze({
 
   // Finance lenses.
   finance:       { type: ["finance_record", "transaction"] },
-  trades:        { type: ["trade_record"] },
+  // trades: declared earlier (line ~102) with type ["trade", "diy"]; this
+  // finance-section redeclaration removed to fix no-dupe-keys.
   markets:       { type: ["market_watch"] },
   market:        { type: ["market_watch"] },
   crypto:        { type: ["crypto_tx"] },

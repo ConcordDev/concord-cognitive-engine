@@ -1743,7 +1743,7 @@ function execJavaScript(code, language) {
     src = src
       .replace(/^import\s.+?from\s.+?;\s*$/gm, "")
       .replace(/^export\s+(default\s+)?/gm, "")
-      .replace(/:\s*[A-Za-z_$][\w$<>\[\],\s|&?']*(?=\s*[,)={])/g, "")
+      .replace(/:\s*[A-Za-z_$][\w$<>[\],\s|&?']*(?=\s*[,)={])/g, "")
       .replace(/<[A-Za-z_$][\w$<>,\s|&?']*>(?=\s*\()/g, "");
   }
 

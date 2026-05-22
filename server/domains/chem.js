@@ -738,7 +738,11 @@ export default function registerChemActions(registerLensAction) {
 
   // ── Molecular weight calculator (parses simple formulas like H2O, NaCl, C6H12O6) ──
 
-  function parseFormula(formula) {
+  // Tokenise-then-resolve variant; the function at line 17 (recursive
+  // stack pass over the raw string) is the canonical parser used by most
+  // callers. Renamed to dodge no-redeclare; remove when the molecular-weight
+  // caller migrates to the canonical parser.
+  function parseFormulaTokenized(formula) {
     // Returns { element: count }
     const tokens = [];
     let i = 0;
@@ -801,7 +805,7 @@ export default function registerChemActions(registerLensAction) {
     if (formula.length > 100) return { ok: false, error: "formula too long" };
     let counts;
     try {
-      counts = parseFormula(formula);
+      counts = parseFormulaTokenized(formula);
     } catch (_e) {
       return { ok: false, error: "could not parse formula" };
     }

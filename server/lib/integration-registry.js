@@ -255,7 +255,8 @@ export const REGISTRY = Object.freeze({
   // ───────────────────────────────────────────────────────────────────────────
   debate:        { tier: TIER.SIM_GRADE_A, groundedSchema: "council/debate", note: "council debate simulation" },
   ethics:        { tier: TIER.SIM_GRADE_A, groundedSchema: "ethics/dilemma", note: "ethics simulation" },
-  philosophy:    { tier: TIER.SIM_GRADE_A, groundedSchema: "philosophy/argument" },
+  // philosophy: kept earlier REAL_FREE definition at ~line 216 (Stanford Encyclopedia + Wikipedia);
+  // the SIM_GRADE_A redeclaration removed to fix no-dupe-keys lint error.
   creative:      { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/recipe" },
   "creative-writing": { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/text" },
   creative_writing: { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/text" },
@@ -309,7 +310,9 @@ export const REGISTRY = Object.freeze({
   hvac:          { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/hvac" },
   landscaping:   { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/landscape" },
   mining:        { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/mining" },
-  trades:        { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/all" },
+  // trades: kept earlier REAL_LIVE definition at ~line 82 (live tickers via
+  // finance-yahoo-sp500 + finance-coingecko-top10); the SIM_GRADE_A
+  // redeclaration removed to fix no-dupe-keys lint error.
   tools:         { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/tool" },
   maker:         { tier: TIER.SIM_GRADE_A, groundedSchema: "make/project" },
   app_maker:     { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real app-maker" },

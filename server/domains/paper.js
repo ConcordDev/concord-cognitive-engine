@@ -121,7 +121,7 @@ export default function registerPaperActions(registerLensAction) {
         updated: get("updated"),
         url: id,
         pdfUrl: linkPdf ? linkPdf[1] : null,
-        primaryCategory: (entryXml.match(/<arxiv:primary_category[^>]+term="([^"]+)"/) || [, null])[1],
+        primaryCategory: (entryXml.match(/<arxiv:primary_category[^>]+term="([^"]+)"/) || [undefined, null])[1],
       });
     }
     return entries;
