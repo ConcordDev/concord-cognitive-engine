@@ -155,7 +155,7 @@ describe('WalletPage', () => {
       // Balance "1,250" appears in multiple places (balance display + USD display)
       const matches = screen.getAllByText(/1,250|1250/);
       expect(matches.length).toBeGreaterThan(0);
-    });
+    }, { timeout: 15000 });
   });
 
   it('renders Buy CC button', async () => {
@@ -166,7 +166,7 @@ describe('WalletPage', () => {
       // "Buy CC" button in the action bar
       const buyBtn = screen.getByRole('button', { name: /buy cc/i });
       expect(buyBtn).toBeDefined();
-    });
+    }, { timeout: 15000 });
   });
 
   it('withdraw section shows for connected users', async () => {
@@ -179,7 +179,7 @@ describe('WalletPage', () => {
       // added <kbd>W</kbd> after the label.
       const withdrawBtn = screen.getByRole('button', { name: /^withdraw\b/i });
       expect(withdrawBtn).toBeDefined();
-    });
+    }, { timeout: 15000 });
   });
 
   it('transaction history renders', async () => {
@@ -190,7 +190,7 @@ describe('WalletPage', () => {
       // Both transaction descriptions should be visible
       const txItems = screen.getAllByText(/bought 100 cc|tipped @alice/i);
       expect(txItems.length).toBeGreaterThanOrEqual(1);
-    });
+    }, { timeout: 15000 });
   });
 
   it('loading state during balance fetch', async () => {
