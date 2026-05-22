@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Heart, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -23,9 +23,7 @@ export function HeartRateZones() {
   const [zones, setZones] = useState<HRZone[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { compute(); }, [age, restingHr, method]);
-
-  async function compute() {
+  const compute = useCallback(async () => {
     setLoading(true);
     try {
       const res = await lensRun({
@@ -34,7 +32,9 @@ export function HeartRateZones() {
       setZones((res.data?.result?.zones || []) as HRZone[]);
     } catch (e) { console.error('[HR] compute failed', e); }
     finally { setLoading(false); }
-  }
+  }, [age, restingHr, method]);
+
+  useEffect(() => { void compute(); }, [compute]);
 
   const maxBpm = useMemo(() => Math.max(0, ...zones.map(z => z.highBpm)), [zones]);
 

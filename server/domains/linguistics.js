@@ -137,4 +137,518 @@ export default function registerLinguisticsActions(registerLensAction) {
       return { ok: false, error: `datamuse unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // ─── Vocabulary builder (per-user word list with spaced review) ──────
+
+  function getLingState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.linguisticsLens) STATE.linguisticsLens = {};
+    if (!(STATE.linguisticsLens.words instanceof Map)) STATE.linguisticsLens.words = new Map(); // userId -> Array
+    if (!(STATE.linguisticsLens.progress instanceof Map)) STATE.linguisticsLens.progress = new Map(); // userId -> {points, streak, ...}
+    if (!(STATE.linguisticsLens.decks instanceof Map)) STATE.linguisticsLens.decks = new Map(); // userId -> Array
+    return STATE.linguisticsLens;
+  }
+  function saveLing() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const lgId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const lgNow = () => new Date().toISOString();
+  const lgActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const lgClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
+  const lgWords = (s, userId) => { if (!s.words.has(userId)) s.words.set(userId, []); return s.words.get(userId); };
+  // Leitner-box review intervals (days) by mastery level 0-5.
+  const REVIEW_INTERVALS = [0, 1, 3, 7, 16, 45];
+
+  registerLensAction("linguistics", "vocab-add", async (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const word = lgClean(params.word, 80).toLowerCase();
+    if (!word) return { ok: false, error: "word required" };
+    const list = lgWords(s, lgActor(ctx));
+    if (list.some((w) => w.word === word)) return { ok: false, error: "word already in your vocabulary" };
+
+    let definition = lgClean(params.definition, 600);
+    let partOfSpeech = lgClean(params.partOfSpeech, 30) || null;
+    let example = lgClean(params.example, 400) || null;
+    let etymology = null;
+    let phonetic = null;
+    let audio = null;
+    let autoFetched = false;
+
+    // Auto-fetch definition when the caller didn't supply one (opt-out
+    // with autoFetch: false). Free Dictionary API — no key.
+    if (!definition && params.autoFetch !== false) {
+      try {
+        const r = await fetch(`${FREE_DICTIONARY}/en/${encodeURIComponent(word)}`);
+        if (r.ok) {
+          const data = await r.json();
+          const entry = Array.isArray(data) ? data[0] : null;
+          if (entry) {
+            const meaning = (entry.meanings || [])[0];
+            const def = meaning ? (meaning.definitions || [])[0] : null;
+            if (def) {
+              definition = lgClean(def.definition, 600);
+              if (!example && def.example) example = lgClean(def.example, 400);
+            }
+            if (!partOfSpeech && meaning) partOfSpeech = lgClean(meaning.partOfSpeech, 30) || null;
+            etymology = lgClean(entry.origin, 400) || null;
+            phonetic = lgClean(entry.phonetic, 60) || null;
+            const ph = (entry.phonetics || []).find((p) => p.audio);
+            if (ph) audio = ph.audio;
+            autoFetched = true;
+          }
+        }
+      } catch (_e) { /* graceful — keep empty definition */ }
+    }
+
+    const entry = {
+      id: lgId("vw"),
+      word,
+      definition,
+      partOfSpeech,
+      example,
+      etymology,
+      phonetic,
+      audio,
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => lgClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 6) : [],
+      deckId: lgClean(params.deckId, 60) || null,
+      level: 0,
+      due: lgNow(),
+      reviewCount: 0,
+      correctCount: 0,
+      addedAt: lgNow(),
+    };
+    list.push(entry);
+    saveLing();
+    return { ok: true, result: { word: entry, autoFetched } };
+  });
+
+  registerLensAction("linguistics", "vocab-list", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let words = [...lgWords(s, lgActor(ctx))];
+    if (params.tag) {
+      const t = lgClean(params.tag, 30).toLowerCase();
+      words = words.filter((w) => w.tags.includes(t));
+    }
+    const q = lgClean(params.query, 80).toLowerCase();
+    if (q) words = words.filter((w) => w.word.includes(q) || (w.definition || "").toLowerCase().includes(q));
+    words.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+    return { ok: true, result: { words, count: words.length } };
+  });
+
+  registerLensAction("linguistics", "vocab-update", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = lgWords(s, lgActor(ctx)).find((x) => x.id === params.id);
+    if (!w) return { ok: false, error: "word not found" };
+    if (params.definition != null) w.definition = lgClean(params.definition, 600);
+    if (params.example != null) w.example = lgClean(params.example, 400) || null;
+    if (params.partOfSpeech != null) w.partOfSpeech = lgClean(params.partOfSpeech, 30) || null;
+    if (Array.isArray(params.tags)) w.tags = params.tags.map((t) => lgClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 6);
+    saveLing();
+    return { ok: true, result: { word: w } };
+  });
+
+  registerLensAction("linguistics", "vocab-delete", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lgWords(s, lgActor(ctx));
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "word not found" };
+    arr.splice(i, 1);
+    saveLing();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // vocab-review-due — words whose review is due now.
+  registerLensAction("linguistics", "vocab-review-due", (ctx, _a, _params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const now = Date.now();
+    const due = lgWords(s, lgActor(ctx))
+      .filter((w) => new Date(w.due).getTime() <= now)
+      .sort((a, b) => a.due.localeCompare(b.due));
+    return { ok: true, result: { words: due, count: due.length } };
+  });
+
+  // vocab-review — record a review outcome; Leitner-box promote/demote.
+  registerLensAction("linguistics", "vocab-review", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = lgWords(s, lgActor(ctx)).find((x) => x.id === params.id);
+    if (!w) return { ok: false, error: "word not found" };
+    const known = params.known === true;
+    w.level = known ? Math.min(5, w.level + 1) : 0;
+    w.reviewCount += 1;
+    if (typeof w.correctCount !== "number") w.correctCount = 0;
+    if (known) w.correctCount += 1;
+    w.due = new Date(Date.now() + REVIEW_INTERVALS[w.level] * 86400000).toISOString();
+    w.lastReviewedAt = lgNow();
+    lgRecordActivity(s, lgActor(ctx), known ? 5 : 1);
+    saveLing();
+    return { ok: true, result: { id: w.id, level: w.level, nextReviewInDays: REVIEW_INTERVALS[w.level] } };
+  });
+
+  registerLensAction("linguistics", "vocab-dashboard", (ctx, _a, _params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const words = lgWords(s, lgActor(ctx));
+    const now = Date.now();
+    return {
+      ok: true,
+      result: {
+        totalWords: words.length,
+        mastered: words.filter((w) => w.level >= 5).length,
+        learning: words.filter((w) => w.level > 0 && w.level < 5).length,
+        fresh: words.filter((w) => w.level === 0).length,
+        dueNow: words.filter((w) => new Date(w.due).getTime() <= now).length,
+      },
+    };
+  });
+
+  // ─── Progress streaks & gamification ────────────────────────────────
+
+  const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
+  // Mastery badges unlocked by accumulated points (real, earned values).
+  const BADGE_TIERS = [
+    { id: "novice", label: "Novice", points: 50 },
+    { id: "apprentice", label: "Apprentice", points: 200 },
+    { id: "scholar", label: "Scholar", points: 600 },
+    { id: "philologist", label: "Philologist", points: 1500 },
+    { id: "polyglot", label: "Polyglot", points: 4000 },
+  ];
+
+  function lgProgress(s, userId) {
+    if (!s.progress.has(userId)) {
+      s.progress.set(userId, {
+        points: 0, streak: 0, longestStreak: 0,
+        lastActiveDay: null, dailyGoal: 20, todayPoints: 0, todayDay: null,
+      });
+    }
+    return s.progress.get(userId);
+  }
+  // Record activity: bump points, advance/reset the daily streak.
+  function lgRecordActivity(s, userId, points) {
+    const p = lgProgress(s, userId);
+    const today = dayKey();
+    if (p.todayDay !== today) { p.todayDay = today; p.todayPoints = 0; }
+    p.points += points;
+    p.todayPoints += points;
+    if (p.lastActiveDay !== today) {
+      const yesterday = dayKey(new Date(Date.now() - 86400000));
+      p.streak = p.lastActiveDay === yesterday ? p.streak + 1 : 1;
+      p.lastActiveDay = today;
+      if (p.streak > p.longestStreak) p.longestStreak = p.streak;
+    }
+  }
+
+  registerLensAction("linguistics", "progress-stats", (ctx, _a, _params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = lgProgress(s, lgActor(ctx));
+    const today = dayKey();
+    const todayPoints = p.todayDay === today ? p.todayPoints : 0;
+    // A streak only counts if active today or yesterday.
+    const yesterday = dayKey(new Date(Date.now() - 86400000));
+    const streak = (p.lastActiveDay === today || p.lastActiveDay === yesterday) ? p.streak : 0;
+    const earned = BADGE_TIERS.filter((b) => p.points >= b.points).map((b) => b.id);
+    const next = BADGE_TIERS.find((b) => p.points < b.points) || null;
+    return {
+      ok: true,
+      result: {
+        points: p.points,
+        streak,
+        longestStreak: p.longestStreak,
+        dailyGoal: p.dailyGoal,
+        todayPoints,
+        goalMet: todayPoints >= p.dailyGoal,
+        goalProgress: Math.min(100, Math.round((todayPoints / Math.max(p.dailyGoal, 1)) * 100)),
+        badges: BADGE_TIERS.map((b) => ({ ...b, earned: earned.includes(b.id) })),
+        nextBadge: next ? { id: next.id, label: next.label, pointsNeeded: next.points - p.points } : null,
+      },
+    };
+  });
+
+  registerLensAction("linguistics", "progress-set-goal", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const goal = Math.max(5, Math.min(500, Math.round(Number(params.dailyGoal) || 0)));
+    if (!goal) return { ok: false, error: "dailyGoal must be 5-500" };
+    const p = lgProgress(s, lgActor(ctx));
+    p.dailyGoal = goal;
+    saveLing();
+    return { ok: true, result: { dailyGoal: goal } };
+  });
+
+  // ─── Adaptive quiz engine ───────────────────────────────────────────
+
+  // Build one quiz question for a target word. Multiple-choice draws 3
+  // real distractor definitions from the user's own other words; falls
+  // back to typing mode when there aren't enough words.
+  function buildQuestion(word, pool, mode) {
+    if (mode === "typing" || pool.length < 4) {
+      return {
+        wordId: word.id, mode: "typing", prompt: word.definition || "(no definition)",
+        partOfSpeech: word.partOfSpeech, answer: word.word,
+      };
+    }
+    const distractors = pool
+      .filter((w) => w.id !== word.id && w.definition)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map((w) => w.definition);
+    if (distractors.length < 3) {
+      return {
+        wordId: word.id, mode: "typing", prompt: word.definition || "(no definition)",
+        partOfSpeech: word.partOfSpeech, answer: word.word,
+      };
+    }
+    const choices = [...distractors, word.definition].sort(() => Math.random() - 0.5);
+    return {
+      wordId: word.id, mode: "multiple-choice", prompt: word.word,
+      partOfSpeech: word.partOfSpeech, choices, answer: word.definition,
+    };
+  }
+
+  // quiz-generate — adaptive question set. Weights lower-mastery and
+  // due words higher so the quiz targets what the learner is weakest at.
+  registerLensAction("linguistics", "quiz-generate", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const all = lgWords(s, lgActor(ctx)).filter((w) => w.definition);
+    if (all.length < 1) return { ok: false, error: "add words with definitions to take a quiz" };
+    const count = Math.max(1, Math.min(20, Math.round(Number(params.count) || 8)));
+    const now = Date.now();
+    // Adaptive weight: weaker mastery + overdue = picked more often.
+    const weighted = all.map((w) => {
+      const masteryWeight = 6 - Math.min(5, w.level);
+      const overdue = new Date(w.due).getTime() <= now ? 3 : 1;
+      const accuracy = w.reviewCount > 0 ? (w.correctCount || 0) / w.reviewCount : 0.5;
+      const accuracyWeight = 1 + (1 - accuracy) * 2;
+      return { w, weight: masteryWeight * overdue * accuracyWeight };
+    });
+    // Weighted shuffle (no duplicates).
+    const picked = [];
+    const remaining = [...weighted];
+    while (picked.length < count && remaining.length) {
+      const total = remaining.reduce((a, x) => a + x.weight, 0);
+      let r = Math.random() * total;
+      let idx = 0;
+      for (; idx < remaining.length; idx++) { r -= remaining[idx].weight; if (r <= 0) break; }
+      picked.push(remaining.splice(Math.min(idx, remaining.length - 1), 1)[0].w);
+    }
+    const forceMode = params.mode === "typing" || params.mode === "multiple-choice" ? params.mode : null;
+    const questions = picked.map((w) => buildQuestion(w, all, forceMode));
+    return { ok: true, result: { questions, count: questions.length, poolSize: all.length } };
+  });
+
+  // quiz-grade — grade one answer, advance Leitner level + award points.
+  registerLensAction("linguistics", "quiz-grade", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = lgWords(s, lgActor(ctx)).find((x) => x.id === params.wordId);
+    if (!w) return { ok: false, error: "word not found" };
+    const given = lgClean(params.answer, 600).toLowerCase();
+    const mode = params.mode === "typing" ? "typing" : "multiple-choice";
+    const correct = mode === "typing"
+      ? given === w.word.toLowerCase()
+      : given === (w.definition || "").toLowerCase();
+    w.reviewCount += 1;
+    if (typeof w.correctCount !== "number") w.correctCount = 0;
+    if (correct) {
+      w.correctCount += 1;
+      w.level = Math.min(5, w.level + 1);
+    } else {
+      w.level = 0;
+    }
+    w.due = new Date(Date.now() + REVIEW_INTERVALS[w.level] * 86400000).toISOString();
+    w.lastReviewedAt = lgNow();
+    // Typing answers are worth more — harder recall.
+    const points = correct ? (mode === "typing" ? 10 : 6) : 1;
+    lgRecordActivity(s, lgActor(ctx), points);
+    saveLing();
+    return {
+      ok: true,
+      result: { correct, correctAnswer: mode === "typing" ? w.word : w.definition, level: w.level, points },
+    };
+  });
+
+  // ─── Pronunciation audio + word-in-context + etymology ──────────────
+
+  // pronounce — IPA + audio clip URL for a word (Free Dictionary API).
+  registerLensAction("linguistics", "pronounce", async (_ctx, _a, params = {}) => {
+    const word = lgClean(params.word, 80).toLowerCase();
+    if (!word) return { ok: false, error: "word required" };
+    const lang = String(params.lang || "en").toLowerCase();
+    try {
+      const r = await fetch(`${FREE_DICTIONARY}/${lang}/${encodeURIComponent(word)}`);
+      if (r.status === 404) return { ok: false, error: `word not found: ${word}` };
+      if (!r.ok) throw new Error(`dictionary ${r.status}`);
+      const data = await r.json();
+      const entry = Array.isArray(data) ? data[0] : null;
+      if (!entry) return { ok: false, error: `no pronunciation for: ${word}` };
+      const phonetics = (entry.phonetics || [])
+        .map((p) => ({ ipa: p.text || null, audio: p.audio || null }))
+        .filter((p) => p.ipa || p.audio);
+      const audioClip = phonetics.find((p) => p.audio) || null;
+      return {
+        ok: true,
+        result: {
+          word, lang,
+          ipa: entry.phonetic || (phonetics.find((p) => p.ipa) || {}).ipa || null,
+          audio: audioClip ? audioClip.audio : null,
+          phonetics,
+          source: "free-dictionary-api",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `pronunciation unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // word-context — real usage sentences for a word. Pulls definition
+  // examples from Free Dictionary; nothing fabricated.
+  registerLensAction("linguistics", "word-context", async (_ctx, _a, params = {}) => {
+    const word = lgClean(params.word, 80).toLowerCase();
+    if (!word) return { ok: false, error: "word required" };
+    try {
+      const r = await fetch(`${FREE_DICTIONARY}/en/${encodeURIComponent(word)}`);
+      if (r.status === 404) return { ok: false, error: `word not found: ${word}` };
+      if (!r.ok) throw new Error(`dictionary ${r.status}`);
+      const data = await r.json();
+      const examples = [];
+      for (const entry of (Array.isArray(data) ? data : [])) {
+        for (const m of (entry.meanings || [])) {
+          for (const d of (m.definitions || [])) {
+            if (d.example) examples.push({ sentence: d.example, partOfSpeech: m.partOfSpeech, sense: d.definition });
+          }
+        }
+      }
+      return { ok: true, result: { word, examples, count: examples.length, source: "free-dictionary-api" } };
+    } catch (e) {
+      return { ok: false, error: `context unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // etymology — word-history view. Free Dictionary "origin" field where
+  // present; falls back gracefully when the entry has no etymology.
+  registerLensAction("linguistics", "etymology", async (_ctx, _a, params = {}) => {
+    const word = lgClean(params.word, 80).toLowerCase();
+    if (!word) return { ok: false, error: "word required" };
+    try {
+      const r = await fetch(`${FREE_DICTIONARY}/en/${encodeURIComponent(word)}`);
+      if (r.status === 404) return { ok: false, error: `word not found: ${word}` };
+      if (!r.ok) throw new Error(`dictionary ${r.status}`);
+      const data = await r.json();
+      const origins = [];
+      for (const entry of (Array.isArray(data) ? data : [])) {
+        if (entry.origin) origins.push(entry.origin);
+      }
+      return {
+        ok: true,
+        result: {
+          word,
+          origin: origins.length ? origins[0] : null,
+          allOrigins: origins,
+          hasEtymology: origins.length > 0,
+          source: "free-dictionary-api",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `etymology unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ─── Curated word lists / decks ─────────────────────────────────────
+
+  function lgDecks(s, userId) {
+    if (!s.decks.has(userId)) s.decks.set(userId, []);
+    return s.decks.get(userId);
+  }
+
+  // deck-create — themed pack the user defines (SAT, GRE, domain vocab).
+  registerLensAction("linguistics", "deck-create", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = lgClean(params.name, 80);
+    if (!name) return { ok: false, error: "name required" };
+    const deck = {
+      id: lgId("dk"),
+      name,
+      description: lgClean(params.description, 400),
+      theme: lgClean(params.theme, 40) || "general",
+      createdAt: lgNow(),
+    };
+    lgDecks(s, lgActor(ctx)).push(deck);
+    saveLing();
+    return { ok: true, result: { deck } };
+  });
+
+  registerLensAction("linguistics", "deck-list", (ctx, _a, _params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const decks = lgDecks(s, lgActor(ctx));
+    const words = lgWords(s, lgActor(ctx));
+    const enriched = decks.map((d) => {
+      const dws = words.filter((w) => w.deckId === d.id);
+      return {
+        ...d,
+        wordCount: dws.length,
+        mastered: dws.filter((w) => w.level >= 5).length,
+      };
+    }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { decks: enriched, count: enriched.length } };
+  });
+
+  registerLensAction("linguistics", "deck-delete", (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = lgDecks(s, lgActor(ctx));
+    const i = arr.findIndex((d) => d.id === params.id);
+    if (i < 0) return { ok: false, error: "deck not found" };
+    arr.splice(i, 1);
+    // Unassign words from the removed deck (keep the words themselves).
+    for (const w of lgWords(s, lgActor(ctx))) {
+      if (w.deckId === params.id) w.deckId = null;
+    }
+    saveLing();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // deck-import — bulk-add words to a deck. Each word in the list is a
+  // real string the user supplies; definitions auto-fetched on demand.
+  registerLensAction("linguistics", "deck-import", async (ctx, _a, params = {}) => {
+    const s = getLingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const deckId = lgClean(params.deckId, 60);
+    if (!deckId) return { ok: false, error: "deckId required" };
+    const deck = lgDecks(s, lgActor(ctx)).find((d) => d.id === deckId);
+    if (!deck) return { ok: false, error: "deck not found" };
+    const rawWords = Array.isArray(params.words) ? params.words : [];
+    if (!rawWords.length) return { ok: false, error: "words array required" };
+    const list = lgWords(s, lgActor(ctx));
+    const autoFetch = params.autoFetch !== false;
+    const added = [];
+    const skipped = [];
+    for (const raw of rawWords.slice(0, 100)) {
+      const word = lgClean(raw, 80).toLowerCase();
+      if (!word) continue;
+      if (list.some((w) => w.word === word)) { skipped.push(word); continue; }
+      let definition = "";
+      let partOfSpeech = null;
+      let example = null;
+      if (autoFetch) {
+        try {
+          const r = await fetch(`${FREE_DICTIONARY}/en/${encodeURIComponent(word)}`);
+          if (r.ok) {
+            const data = await r.json();
+            const entry = Array.isArray(data) ? data[0] : null;
+            const meaning = entry ? (entry.meanings || [])[0] : null;
+            const def = meaning ? (meaning.definitions || [])[0] : null;
+            if (def) { definition = lgClean(def.definition, 600); if (def.example) example = lgClean(def.example, 400); }
+            if (meaning) partOfSpeech = lgClean(meaning.partOfSpeech, 30) || null;
+          }
+        } catch (_e) { /* graceful */ }
+      }
+      const entry = {
+        id: lgId("vw"), word, definition, partOfSpeech, example,
+        etymology: null, phonetic: null, audio: null,
+        tags: [], deckId, level: 0, due: lgNow(),
+        reviewCount: 0, correctCount: 0, addedAt: lgNow(),
+      };
+      list.push(entry);
+      added.push(word);
+    }
+    saveLing();
+    return { ok: true, result: { deckId, added, addedCount: added.length, skipped, skippedCount: skipped.length } };
+  });
 }

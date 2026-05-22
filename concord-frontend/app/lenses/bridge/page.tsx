@@ -24,6 +24,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConcordLinkWalkers } from '@/components/bridge/ConcordLinkWalkers';
+import { FederationConsole } from '@/components/bridge/FederationConsole';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -95,7 +96,7 @@ async function fetchEmergents(): Promise<EmergentRole[]> {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-const TABS = ['activity', 'organisms', 'debates', 'lifecycle', 'emergents'] as const;
+const TABS = ['activity', 'organisms', 'debates', 'lifecycle', 'emergents', 'federation'] as const;
 type Tab = typeof TABS[number];
 
 export default function BridgeLens() {
@@ -113,6 +114,7 @@ export default function BridgeLens() {
       { id: 'tab-debates', keys: 'd', description: 'Debates', category: 'navigation', action: () => setTab('debates') },
       { id: 'tab-lifecycle', keys: 'l', description: 'Lifecycle', category: 'navigation', action: () => setTab('lifecycle') },
       { id: 'tab-emergents', keys: 'e', description: 'Emergents', category: 'navigation', action: () => setTab('emergents') },
+      { id: 'tab-federation', keys: 'f', description: 'Federation Console', category: 'navigation', action: () => setTab('federation') },
     ],
     { lensId: 'bridge' }
   );
@@ -160,6 +162,7 @@ export default function BridgeLens() {
     debates: <MessageSquare className="w-4 h-4" />,
     lifecycle: <Baby className="w-4 h-4" />,
     emergents: <Shield className="w-4 h-4" />,
+    federation: <GitMerge className="w-4 h-4" />,
   };
 
   return (
@@ -279,6 +282,7 @@ export default function BridgeLens() {
           {tab === 'debates' && <DebatesTab debates={debates} expanded={expandedDebate} setExpanded={setExpandedDebate} onDtuClick={setSelectedDtuId} />}
           {tab === 'lifecycle' && <LifecycleTab births={births} />}
           {tab === 'emergents' && <EmergentsTab emergents={emergents} />}
+          {tab === 'federation' && <FederationConsole />}
         </>
       )}
 

@@ -3,11 +3,13 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeBoxSection } from '@/components/cooking/RecipeBoxSection';
+import { RecipeKitchen } from '@/components/cooking/RecipeKitchen';
 import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { CookingActionPanel } from '@/components/cooking/CookingActionPanel';
@@ -312,8 +314,12 @@ export default function CookingLensPage() {
       <FirstRunTour lensId="cooking" />
       <ManifestActionBar />
       <DepthBadge lensId="cooking" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
+      <div className="px-4 mt-3 space-y-4">
         <RecipeBoxSection />
+        {/* Paprika 3 + Samsung Food backlog: URL/photo import, cook mode,
+            ratings + made-it log, USDA-linked nutrition, multi-store
+            shopping, printable export. */}
+        <RecipeKitchen />
       </div>
     <div data-lens-theme="cooking" className="p-6 space-y-6">
       {/* Phase 4 — REAL USDA FoodData Central search. Tier-1 honest macros. */}
@@ -686,6 +692,7 @@ export default function CookingLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="cooking" /></div>}
       </div>
     </div>
+          <section className="mt-4"><LensFeedButton domain="cooking" label="Live recipe feed" /></section>
           <RecentMineCard domain="cooking" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="cooking" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="cooking" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

@@ -399,4 +399,683 @@ export default function registerCreativeActions(registerLensAction) {
       },
     };
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // StudioBinder / Frame.io parity — production management substrate.
+  // Per-user Maps on globalThis._concordSTATE.creativeLens; every handler
+  // is try/catch-free pure logic but returns { ok, error } never throws.
+  // ═══════════════════════════════════════════════════════════════════
+
+  function getProdState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.creativeLens) STATE.creativeLens = {};
+    const s = STATE.creativeLens;
+    for (const k of [
+      "reviewAssets", "reviewComments", "callSheets", "breakdowns",
+      "approvals", "calendarEvents", "proofLinks", "proofExtComments",
+    ]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  const prList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+
+  // ── Feature 1: Frame-accurate review comments ───────────────────────
+  // A "review asset" is an uploaded video/image (by URL or DTU ref) that
+  // collaborators annotate at a precise timestamp (video) or x/y point.
+
+  registerLensAction("creative", "review-asset-create", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = crClean(params.name, 160);
+    if (!name) return { ok: false, error: "asset name required" };
+    const kind = ["video", "image"].includes(String(params.kind)) ? String(params.kind) : "video";
+    const asset = {
+      id: crId("rva"), name, kind,
+      src: crClean(params.src, 600) || null,
+      durationSec: kind === "video" ? Math.max(0, crNum(params.durationSec, 0)) : 0,
+      project: crClean(params.project, 160) || null,
+      createdAt: crNow(),
+    };
+    prList(s.reviewAssets, crAid(ctx)).push(asset);
+    saveCrState();
+    return { ok: true, result: { asset } };
+  });
+
+  registerLensAction("creative", "review-asset-list", (ctx, _a, _params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = crAid(ctx);
+    const comments = s.reviewComments.get(userId) || [];
+    const assets = (s.reviewAssets.get(userId) || [])
+      .map((a) => ({
+        ...a,
+        commentCount: comments.filter((c) => c.assetId === a.id).length,
+        openCount: comments.filter((c) => c.assetId === a.id && !c.resolved).length,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { assets, count: assets.length } };
+  });
+
+  registerLensAction("creative", "review-asset-delete", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = crAid(ctx);
+    const arr = s.reviewAssets.get(userId) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "asset not found" };
+    arr.splice(i, 1);
+    s.reviewComments.set(userId, (s.reviewComments.get(userId) || []).filter((c) => c.assetId !== params.id));
+    saveCrState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("creative", "review-comment-add", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = crAid(ctx);
+    const asset = (s.reviewAssets.get(userId) || []).find((a) => a.id === params.assetId);
+    if (!asset) return { ok: false, error: "review asset not found" };
+    const body = crClean(params.body, 1200);
+    if (!body) return { ok: false, error: "comment body required" };
+    const comment = {
+      id: crId("rvc"), assetId: asset.id,
+      author: crClean(params.author, 80) || "You",
+      body,
+      timestampSec: asset.kind === "video"
+        ? crClamp(params.timestampSec, 0, asset.durationSec || 86400, 0) : null,
+      x: params.x != null ? crClamp(params.x, 0, 1, 0.5) : null,
+      y: params.y != null ? crClamp(params.y, 0, 1, 0.5) : null,
+      resolved: false,
+      createdAt: crNow(),
+    };
+    prList(s.reviewComments, userId).push(comment);
+    saveCrState();
+    return { ok: true, result: { comment } };
+  });
+
+  registerLensAction("creative", "review-comment-list", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const comments = (s.reviewComments.get(crAid(ctx)) || [])
+      .filter((c) => c.assetId === params.assetId)
+      .sort((a, b) => {
+        const at = a.timestampSec ?? -1, bt = b.timestampSec ?? -1;
+        return at - bt || a.createdAt.localeCompare(b.createdAt);
+      });
+    return { ok: true, result: { comments, count: comments.length } };
+  });
+
+  registerLensAction("creative", "review-comment-resolve", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const comment = (s.reviewComments.get(crAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!comment) return { ok: false, error: "comment not found" };
+    comment.resolved = params.resolved != null ? !!params.resolved : !comment.resolved;
+    saveCrState();
+    return { ok: true, result: { comment } };
+  });
+
+  registerLensAction("creative", "review-comment-delete", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.reviewComments.get(crAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "comment not found" };
+    arr.splice(i, 1);
+    saveCrState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Feature 2: Call sheet generator ─────────────────────────────────
+  // One call sheet per shoot day: cast/crew with call times, locations,
+  // a per-row schedule. Computes a general crew call from the earliest row.
+
+  registerLensAction("creative", "callsheet-create", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const project = crClean(params.project, 160);
+    if (!project) return { ok: false, error: "project required" };
+    const sheet = {
+      id: crId("cs"), project,
+      shootDate: crClean(params.shootDate, 40) || crNow().slice(0, 10),
+      dayNumber: Math.max(1, Math.round(crNum(params.dayNumber, 1))),
+      generalCall: crClean(params.generalCall, 20) || "08:00",
+      cast: [], crew: [], locations: [], schedule: [],
+      notes: crClean(params.notes, 1000) || "",
+      createdAt: crNow(), updatedAt: crNow(),
+    };
+    prList(s.callSheets, crAid(ctx)).push(sheet);
+    saveCrState();
+    return { ok: true, result: { sheet } };
+  });
+
+  registerLensAction("creative", "callsheet-list", (ctx, _a, _params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sheets = (s.callSheets.get(crAid(ctx)) || [])
+      .map((cs) => ({
+        ...cs,
+        castCount: cs.cast.length, crewCount: cs.crew.length,
+        locationCount: cs.locations.length, sceneCount: cs.schedule.length,
+      }))
+      .sort((a, b) => (b.shootDate || "").localeCompare(a.shootDate || ""));
+    return { ok: true, result: { sheets, count: sheets.length } };
+  });
+
+  registerLensAction("creative", "callsheet-get", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sheet = (s.callSheets.get(crAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!sheet) return { ok: false, error: "call sheet not found" };
+    return { ok: true, result: { sheet } };
+  });
+
+  registerLensAction("creative", "callsheet-add-row", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sheet = (s.callSheets.get(crAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!sheet) return { ok: false, error: "call sheet not found" };
+    const section = String(params.section);
+    if (!["cast", "crew", "locations", "schedule"].includes(section)) {
+      return { ok: false, error: "section must be cast|crew|locations|schedule" };
+    }
+    let row;
+    if (section === "cast") {
+      row = {
+        id: crId("row"),
+        name: crClean(params.name, 120),
+        role: crClean(params.role, 120),
+        callTime: crClean(params.callTime, 20) || sheet.generalCall,
+      };
+      if (!row.name) return { ok: false, error: "cast name required" };
+    } else if (section === "crew") {
+      row = {
+        id: crId("row"),
+        name: crClean(params.name, 120),
+        department: crClean(params.department, 120),
+        callTime: crClean(params.callTime, 20) || sheet.generalCall,
+      };
+      if (!row.name) return { ok: false, error: "crew name required" };
+    } else if (section === "locations") {
+      row = {
+        id: crId("row"),
+        name: crClean(params.name, 160),
+        address: crClean(params.address, 300),
+      };
+      if (!row.name) return { ok: false, error: "location name required" };
+    } else {
+      row = {
+        id: crId("row"),
+        time: crClean(params.time, 20),
+        scene: crClean(params.scene, 200),
+      };
+      if (!row.scene) return { ok: false, error: "scene required" };
+    }
+    sheet[section].push(row);
+    // Recompute general call as the earliest cast/crew call time.
+    const allCalls = [...sheet.cast, ...sheet.crew]
+      .map((r) => r.callTime).filter((t) => /^\d{1,2}:\d{2}$/.test(t || "")).sort();
+    if (allCalls.length) sheet.generalCall = allCalls[0];
+    sheet.updatedAt = crNow();
+    saveCrState();
+    return { ok: true, result: { sheet } };
+  });
+
+  registerLensAction("creative", "callsheet-remove-row", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sheet = (s.callSheets.get(crAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!sheet) return { ok: false, error: "call sheet not found" };
+    const section = String(params.section);
+    if (!Array.isArray(sheet[section])) return { ok: false, error: "invalid section" };
+    const before = sheet[section].length;
+    sheet[section] = sheet[section].filter((r) => r.id !== params.rowId);
+    if (sheet[section].length === before) return { ok: false, error: "row not found" };
+    sheet.updatedAt = crNow();
+    saveCrState();
+    return { ok: true, result: { sheet } };
+  });
+
+  registerLensAction("creative", "callsheet-delete", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.callSheets.get(crAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "call sheet not found" };
+    arr.splice(i, 1);
+    saveCrState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Feature 3: Script breakdown ─────────────────────────────────────
+  // Paste a script; tag props / cast / locations / wardrobe / SFX.
+  // Auto-extract pass: heuristically detect ALL-CAPS character cues and
+  // INT./EXT. scene headings, surfaced as suggestions the user confirms.
+
+  const BD_CATEGORIES = ["cast", "props", "locations", "wardrobe", "sfx", "vehicles"];
+
+  function autoExtract(script) {
+    const lines = String(script || "").split(/\r?\n/);
+    const cast = new Set(), locations = new Set();
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      const slug = line.match(/^(INT\.|EXT\.|INT\/EXT\.)\s*(.+?)(?:\s+-\s+.*)?$/i);
+      if (slug) { locations.add(slug[2].trim()); continue; }
+      // Character cue: short, mostly uppercase, no sentence punctuation.
+      if (line.length <= 40 && /^[A-Z][A-Z0-9 .'()-]+$/.test(line)
+        && !/^(INT|EXT|FADE|CUT|THE END|CONTINUED)/i.test(line)) {
+        cast.add(line.replace(/\s*\(.*\)\s*$/, "").trim());
+      }
+    }
+    return {
+      cast: [...cast].slice(0, 60),
+      locations: [...locations].slice(0, 60),
+    };
+  }
+
+  registerLensAction("creative", "breakdown-create", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = crClean(params.title, 160);
+    if (!title) return { ok: false, error: "title required" };
+    const script = crClean(params.script, 60000);
+    const bd = {
+      id: crId("bd"), title,
+      project: crClean(params.project, 160) || null,
+      script,
+      tags: { cast: [], props: [], locations: [], wardrobe: [], sfx: [], vehicles: [] },
+      createdAt: crNow(), updatedAt: crNow(),
+    };
+    prList(s.breakdowns, crAid(ctx)).push(bd);
+    saveCrState();
+    return { ok: true, result: { breakdown: bd, suggestions: autoExtract(script) } };
+  });
+
+  registerLensAction("creative", "breakdown-list", (ctx, _a, _params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const breakdowns = (s.breakdowns.get(crAid(ctx)) || [])
+      .map((b) => ({
+        id: b.id, title: b.title, project: b.project,
+        scriptLength: b.script.length,
+        tagCount: BD_CATEGORIES.reduce((n, c) => n + b.tags[c].length, 0),
+        createdAt: b.createdAt, updatedAt: b.updatedAt,
+      }))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return { ok: true, result: { breakdowns, count: breakdowns.length } };
+  });
+
+  registerLensAction("creative", "breakdown-get", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bd = (s.breakdowns.get(crAid(ctx)) || []).find((b) => b.id === params.id);
+    if (!bd) return { ok: false, error: "breakdown not found" };
+    return { ok: true, result: { breakdown: bd, suggestions: autoExtract(bd.script) } };
+  });
+
+  registerLensAction("creative", "breakdown-rescan", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bd = (s.breakdowns.get(crAid(ctx)) || []).find((b) => b.id === params.id);
+    if (!bd) return { ok: false, error: "breakdown not found" };
+    if (params.script != null) {
+      bd.script = crClean(params.script, 60000);
+      bd.updatedAt = crNow();
+      saveCrState();
+    }
+    return { ok: true, result: { breakdown: bd, suggestions: autoExtract(bd.script) } };
+  });
+
+  registerLensAction("creative", "breakdown-tag", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bd = (s.breakdowns.get(crAid(ctx)) || []).find((b) => b.id === params.id);
+    if (!bd) return { ok: false, error: "breakdown not found" };
+    const category = String(params.category);
+    if (!BD_CATEGORIES.includes(category)) {
+      return { ok: false, error: `category must be one of ${BD_CATEGORIES.join("|")}` };
+    }
+    const value = crClean(params.value, 160);
+    if (!value) return { ok: false, error: "tag value required" };
+    if (!bd.tags[category].some((t) => t.value.toLowerCase() === value.toLowerCase())) {
+      bd.tags[category].push({ id: crId("tg"), value });
+      bd.updatedAt = crNow();
+      saveCrState();
+    }
+    return { ok: true, result: { breakdown: bd } };
+  });
+
+  registerLensAction("creative", "breakdown-untag", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bd = (s.breakdowns.get(crAid(ctx)) || []).find((b) => b.id === params.id);
+    if (!bd) return { ok: false, error: "breakdown not found" };
+    const category = String(params.category);
+    if (!BD_CATEGORIES.includes(category)) return { ok: false, error: "invalid category" };
+    bd.tags[category] = bd.tags[category].filter((t) => t.id !== params.tagId);
+    bd.updatedAt = crNow();
+    saveCrState();
+    return { ok: true, result: { breakdown: bd } };
+  });
+
+  registerLensAction("creative", "breakdown-delete", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.breakdowns.get(crAid(ctx)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "breakdown not found" };
+    arr.splice(i, 1);
+    saveCrState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Feature 4: Version stacking on deliverables ─────────────────────
+  // An "approval item" is a deliverable with an explicit revision chain.
+  // Each version is appended; currentVersion always points at the latest.
+  // Feature 5 (approval workflow) is folded into the same record.
+
+  const APPROVAL_STATES = ["draft", "in_review", "approved", "rejected", "changes_requested"];
+
+  registerLensAction("creative", "deliverable-create", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = crClean(params.name, 160);
+    if (!name) return { ok: false, error: "deliverable name required" };
+    const first = {
+      version: 1,
+      src: crClean(params.src, 600) || null,
+      note: crClean(params.note, 600) || "Initial version",
+      uploadedBy: crClean(params.uploadedBy, 80) || "You",
+      uploadedAt: crNow(),
+    };
+    const item = {
+      id: crId("dlv"), name,
+      project: crClean(params.project, 160) || null,
+      versions: [first],
+      currentVersion: 1,
+      status: "draft",
+      reviewer: null,
+      decisionNote: null,
+      decidedAt: null,
+      submittedAt: null,
+      createdAt: crNow(),
+    };
+    prList(s.approvals, crAid(ctx)).push(item);
+    saveCrState();
+    return { ok: true, result: { deliverable: item } };
+  });
+
+  registerLensAction("creative", "deliverable-list", (ctx, _a, _params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const deliverables = (s.approvals.get(crAid(ctx)) || [])
+      .map((d) => ({
+        id: d.id, name: d.name, project: d.project,
+        currentVersion: d.currentVersion, versionCount: d.versions.length,
+        status: d.status, reviewer: d.reviewer, createdAt: d.createdAt,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { deliverables, count: deliverables.length } };
+  });
+
+  registerLensAction("creative", "deliverable-get", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const d = (s.approvals.get(crAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!d) return { ok: false, error: "deliverable not found" };
+    return { ok: true, result: { deliverable: d } };
+  });
+
+  registerLensAction("creative", "deliverable-add-version", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const d = (s.approvals.get(crAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!d) return { ok: false, error: "deliverable not found" };
+    const nextV = d.versions[d.versions.length - 1].version + 1;
+    const ver = {
+      version: nextV,
+      src: crClean(params.src, 600) || null,
+      note: crClean(params.note, 600) || `Version ${nextV}`,
+      uploadedBy: crClean(params.uploadedBy, 80) || "You",
+      uploadedAt: crNow(),
+    };
+    d.versions.push(ver);
+    d.currentVersion = nextV;
+    // A new version reopens the deliverable for review.
+    d.status = "draft";
+    d.decisionNote = null;
+    d.decidedAt = null;
+    saveCrState();
+    return { ok: true, result: { deliverable: d, version: ver } };
+  });
+
+  registerLensAction("creative", "deliverable-set-current", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const d = (s.approvals.get(crAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!d) return { ok: false, error: "deliverable not found" };
+    const v = Math.round(crNum(params.version, 0));
+    if (!d.versions.some((x) => x.version === v)) return { ok: false, error: "version not found" };
+    d.currentVersion = v;
+    saveCrState();
+    return { ok: true, result: { deliverable: d } };
+  });
+
+  // ── Feature 5: Approval workflow ────────────────────────────────────
+  registerLensAction("creative", "deliverable-submit", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const d = (s.approvals.get(crAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!d) return { ok: false, error: "deliverable not found" };
+    if (d.status === "approved") return { ok: false, error: "already approved" };
+    d.status = "in_review";
+    d.reviewer = crClean(params.reviewer, 80) || d.reviewer || "Client";
+    d.submittedAt = crNow();
+    d.decisionNote = null;
+    d.decidedAt = null;
+    saveCrState();
+    return { ok: true, result: { deliverable: d } };
+  });
+
+  registerLensAction("creative", "deliverable-decide", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const d = (s.approvals.get(crAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!d) return { ok: false, error: "deliverable not found" };
+    const decision = String(params.decision);
+    if (!["approved", "rejected", "changes_requested"].includes(decision)) {
+      return { ok: false, error: "decision must be approved|rejected|changes_requested" };
+    }
+    if (d.status !== "in_review") return { ok: false, error: "deliverable is not in review" };
+    d.status = decision;
+    d.decisionNote = crClean(params.note, 600) || null;
+    d.decidedAt = crNow();
+    saveCrState();
+    return { ok: true, result: { deliverable: d } };
+  });
+
+  registerLensAction("creative", "deliverable-delete", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.approvals.get(crAid(ctx)) || [];
+    const i = arr.findIndex((d) => d.id === params.id);
+    if (i < 0) return { ok: false, error: "deliverable not found" };
+    arr.splice(i, 1);
+    saveCrState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Feature 6: Production calendar ──────────────────────────────────
+  // Shoot days, milestones, deliverable due dates on a single timeline.
+
+  const CAL_KINDS = ["shoot_day", "milestone", "deliverable_due", "meeting", "review"];
+
+  registerLensAction("creative", "calendar-add", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const title = crClean(params.title, 160);
+    if (!title) return { ok: false, error: "event title required" };
+    const date = crClean(params.date, 40);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "date must be YYYY-MM-DD" };
+    const kind = CAL_KINDS.includes(String(params.kind)) ? String(params.kind) : "milestone";
+    const ev = {
+      id: crId("cal"), title, date, kind,
+      project: crClean(params.project, 160) || null,
+      endDate: /^\d{4}-\d{2}-\d{2}$/.test(crClean(params.endDate, 40)) ? crClean(params.endDate, 40) : null,
+      notes: crClean(params.notes, 600) || "",
+      done: false,
+      createdAt: crNow(),
+    };
+    prList(s.calendarEvents, crAid(ctx)).push(ev);
+    saveCrState();
+    return { ok: true, result: { event: ev } };
+  });
+
+  registerLensAction("creative", "calendar-list", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let events = (s.calendarEvents.get(crAid(ctx)) || []).slice();
+    if (params.kind && CAL_KINDS.includes(String(params.kind))) {
+      events = events.filter((e) => e.kind === params.kind);
+    }
+    if (params.from) events = events.filter((e) => e.date >= String(params.from));
+    if (params.to) events = events.filter((e) => e.date <= String(params.to));
+    events.sort((a, b) => a.date.localeCompare(b.date));
+    const today = crNow().slice(0, 10);
+    return {
+      ok: true,
+      result: {
+        events, count: events.length,
+        upcoming: events.filter((e) => e.date >= today && !e.done).length,
+        overdue: events.filter((e) => e.date < today && !e.done).length,
+      },
+    };
+  });
+
+  registerLensAction("creative", "calendar-update", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ev = (s.calendarEvents.get(crAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!ev) return { ok: false, error: "event not found" };
+    if (params.title != null) {
+      const t = crClean(params.title, 160);
+      if (t) ev.title = t;
+    }
+    if (params.date != null && /^\d{4}-\d{2}-\d{2}$/.test(String(params.date))) ev.date = String(params.date);
+    if (params.kind != null && CAL_KINDS.includes(String(params.kind))) ev.kind = String(params.kind);
+    if (params.notes != null) ev.notes = crClean(params.notes, 600);
+    if (params.done != null) ev.done = !!params.done;
+    saveCrState();
+    return { ok: true, result: { event: ev } };
+  });
+
+  registerLensAction("creative", "calendar-delete", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.calendarEvents.get(crAid(ctx)) || [];
+    const i = arr.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "event not found" };
+    arr.splice(i, 1);
+    saveCrState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Feature 7: Shareable client-proof links + external comments ─────
+  // A proof link wraps a review asset with a public token. External
+  // (unauthenticated) reviewers fetch by token and leave comments that
+  // land back in the owner's inbox without needing an account.
+
+  registerLensAction("creative", "prooflink-create", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = crAid(ctx);
+    const asset = (s.reviewAssets.get(userId) || []).find((a) => a.id === params.assetId);
+    if (!asset) return { ok: false, error: "review asset not found" };
+    const token = `pl_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+    const link = {
+      id: crId("pln"), token, assetId: asset.id, ownerId: userId,
+      label: crClean(params.label, 160) || asset.name,
+      allowComments: params.allowComments !== false,
+      active: true,
+      createdAt: crNow(),
+    };
+    prList(s.proofLinks, userId).push(link);
+    saveCrState();
+    return {
+      ok: true,
+      result: { link, shareUrl: `/proof/${token}` },
+    };
+  });
+
+  registerLensAction("creative", "prooflink-list", (ctx, _a, _params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = crAid(ctx);
+    const ext = s.proofExtComments.get(userId) || [];
+    const links = (s.proofLinks.get(userId) || [])
+      .map((l) => ({
+        ...l,
+        shareUrl: `/proof/${l.token}`,
+        externalCommentCount: ext.filter((c) => c.token === l.token).length,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { links, count: links.length } };
+  });
+
+  registerLensAction("creative", "prooflink-toggle", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const link = (s.proofLinks.get(crAid(ctx)) || []).find((l) => l.id === params.id);
+    if (!link) return { ok: false, error: "proof link not found" };
+    link.active = params.active != null ? !!params.active : !link.active;
+    saveCrState();
+    return { ok: true, result: { link } };
+  });
+
+  registerLensAction("creative", "prooflink-delete", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.proofLinks.get(crAid(ctx)) || [];
+    const i = arr.findIndex((l) => l.id === params.id);
+    if (i < 0) return { ok: false, error: "proof link not found" };
+    arr.splice(i, 1);
+    saveCrState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Owner-side inbox of external comments captured across all proof links.
+  registerLensAction("creative", "prooflink-inbox", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let comments = (s.proofExtComments.get(crAid(ctx)) || []).slice();
+    if (params.token) comments = comments.filter((c) => c.token === params.token);
+    comments.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return {
+      ok: true,
+      result: { comments, count: comments.length },
+    };
+  });
+
+  // Public read by token — resolves the wrapped asset + its external thread.
+  // Looks across all users' proof links since reviewers are unauthenticated.
+  registerLensAction("creative", "prooflink-public-get", (_ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const token = String(params.token || "");
+    let found = null;
+    for (const [ownerId, links] of s.proofLinks.entries()) {
+      const link = (links || []).find((l) => l.token === token);
+      if (link) { found = { link, ownerId }; break; }
+    }
+    if (!found) return { ok: false, error: "proof link not found" };
+    if (!found.link.active) return { ok: false, error: "proof link is inactive" };
+    const asset = (s.reviewAssets.get(found.ownerId) || []).find((a) => a.id === found.link.assetId);
+    if (!asset) return { ok: false, error: "proof asset unavailable" };
+    const comments = (s.proofExtComments.get(found.ownerId) || [])
+      .filter((c) => c.token === token)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return {
+      ok: true,
+      result: {
+        label: found.link.label,
+        allowComments: found.link.allowComments,
+        asset: { id: asset.id, name: asset.name, kind: asset.kind, src: asset.src, durationSec: asset.durationSec },
+        comments,
+      },
+    };
+  });
+
+  // External (unauthenticated) reviewer leaves a frame-accurate comment.
+  registerLensAction("creative", "prooflink-public-comment", (_ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const token = String(params.token || "");
+    let found = null;
+    for (const [ownerId, links] of s.proofLinks.entries()) {
+      const link = (links || []).find((l) => l.token === token);
+      if (link) { found = { link, ownerId }; break; }
+    }
+    if (!found) return { ok: false, error: "proof link not found" };
+    if (!found.link.active) return { ok: false, error: "proof link is inactive" };
+    if (!found.link.allowComments) return { ok: false, error: "commenting disabled for this link" };
+    const asset = (s.reviewAssets.get(found.ownerId) || []).find((a) => a.id === found.link.assetId);
+    if (!asset) return { ok: false, error: "proof asset unavailable" };
+    const body = crClean(params.body, 1200);
+    if (!body) return { ok: false, error: "comment body required" };
+    const comment = {
+      id: crId("xcm"), token,
+      authorName: crClean(params.authorName, 80) || "Guest reviewer",
+      body,
+      timestampSec: asset.kind === "video"
+        ? crClamp(params.timestampSec, 0, asset.durationSec || 86400, 0) : null,
+      createdAt: crNow(),
+    };
+    prList(s.proofExtComments, found.ownerId).push(comment);
+    saveCrState();
+    return { ok: true, result: { comment } };
+  });
 };

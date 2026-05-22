@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WeldingFeed } from '@/components/welding/WeldingFeed';
 import { WelderProcedures } from '@/components/welding/WelderProcedures';
+import { WeldingOperations } from '@/components/welding/WeldingOperations';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -713,6 +714,11 @@ export default function WeldingLensPage() {
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
+
+      <section className="mt-6 rounded-xl border border-orange-500/15 bg-zinc-950/40 p-4">
+        <WeldingOperations />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <WeldingFeed />
       </section>

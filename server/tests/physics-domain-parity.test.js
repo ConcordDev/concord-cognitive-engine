@@ -101,3 +101,174 @@ describe("physics — constants", () => {
     assert.ok(r.result.constants.h.value > 0);
   });
 });
+
+describe("physics — scene CRUD + share", () => {
+  it("saves, lists, gets, and deletes a scene", () => {
+    const save = call("scene-save", ctx, {
+      name: "Test Scene",
+      bodies: [{ type: "circle", x: 100, y: 100, mass: 2 }],
+      constraints: [],
+      fluids: [],
+    });
+    assert.equal(save.ok, true);
+    const id = save.result.scene.id;
+    assert.ok(id);
+    assert.equal(save.result.scene.bodies.length, 1);
+
+    const list = call("scene-list", ctx);
+    assert.equal(list.ok, true);
+    assert.ok(list.result.scenes.some((s) => s.id === id));
+
+    const get = call("scene-get", ctx, { id });
+    assert.equal(get.ok, true);
+    assert.equal(get.result.scene.name, "Test Scene");
+
+    const del = call("scene-delete", ctx, { id });
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+  });
+
+  it("rejects scene-get for missing id", () => {
+    const r = call("scene-get", ctx, { id: "nope" });
+    assert.equal(r.ok, false);
+  });
+
+  it("creates a share code and loads a shared scene", () => {
+    const save = call("scene-save", ctx, {
+      name: "Shared",
+      bodies: [{ type: "circle", x: 50, y: 50 }],
+    });
+    const id = save.result.scene.id;
+    const share = call("scene-share", ctx, { id });
+    assert.equal(share.ok, true);
+    assert.ok(share.result.shareCode);
+    assert.match(share.result.embed, /scene=/);
+
+    const loaded = call("scene-load-shared", ctx, { shareCode: share.result.shareCode });
+    assert.equal(loaded.ok, true);
+    assert.match(loaded.result.scene.name, /imported/);
+  });
+
+  it("rejects scene-load-shared with bad code", () => {
+    const r = call("scene-load-shared", ctx, { shareCode: "phxbogus" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("physics — simulate-scene", () => {
+  it("steps a free-fall scene and returns time-series + energy trace", () => {
+    const r = call("simulate-scene", ctx, {
+      bodies: [{ id: "b1", type: "circle", x: 400, y: 100, mass: 2, radius: 20 }],
+      settings: { gravityY: 9.81, wallBounce: true },
+      steps: 120,
+      substeps: 4,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.bodies.length, 1);
+    assert.ok(r.result.bodies[0].series.length > 0);
+    assert.ok(r.result.energyTrace.length > 0);
+    // body fell under gravity
+    assert.ok(r.result.bodies[0].final.y > 100);
+  });
+
+  it("rejects an empty scene", () => {
+    const r = call("simulate-scene", ctx, { bodies: [] });
+    assert.equal(r.ok, false);
+  });
+
+  it("runs a persisted scene by id", () => {
+    const save = call("scene-save", ctx, {
+      name: "Runnable",
+      bodies: [{ id: "x", type: "circle", x: 200, y: 100, mass: 1, radius: 15 }],
+    });
+    const r = call("scene-run", ctx, { id: save.result.scene.id, steps: 60 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.name, "Runnable");
+    assert.ok(r.result.energyTrace.length > 0);
+  });
+
+  it("simulates spring constraint + fluid buoyancy", () => {
+    const r = call("simulate-scene", ctx, {
+      bodies: [
+        { id: "anchor", type: "fixed", x: 400, y: 100 },
+        { id: "mass", type: "circle", x: 400, y: 300, mass: 3, radius: 20 },
+      ],
+      constraints: [{ type: "spring", a: "anchor", b: "mass", restLength: 120, stiffness: 0.5 }],
+      fluids: [{ id: "tank", x: 200, y: 400, w: 400, h: 200, density: 1, drag: 0.5 }],
+      steps: 200,
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.bodies.length === 2);
+  });
+});
+
+describe("physics — measurement tools", () => {
+  it("ruler measures distance + angle", () => {
+    const r = call("measure", ctx, {
+      tool: "ruler",
+      a: { x: 0, y: 0 },
+      b: { x: 150, y: 0 },
+      pixelsPerMeter: 50,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.meters, 3);
+    assert.equal(r.result.angleDeg, 0);
+  });
+
+  it("protractor measures an angle", () => {
+    const r = call("measure", ctx, {
+      tool: "protractor",
+      vertex: { x: 0, y: 0 },
+      a: { x: 100, y: 0 },
+      b: { x: 0, y: 100 },
+    });
+    assert.equal(r.ok, true);
+    assert.ok(Math.abs(r.result.interiorDeg - 90) < 0.01);
+  });
+
+  it("force tool resolves net force on a body", () => {
+    const r = call("measure", ctx, { tool: "force", mass: 2, gravity: 10 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.components.fy, 20);
+    assert.equal(r.result.acceleration, 10);
+  });
+
+  it("rejects unknown measurement tool", () => {
+    const r = call("measure", ctx, { tool: "bogus" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("physics — curriculum modules", () => {
+  it("lists curriculum modules", () => {
+    const r = call("curriculum-list", ctx);
+    assert.equal(r.ok, true);
+    assert.ok(r.result.modules.length >= 5);
+    assert.ok(r.result.modules.every((m) => m.id && m.title && m.stepCount > 0));
+  });
+
+  it("gets a curriculum module with a runnable scene", () => {
+    const r = call("curriculum-get", ctx, { id: "pendulum-lab" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.module.id, "pendulum-lab");
+    assert.ok(r.result.module.scene.bodies.length > 0);
+    assert.ok(r.result.module.steps.length > 0);
+  });
+
+  it("rejects unknown module id", () => {
+    const r = call("curriculum-get", ctx, { id: "nope" });
+    assert.equal(r.ok, false);
+  });
+
+  it("computes pendulum period", () => {
+    const r = call("pendulum-period", ctx, { length: 1, gravity: 9.81 });
+    assert.equal(r.ok, true);
+    // T = 2π√(L/g) = 2.006s
+    assert.ok(Math.abs(r.result.smallAnglePeriod_s - 2.006) < 0.01);
+  });
+
+  it("rejects pendulum with non-positive length", () => {
+    const r = call("pendulum-period", ctx, { length: 0 });
+    assert.equal(r.ok, false);
+  });
+});

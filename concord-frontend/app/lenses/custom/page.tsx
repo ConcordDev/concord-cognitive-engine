@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PublicGistGallery } from '@/components/custom/PublicGistGallery';
+import { CanvasBuilder } from '@/components/custom/CanvasBuilder';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -195,6 +196,12 @@ export default function CustomLensPage() {
       {/* AI Actions */}
       <UniversalActions domain="custom" artifactId={lensItems[0]?.id} compact />
 
+      {/* No-code Visual Lens Builder — drag-drop canvas, data binding,
+          component palette, live preview, publish, import/export, wiring. */}
+      <div className="panel p-4">
+        <CanvasBuilder />
+      </div>
+
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -362,24 +369,6 @@ export default function CustomLensPage() {
                   </button>
                 </div>
               </div>
-
-              {/* Customization Preview Card */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="graph-container relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/5 to-neon-cyan/5 flex items-center justify-center">
-                  <div className="text-center space-y-3">
-                    <div className="grid grid-cols-3 gap-2 mx-auto max-w-xs">
-                      {[...Array(6)].map((_, i) => (
-                        <div key={i} className={`h-12 rounded-lg animate-pulse ${i % 3 === 0 ? 'bg-neon-purple/20' : i % 3 === 1 ? 'bg-neon-cyan/20' : 'bg-neon-green/20'}`} style={{ animationDelay: `${i * 0.2}s` }} />
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-400">Live preview of lens layout</p>
-                  </div>
-                </div>
-              </motion.div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

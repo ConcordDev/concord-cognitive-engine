@@ -41,7 +41,7 @@ import {
   Users, Coins, Scale, GraduationCap, Gavel, Sparkles, Loader2,
   type LucideIcon,
 } from 'lucide-react';
-import { WorldBankExplorer } from '@/components/society/WorldBankExplorer';
+import { DataExplorer } from '@/components/society/DataExplorer';
 import { SocietyActionPanel } from '@/components/society/SocietyActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -183,7 +183,7 @@ export default function SocietyLensPage() {
         </AnimatePresence>
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <WorldBankExplorer />
+        <DataExplorer />
       </section>
 
       <PipingProvider>

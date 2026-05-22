@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IngestionRepos } from '@/components/ingest/IngestionRepos';
+import { PipelinePanel } from '@/components/ingest/PipelinePanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,7 +18,7 @@ import { useUIStore } from '@/store/ui';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
-import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, Layers, ChevronDown, FileUp, FileJson, FileText, Image as ImageIcon, Shield, Gauge, ArrowDownToLine, Zap, Activity, BarChart3, Search, List } from 'lucide-react';
+import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, Layers, ChevronDown, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -469,20 +470,15 @@ export default function IngestLensPage() {
       )}
       </div>
 
-      {/* Ingest Pipeline — Bulk Upload, Format Conversion, Quality Gates */}
-      <div className="panel p-6 space-y-5">
+      {/* Bulk Upload */}
+      <div className="panel p-6 space-y-4">
         <h2 className="text-lg font-bold flex items-center gap-2">
           <ArrowDownToLine className="w-5 h-5 text-neon-cyan" />
-          Ingest Pipeline
+          Bulk Upload
         </h2>
-        <p className="text-sm text-gray-400">
-          Bulk upload area with format conversion, quality gate indicators, and pipeline stage visualization.
-        </p>
-
-        {/* Bulk Upload Area */}
         <div className="bg-black/40 border-2 border-dashed border-white/10 rounded-xl p-6 text-center space-y-3 hover:border-neon-cyan/30 transition-colors">
           <FileUp className="w-10 h-10 text-neon-cyan mx-auto" />
-          <p className="text-sm text-white font-semibold">Bulk Upload</p>
+          <p className="text-sm text-white font-semibold">Batch-ingest multiple files</p>
           <p className="text-xs text-gray-400">
             Drop multiple files or an entire folder to batch-ingest into the DTU pipeline.
           </p>
@@ -490,114 +486,15 @@ export default function IngestLensPage() {
             <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> .txt .md</span>
             <span className="flex items-center gap-1"><FileJson className="w-3 h-3" /> .json .csv</span>
             <span className="flex items-center gap-1"><ImageIcon className="w-3 h-3" /> .png .jpg</span>
-            <span className="flex items-center gap-1"><FileUp className="w-3 h-3" /> .mp3 .wav</span>
           </div>
-          <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = '.txt,.md,.json,.csv,.png,.jpg,.mp3,.wav'; input.onchange = () => { const files = input.files; if (files && files.length > 0) { showToast('info', `Processing ${files.length} file(s)...`); api.post('/api/lens/run', { domain: 'ingest', action: 'batch-ingest', fileCount: files.length, filenames: Array.from(files).map(f => f.name) }).then(() => showToast('success', `Batch ingest started for ${files.length} file(s)`)).catch(() => showToast('error', 'Batch ingest failed')); } }; input.click(); }} className="mt-2 px-6 py-2 bg-neon-cyan/20 border border-neon-cyan/40 rounded-lg text-sm text-neon-cyan hover:bg-neon-cyan/30 transition-colors">
+          <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = '.txt,.md,.json,.csv,.png,.jpg'; input.onchange = () => { const files = input.files; if (files && files.length > 0) { showToast('info', `Processing ${files.length} file(s)...`); api.post('/api/lens/run', { domain: 'ingest', action: 'batch-ingest', input: { fileCount: files.length, filenames: Array.from(files).map(f => f.name) } }).then(() => showToast('success', `Batch ingest started for ${files.length} file(s)`)).catch(() => showToast('error', 'Batch ingest failed')); } }; input.click(); }} className="mt-2 px-6 py-2 bg-neon-cyan/20 border border-neon-cyan/40 rounded-lg text-sm text-neon-cyan hover:bg-neon-cyan/30 transition-colors">
             Select Files for Batch Ingest
           </button>
         </div>
-
-        {/* Format Conversion Options */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Zap className="w-4 h-4 text-neon-purple" />
-            Format Conversion
-          </h3>
-          <p className="text-xs text-gray-500">
-            Automatically convert source formats into DTU-ready content during ingestion.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { from: 'Markdown', to: 'DTU', icon: FileText, active: true },
-              { from: 'JSON', to: 'DTU', icon: FileJson, active: true },
-              { from: 'CSV', to: 'Multi-DTU', icon: Database, active: true },
-              { from: 'PDF', to: 'DTU + OCR', icon: FileUp, active: false },
-            ].map((conv, idx) => (
-              <div key={idx} className={`p-3 rounded-lg border text-center space-y-1 ${
-                conv.active
-                  ? 'bg-black/30 border-neon-purple/30'
-                  : 'bg-black/20 border-white/5 opacity-50'
-              }`}>
-                <conv.icon className={`w-5 h-5 mx-auto ${conv.active ? 'text-neon-purple' : 'text-gray-600'}`} />
-                <p className="text-xs text-white">{conv.from}</p>
-                <p className="text-xs text-gray-500">to {conv.to}</p>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${
-                  conv.active ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-500'
-                }`}>
-                  {conv.active ? 'enabled' : 'Requires OCR service'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Quality Gate Indicators */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Shield className="w-4 h-4 text-neon-green" />
-            Quality Gates
-          </h3>
-          <p className="text-xs text-gray-500">
-            Each ingested item passes through quality gates before becoming a DTU.
-          </p>
-          <div className="space-y-2">
-            {[
-              { gate: 'Duplicate Detection', desc: 'Semantic hash comparison against existing DTUs', status: 'pass', metric: '99.2% accuracy' },
-              { gate: 'Content Validation', desc: 'Checks for minimum length, encoding, and structure', status: 'pass', metric: 'All clear' },
-              { gate: 'Toxicity Filter', desc: 'AI-powered content safety screening', status: 'pass', metric: '0 flags' },
-              { gate: 'CRETI Scoring', desc: 'Assigns initial credibility, relevance, and trust scores', status: 'warn', metric: '3 low-score items' },
-              { gate: 'Auto-Tagging', desc: 'NLP-based tag extraction and domain classification', status: 'pass', metric: '94% confidence' },
-            ].map((gate, idx) => (
-              <div key={idx} className="flex items-center gap-3 p-2.5 rounded bg-black/30 border border-white/5">
-                <div className={`w-2 h-2 rounded-full ${
-                  gate.status === 'pass' ? 'bg-neon-green' :
-                  gate.status === 'warn' ? 'bg-yellow-400' : 'bg-red-400'
-                }`} />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-white">{gate.gate}</span>
-                    <span className={`text-xs ${
-                      gate.status === 'pass' ? 'text-neon-green' :
-                      gate.status === 'warn' ? 'text-yellow-400' : 'text-red-400'
-                    }`}>{gate.metric}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{gate.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pipeline Stage Visualization */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Gauge className="w-4 h-4 text-neon-cyan" />
-            Pipeline Stages
-          </h3>
-          <div className="flex items-center gap-1 flex-wrap py-2">
-            {[
-              { name: 'Upload', count: 0, color: 'bg-neon-cyan' },
-              { name: 'Parse', count: 2, color: 'bg-neon-purple' },
-              { name: 'Chunk', count: 1, color: 'bg-neon-purple' },
-              { name: 'Validate', count: 3, color: 'bg-yellow-400' },
-              { name: 'Score', count: 1, color: 'bg-neon-green' },
-              { name: 'Store', count: 0, color: 'bg-neon-green' },
-            ].map((stage, idx) => (
-              <div key={idx} className="flex items-center gap-1">
-                <div className="text-center min-w-[80px]">
-                  <div className={`mx-auto w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-black ${stage.color}`}>
-                    {stage.count}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">{stage.name}</p>
-                </div>
-                {idx < 5 && (
-                  <div className="w-6 h-px bg-white/20 flex-shrink-0" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
+
+      {/* ELT Pipeline — connectors, schedules, transforms, runs, dedup, OCR, webhook */}
+      <PipelinePanel />
 
       {/* AI Ingest Actions Panel */}
       <div className="panel p-4 space-y-4">

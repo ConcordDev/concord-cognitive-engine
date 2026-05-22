@@ -9,6 +9,13 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { EarthquakeList } from '@/components/geology/EarthquakeList';
+import { FieldLog } from '@/components/geology/FieldLog';
+import { GeologicMapPanel } from '@/components/geology/GeologicMapPanel';
+import { StructuralCompass } from '@/components/geology/StructuralCompass';
+import { SamplePhotoCapture } from '@/components/geology/SamplePhotoCapture';
+import { SpecimenCollection } from '@/components/geology/SpecimenCollection';
+import { FieldTripPlanner } from '@/components/geology/FieldTripPlanner';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { UsgsQuakePanel } from '@/components/geology/UsgsQuakePanel';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -64,9 +71,9 @@ const ROCK_COLORS: Record<RockType, string> = {
 };
 
 export default function GeologyLensPage() {
-  const [activeTab, setActiveTab] = useState<'samples' | 'sites' | 'stratigraphy' | 'map'>(
-    'samples'
-  );
+  const [activeTab, setActiveTab] = useState<
+    'samples' | 'sites' | 'stratigraphy' | 'map' | 'field'
+  >('samples');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +82,8 @@ export default function GeologyLensPage() {
       { id: 'tab-samples', keys: 's', description: 'Samples', category: 'navigation', action: () => setActiveTab('samples') },
       { id: 'tab-sites', keys: 'i', description: 'Sites', category: 'navigation', action: () => setActiveTab('sites') },
       { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveTab('map') },
-      { id: 'tab-stratigraphy', keys: 't', description: 'Stratigraphy', category: 'navigation', action: () => setActiveTab('stratigraphy') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+      { id: 'tab-stratigraphy', keys: 't', description: 'Stratigraphy', category: 'navigation', action: () => setActiveTab('stratigraphy') },
+      { id: 'tab-field', keys: 'f', description: 'Field tools', category: 'navigation', action: () => setActiveTab('field') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
 
     ],
     { lensId: 'geology' }
@@ -297,7 +305,7 @@ export default function GeologyLensPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-white/10 pb-2">
-        {(['samples', 'sites', 'stratigraphy', 'map'] as const).map((tab) => (
+        {(['samples', 'sites', 'stratigraphy', 'map', 'field'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -515,6 +523,31 @@ export default function GeologyLensPage() {
               className="h-[500px]"
             />
           </div>
+          {/* Macrostrat geologic-map overlay + "rocks near me" bedrock lookup */}
+          <div className="panel p-4">
+            <GeologicMapPanel />
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'field' && (
+        <div className="space-y-4">
+          {/* Strike/dip structural measurements — Strabo-style digital compass */}
+          <div className="panel p-4">
+            <StructuralCompass />
+          </div>
+          {/* Geotagged sample photos with EXIF GPS */}
+          <div className="panel p-4">
+            <SamplePhotoCapture />
+          </div>
+          {/* Minerals & rocks identified checklist */}
+          <div className="panel p-4">
+            <SpecimenCollection />
+          </div>
+          {/* Field-trip / outcrop sequencing */}
+          <div className="panel p-4">
+            <FieldTripPlanner />
+          </div>
         </div>
       )}
 
@@ -584,6 +617,11 @@ export default function GeologyLensPage() {
       {/* Bespoke USGS earthquake feed with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <EarthquakeList />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
+        <LensFeedButton domain="geology" />
+        <FieldLog />
       </section>
     </LensPageShell>
 

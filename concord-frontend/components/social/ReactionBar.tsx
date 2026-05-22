@@ -74,7 +74,7 @@ export function ReactionBar({ postId, hideWhenEmpty = true, compact = false, cla
     refetchInterval: 30_000,
   });
 
-  const reactions = data?.reactions || {};
+  const reactions = useMemo(() => data?.reactions || {}, [data]);
   const userReaction = data?.userReaction || null;
   const total = useMemo(() => Object.values(reactions).reduce((a, b) => a + (b || 0), 0), [reactions]);
 

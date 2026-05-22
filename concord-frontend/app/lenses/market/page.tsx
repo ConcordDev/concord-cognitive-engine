@@ -11,6 +11,8 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
+import { CompetitorTracker } from '@/components/market/CompetitorTracker';
+import { CompetitiveIntelligence } from '@/components/market/CompetitiveIntelligence';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useState, useMemo, useRef} from 'react';
@@ -651,6 +653,17 @@ export default function MarketLensPage() {
       {/* Bespoke SPDR sector heatmap with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SectorHeatmapPanel />
+      </section>
+
+      {/* Market-research workbench: competitor CRUD + SWOT + dashboard */}
+      <section className="mt-4">
+        <CompetitorTracker />
+      </section>
+
+      {/* Competitive-intelligence parity: news, battlecards, win/loss,
+          web-change tracking, TAM/SAM/SOM, landscape quadrant */}
+      <section className="mt-4">
+        <CompetitiveIntelligence />
       </section>
     </div>
           <RecentMineCard domain="market" limit={10} hideWhenEmpty className="mt-4" />

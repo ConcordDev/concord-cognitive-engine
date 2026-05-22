@@ -38,6 +38,7 @@ import math from './math.js';
 import bio from './bio.js';
 import quantum from './quantum.js';
 import art from './art.js';
+import answers from './answers.js';
 import platform from './platform.js';
 import neuro from './neuro.js';
 import physics from './physics.js';
@@ -72,6 +73,8 @@ import metacognition from './metacognition.js';
 import metalearning from './metalearning.js';
 import news from './news.js';
 import meditation from './meditation.js';
+import social from './social.js';
+import dxPlatform from './dx-platform.js';
 import observe from './observe.js';
 import ops from './ops.js';
 import productivity from './productivity.js';
@@ -168,6 +171,7 @@ import sports from './sports.js';
 import supplychain from './supplychain.js';
 import telecommunications from './telecommunications.js';
 import travel from './travel.js';
+import deities from './deities.js';
 import urbanplanning from './urbanplanning.js';
 import veterinary from './veterinary.js';
 import artistry from './artistry.js';
@@ -199,9 +203,33 @@ import blackMarket from './black-market.js';
 import society from './society.js';
 import gallery from './gallery.js';
 import classroom from './classroom.js';
+import syncLens from './sync.js';
+import uxSuite from './ux-suite.js';
+import worldCreator from './world-creator.js';
+import expeditionJournal from './expedition-journal.js';
+import bounties from './bounties.js';
+import subWorlds from './sub-worlds.js';
+import sentinelLens from './sentinel.js';
+import tournamentsLens from './tournaments.js';
+import meshLens from './mesh.js';
+import cognitiveReplay from './cognitive-replay.js';
+import forgeLens from './forge.js';
+import understandingLens from './understanding.js';
+import selfLens from './self.js';
+import worldmodelLens from './worldmodel.js';
+import savedLens from './saved.js';
+import inheritance from './inheritance.js';
+import personas from './personas.js';
+import psyops from './psyops.js';
+import tools from './tools.js';
+import goddessLens from './goddess.js';
+import cognitionLens from './cognition.js';
+import sandboxLens from './sandbox.js';
+import rootLens from './root.js';
 
 export default [
   healthcare,
+  answers,
   trades,
   food,
   retail,
@@ -264,6 +292,7 @@ export default [
   metalearning,
   news,
   meditation,
+  social,
   observe,
   ops,
   productivity,
@@ -360,6 +389,7 @@ export default [
   supplychain,
   telecommunications,
   travel,
+  deities,
   urbanplanning,
   veterinary,
   artistry,
@@ -391,4 +421,28 @@ export default [
   society,
   gallery,
   classroom,
+  syncLens,
+  uxSuite,
+  worldCreator,
+  bounties,
+  expeditionJournal,
+  subWorlds,
+  inheritance,
+  personas,
+  psyops,
+  tools,
+  savedLens,
+  sentinelLens,
+  tournamentsLens,
+  worldmodelLens,
+  meshLens,
+  cognitiveReplay,
+  forgeLens,
+  selfLens,
+  understandingLens,
+  dxPlatform,
+  goddessLens,
+  cognitionLens,
+  sandboxLens,
+  rootLens,
 ];

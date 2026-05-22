@@ -34,6 +34,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { AgentRoster } from '@/components/agents/AgentRoster';
+import { AgentRuntime } from '@/components/agents/AgentRuntime';
 
 // --- Types ---
 interface Agent {
@@ -513,6 +514,13 @@ export default function AgentsLensPage() {
                 })
               )}
             </div>
+
+            {/* ===== AGENT RUNTIME — autonomous execution surface ===== */}
+            <section className="panel p-4">
+              <AgentRuntime
+                agents={agents.map(a => ({ id: a.id, name: a.name, tools: a.tools, type: a.type }))}
+              />
+            </section>
 
             {/* Recent activity feed */}
             <div className="panel p-4">

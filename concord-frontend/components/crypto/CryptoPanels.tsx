@@ -334,6 +334,7 @@ export function NFTsPanel() {
           {list.map(n => (
             <div key={n.id} className="rounded border border-white/10 bg-black/30 overflow-hidden group">
               <div className="aspect-square bg-black/40 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element -- NFT art served from arbitrary external/IPFS hosts; next/image allowlist is impractical */}
                 {n.imageUrl ? <img src={n.imageUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-8 h-8 text-gray-700" /></div>}
               </div>
               <div className="p-2">
@@ -371,6 +372,7 @@ export function ActivityPanel() {
   const [loading, setLoading] = useState(true);
   const [kind, setKind] = useState<string>('all');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only kind should retrigger
   useEffect(() => { refresh(); }, [kind]);
 
   async function refresh() {
@@ -433,6 +435,7 @@ export function TaxPanel() {
   const [report, setReport] = useState<TaxReport | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only year should retrigger
   useEffect(() => { refresh(); }, [year]);
 
   async function refresh() {

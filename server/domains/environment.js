@@ -310,6 +310,7 @@ export default function registerEnvironmentActions(registerLensAction) {
       category: String(params.category || ""),
       notes: String(params.notes || ""),
       source: factor.source,
+      verificationStatus: "unverified",
       loggedAt: new Date().toISOString(),
     };
     ensureEnvBucket(s, "activities", userId).push(activity);
@@ -692,5 +693,411 @@ export default function registerEnvironmentActions(registerLensAction) {
         netEmissionsTonnes: Math.round((ytdTotal - offsetsRetiredTonnes) * 100) / 100,
       },
     };
+  });
+
+  // ── Carbon footprint dashboard — Scope 1/2/3 rollup for charts ──
+  // Computes per-scope totals, per-category breakdown, monthly trend and
+  // verification rollup from the user's real logged activities.
+
+  registerLensAction("environment", "footprint-breakdown", (ctx, _a, params = {}) => {
+    const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = envActor(ctx);
+    const activities = ensureEnvBucket(s, "activities", userId);
+    const year = params.year ? String(params.year) : String(new Date().getFullYear());
+    const yearActs = activities.filter(a => String(a.date || "").slice(0, 4) === year);
+
+    const byScope = { 1: 0, 2: 0, 3: 0 };
+    const byCategory = {};
+    const byMonth = {};
+    let verifiedTonnes = 0;
+    for (const a of yearActs) {
+      const t = Number(a.co2eTonnes) || 0;
+      if (byScope[a.scope] != null) byScope[a.scope] += t;
+      const cat = a.category || (a.factorKey || "uncategorised").split("_")[0];
+      byCategory[cat] = (byCategory[cat] || 0) + t;
+      const m = String(a.date || "").slice(0, 7) || `${year}-01`;
+      if (!byMonth[m]) byMonth[m] = { month: m, scope1: 0, scope2: 0, scope3: 0, total: 0 };
+      byMonth[m][`scope${a.scope}`] += t;
+      byMonth[m].total += t;
+      if ((a.verificationStatus || "unverified") === "verified") verifiedTonnes += t;
+    }
+    const total = byScope[1] + byScope[2] + byScope[3];
+    const round = (n) => Math.round(n * 100) / 100;
+    return {
+      ok: true,
+      result: {
+        year,
+        totalTonnes: round(total),
+        byScope: { scope1: round(byScope[1]), scope2: round(byScope[2]), scope3: round(byScope[3]) },
+        scopeShare: {
+          scope1: total > 0 ? Math.round((byScope[1] / total) * 100) : 0,
+          scope2: total > 0 ? Math.round((byScope[2] / total) * 100) : 0,
+          scope3: total > 0 ? Math.round((byScope[3] / total) * 100) : 0,
+        },
+        byCategory: Object.entries(byCategory)
+          .map(([category, tonnes]) => ({ category, tonnes: round(tonnes) }))
+          .sort((a, b) => b.tonnes - a.tonnes),
+        byMonth: Object.values(byMonth)
+          .map(m => ({ month: m.month, scope1: round(m.scope1), scope2: round(m.scope2), scope3: round(m.scope3), total: round(m.total) }))
+          .sort((a, b) => a.month.localeCompare(b.month)),
+        activityCount: yearActs.length,
+        verifiedTonnes: round(verifiedTonnes),
+        verifiedPct: total > 0 ? Math.round((verifiedTonnes / total) * 100) : 0,
+      },
+    };
+  });
+
+  // ── Year-over-year emissions trend + target-trajectory overlay ──
+  // Returns a per-year actual series alongside the straight-line
+  // reduction trajectory implied by the user's active targets.
+
+  registerLensAction("environment", "emissions-trend", (ctx, _a, params = {}) => {
+    const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = envActor(ctx);
+    const activities = ensureEnvBucket(s, "activities", userId);
+    const targets = ensureEnvBucket(s, "targets", userId);
+    const round = (n) => Math.round(n * 100) / 100;
+
+    const yearTotals = {};
+    for (const a of activities) {
+      const y = String(a.date || "").slice(0, 4);
+      if (!/^\d{4}$/.test(y)) continue;
+      yearTotals[y] = (yearTotals[y] || 0) + (Number(a.co2eTonnes) || 0);
+    }
+    const targetId = params.targetId ? String(params.targetId) : null;
+    let target = null;
+    if (targetId) target = targets.find(t => t.id === targetId) || null;
+    else target = targets.find(t => t.status === "active") || targets[0] || null;
+
+    // build the inclusive year window
+    const yearsWithData = Object.keys(yearTotals).map(Number);
+    let minYear = yearsWithData.length ? Math.min(...yearsWithData) : new Date().getFullYear();
+    let maxYear = yearsWithData.length ? Math.max(...yearsWithData) : new Date().getFullYear();
+    if (target) { minYear = Math.min(minYear, target.baseYear); maxYear = Math.max(maxYear, target.targetYear); }
+
+    const series = [];
+    for (let y = minYear; y <= maxYear; y++) {
+      const key = String(y);
+      const actual = yearTotals[key] != null ? round(yearTotals[key]) : null;
+      let trajectory = null;
+      if (target && y >= target.baseYear && y <= target.targetYear) {
+        const span = target.targetYear - target.baseYear || 1;
+        const frac = (y - target.baseYear) / span;
+        trajectory = round(target.baseCo2eTonnes - (target.baseCo2eTonnes - target.targetCo2eTonnes) * frac);
+      }
+      series.push({ year: key, actual, trajectory });
+    }
+    // YoY deltas
+    const withDelta = series.map((row, i) => {
+      const prev = i > 0 ? series[i - 1].actual : null;
+      const yoyPct = prev != null && row.actual != null && prev > 0
+        ? round(((row.actual - prev) / prev) * 100) : null;
+      return { ...row, yoyPct, varianceToTrajectory: row.actual != null && row.trajectory != null ? round(row.actual - row.trajectory) : null };
+    });
+    return {
+      ok: true,
+      result: {
+        series: withDelta,
+        target: target ? { id: target.id, name: target.name, baseYear: target.baseYear, targetYear: target.targetYear, baseCo2eTonnes: target.baseCo2eTonnes, targetCo2eTonnes: target.targetCo2eTonnes } : null,
+        hasTarget: !!target,
+      },
+    };
+  });
+
+  // ── GHG Protocol / CDP-style inventory report generation ────────
+  // Produces a structured, citable inventory report from real logged
+  // activities — line items grouped by scope with EPA factor sources.
+
+  registerLensAction("environment", "inventory-report", (ctx, _a, params = {}) => {
+    const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = envActor(ctx);
+    const activities = ensureEnvBucket(s, "activities", userId);
+    const targets = ensureEnvBucket(s, "targets", userId);
+    const offsets = ensureEnvBucket(s, "offsets", userId);
+    const recs = ensureEnvBucket(s, "recs", userId);
+    const round = (n) => Math.round(n * 100) / 100;
+    const year = params.year ? String(params.year) : String(new Date().getFullYear());
+    const framework = ["GHG_Protocol", "CDP", "GRI", "CSRD"].includes(params.framework) ? params.framework : "GHG_Protocol";
+    const organization = String(params.organization || "").trim() || "Reporting organization";
+
+    const yearActs = activities.filter(a => String(a.date || "").slice(0, 4) === year);
+    const scopeSection = (scope) => {
+      const acts = yearActs.filter(a => a.scope === scope);
+      const lineItems = acts.map(a => ({
+        date: a.date, factorKey: a.factorKey, amount: a.amount, unit: a.unit,
+        co2eTonnes: a.co2eTonnes, facility: a.facility || null,
+        category: a.category || null, factorSource: a.source,
+        verificationStatus: a.verificationStatus || "unverified",
+      }));
+      return {
+        scope,
+        totalTonnes: round(lineItems.reduce((t, l) => t + (l.co2eTonnes || 0), 0)),
+        lineItemCount: lineItems.length,
+        lineItems,
+      };
+    };
+    const s1 = scopeSection(1), s2 = scopeSection(2), s3 = scopeSection(3);
+    const grossTonnes = round(s1.totalTonnes + s2.totalTonnes + s3.totalTonnes);
+    const retiredOffsets = round(offsets.filter(o => o.status === "retired").reduce((t, o) => t + o.tonnes, 0));
+    const verifiedCount = yearActs.filter(a => (a.verificationStatus || "unverified") === "verified").length;
+
+    return {
+      ok: true,
+      result: {
+        report: {
+          framework,
+          organization,
+          reportingYear: year,
+          generatedAt: new Date().toISOString(),
+          methodology: "GHG Protocol Corporate Standard; EPA GHG Emission Factors Hub 2024; eGRID 2022; IPCC AR5 GWP100",
+          boundary: "Operational control",
+          scopes: { scope1: s1, scope2: s2, scope3: s3 },
+          summary: {
+            grossEmissionsTonnes: grossTonnes,
+            scope1Tonnes: s1.totalTonnes,
+            scope2Tonnes: s2.totalTonnes,
+            scope3Tonnes: s3.totalTonnes,
+            retiredOffsetsTonnes: retiredOffsets,
+            netEmissionsTonnes: round(grossTonnes - retiredOffsets),
+            recsRetiredMwh: round(recs.filter(r => r.status === "retired").reduce((t, r) => t + r.mwh, 0)),
+            totalLineItems: yearActs.length,
+            verifiedLineItems: verifiedCount,
+            verifiedPct: yearActs.length > 0 ? Math.round((verifiedCount / yearActs.length) * 100) : 0,
+            activeTargets: targets.filter(t => t.status === "active").map(t => ({ name: t.name, targetYear: t.targetYear, reductionPct: t.reductionPct })),
+          },
+        },
+      },
+    };
+  });
+
+  // ── Activity data import — bulk-parse rows from utility bills /
+  // spreadsheets. Each row references a real EPA factor key; rows that
+  // fail validation are reported, not silently dropped.
+
+  registerLensAction("environment", "activities-import", (ctx, _a, params = {}) => {
+    const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = envActor(ctx);
+    const rows = Array.isArray(params.rows) ? params.rows : [];
+    if (rows.length === 0) return { ok: false, error: "rows array required" };
+    if (rows.length > 1000) return { ok: false, error: "max 1000 rows per import" };
+    const imported = [];
+    const errors = [];
+    rows.forEach((row, i) => {
+      const factorKey = String(row.factorKey || "");
+      const amount = Number(row.amount);
+      const factor = EMISSION_FACTORS[factorKey];
+      if (!factor) { errors.push({ row: i + 1, error: `unknown factor key '${factorKey}'` }); return; }
+      if (!Number.isFinite(amount) || amount <= 0) { errors.push({ row: i + 1, error: "amount must be > 0" }); return; }
+      const date = String(row.date || new Date().toISOString().slice(0, 10));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { errors.push({ row: i + 1, error: "date must be YYYY-MM-DD" }); return; }
+      const co2eKg = amount * factor.co2e;
+      const activity = {
+        id: uidEnv("act"), factorKey, amount, unit: factor.unit, scope: factor.scope,
+        co2eKg: Math.round(co2eKg * 100) / 100,
+        co2eTonnes: Math.round((co2eKg / 1000) * 100) / 100,
+        date,
+        facility: String(row.facility || ""),
+        supplierId: row.supplierId ? String(row.supplierId) : null,
+        category: String(row.category || ""),
+        notes: String(row.notes || ""),
+        source: factor.source,
+        importBatch: String(params.batchLabel || `import-${new Date().toISOString().slice(0, 10)}`),
+        verificationStatus: "unverified",
+        loggedAt: new Date().toISOString(),
+      };
+      ensureEnvBucket(s, "activities", userId).push(activity);
+      imported.push(activity);
+    });
+    if (imported.length > 0) saveEnvState();
+    return {
+      ok: true,
+      result: {
+        importedCount: imported.length,
+        errorCount: errors.length,
+        rowsReceived: rows.length,
+        imported,
+        errors,
+        totalTonnesImported: Math.round(imported.reduce((t, a) => t + a.co2eTonnes, 0) * 100) / 100,
+      },
+    };
+  });
+
+  // ── Reduction-scenario modeling — project the effect of one or more
+  // reduction projects on the current emissions total over a horizon.
+
+  registerLensAction("environment", "scenario-model", (ctx, _a, params = {}) => {
+    const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = envActor(ctx);
+    const activities = ensureEnvBucket(s, "activities", userId);
+    const projects = ensureEnvBucket(s, "projects", userId);
+    const round = (n) => Math.round(n * 100) / 100;
+
+    const baseYear = Number(params.baseYear) || new Date().getFullYear();
+    const horizonYears = Math.max(1, Math.min(40, Number(params.horizonYears) || 10));
+    const annualGrowthPct = Math.max(-50, Math.min(50, Number(params.annualGrowthPct) || 0));
+
+    const baselineTonnes = Number.isFinite(Number(params.baselineTonnes)) && Number(params.baselineTonnes) > 0
+      ? Number(params.baselineTonnes)
+      : activities
+          .filter(a => String(a.date || "").slice(0, 4) === String(baseYear))
+          .reduce((t, a) => t + (Number(a.co2eTonnes) || 0), 0);
+
+    // resolve selected projects (by id) or use ad-hoc reductions supplied inline
+    let selected = [];
+    if (Array.isArray(params.projectIds) && params.projectIds.length > 0) {
+      selected = params.projectIds
+        .map(id => projects.find(p => p.id === id))
+        .filter(Boolean)
+        .map(p => ({
+          name: p.name,
+          annualReductionTonnes: Number(p.expectedReductionTonnesPerYear) || 0,
+          startYear: p.startDate ? Number(String(p.startDate).slice(0, 4)) || baseYear : baseYear,
+        }));
+    }
+    if (Array.isArray(params.reductions)) {
+      for (const r of params.reductions) {
+        selected.push({
+          name: String(r.name || "ad-hoc reduction"),
+          annualReductionTonnes: Math.max(0, Number(r.annualReductionTonnes) || 0),
+          startYear: Number(r.startYear) || baseYear,
+        });
+      }
+    }
+
+    const projection = [];
+    for (let i = 0; i <= horizonYears; i++) {
+      const year = baseYear + i;
+      const businessAsUsual = baselineTonnes * Math.pow(1 + annualGrowthPct / 100, i);
+      let cumulativeReduction = 0;
+      for (const p of selected) {
+        if (year >= p.startYear) cumulativeReduction += p.annualReductionTonnes;
+      }
+      const withProjects = Math.max(0, businessAsUsual - cumulativeReduction);
+      projection.push({
+        year: String(year),
+        businessAsUsual: round(businessAsUsual),
+        withProjects: round(withProjects),
+        reductionTonnes: round(Math.min(businessAsUsual, cumulativeReduction)),
+      });
+    }
+    const finalRow = projection[projection.length - 1];
+    return {
+      ok: true,
+      result: {
+        baselineTonnes: round(baselineTonnes),
+        baseYear,
+        horizonYears,
+        annualGrowthPct,
+        scenarioProjects: selected,
+        projection,
+        finalYearBusinessAsUsual: finalRow.businessAsUsual,
+        finalYearWithProjects: finalRow.withProjects,
+        totalAvoidedTonnes: round(projection.reduce((t, r) => t + r.reductionTonnes, 0)),
+        finalYearReductionPct: finalRow.businessAsUsual > 0
+          ? round(((finalRow.businessAsUsual - finalRow.withProjects) / finalRow.businessAsUsual) * 100)
+          : 0,
+      },
+    };
+  });
+
+  // ── Audit trail / verification status per activity entry ────────
+
+  registerLensAction("environment", "activity-set-verification", (ctx, _a, params = {}) => {
+    const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = envActor(ctx);
+    const id = String(params.id || "");
+    const status = String(params.status || "");
+    if (!["unverified", "in_review", "verified", "rejected"].includes(status)) {
+      return { ok: false, error: "status must be unverified|in_review|verified|rejected" };
+    }
+    const list = ensureEnvBucket(s, "activities", userId);
+    const activity = list.find(a => a.id === id);
+    if (!activity) return { ok: false, error: "activity not found" };
+    const prior = activity.verificationStatus || "unverified";
+    activity.verificationStatus = status;
+    activity.verifier = String(params.verifier || "");
+    activity.verificationNote = String(params.note || "");
+    activity.verifiedAt = new Date().toISOString();
+    if (!Array.isArray(activity.auditTrail)) activity.auditTrail = [];
+    activity.auditTrail.push({
+      at: new Date().toISOString(),
+      action: "verification_change",
+      from: prior,
+      to: status,
+      verifier: activity.verifier || null,
+      note: activity.verificationNote || null,
+    });
+    saveEnvState();
+    return { ok: true, result: { activity } };
+  });
+
+  registerLensAction("environment", "audit-trail", (ctx, _a, params = {}) => {
+    const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = envActor(ctx);
+    const activities = ensureEnvBucket(s, "activities", userId);
+    const id = params.id ? String(params.id) : null;
+    let scoped = activities;
+    if (id) {
+      scoped = activities.filter(a => a.id === id);
+      if (scoped.length === 0) return { ok: false, error: "activity not found" };
+    }
+    const events = [];
+    for (const a of scoped) {
+      events.push({
+        at: a.loggedAt, activityId: a.id, action: "logged",
+        from: null, to: a.verificationStatus || "unverified",
+        detail: `${a.factorKey} · ${a.amount} ${a.unit} · ${a.co2eTonnes}t`,
+        verifier: null, note: a.importBatch ? `import batch: ${a.importBatch}` : null,
+      });
+      for (const e of a.auditTrail || []) {
+        events.push({ at: e.at, activityId: a.id, action: e.action, from: e.from, to: e.to, detail: `${a.factorKey} · ${a.co2eTonnes}t`, verifier: e.verifier, note: e.note });
+      }
+    }
+    events.sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+    const statusRollup = { unverified: 0, in_review: 0, verified: 0, rejected: 0 };
+    for (const a of activities) {
+      const st = a.verificationStatus || "unverified";
+      if (statusRollup[st] != null) statusRollup[st]++;
+    }
+    return {
+      ok: true,
+      result: {
+        events,
+        eventCount: events.length,
+        statusRollup,
+        totalActivities: activities.length,
+      },
+    };
+  });
+
+  registerLensAction("environment", "feed", async (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.environmentLens) STATE.environmentLens = {};
+    if (!(STATE.environmentLens.feedSeen instanceof Set)) STATE.environmentLens.feedSeen = new Set();
+    const seen = STATE.environmentLens.feedSeen;
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
+    try {
+      const r = await fetch("https://api.weather.gov/alerts/active?severity=Severe,Extreme&status=actual&message_type=alert", { headers: { "User-Agent": "Concord-OS/1.0 (https://concord-os.org)", Accept: "application/geo+json" } });
+      if (!r.ok) return { ok: false, error: `nws ${r.status}` };
+      const data = await r.json();
+      const feats = (data.features || []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const f of feats) {
+        const p = f.properties || {};
+        const id = p.id || f.id;
+        if (seen.has(id)) { skipped++; continue; }
+        const title = `${p.event || "Hazard alert"} - ${String(p.areaDesc || "").slice(0, 80)}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${p.event || "Hazard"}\nSeverity: ${p.severity || "?"}\nArea: ${p.areaDesc || "?"}\nEffective: ${p.effective || "?"} - Expires: ${p.expires || "?"}\n\n${String(p.headline || p.description || "").slice(0, 600)}`,
+          tags: ["environment", "feed", "hazard-alert", "nws"],
+          source: "nws-alerts-feed",
+          meta: { alertId: id, event: p.event, severity: p.severity, areaDesc: p.areaDesc },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: "nws-severe-alerts", dtuIds } };
+    } catch (e) { return { ok: false, error: `nws unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
   });
 };

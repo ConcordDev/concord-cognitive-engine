@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
 import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
+import { RmsCadConsole } from '@/components/law-enforcement/RmsCadConsole';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -383,6 +384,11 @@ export default function LawEnforcementLensPage() {
       </div>
 
       <UniversalActions domain="law-enforcement" artifactId={items[0]?.id} />
+
+      <section className="mt-6">
+        <RmsCadConsole />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PoliceFeed />
       </section>

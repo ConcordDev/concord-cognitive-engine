@@ -45,7 +45,7 @@ export function AllocationPie() {
     const key = mode === 'class' ? 'assetClass' : 'sector';
     const buckets = new Map<string, number>();
     for (const h of holdings) {
-      const k = (h as any)[key] || 'other';
+      const k = (h as unknown as Record<string, string>)[key] || 'other';
       buckets.set(k, (buckets.get(k) || 0) + h.value);
     }
     return Array.from(buckets.entries())

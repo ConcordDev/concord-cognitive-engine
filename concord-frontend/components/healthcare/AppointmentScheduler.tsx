@@ -39,6 +39,7 @@ export function AppointmentScheduler() {
   const [copayIntent, setCopayIntent] = useState<{ clientSecret: string; copayUsd: number } | null>(null);
   const [copayMessage, setCopayMessage] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- search is a stable closure; run once on mount
   useEffect(() => { search(); }, []);
 
   async function search() {

@@ -223,3 +223,171 @@ describe("astronomy.near-earth-objects (NASA NeoWs)", () => {
     assert.match(r.error, /neows unreachable.*429/);
   });
 });
+
+// ─── SkySafari / Stellarium feature-parity macros ──────────────────────
+
+describe("astronomy.sky-chart (interactive real-time sky chart)", () => {
+  it("requires observer coordinates", () => {
+    const r = call("sky-chart", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /latitude and longitude/);
+  });
+
+  it("computes alt/az for bright stars at observer location/time", () => {
+    const r = call("sky-chart", ctxA, { latitude: 40.7, longitude: -74, when: "2026-05-21T03:00:00Z" });
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.stars) && r.result.stars.length > 0);
+    const star = r.result.stars[0];
+    assert.ok(typeof star.altitude === "number" && star.altitude >= -90 && star.altitude <= 90);
+    assert.ok(star.azimuth >= 0 && star.azimuth < 360);
+    assert.ok(typeof r.result.sun.altitude === "number");
+    assert.ok(typeof r.result.moon.illumination === "number");
+    assert.ok(Array.isArray(r.result.constellationLines));
+    assert.equal(typeof r.result.visibleCount, "number");
+  });
+
+  it("Polaris altitude ≈ observer latitude (north star property)", () => {
+    const r = call("sky-chart", ctxA, { latitude: 51.5, longitude: 0, when: "2026-05-21T22:00:00Z" });
+    const polaris = r.result.stars.find((s) => s.name === "Polaris");
+    assert.ok(polaris);
+    assert.ok(Math.abs(polaris.altitude - 51.5) < 2);
+  });
+});
+
+describe("astronomy.whats-up (tonight's-best visibility list)", () => {
+  it("requires observer coordinates", () => {
+    const r = call("whats-up", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+
+  it("returns objects above the horizon sorted by altitude", () => {
+    const r = call("whats-up", ctxA, { latitude: 40.7, longitude: -74, when: "2026-05-21T04:00:00Z", minAltitude: 0 });
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.objects));
+    for (let i = 1; i < r.result.objects.length; i++) {
+      assert.ok(r.result.objects[i - 1].altitude >= r.result.objects[i].altitude);
+    }
+    assert.equal(typeof r.result.darkSky, "boolean");
+  });
+});
+
+describe("astronomy.constellations (lines + deep-sky overlay)", () => {
+  it("returns constellation line topology and deep-sky catalogue", () => {
+    const r = call("constellations", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.count > 0);
+    assert.ok(r.result.deepSkyCount > 0);
+    const orion = r.result.constellations.find((c) => c.name === "Orion");
+    assert.ok(orion && orion.segments.length > 0);
+    assert.ok(orion.segments[0].fromRaDec && orion.segments[0].toRaDec);
+  });
+
+  it("resolves alt/az for endpoints when observer supplied", () => {
+    const r = call("constellations", ctxA, { latitude: 40.7, longitude: -74, when: "2026-05-21T03:00:00Z" });
+    const seg = r.result.constellations[0].segments[0];
+    assert.ok(seg.fromAltAz && typeof seg.fromAltAz.altitude === "number");
+  });
+});
+
+describe("astronomy.ephemeris-calendar (moon phase + rise/set)", () => {
+  it("requires observer coordinates", () => {
+    const r = call("ephemeris-calendar", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+
+  it("produces a multi-day moon-phase + rise/set calendar", () => {
+    const r = call("ephemeris-calendar", ctxA, { latitude: 40.7, longitude: -74, startDate: "2026-05-21", days: 7 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.calendar.length, 7);
+    const day = r.result.calendar[0];
+    assert.equal(day.date, "2026-05-21");
+    assert.ok(typeof day.moonPhase === "string");
+    assert.ok(day.moonIllumination >= 0 && day.moonIllumination <= 1);
+  });
+});
+
+describe("astronomy.observing-forecast (light-pollution / conditions)", () => {
+  it("requires observer coordinates", async () => {
+    const r = await call("observing-forecast", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+
+  it("hits open-meteo and scores observing conditions", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        json: async () => ({
+          hourly: {
+            time: ["2026-05-21T22:00", "2026-05-21T23:00"],
+            cloud_cover: [10, 80],
+            visibility: [24000, 12000],
+            relative_humidity_2m: [50, 70],
+            temperature_2m: [12, 11],
+          },
+        }),
+      };
+    };
+    const r = await call("observing-forecast", ctxA, { latitude: 40.7, longitude: -74 });
+    assert.equal(r.ok, true);
+    assert.match(capturedUrl, /api\.open-meteo\.com/);
+    assert.equal(r.result.source, "open-meteo");
+    assert.ok(r.result.hours[0].observingScore > r.result.hours[1].observingScore);
+    assert.ok(r.result.bestWindow);
+  });
+});
+
+describe("astronomy.goto-* (telescope GoTo INDI/ASCOM bridge)", () => {
+  before(() => { globalThis._concordSTATE = globalThis._concordSTATE || {}; });
+
+  it("sets and reads a mount profile", () => {
+    const set = call("goto-mount-set", ctxA, { protocol: "ascom", host: "192.168.1.5", port: 11880, name: "EQ6-R" });
+    assert.equal(set.ok, true);
+    assert.equal(set.result.mount.protocol, "ascom");
+    const get = call("goto-mount-get", ctxA, {});
+    assert.equal(get.result.mount.name, "EQ6-R");
+  });
+
+  it("enqueues a GoTo command with resolved alt/az", () => {
+    const r = call("goto-command", ctxA, { targetName: "M31", ra: 10.68, dec: 41.27, latitude: 40.7, longitude: -74 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.command.targetName, "M31");
+    assert.ok(r.result.command.altAz);
+    assert.equal(r.result.command.status, "queued");
+  });
+
+  it("rejects a command without ra/dec", () => {
+    const r = call("goto-command", ctxA, { targetName: "Nowhere" });
+    assert.equal(r.ok, false);
+  });
+
+  it("lists the queue and updates command status", () => {
+    const q = call("goto-queue", ctxA, {});
+    assert.ok(q.result.count >= 1);
+    const upd = call("goto-command-update", ctxA, { id: q.result.queue[0].id, status: "completed" });
+    assert.equal(upd.result.command.status, "completed");
+    const cleared = call("goto-clear", ctxA, {});
+    assert.ok(cleared.result.removed >= 1);
+  });
+});
+
+describe("astronomy.ar-resolve (point-phone-at-sky AR)", () => {
+  it("requires observer + pointing direction", () => {
+    const r = call("ar-resolve", ctxA, { latitude: 40.7, longitude: -74 });
+    assert.equal(r.ok, false);
+  });
+
+  it("resolves the bright stars near a device-pointing direction", () => {
+    const chart = call("sky-chart", ctxA, { latitude: 40.7, longitude: -74, when: "2026-05-21T03:00:00Z" });
+    const upStar = chart.result.stars.filter((s) => s.visible).sort((a, b) => b.altitude - a.altitude)[0];
+    assert.ok(upStar);
+    const r = call("ar-resolve", ctxA, {
+      latitude: 40.7, longitude: -74, when: "2026-05-21T03:00:00Z",
+      altitude: upStar.altitude, azimuth: upStar.azimuth, fov: 20,
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.nearest);
+    assert.ok(r.result.nearest.separationDeg <= 20);
+  });
+});

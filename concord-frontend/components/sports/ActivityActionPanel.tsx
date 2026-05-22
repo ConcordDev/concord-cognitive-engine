@@ -49,7 +49,6 @@ function pickMessage(e: unknown): string {
 interface StatsResult { metric?: string; average?: number; best?: number; trend?: string; consistency?: number; dataPoints?: number }
 interface PlanResult { sport?: string; daysPerWeek?: number; schedule?: Array<{ day: number; workout: string; intensity: string }>; principle?: string }
 interface RiskResult { riskScore?: number; riskLevel?: string; recommendations?: string[] }
-interface TeamResult { rosterSize?: number; avgAge?: number; avgRating?: number; topPerformer?: string; teamStrength?: string }
 
 const SPORTS = ['running', 'swimming', 'cycling', 'general'];
 const LEVELS = ['beginner', 'intermediate', 'advanced', 'elite'];
@@ -71,7 +70,6 @@ export function ActivityActionPanel() {
   const [statsResult, setStatsResult] = useState<StatsResult | null>(null);
   const [planResult, setPlanResult] = useState<PlanResult | null>(null);
   const [riskResult, setRiskResult] = useState<RiskResult | null>(null);
-  const [teamResult, setTeamResult] = useState<TeamResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);

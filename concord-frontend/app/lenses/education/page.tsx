@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { Users as MobileTabUsers, BookOpen as MobileTabBook, ClipboardList as MobileTabList, Award as MobileTabAward, Calendar as MobileTabCal, Brain as MobileTabBrain } from 'lucide-react';
@@ -106,6 +107,12 @@ import { FlashcardDeck } from '@/components/education/FlashcardDeck';
 import { SocraticTutor } from '@/components/education/SocraticTutor';
 import { QuizGenerator } from '@/components/education/QuizGenerator';
 import { LessonPlanBuilder } from '@/components/education/LessonPlanBuilder';
+import { VideoLessonPlayer } from '@/components/education/VideoLessonPlayer';
+import { InteractiveExercises } from '@/components/education/InteractiveExercises';
+import { LearningPaths } from '@/components/education/LearningPaths';
+import { LiveCohorts } from '@/components/education/LiveCohorts';
+import { MasteryDashboard } from '@/components/education/MasteryDashboard';
+import { LessonQA } from '@/components/education/LessonQA';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -142,7 +149,14 @@ type ModeTab =
   | 'Flashcards'
   | 'Socratic'
   | 'QuizGen'
-  | 'LessonPlan';
+  | 'LessonPlan'
+  // Parity backlog — video lessons, interactive exercises, paths, cohorts, mastery, lesson Q&A
+  | 'Video'
+  | 'Exercises'
+  | 'Paths'
+  | 'Cohorts'
+  | 'Mastery'
+  | 'LessonQA';
 type ArtifactType = 'Student' | 'Course' | 'Assignment' | 'Grade' | 'LessonPlan' | 'Certification' | 'Resource' | 'Quiz';
 type Status = 'enrolled' | 'active' | 'completed' | 'withdrawn' | 'graduated';
 type AttendanceStatus = 'present' | 'absent' | 'tardy' | 'excused';
@@ -264,6 +278,13 @@ const MODE_TABS: { id: ModeTab; icon: LucideIcon; defaultType: ArtifactType }[] 
   { id: 'Socratic', icon: GraduationCap, defaultType: 'Student' },
   { id: 'QuizGen', icon: HelpCircle, defaultType: 'Quiz' },
   { id: 'LessonPlan', icon: FileText, defaultType: 'LessonPlan' },
+  // Parity backlog surfaces (Khan Academy + Coursera 2026)
+  { id: 'Video', icon: Video, defaultType: 'Course' },
+  { id: 'Exercises', icon: Target, defaultType: 'Quiz' },
+  { id: 'Paths', icon: Route, defaultType: 'Course' },
+  { id: 'Cohorts', icon: Users, defaultType: 'Student' },
+  { id: 'Mastery', icon: Brain, defaultType: 'Student' },
+  { id: 'LessonQA', icon: MessageSquare, defaultType: 'Course' },
 ];
 
 const ALL_STATUSES: Status[] = ['enrolled', 'active', 'completed', 'withdrawn', 'graduated'];
@@ -2751,6 +2772,42 @@ export default function EducationLensPage() {
           <LessonPlanBuilder />
         </div>
       )}
+      {activeTab === 'Video' && (
+        <section className={ds.panel}>
+          <h2 className={cn(ds.heading2, 'mb-4')}>Video lessons</h2>
+          <VideoLessonPlayer />
+        </section>
+      )}
+      {activeTab === 'Exercises' && (
+        <section className={ds.panel}>
+          <h2 className={cn(ds.heading2, 'mb-4')}>Interactive exercises</h2>
+          <InteractiveExercises />
+        </section>
+      )}
+      {activeTab === 'Paths' && (
+        <section className={ds.panel}>
+          <h2 className={cn(ds.heading2, 'mb-4')}>Learning paths</h2>
+          <LearningPaths />
+        </section>
+      )}
+      {activeTab === 'Cohorts' && (
+        <section className={ds.panel}>
+          <h2 className={cn(ds.heading2, 'mb-4')}>Live cohorts</h2>
+          <LiveCohorts />
+        </section>
+      )}
+      {activeTab === 'Mastery' && (
+        <section className={ds.panel}>
+          <h2 className={cn(ds.heading2, 'mb-4')}>Mastery dashboard</h2>
+          <MasteryDashboard />
+        </section>
+      )}
+      {activeTab === 'LessonQA' && (
+        <section className={ds.panel}>
+          <h2 className={cn(ds.heading2, 'mb-4')}>Lesson Q&amp;A</h2>
+          <LessonQA />
+        </section>
+      )}
       {activeTab === 'Quizzes' && (
         <section className={ds.panel}>
           <div className={cn(ds.sectionHeader, 'mb-4')}>
@@ -4694,6 +4751,7 @@ function KhanCourseraWorkbenchSection() {
         {active === 'notes' && <LessonNotes />}
         {active === 'discussions' && <CourseDiscussions courseId={activeCourse?.id} />}
       </div>
+      <section className="mt-4"><LensFeedButton domain="education" label="Live quiz feed" /></section>
     </section>
   );
 }

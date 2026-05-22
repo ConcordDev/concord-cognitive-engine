@@ -309,6 +309,228 @@ describe("agriculture.grain-bins-* (storage)", () => {
   });
 });
 
+// ── 2026 Climate FieldView feature-parity backlog ──────────────
+
+describe("agriculture.satellite-ndvi-* (vegetation imagery layers)", () => {
+  it("fetch rejects missing fieldId", async () => {
+    const r = await call("satellite-ndvi-fetch", ctxA, { lat: 41, lng: -93 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /fieldId required/);
+  });
+  it("fetch rejects missing coords", async () => {
+    const r = await call("satellite-ndvi-fetch", ctxA, { fieldId: "f1" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /lat\/lng required/);
+  });
+  it("list returns empty array for a field with no layers", () => {
+    const r = call("satellite-ndvi-list", ctxA, { fieldId: "f_none" });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.layers, []);
+  });
+  it("delete rejects unknown layer id", () => {
+    const r = call("satellite-ndvi-delete", ctxA, { id: "nope" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /layer not found/);
+  });
+});
+
+describe("agriculture.telemetry-import (ISOBUS / CAN sync)", () => {
+  it("imports a telemetry batch and applies machine state", () => {
+    const eq = call("equipment-add", ctxA, { name: "8R 410", kind: "tractor" });
+    const id = eq.result.equipment.id;
+    const r = call("telemetry-import", ctxA, {
+      equipmentId: id,
+      protocol: "isobus",
+      rows: [
+        { ts: "2026-05-21T14:00:00Z", latitude: 41.5, longitude: -93.5, groundSpeed: 4.8, engineHours: 1240.5, fuelLevel: 72, areaWorked: 3.2 },
+        { ts: "2026-05-21T14:01:00Z", latitude: 41.51, longitude: -93.51, groundSpeed: 5.1, engineHours: 1240.6, fuelLevel: 71, areaWorked: 1.1 },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.sync.rowsReceived, 2);
+    assert.equal(r.result.sync.rowsApplied, 2);
+    assert.equal(r.result.sync.areaWorkedAcres, 4.3);
+    assert.equal(r.result.equipment.fuelLevelPct, 71);
+    assert.equal(r.result.equipment.status, "working");
+  });
+  it("rejects unknown equipment", () => {
+    const r = call("telemetry-import", ctxA, { equipmentId: "ghost", rows: [{ speed: 1 }] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /equipment not found/);
+  });
+  it("rejects empty rows", () => {
+    const eq = call("equipment-add", ctxA, { name: "S7" });
+    const r = call("telemetry-import", ctxA, { equipmentId: eq.result.equipment.id, rows: [] });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /rows required/);
+  });
+  it("syncs-list returns the import history", () => {
+    const eq = call("equipment-add", ctxA, { name: "Sprayer" });
+    const id = eq.result.equipment.id;
+    call("telemetry-import", ctxA, { equipmentId: id, rows: [{ speed: 3 }] });
+    const l = call("telemetry-syncs-list", ctxA, { equipmentId: id });
+    assert.equal(l.ok, true);
+    assert.equal(l.result.syncs.length, 1);
+  });
+});
+
+describe("agriculture.profit-analysis + cost-entry-* (per-field economics)", () => {
+  it("cost entries CRUD scoped by field", () => {
+    const a = call("cost-entry-add", ctxA, { fieldId: "fp1", label: "seed corn", amount: 110, category: "seed", perAcre: true });
+    assert.equal(a.ok, true);
+    call("cost-entry-add", ctxA, { fieldId: "fp1", label: "fertilizer", amount: 95, category: "fertilizer", perAcre: true });
+    call("cost-entry-add", ctxA, { fieldId: "fp2", label: "other", amount: 10, category: "other" });
+    assert.equal(call("cost-entries-list", ctxA, { fieldId: "fp1" }).result.entries.length, 2);
+    assert.equal(call("cost-entry-delete", ctxA, { id: a.result.entry.id }).ok, true);
+  });
+  it("cost-entry-add rejects negative amount", () => {
+    const r = call("cost-entry-add", ctxA, { fieldId: "fp1", label: "x", amount: -5 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /amount must be/);
+  });
+  it("computes gross / net / breakeven from costs + price", () => {
+    const ctxP = { actor: { userId: "user_profit" }, userId: "user_profit" };
+    const f = call("field-create", ctxP, { name: "Profit 80", acreage: 80, lat: 42, lng: -93 });
+    const fid = f.result.field.id;
+    call("cost-entry-add", ctxP, { fieldId: fid, label: "seed", amount: 110, category: "seed", perAcre: true });
+    call("cost-entry-add", ctxP, { fieldId: fid, label: "fertilizer", amount: 90, category: "fertilizer", perAcre: true });
+    call("harvest-log", ctxP, { fieldId: fid, crop: "corn", acresHarvested: 80, yieldBushels: 16000 });
+    const r = call("profit-analysis", ctxP, { fieldId: fid, commodityPrice: 4.5 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalCost, 16000); // (110+90) * 80
+    assert.equal(r.result.grossRevenue, 72000); // 16000 bu * 4.5
+    assert.equal(r.result.netProfit, 56000);
+    assert.equal(r.result.breakevenPrice, 1); // 16000 cost / 16000 bu
+    assert.equal(r.result.status, "profitable");
+  });
+  it("rejects missing commodity price", () => {
+    const ctxP2 = { actor: { userId: "user_profit2" }, userId: "user_profit2" };
+    const f = call("field-create", ctxP2, { name: "P", acreage: 40, lat: 0, lng: 0 });
+    const r = call("profit-analysis", ctxP2, { fieldId: f.result.field.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /commodityPrice/);
+  });
+});
+
+describe("agriculture.spray-window-advisor (weather-driven)", () => {
+  it("rejects missing coords", async () => {
+    const r = await call("spray-window-advisor", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /lat\/lng required/);
+  });
+  it("returns an error on network failure (hermetic)", async () => {
+    const r = await call("spray-window-advisor", ctxA, { lat: 41, lng: -93 });
+    assert.equal(r.ok, false);
+    assert.ok(r.error);
+  });
+});
+
+describe("agriculture.yield-map-build (harvest-monitor overlay)", () => {
+  it("bins geo-tagged points into a grid with per-cell tiers", () => {
+    const r = call("yield-map-build", ctxA, {
+      fieldId: "fy1",
+      gridCells: 4,
+      points: [
+        { lat: 41.50, lng: -93.50, yieldPerAcre: 220 },
+        { lat: 41.51, lng: -93.51, yieldPerAcre: 210 },
+        { lat: 41.59, lng: -93.59, yieldPerAcre: 120 },
+        { lat: 41.58, lng: -93.58, yieldPerAcre: 130 },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.map.pointCount, 4);
+    assert.ok(r.result.map.cells.length >= 2);
+    assert.ok(r.result.map.fieldMaxYield >= r.result.map.fieldMinYield);
+  });
+  it("rejects when no geo-tagged points available", () => {
+    const r = call("yield-map-build", ctxA, { fieldId: "fy_empty" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no geo-tagged harvest-monitor points/);
+  });
+  it("yield-maps-list returns built maps", () => {
+    call("yield-map-build", ctxA, {
+      fieldId: "fy2",
+      points: [{ lat: 1, lng: 1, yieldPerAcre: 100 }, { lat: 2, lng: 2, yieldPerAcre: 200 }],
+    });
+    const l = call("yield-maps-list", ctxA, { fieldId: "fy2" });
+    assert.equal(l.ok, true);
+    assert.equal(l.result.maps.length, 1);
+  });
+});
+
+describe("agriculture.trial-* (seed / hybrid comparison)", () => {
+  it("logs trial entries and ranks hybrids by yield", () => {
+    const ctxT = { actor: { userId: "user_trial" }, userId: "user_trial" };
+    call("trial-entry-add", ctxT, { trialName: "Corn 2026", hybrid: "DKC65-95", brand: "DeKalb", yieldPerAcre: 218, replicate: "1" });
+    call("trial-entry-add", ctxT, { trialName: "Corn 2026", hybrid: "DKC65-95", brand: "DeKalb", yieldPerAcre: 222, replicate: "2" });
+    call("trial-entry-add", ctxT, { trialName: "Corn 2026", hybrid: "P1197", brand: "Pioneer", yieldPerAcre: 205, replicate: "1" });
+    const c = call("trial-compare", ctxT, { trialName: "Corn 2026" });
+    assert.equal(c.ok, true);
+    assert.equal(c.result.hybridCount, 2);
+    assert.equal(c.result.entryCount, 3);
+    assert.equal(c.result.winner.hybrid, "DKC65-95");
+    assert.equal(c.result.ranked[0].avgYieldPerAcre, 220);
+    assert.equal(c.result.ranked[0].replicates, 2);
+  });
+  it("trial-entry-add rejects missing hybrid", () => {
+    const r = call("trial-entry-add", ctxA, { trialName: "T", hybrid: "", yieldPerAcre: 100 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /trialName and hybrid required/);
+  });
+  it("trial-compare rejects unknown trial", () => {
+    const r = call("trial-compare", ctxA, { trialName: "does-not-exist" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no entries for this trial/);
+  });
+  it("trial-entry-delete removes the entry", () => {
+    const ctxT2 = { actor: { userId: "user_trial2" }, userId: "user_trial2" };
+    const e = call("trial-entry-add", ctxT2, { trialName: "X", hybrid: "H1", yieldPerAcre: 50 });
+    call("trial-entry-delete", ctxT2, { id: e.result.entry.id });
+    assert.equal(call("trial-entries-list", ctxT2, { trialName: "X" }).result.entries.length, 0);
+  });
+});
+
+describe("agriculture.soil-grid-* (sampling grid + lab import)", () => {
+  it("generates a grid from field coords + acreage", () => {
+    const ctxS = { actor: { userId: "user_soil" }, userId: "user_soil" };
+    const f = call("field-create", ctxS, { name: "Soil 40", acreage: 40, lat: 42, lng: -93 });
+    const g = call("soil-grid-generate", ctxS, { fieldId: f.result.field.id, acresPerSample: 5 });
+    assert.equal(g.ok, true);
+    assert.ok(g.result.grid.sampleCount >= 1);
+    assert.equal(g.result.grid.points[0].lab, null);
+  });
+  it("rejects field with no coords and no bounds", () => {
+    const r = call("soil-grid-generate", ctxA, { fieldId: "no_coords_field" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /bounds|coords/);
+  });
+  it("imports lab results against grid points + computes averages", () => {
+    const ctxS2 = { actor: { userId: "user_soil2" }, userId: "user_soil2" };
+    const f = call("field-create", ctxS2, { name: "Soil A", acreage: 20, lat: 41, lng: -93 });
+    const g = call("soil-grid-generate", ctxS2, { fieldId: f.result.field.id, acresPerSample: 10 });
+    const points = g.result.grid.points;
+    const imp = call("soil-grid-import-results", ctxS2, {
+      gridId: g.result.grid.id,
+      results: points.map((p, i) => ({ pointId: p.pointId, ph: 6.0 + i * 0.2, p_ppm: 25 + i, k_ppm: 150 })),
+    });
+    assert.equal(imp.ok, true);
+    assert.equal(imp.result.applied, points.length);
+    assert.ok(imp.result.grid.averages.k_ppm === 150);
+  });
+  it("import flags unmatched pointIds", () => {
+    const ctxS3 = { actor: { userId: "user_soil3" }, userId: "user_soil3" };
+    const f = call("field-create", ctxS3, { name: "Soil B", acreage: 10, lat: 41, lng: -93 });
+    const g = call("soil-grid-generate", ctxS3, { fieldId: f.result.field.id });
+    const imp = call("soil-grid-import-results", ctxS3, {
+      gridId: g.result.grid.id,
+      results: [{ pointId: "BOGUS", ph: 7 }],
+    });
+    assert.equal(imp.ok, true);
+    assert.equal(imp.result.applied, 0);
+    assert.equal(imp.result.unmatched, 1);
+  });
+});
+
 describe("agriculture.dashboard-summary (AgFarmShell data source)", () => {
   it("aggregates fields + equipment + work orders + harvest + bins", () => {
     const ctxC = { actor: { userId: "user_dash" }, userId: "user_dash" };

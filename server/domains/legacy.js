@@ -317,4 +317,687 @@ export default function registerLegacyActions(registerLensAction) {
       },
     };
   });
+
+  // ──────────────────────────────────────────────────────────────────
+  // Codebase scanning + modernization analysis (SonarQube / CAST parity)
+  // ──────────────────────────────────────────────────────────────────
+
+  const lgState = () => {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.legacyLens) STATE.legacyLens = {};
+    const s = STATE.legacyLens;
+    for (const k of ["codebases", "snapshots"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  };
+  const lgSave = () => {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  };
+  const lgUid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const lgId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const lgNow = () => new Date().toISOString();
+  const lgClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const lgNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const lgList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const r2 = (n) => Math.round(n * 100) / 100;
+
+  // Language inference + crude metric extraction from a raw source string.
+  const LANG_EXT = {
+    js: "JavaScript", jsx: "JavaScript", ts: "TypeScript", tsx: "TypeScript",
+    py: "Python", java: "Java", rb: "Ruby", go: "Go", rs: "Rust",
+    c: "C", h: "C", cpp: "C++", cc: "C++", cs: "C#", php: "PHP",
+    cob: "COBOL", cbl: "COBOL", pli: "PL/I", f: "Fortran", f90: "Fortran",
+    sql: "SQL", sh: "Shell", pl: "Perl", scala: "Scala", kt: "Kotlin",
+    swift: "Swift", vb: "VB.NET", asp: "Classic ASP", jsp: "JSP",
+  };
+  const LEGACY_LANGS = new Set(["COBOL", "PL/I", "Fortran", "Perl", "VB.NET", "Classic ASP", "JSP"]);
+
+  // Branch/decision keywords used as a cyclomatic-complexity proxy.
+  const BRANCH_RE = /\b(if|else if|elif|for|while|case|when|catch|&&|\|\||\?|EVALUATE|PERFORM\s+UNTIL)\b/g;
+  // Import/include keywords used as a dependency proxy.
+  const IMPORT_RE = /^\s*(import\s+[\w.{} *,]+\s+from\s+['"][^'"]+['"]|import\s+['"][^'"]+['"]|from\s+[\w.]+\s+import|#include\s*[<"][^>"]+[>"]|require\(\s*['"][^'"]+['"]\s*\)|use\s+[\w:]+|COPY\s+\w+)/gmi;
+  const IMPORT_TARGET_RE = /from\s+['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]|#include\s*[<"]([^>"]+)[>"]|require\(\s*['"]([^'"]+)['"]\s*\)|COPY\s+(\w+)/i;
+  const TODO_RE = /\b(TODO|FIXME|HACK|XXX|DEPRECATED)\b/g;
+
+  function scanFile(file) {
+    const path = lgClean(file.path || file.name || "unknown", 300);
+    const content = String(file.content || "");
+    const ext = (path.split(".").pop() || "").toLowerCase();
+    const language = file.language ? lgClean(file.language, 40) : (LANG_EXT[ext] || "Unknown");
+    const rawLines = content.split("\n");
+    const linesOfCode = content
+      ? rawLines.filter(l => l.trim() && !/^\s*(\/\/|#|\*|--|\*>)/.test(l)).length
+      : lgNum(file.linesOfCode, 0);
+    const commentLines = rawLines.filter(l => /^\s*(\/\/|#|\*|--|\*>)/.test(l)).length;
+    const branchHits = content ? (content.match(BRANCH_RE) || []).length : 0;
+    const cyclomaticComplexity = content
+      ? Math.max(1, branchHits + 1)
+      : Math.max(1, lgNum(file.cyclomaticComplexity, 1));
+    const importLines = content ? (content.match(IMPORT_RE) || []) : [];
+    const dependencies = [];
+    for (const line of importLines) {
+      const m = line.match(IMPORT_TARGET_RE);
+      if (m) {
+        const target = (m[1] || m[2] || m[3] || m[4] || m[5] || "").trim();
+        if (target && !dependencies.includes(target)) dependencies.push(target);
+      }
+    }
+    const todoCount = content ? (content.match(TODO_RE) || []).length : 0;
+    const commentRatio = linesOfCode > 0 ? r2(commentLines / (linesOfCode + commentLines)) : 0;
+    const testCoverage = file.testCoverage != null ? lgNum(file.testCoverage, 0)
+      : (/\.(test|spec)\.|_test\.|test_/i.test(path) ? 100 : 0);
+    return {
+      path, language,
+      linesOfCode, commentLines, commentRatio,
+      cyclomaticComplexity,
+      dependencies, dependencyCount: dependencies.length,
+      todoCount,
+      isTest: /\.(test|spec)\.|_test\.|test_/i.test(path),
+      isLegacyLanguage: LEGACY_LANGS.has(language),
+      churn: Math.max(0, Math.round(lgNum(file.churn ?? file.commits, 0))),
+      lastModifiedDaysAgo: Math.max(0, Math.round(lgNum(file.lastModifiedDaysAgo, 0))),
+    };
+  }
+
+  /**
+   * scanCodebase — ingest an actual set of source files, derive per-file
+   * metrics, and persist as a named codebase snapshot.
+   * params = { name, files: [{ path, content?, language?, churn?, lastModifiedDaysAgo?, testCoverage? }] }
+   */
+  registerLensAction("legacy", "scanCodebase", (ctx, _artifact, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const files = Array.isArray(params.files) ? params.files : [];
+      if (files.length === 0) return { ok: false, error: "no files supplied to scan" };
+      const name = lgClean(params.name, 120) || "untitled-codebase";
+      const scanned = files.slice(0, 5000).map(scanFile);
+
+      const totalLoc = scanned.reduce((a, f) => a + f.linesOfCode, 0);
+      const langTotals = {};
+      for (const f of scanned) {
+        langTotals[f.language] = (langTotals[f.language] || 0) + f.linesOfCode;
+      }
+      const languages = Object.entries(langTotals)
+        .map(([lang, loc]) => ({ language: lang, linesOfCode: loc, pctOfCodebase: totalLoc > 0 ? r2(loc / totalLoc * 100) : 0, legacy: LEGACY_LANGS.has(lang) }))
+        .sort((a, b) => b.linesOfCode - a.linesOfCode);
+      const testFiles = scanned.filter(f => f.isTest);
+      const prodFiles = scanned.filter(f => !f.isTest);
+      const prodLoc = prodFiles.reduce((a, f) => a + f.linesOfCode, 0);
+      const testLoc = testFiles.reduce((a, f) => a + f.linesOfCode, 0);
+
+      const summary = {
+        fileCount: scanned.length,
+        totalLinesOfCode: totalLoc,
+        productionFiles: prodFiles.length,
+        testFiles: testFiles.length,
+        testToCodeRatio: prodLoc > 0 ? r2(testLoc / prodLoc) : 0,
+        avgComplexity: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.cyclomaticComplexity, 0) / scanned.length) : 0,
+        totalTodos: scanned.reduce((a, f) => a + f.todoCount, 0),
+        legacyLanguageFiles: scanned.filter(f => f.isLegacyLanguage).length,
+        avgCommentRatio: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.commentRatio, 0) / scanned.length) : 0,
+      };
+
+      const codebase = {
+        id: lgId("cb"), name,
+        files: scanned,
+        languages, summary,
+        scannedAt: lgNow(),
+      };
+      const arr = lgList(s.codebases, lgUid(ctx));
+      arr.unshift(codebase);
+      if (arr.length > 30) arr.length = 30;
+      lgSave();
+      return { ok: true, result: { codebase: { id: codebase.id, name, languages, summary, scannedAt: codebase.scannedAt }, files: scanned } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** listCodebases — all scanned codebases for the user. */
+  registerLensAction("legacy", "listCodebases", (ctx, _a, _p = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = (s.codebases.get(lgUid(ctx)) || []).map(cb => ({
+        id: cb.id, name: cb.name, scannedAt: cb.scannedAt,
+        languages: cb.languages, summary: cb.summary,
+      }));
+      return { ok: true, result: { codebases: list, count: list.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** getCodebase — full scan record incl. per-file metrics. params = { id } */
+  registerLensAction("legacy", "getCodebase", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.id);
+      if (!cb) return { ok: false, error: "codebase not found" };
+      return { ok: true, result: { codebase: cb } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** deleteCodebase — params = { id } */
+  registerLensAction("legacy", "deleteCodebase", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = s.codebases.get(lgUid(ctx)) || [];
+      const i = arr.findIndex(c => c.id === params.id);
+      if (i < 0) return { ok: false, error: "codebase not found" };
+      arr.splice(i, 1);
+      lgSave();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Resolve a file's import targets to other files in the same codebase.
+  function buildDependencyGraph(files) {
+    // index by basename (no extension) and by path tail
+    const byKey = new Map();
+    for (const f of files) {
+      const base = (f.path.split("/").pop() || f.path).replace(/\.[^.]+$/, "");
+      if (!byKey.has(base)) byKey.set(base, []);
+      byKey.get(base).push(f.path);
+    }
+    const nodes = files.map(f => f.path);
+    const edges = [];
+    const adj = new Map(nodes.map(n => [n, new Set()]));
+    for (const f of files) {
+      for (const dep of f.dependencies) {
+        const depBase = (dep.split("/").pop() || dep).replace(/\.[^.]+$/, "");
+        const matches = byKey.get(depBase) || [];
+        for (const target of matches) {
+          if (target !== f.path && !adj.get(f.path).has(target)) {
+            adj.get(f.path).add(target);
+            edges.push({ from: f.path, to: target });
+          }
+        }
+      }
+    }
+    return { nodes, edges, adj };
+  }
+
+  // Tarjan SCC to find cycles in a directed graph.
+  function findCycles(nodes, adj) {
+    let idx = 0;
+    const index = new Map(), low = new Map(), onStack = new Set();
+    const stack = [];
+    const sccs = [];
+    function strongconnect(v) {
+      index.set(v, idx); low.set(v, idx); idx++;
+      stack.push(v); onStack.add(v);
+      for (const w of adj.get(v) || []) {
+        if (!index.has(w)) { strongconnect(w); low.set(v, Math.min(low.get(v), low.get(w))); }
+        else if (onStack.has(w)) { low.set(v, Math.min(low.get(v), index.get(w))); }
+      }
+      if (low.get(v) === index.get(v)) {
+        const comp = [];
+        let w;
+        do { w = stack.pop(); onStack.delete(w); comp.push(w); } while (w !== v);
+        sccs.push(comp);
+      }
+    }
+    for (const v of nodes) if (!index.has(v)) strongconnect(v);
+    // a cycle = SCC of size > 1, or a self-loop
+    return sccs.filter(c => c.length > 1 || (c.length === 1 && (adj.get(c[0]) || new Set()).has(c[0])));
+  }
+
+  /**
+   * dependencyGraph — build a dependency graph from a scanned codebase,
+   * highlight cycles + fan-in/fan-out hotspots.
+   * params = { codebaseId } OR { files: [...] }
+   */
+  registerLensAction("legacy", "dependencyGraph", (ctx, artifact, params = {}) => {
+    try {
+      const s = lgState();
+      let files = null;
+      if (params.codebaseId && s) {
+        const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.codebaseId);
+        if (!cb) return { ok: false, error: "codebase not found" };
+        files = cb.files;
+      } else if (Array.isArray(params.files)) {
+        files = params.files.map(scanFile);
+      } else if (Array.isArray(artifact?.data?.files)) {
+        files = artifact.data.files.map(scanFile);
+      }
+      if (!files || files.length === 0) return { ok: false, error: "no codebase or files supplied" };
+
+      const { nodes, edges, adj } = buildDependencyGraph(files);
+      const fanOut = new Map(nodes.map(n => [n, 0]));
+      const fanIn = new Map(nodes.map(n => [n, 0]));
+      for (const e of edges) {
+        fanOut.set(e.from, (fanOut.get(e.from) || 0) + 1);
+        fanIn.set(e.to, (fanIn.get(e.to) || 0) + 1);
+      }
+      const cycles = findCycles(nodes, adj);
+      const inCycle = new Set(cycles.flat());
+
+      const graphNodes = nodes.map(n => {
+        const out = fanOut.get(n) || 0;
+        const inn = fanIn.get(n) || 0;
+        // instability metric (Robert Martin): I = Ce / (Ca + Ce)
+        const instability = (out + inn) > 0 ? r2(out / (out + inn)) : 0;
+        return {
+          id: n, label: n.split("/").pop() || n, path: n,
+          fanIn: inn, fanOut: out, coupling: inn + out,
+          instability,
+          inCycle: inCycle.has(n),
+          hotspot: (inn + out) >= 6 || inCycle.has(n),
+        };
+      }).sort((a, b) => b.coupling - a.coupling);
+
+      const hotspots = graphNodes.filter(n => n.hotspot).slice(0, 15);
+      return {
+        ok: true, result: {
+          nodes: graphNodes, edges,
+          cycles: cycles.map((c, i) => ({ id: i + 1, members: c, size: c.length })),
+          hotspots,
+          summary: {
+            nodeCount: nodes.length,
+            edgeCount: edges.length,
+            cycleCount: cycles.length,
+            filesInCycles: inCycle.size,
+            maxFanOut: Math.max(0, ...[...fanOut.values()]),
+            maxFanIn: Math.max(0, ...[...fanIn.values()]),
+            avgCoupling: nodes.length > 0 ? r2(edges.length * 2 / nodes.length) : 0,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * hotspotRanking — rank files by churn × complexity (the SonarQube
+   * "hotspot" prioritization heuristic).
+   * params = { codebaseId } OR { files: [...] }
+   */
+  registerLensAction("legacy", "hotspotRanking", (ctx, artifact, params = {}) => {
+    try {
+      const s = lgState();
+      let files = null;
+      if (params.codebaseId && s) {
+        const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.codebaseId);
+        if (!cb) return { ok: false, error: "codebase not found" };
+        files = cb.files;
+      } else if (Array.isArray(params.files)) {
+        files = params.files.map(scanFile);
+      } else if (Array.isArray(artifact?.data?.files)) {
+        files = artifact.data.files.map(scanFile);
+      }
+      if (!files || files.length === 0) return { ok: false, error: "no codebase or files supplied" };
+
+      const prod = files.filter(f => !f.isTest);
+      const maxChurn = Math.max(1, ...prod.map(f => f.churn));
+      const maxCx = Math.max(1, ...prod.map(f => f.cyclomaticComplexity));
+      const ranked = prod.map(f => {
+        const churnN = f.churn / maxChurn;          // 0..1
+        const cxN = f.cyclomaticComplexity / maxCx; // 0..1
+        // hotspot index — geometric blend so a file must be high on BOTH
+        const hotspotIndex = r2(Math.sqrt(churnN * cxN) * 100);
+        const priority = hotspotIndex >= 60 ? "critical" : hotspotIndex >= 35 ? "high" : hotspotIndex >= 15 ? "moderate" : "low";
+        return {
+          path: f.path, language: f.language,
+          churn: f.churn, complexity: f.cyclomaticComplexity,
+          linesOfCode: f.linesOfCode, todoCount: f.todoCount,
+          hotspotIndex, priority,
+        };
+      }).sort((a, b) => b.hotspotIndex - a.hotspotIndex);
+
+      return {
+        ok: true, result: {
+          hotspots: ranked,
+          topHotspots: ranked.slice(0, 10),
+          summary: {
+            fileCount: prod.length,
+            criticalCount: ranked.filter(h => h.priority === "critical").length,
+            highCount: ranked.filter(h => h.priority === "high").length,
+            avgHotspotIndex: ranked.length > 0 ? r2(ranked.reduce((a, h) => a + h.hotspotIndex, 0) / ranked.length) : 0,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * migrationRoadmap — generate a sequenced refactor plan with effort
+   * estimates from a scanned codebase. Topologically orders by dependency
+   * depth so leaf modules migrate first.
+   * params = { codebaseId, hoursPerKloc?, hoursPerComplexity? } OR { files: [...] }
+   */
+  registerLensAction("legacy", "migrationRoadmap", (ctx, artifact, params = {}) => {
+    try {
+      const s = lgState();
+      let files = null, cbName = "codebase";
+      if (params.codebaseId && s) {
+        const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.codebaseId);
+        if (!cb) return { ok: false, error: "codebase not found" };
+        files = cb.files; cbName = cb.name;
+      } else if (Array.isArray(params.files)) {
+        files = params.files.map(scanFile);
+      } else if (Array.isArray(artifact?.data?.files)) {
+        files = artifact.data.files.map(scanFile);
+      }
+      if (!files || files.length === 0) return { ok: false, error: "no codebase or files supplied" };
+
+      const prod = files.filter(f => !f.isTest);
+      const { nodes, adj } = buildDependencyGraph(prod);
+      const fileByPath = new Map(prod.map(f => [f.path, f]));
+
+      // dependency depth: longest path of outgoing deps (memoized, cycle-safe)
+      const depthMemo = new Map();
+      function depthOf(n, seen = new Set()) {
+        if (depthMemo.has(n)) return depthMemo.get(n);
+        if (seen.has(n)) return 0;
+        seen.add(n);
+        let d = 0;
+        for (const w of adj.get(n) || []) d = Math.max(d, 1 + depthOf(w, seen));
+        seen.delete(n);
+        depthMemo.set(n, d);
+        return d;
+      }
+
+      const hoursPerKloc = lgNum(params.hoursPerKloc, 40);
+      const hoursPerComplexity = lgNum(params.hoursPerComplexity, 1.5);
+
+      const planned = nodes.map(n => {
+        const f = fileByPath.get(n);
+        const loc = f?.linesOfCode || 0;
+        const cx = f?.cyclomaticComplexity || 1;
+        const effortHours = r2((loc / 1000) * hoursPerKloc + cx * hoursPerComplexity);
+        return {
+          path: n, label: n.split("/").pop() || n,
+          depth: depthOf(n),
+          linesOfCode: loc, complexity: cx,
+          legacy: !!f?.isLegacyLanguage,
+          effortHours,
+          riskTag: cx > 30 ? "high-complexity" : f?.isLegacyLanguage ? "legacy-language" : loc > 1500 ? "large-file" : "standard",
+        };
+      });
+
+      // group into phases by ascending depth (leaves first)
+      const maxDepth = Math.max(0, ...planned.map(p => p.depth));
+      const phases = [];
+      for (let d = 0; d <= maxDepth; d++) {
+        const members = planned.filter(p => p.depth === d).sort((a, b) => a.effortHours - b.effortHours);
+        if (members.length === 0) continue;
+        phases.push({
+          phase: phases.length + 1,
+          dependencyDepth: d,
+          rationale: d === 0 ? "Leaf modules — no internal dependents to break"
+            : `Modules whose dependencies are all migrated by phase ${phases.length}`,
+          modules: members,
+          moduleCount: members.length,
+          effortHours: r2(members.reduce((a, m) => a + m.effortHours, 0)),
+        });
+      }
+      const totalEffort = r2(planned.reduce((a, p) => a + p.effortHours, 0));
+
+      return {
+        ok: true, result: {
+          codebase: cbName,
+          phases,
+          summary: {
+            totalModules: planned.length,
+            totalPhases: phases.length,
+            totalEffortHours: totalEffort,
+            totalEffortWeeks: r2(totalEffort / 40),
+            highRiskModules: planned.filter(p => p.riskTag !== "standard").length,
+            assumptions: { hoursPerKloc, hoursPerComplexity },
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * modernizationROI — rewrite vs refactor vs retire decision model for a
+   * set of modules.
+   * params = { modules: [{ name, linesOfCode, debtScore?, businessValue? (1-5), usageFrequency? (1-5), annualMaintenanceCost? }],
+   *            blendedRate? }  OR  { codebaseId } (derives modules from scan)
+   */
+  registerLensAction("legacy", "modernizationROI", (ctx, artifact, params = {}) => {
+    try {
+      const s = lgState();
+      let modules = Array.isArray(params.modules) ? params.modules : null;
+      if (!modules && params.codebaseId && s) {
+        const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.codebaseId);
+        if (!cb) return { ok: false, error: "codebase not found" };
+        modules = cb.files.filter(f => !f.isTest).map(f => ({
+          name: f.path, linesOfCode: f.linesOfCode,
+          debtScore: Math.min(100, f.cyclomaticComplexity * 1.5 + f.todoCount * 3),
+          businessValue: 3, usageFrequency: 3,
+        }));
+      }
+      if (!modules || modules.length === 0) return { ok: false, error: "no modules supplied" };
+
+      const blendedRate = lgNum(params.blendedRate, 120); // $/hour
+      const analysis = modules.map(m => {
+        const loc = lgNum(m.linesOfCode, 0);
+        const debt = Math.max(0, Math.min(100, lgNum(m.debtScore, 30)));
+        const businessValue = Math.max(1, Math.min(5, lgNum(m.businessValue, 3)));
+        const usage = Math.max(1, Math.min(5, lgNum(m.usageFrequency, 3)));
+
+        // cost models (hours)
+        const rewriteHours = (loc / 1000) * 55;
+        const refactorHours = (loc / 1000) * 18 * (debt / 50);
+        const retireHours = (loc / 1000) * 6;
+
+        const rewriteCost = r2(rewriteHours * blendedRate);
+        const refactorCost = r2(refactorHours * blendedRate);
+        const retireCost = r2(retireHours * blendedRate);
+
+        // annual carrying cost if nothing is done (debt tax)
+        const annualMaintenance = m.annualMaintenanceCost != null
+          ? lgNum(m.annualMaintenanceCost, 0)
+          : r2((loc / 1000) * (debt / 100) * 20 * blendedRate);
+
+        // recommendation logic
+        let recommendation, reasoning;
+        if (businessValue <= 2 && usage <= 2) {
+          recommendation = "retire";
+          reasoning = "Low business value and low usage — decommission rather than invest.";
+        } else if (debt >= 60 && businessValue >= 4) {
+          recommendation = "rewrite";
+          reasoning = "High debt on a high-value module — a clean rewrite pays back fastest.";
+        } else if (debt >= 35) {
+          recommendation = "refactor";
+          reasoning = "Moderate debt on a worth-keeping module — incremental refactor is cheapest path.";
+        } else {
+          recommendation = "retain";
+          reasoning = "Debt is manageable — keep as-is and monitor.";
+        }
+
+        // payback period (years) for the chosen action vs doing nothing
+        const actionCost = recommendation === "rewrite" ? rewriteCost
+          : recommendation === "refactor" ? refactorCost
+          : recommendation === "retire" ? retireCost : 0;
+        // post-action maintenance is assumed reduced (rewrite 15%, refactor 50%, retire 0%)
+        const postFactor = recommendation === "rewrite" ? 0.15 : recommendation === "refactor" ? 0.5 : recommendation === "retire" ? 0 : 1;
+        const annualSaving = r2(annualMaintenance * (1 - postFactor));
+        const paybackYears = annualSaving > 0 ? r2(actionCost / annualSaving) : null;
+        const fiveYearNet = r2(annualSaving * 5 - actionCost);
+
+        return {
+          name: lgClean(m.name, 200),
+          linesOfCode: loc, debtScore: r2(debt),
+          businessValue, usageFrequency: usage,
+          costs: { rewrite: rewriteCost, refactor: refactorCost, retire: retireCost },
+          annualMaintenanceCost: r2(annualMaintenance),
+          recommendation, reasoning,
+          actionCost: r2(actionCost),
+          annualSaving, paybackYears, fiveYearNetBenefit: fiveYearNet,
+        };
+      }).sort((a, b) => (b.fiveYearNetBenefit || 0) - (a.fiveYearNetBenefit || 0));
+
+      const counts = { rewrite: 0, refactor: 0, retire: 0, retain: 0 };
+      for (const a of analysis) counts[a.recommendation]++;
+      return {
+        ok: true, result: {
+          modules: analysis,
+          summary: {
+            totalModules: analysis.length,
+            recommendations: counts,
+            totalActionCost: r2(analysis.reduce((s2, a) => s2 + a.actionCost, 0)),
+            totalAnnualSaving: r2(analysis.reduce((s2, a) => s2 + a.annualSaving, 0)),
+            totalFiveYearNet: r2(analysis.reduce((s2, a) => s2 + a.fiveYearNetBenefit, 0)),
+            blendedRate,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * cloudReadiness — score a system for cloud migration / containerization
+   * across the standard "12-factor"-style dimensions.
+   * params = { components: [{ name, statefulFilesystem?, hardcodedConfig?, externalProcessDeps?,
+   *            scalesHorizontally?, healthCheckEndpoint?, logsToStdout?, sessionAffinity?,
+   *            secretsInCode? }] }  OR  { codebaseId }
+   */
+  registerLensAction("legacy", "cloudReadiness", (ctx, artifact, params = {}) => {
+    try {
+      const s = lgState();
+      let components = Array.isArray(params.components) ? params.components
+        : Array.isArray(artifact?.data?.components) ? artifact.data.components : null;
+      let derived = false;
+      if (!components && params.codebaseId && s) {
+        const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.codebaseId);
+        if (!cb) return { ok: false, error: "codebase not found" };
+        derived = true;
+        components = cb.files.filter(f => !f.isTest).map(f => ({ name: f.path }));
+      }
+      if (!components || components.length === 0) return { ok: false, error: "no components supplied" };
+
+      // each dimension: weight + boolean predicate (true = cloud-friendly)
+      const DIMS = [
+        { key: "statelessProcess", weight: 18, get: c => c.statefulFilesystem !== true },
+        { key: "externalizedConfig", weight: 16, get: c => c.hardcodedConfig !== true },
+        { key: "noSecretsInCode", weight: 16, get: c => c.secretsInCode !== true },
+        { key: "horizontalScalability", weight: 14, get: c => c.scalesHorizontally === true },
+        { key: "healthChecks", weight: 10, get: c => c.healthCheckEndpoint === true },
+        { key: "logsToStdout", weight: 10, get: c => c.logsToStdout === true },
+        { key: "noSessionAffinity", weight: 8, get: c => c.sessionAffinity !== true },
+        { key: "noLocalProcessDeps", weight: 8, get: c => !(Array.isArray(c.externalProcessDeps) && c.externalProcessDeps.length > 0) },
+      ];
+
+      const assessed = components.map(c => {
+        const dimResults = DIMS.map(d => {
+          const pass = derived ? null : !!d.get(c);
+          return { dimension: d.key, weight: d.weight, pass };
+        });
+        // when derived from a raw scan we can't infer runtime traits — flag as unknown
+        const known = dimResults.filter(d => d.pass !== null);
+        const score = known.length > 0
+          ? r2(known.filter(d => d.pass).reduce((a, d) => a + d.weight, 0) / known.reduce((a, d) => a + d.weight, 0) * 100)
+          : null;
+        const blockers = dimResults.filter(d => d.pass === false).map(d => d.dimension);
+        return {
+          name: lgClean(c.name, 200),
+          dimensions: dimResults,
+          readinessScore: score,
+          readinessLevel: score == null ? "unknown"
+            : score >= 80 ? "lift-and-shift"
+            : score >= 55 ? "minor-refactor"
+            : score >= 30 ? "significant-refactor" : "re-architect",
+          blockers,
+          containerizable: score == null ? null : score >= 55,
+        };
+      }).sort((a, b) => (b.readinessScore ?? -1) - (a.readinessScore ?? -1));
+
+      const scored = assessed.filter(a => a.readinessScore != null);
+      return {
+        ok: true, result: {
+          components: assessed,
+          derivedFromScan: derived,
+          summary: {
+            totalComponents: assessed.length,
+            avgReadiness: scored.length > 0 ? r2(scored.reduce((a, c) => a + c.readinessScore, 0) / scored.length) : null,
+            liftAndShiftReady: assessed.filter(a => a.readinessLevel === "lift-and-shift").length,
+            needsReArchitecture: assessed.filter(a => a.readinessLevel === "re-architect").length,
+            note: derived ? "Runtime traits cannot be inferred from source alone — supply a components array for a real score." : null,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * recordDebtSnapshot — persist a point-in-time debt measurement so trend
+   * tracking has history. params = { codebaseId?, label?, totalDebt, moduleCount?, avgMaintainability?, criticalModules? }
+   */
+  registerLensAction("legacy", "recordDebtSnapshot", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      if (params.totalDebt == null) return { ok: false, error: "totalDebt is required" };
+      const snap = {
+        id: lgId("snap"),
+        codebaseId: params.codebaseId ? lgClean(params.codebaseId, 80) : null,
+        label: lgClean(params.label, 80) || lgNow().slice(0, 10),
+        totalDebt: r2(lgNum(params.totalDebt, 0)),
+        moduleCount: Math.max(0, Math.round(lgNum(params.moduleCount, 0))),
+        avgMaintainability: params.avgMaintainability != null ? r2(lgNum(params.avgMaintainability, 0)) : null,
+        criticalModules: Math.max(0, Math.round(lgNum(params.criticalModules, 0))),
+        recordedAt: lgNow(),
+      };
+      const arr = lgList(s.snapshots, lgUid(ctx));
+      arr.push(snap);
+      if (arr.length > 200) arr.splice(0, arr.length - 200);
+      lgSave();
+      return { ok: true, result: { snapshot: snap, totalSnapshots: arr.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * debtTrend — historical debt trend across recorded snapshots, with a
+   * linear slope + projection. params = { codebaseId? }
+   */
+  registerLensAction("legacy", "debtTrend", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let snaps = (s.snapshots.get(lgUid(ctx)) || []).slice();
+      if (params.codebaseId) snaps = snaps.filter(x => x.codebaseId === params.codebaseId);
+      snaps.sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+      if (snaps.length === 0) return { ok: true, result: { snapshots: [], message: "No debt snapshots recorded yet." } };
+
+      const series = snaps.map((sn, i) => ({
+        index: i, id: sn.id, label: sn.label,
+        totalDebt: sn.totalDebt, moduleCount: sn.moduleCount,
+        avgMaintainability: sn.avgMaintainability, criticalModules: sn.criticalModules,
+        recordedAt: sn.recordedAt,
+      }));
+
+      // least-squares slope on totalDebt vs index
+      let direction = "stable", slopePerSnapshot = 0, projectedNext = series[series.length - 1].totalDebt;
+      if (series.length >= 2) {
+        const n = series.length;
+        const sx = series.reduce((a, p) => a + p.index, 0);
+        const sy = series.reduce((a, p) => a + p.totalDebt, 0);
+        const sxy = series.reduce((a, p) => a + p.index * p.totalDebt, 0);
+        const sxx = series.reduce((a, p) => a + p.index * p.index, 0);
+        const denom = n * sxx - sx * sx;
+        slopePerSnapshot = denom !== 0 ? r2((n * sxy - sx * sy) / denom) : 0;
+        const intercept = (sy - slopePerSnapshot * sx) / n;
+        projectedNext = r2(slopePerSnapshot * n + intercept);
+        direction = slopePerSnapshot > 0.5 ? "increasing" : slopePerSnapshot < -0.5 ? "decreasing" : "stable";
+      }
+      const first = series[0].totalDebt, last = series[series.length - 1].totalDebt;
+      return {
+        ok: true, result: {
+          snapshots: series,
+          trend: {
+            direction,
+            slopePerSnapshot,
+            firstDebt: first, latestDebt: last,
+            netChange: r2(last - first),
+            pctChange: first > 0 ? r2((last - first) / first * 100) : null,
+            projectedNextDebt: projectedNext,
+          },
+          summary: {
+            snapshotCount: series.length,
+            latestLabel: series[series.length - 1].label,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
 }

@@ -84,7 +84,7 @@ describe("world — share link primitive", () => {
 
   it("share-links-list returns recent links sorted by createdAt desc", async () => {
     call("share-link-create", ctxA, { worldId: "w1" });
-    await new Promise((r) => setTimeout(r, 2));
+    await new Promise((r) => { setTimeout(r, 2); });
     call("share-link-create", ctxA, { worldId: "w2" });
     const list = call("share-links-list", ctxA);
     assert.equal(list.result.links.length, 2);
@@ -398,9 +398,246 @@ describe("world — spatial voice chat (WebRTC + 50m cells)", () => {
 
   it("INVARIANT: realtime emit failure does not throw (audio path is best-effort)", () => {
     globalThis._concordREALTIME = {
+      io: { io: { to: () => ({ emit: () => { throw new Error("socket dead"); } }) } },
+    };
+    globalThis._concordREALTIME = {
       io: { to: () => ({ emit: () => { throw new Error("socket dead"); } }) },
     };
     const r = call("voice-join-cell", ctxA, { worldId: "w1", x: 0, y: 0, z: 0 });
     assert.equal(r.ok, true);  // didn't throw
+  });
+});
+
+// ════════════════════════════════════════════════════════════════
+// 3D open-world feature-parity backlog
+// ════════════════════════════════════════════════════════════════
+
+describe("world — in-world placement editor", () => {
+  it("creates a placement with validated coords + kind", () => {
+    const r = call("placement-create", ctxA, { worldId: "w1", kind: "wall", x: 10, y: 0, z: 5, rotation: 90, scale: 2 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.placement.kind, "wall");
+    assert.equal(r.result.placement.rotation, 90);
+    assert.equal(r.result.placement.scale, 2);
+  });
+
+  it("rejects unknown kind and missing coords", () => {
+    assert.equal(call("placement-create", ctxA, { worldId: "w1", kind: "spaceship", x: 0, y: 0, z: 0 }).ok, false);
+    assert.equal(call("placement-create", ctxA, { worldId: "w1", kind: "wall" }).ok, false);
+    assert.equal(call("placement-create", ctxA, { kind: "wall", x: 0, y: 0, z: 0 }).ok, false);
+  });
+
+  it("update moves/rotates a placement; delete removes it", () => {
+    const p = call("placement-create", ctxA, { worldId: "w1", kind: "door", x: 1, y: 0, z: 1 }).result.placement;
+    const u = call("placement-update", ctxA, { id: p.id, x: 99, rotation: 45 });
+    assert.equal(u.result.placement.x, 99);
+    assert.equal(u.result.placement.rotation, 45);
+    assert.equal(call("placement-delete", ctxA, { id: p.id }).ok, true);
+    assert.equal(call("placement-delete", ctxA, { id: p.id }).ok, false);
+  });
+
+  it("INVARIANT: placements are scoped per-user and per-world", () => {
+    call("placement-create", ctxA, { worldId: "w1", kind: "floor", x: 0, y: 0, z: 0 });
+    call("placement-create", ctxA, { worldId: "w2", kind: "floor", x: 0, y: 0, z: 0 });
+    assert.equal(call("placement-list", ctxA, { worldId: "w1" }).result.count, 1);
+    assert.equal(call("placement-list", ctxB).result.count, 0);
+  });
+});
+
+describe("world — inventory / equipment", () => {
+  it("adds items and lists them with named slots", () => {
+    const r = call("inventory-add-item", ctxA, { name: "Iron Helm", slot: "head", rarity: "rare" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.item.rarity, "rare");
+    const inv = call("inventory-get", ctxA);
+    assert.equal(inv.result.items.length, 1);
+    assert.ok(inv.result.slotNames.includes("head"));
+  });
+
+  it("rejects unnamed items", () => {
+    assert.equal(call("inventory-add-item", ctxA, {}).ok, false);
+  });
+
+  it("equip/unequip moves an item in and out of a slot", () => {
+    const item = call("inventory-add-item", ctxA, { name: "Steel Sword", slot: "mainhand" }).result.item;
+    const eq = call("inventory-equip", ctxA, { id: item.id });
+    assert.equal(eq.result.slots.mainhand, item.id);
+    const uneq = call("inventory-unequip", ctxA, { slot: "mainhand" });
+    assert.equal(uneq.result.slots.mainhand, null);
+  });
+
+  it("rejects equipping an item into a wrong slot", () => {
+    const item = call("inventory-add-item", ctxA, { name: "Boots", slot: "feet" }).result.item;
+    assert.equal(call("inventory-equip", ctxA, { id: item.id, slot: "head" }).ok, false);
+  });
+
+  it("removing an equipped item clears the slot", () => {
+    const item = call("inventory-add-item", ctxA, { name: "Ring", slot: "trinket" }).result.item;
+    call("inventory-equip", ctxA, { id: item.id });
+    call("inventory-remove-item", ctxA, { id: item.id });
+    assert.equal(call("inventory-get", ctxA).result.slots.trinket, null);
+  });
+});
+
+describe("world — party / group play", () => {
+  it("creates a party with the creator as leader", () => {
+    const r = call("party-create", ctxA, { name: "Raid crew", objective: "Clear the dungeon" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.party.leaderId, "user_a");
+    assert.equal(r.result.party.memberCount, 1);
+  });
+
+  it("a second player joins; leaving promotes a new leader", () => {
+    const party = call("party-create", ctxA, { name: "Crew" }).result.party;
+    const j = call("party-join", ctxB, { partyId: party.id });
+    assert.equal(j.result.party.memberCount, 2);
+    call("party-leave", ctxA, {});
+    const view = call("party-get", ctxB).result.party;
+    assert.equal(view.leaderId, "user_b");
+  });
+
+  it("rejects double membership and unknown party", () => {
+    call("party-create", ctxA, { name: "X" });
+    assert.equal(call("party-create", ctxA, { name: "Y" }).ok, false);
+    assert.equal(call("party-join", ctxB, { partyId: "nope" }).ok, false);
+  });
+
+  it("only the leader can set the objective", () => {
+    const party = call("party-create", ctxA, { name: "Z" }).result.party;
+    call("party-join", ctxB, { partyId: party.id });
+    assert.equal(call("party-set-objective", ctxB, { objective: "no" }).ok, false);
+    const ok = call("party-set-objective", ctxA, { objective: "Slay the boss" });
+    assert.equal(ok.result.party.objective, "Slay the boss");
+  });
+});
+
+describe("world — minimap / fast-travel markers", () => {
+  it("creates markers and lists fast-travel points separately", () => {
+    call("marker-create", ctxA, { worldId: "w1", name: "Camp", x: 5, z: 5 });
+    call("marker-create", ctxA, { worldId: "w1", name: "Town", x: 9, z: 9, kind: "town", fastTravel: true });
+    const list = call("marker-list", ctxA, { worldId: "w1" });
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.fastTravelPoints.length, 1);
+  });
+
+  it("rejects missing worldId / coords", () => {
+    assert.equal(call("marker-create", ctxA, { name: "X", x: 1, z: 1 }).ok, false);
+    assert.equal(call("marker-create", ctxA, { worldId: "w1", name: "X" }).ok, false);
+  });
+
+  it("fast-travel returns a destination only for fast-travel markers", () => {
+    const plain = call("marker-create", ctxA, { worldId: "w1", name: "Plain", x: 1, z: 1 }).result.marker;
+    const ft = call("marker-create", ctxA, { worldId: "w1", name: "Hub", x: 2, z: 2, fastTravel: true }).result.marker;
+    assert.equal(call("marker-fast-travel", ctxA, { id: plain.id }).ok, false);
+    const r = call("marker-fast-travel", ctxA, { id: ft.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.destination.x, 2);
+  });
+
+  it("marker-delete removes a marker", () => {
+    const m = call("marker-create", ctxA, { worldId: "w1", name: "M", x: 0, z: 0 }).result.marker;
+    assert.equal(call("marker-delete", ctxA, { id: m.id }).ok, true);
+    assert.equal(call("marker-delete", ctxA, { id: m.id }).ok, false);
+  });
+});
+
+describe("world — mounts / vehicles", () => {
+  it("adds a mount, summons it, then dismisses it", () => {
+    const m = call("mount-add", ctxA, { name: "Stormwing", species: "griffin", kind: "flying", speed: 40 }).result.mount;
+    const summon = call("mount-summon", ctxA, { id: m.id });
+    assert.equal(summon.result.active.id, m.id);
+    assert.equal(call("mount-list", ctxA).result.activeId, m.id);
+    call("mount-dismiss", ctxA, {});
+    assert.equal(call("mount-list", ctxA).result.activeId, null);
+  });
+
+  it("rejects unnamed mounts and unknown summon", () => {
+    assert.equal(call("mount-add", ctxA, {}).ok, false);
+    assert.equal(call("mount-summon", ctxA, { id: "ghost" }).ok, false);
+  });
+
+  it("removing the active mount clears activeId", () => {
+    const m = call("mount-add", ctxA, { name: "Pony" }).result.mount;
+    call("mount-summon", ctxA, { id: m.id });
+    call("mount-remove", ctxA, { id: m.id });
+    assert.equal(call("mount-list", ctxA).result.activeId, null);
+  });
+});
+
+describe("world — combat depth (targeting / dodge / cooldowns)", () => {
+  it("returns default combat prefs and updates them", () => {
+    const d = call("combat-prefs-get", ctxA);
+    assert.equal(d.result.lockOn, true);
+    call("combat-prefs-set", ctxA, { lockOn: false, dodgeStyle: "blink" });
+    const after = call("combat-prefs-get", ctxA);
+    assert.equal(after.result.lockOn, false);
+    assert.equal(after.result.dodgeStyle, "blink");
+  });
+
+  it("adds abilities to slots and rejects slot collisions", () => {
+    const a = call("combat-ability-add", ctxA, { name: "Fireball", slot: 1, element: "fire", cooldownMs: 3000 });
+    assert.equal(a.ok, true);
+    assert.equal(a.result.ability.ready, true);
+    assert.equal(call("combat-ability-add", ctxA, { name: "Frost", slot: 1 }).ok, false);
+  });
+
+  it("triggering an ability starts a cooldown; re-trigger is blocked", () => {
+    const a = call("combat-ability-add", ctxA, { name: "Smash", slot: 2, cooldownMs: 60000 }).result.ability;
+    const t1 = call("combat-ability-trigger", ctxA, { id: a.id });
+    assert.equal(t1.ok, true);
+    assert.ok(t1.result.ability.cooldownRemainingMs > 0);
+    const t2 = call("combat-ability-trigger", ctxA, { id: a.id });
+    assert.equal(t2.ok, false);
+    assert.match(t2.error, /cooldown/);
+  });
+
+  it("combat-ability-remove drops an ability", () => {
+    const a = call("combat-ability-add", ctxA, { name: "Kick", slot: 3 }).result.ability;
+    assert.equal(call("combat-ability-remove", ctxA, { id: a.id }).ok, true);
+    assert.equal(call("combat-prefs-get", ctxA).result.abilities.length, 0);
+  });
+});
+
+describe("world — LOD / streaming preferences", () => {
+  it("returns defaults and clamps custom values", () => {
+    const d = call("streaming-prefs-get", ctxA);
+    assert.equal(d.result.prefs.streamingEnabled, true);
+    const set = call("streaming-prefs-set", ctxA, { drawDistanceM: 99999, lodBias: 10, shadowQuality: "high" });
+    assert.equal(set.result.prefs.drawDistanceM, 4000);
+    assert.equal(set.result.prefs.lodBias, 4);
+    assert.equal(set.result.prefs.shadowQuality, "high");
+  });
+
+  it("applies named presets", () => {
+    const r = call("streaming-prefs-preset", ctxA, { preset: "ultra" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.prefs.shadowQuality, "high");
+    assert.equal(call("streaming-prefs-preset", ctxA, { preset: "bogus" }).ok, false);
+  });
+});
+
+describe("world — photo mode / screenshot sharing", () => {
+  it("saves a photo and lists it", () => {
+    const r = call("photo-save", ctxA, { worldId: "w1", imageUrl: "data:image/png;base64,AAAA", caption: "Sunset" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.photo.public, false);
+    assert.equal(call("photo-list", ctxA, { worldId: "w1" }).result.count, 1);
+  });
+
+  it("rejects a photo with no imageUrl", () => {
+    assert.equal(call("photo-save", ctxA, { caption: "x" }).ok, false);
+  });
+
+  it("share flips a photo public and it appears in the public gallery", () => {
+    const p = call("photo-save", ctxA, { worldId: "w1", imageUrl: "data:image/png;base64,BBBB" }).result.photo;
+    assert.equal(call("photo-gallery-public", ctxB, { worldId: "w1" }).result.count, 0);
+    call("photo-share", ctxA, { id: p.id, public: true });
+    assert.equal(call("photo-gallery-public", ctxB, { worldId: "w1" }).result.count, 1);
+  });
+
+  it("photo-delete removes a photo", () => {
+    const p = call("photo-save", ctxA, { imageUrl: "data:image/png;base64,CCCC" }).result.photo;
+    assert.equal(call("photo-delete", ctxA, { id: p.id }).ok, true);
+    assert.equal(call("photo-delete", ctxA, { id: p.id }).ok, false);
   });
 });

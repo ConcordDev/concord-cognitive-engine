@@ -26,7 +26,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
-  Zap, RefreshCw, AlertTriangle, CheckCircle2, Loader2, Globe2, Filter, Database, Search, ChevronDown, ChevronRight,
+  Zap, RefreshCw, AlertTriangle, CheckCircle2, Loader2, Globe2, Database, Search, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 

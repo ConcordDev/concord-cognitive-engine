@@ -795,4 +795,418 @@ export default function registerCreativeWritingActions(registerLensAction) {
     saveCwState();
     return { ok: true, result: { deleted: params.id } };
   });
+
+  // ─── Feature-parity backlog — Scrivener / Sudowrite completion ──────
+  // Draggable corkboard, format-aware compile, per-document targets,
+  // scene-linked setting bible, snapshot diffing, manuscript statistics.
+
+  // ── Visual corkboard — explicit-index reorder ───────────────────────
+  // The arrow-key scene-reorder above does a swap; a draggable corkboard
+  // needs to drop a card at an arbitrary index. scene-set-order takes the
+  // full ordered list of sibling scene ids and renumbers them.
+  registerLensAction("creative-writing", "scene-set-order", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    if (!cwProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const ids = Array.isArray(params.sceneIds) ? params.sceneIds.map(String) : [];
+    if (!ids.length) return { ok: false, error: "sceneIds required" };
+    const all = s.scenes.get(userId) || [];
+    const targetChapter = params.chapterId ? String(params.chapterId) : null;
+    if (targetChapter && !(s.chapters.get(userId) || []).some((c) => c.id === targetChapter)) {
+      return { ok: false, error: "target chapter not found" };
+    }
+    const moved = [];
+    ids.forEach((id, idx) => {
+      const scene = all.find((x) => x.id === id && x.projectId === String(params.projectId));
+      if (!scene) return;
+      scene.chapterId = targetChapter;
+      scene.order = idx;
+      scene.updatedAt = cwNow();
+      moved.push(scene.id);
+    });
+    if (!moved.length) return { ok: false, error: "no matching scenes" };
+    saveCwState();
+    return { ok: true, result: { order: moved, chapterId: targetChapter } };
+  });
+
+  // ── Compile / export with format presets ────────────────────────────
+  // Builds a real downloadable document body for the requested format.
+  // Keyless, dependency-free: Markdown, HTML, and EPUB-flavoured XHTML
+  // are produced inline; the frontend turns the body into a Blob.
+  const CW_COMPILE_FORMATS = ["markdown", "html", "epub", "text", "fountain"];
+  const CW_COMPILE_PRESETS = {
+    manuscript: { sceneBreak: "\n\n* * *\n\n", chapterNumbered: true, fontHint: "12pt serif" },
+    ebook: { sceneBreak: "\n\n— ❖ —\n\n", chapterNumbered: false, fontHint: "1em serif" },
+    proof: { sceneBreak: "\n\n[scene break]\n\n", chapterNumbered: true, fontHint: "12pt mono" },
+  };
+  function cwEsc(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  registerLensAction("creative-writing", "compile-export", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const project = cwProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const format = cwPick(params.format, CW_COMPILE_FORMATS, "markdown");
+    const presetKey = CW_COMPILE_PRESETS[params.preset] ? params.preset : "manuscript";
+    const preset = CW_COMPILE_PRESETS[presetKey];
+    const includeDrafts = params.includeDrafts !== false;
+    const includeSynopsis = params.includeSynopsis === true;
+    const chapters = (s.chapters.get(userId) || [])
+      .filter((c) => c.projectId === project.id)
+      .sort((a, b) => a.order - b.order);
+    const scenes = (s.scenes.get(userId) || []).filter((x) => x.projectId === project.id);
+    const usableScenes = (chId) => (s.scenes.get(userId) || [])
+      .filter((sc) => sc.projectId === project.id && sc.chapterId === chId)
+      .sort((a, b) => a.order - b.order)
+      .filter((sc) => includeDrafts || sc.status === "final" || sc.status === "revised");
+
+    const sections = [];
+    let wordCount = 0;
+    let chapterNum = 0;
+    for (const ch of chapters) {
+      const chScenes = usableScenes(ch.id);
+      if (!chScenes.length) continue;
+      chapterNum += 1;
+      const heading = preset.chapterNumbered ? `Chapter ${chapterNum}: ${ch.title}` : ch.title;
+      const sceneBodies = chScenes.map((sc) => {
+        wordCount += sc.wordCount || 0;
+        return { title: sc.title, synopsis: sc.synopsis || "", content: sc.content || "" };
+      });
+      sections.push({ heading, scenes: sceneBodies });
+    }
+    const unfiled = usableScenes(null);
+    if (unfiled.length) {
+      sections.push({
+        heading: "Unfiled",
+        scenes: unfiled.map((sc) => {
+          wordCount += sc.wordCount || 0;
+          return { title: sc.title, synopsis: sc.synopsis || "", content: sc.content || "" };
+        }),
+      });
+    }
+
+    let body = "";
+    let mime = "text/plain";
+    let extension = "txt";
+    if (format === "markdown") {
+      mime = "text/markdown"; extension = "md";
+      body = `# ${project.title}\n\n`;
+      if (project.logline) body += `*${project.logline}*\n\n`;
+      for (const sec of sections) {
+        body += `## ${sec.heading}\n\n`;
+        sec.scenes.forEach((sc, i) => {
+          if (includeSynopsis && sc.synopsis) body += `> ${sc.synopsis}\n\n`;
+          if (sc.content) body += `${sc.content}\n`;
+          if (i < sec.scenes.length - 1) body += preset.sceneBreak;
+          else body += "\n";
+        });
+      }
+    } else if (format === "html" || format === "epub") {
+      mime = format === "epub" ? "application/xhtml+xml" : "text/html";
+      extension = format === "epub" ? "xhtml" : "html";
+      const chapHtml = sections.map((sec) => {
+        const sceneHtml = sec.scenes.map((sc, i) => {
+          const paras = (sc.content || "").split(/\n\n+/).filter(Boolean)
+            .map((p) => `<p>${cwEsc(p).replace(/\n/g, "<br/>")}</p>`).join("\n");
+          const syn = includeSynopsis && sc.synopsis
+            ? `<p class="synopsis"><em>${cwEsc(sc.synopsis)}</em></p>\n` : "";
+          const brk = i < sec.scenes.length - 1
+            ? `<p class="scene-break">${cwEsc(preset.sceneBreak.trim())}</p>` : "";
+          return `${syn}${paras || '<p class="empty">[empty scene]</p>'}\n${brk}`;
+        }).join("\n");
+        return `<section class="chapter">\n<h2>${cwEsc(sec.heading)}</h2>\n${sceneHtml}\n</section>`;
+      }).join("\n");
+      const docType = format === "epub"
+        ? '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml">'
+        : "<!DOCTYPE html>\n<html>";
+      body = `${docType}\n<head>\n<meta charset="UTF-8"/>\n<title>${cwEsc(project.title)}</title>\n` +
+        `<style>body{font:${preset.fontHint};max-width:38em;margin:2em auto;line-height:1.6}` +
+        `h1{text-align:center}.synopsis{color:#777}.scene-break{text-align:center}` +
+        `.chapter{page-break-before:always}</style>\n</head>\n<body>\n` +
+        `<h1>${cwEsc(project.title)}</h1>\n` +
+        (project.logline ? `<p class="synopsis"><em>${cwEsc(project.logline)}</em></p>\n` : "") +
+        `${chapHtml}\n</body>\n</html>`;
+    } else if (format === "fountain") {
+      mime = "text/plain"; extension = "fountain";
+      body = `Title: ${project.title}\n\n`;
+      for (const sec of sections) {
+        body += `# ${sec.heading.toUpperCase()}\n\n`;
+        sec.scenes.forEach((sc) => {
+          if (sc.content) body += `${sc.content}\n\n`;
+        });
+      }
+    } else {
+      body = `${project.title}\n${"=".repeat(project.title.length)}\n\n`;
+      for (const sec of sections) {
+        body += `\n${sec.heading}\n${"-".repeat(sec.heading.length)}\n\n`;
+        sec.scenes.forEach((sc, i) => {
+          if (sc.content) body += `${sc.content}\n`;
+          if (i < sec.scenes.length - 1) body += preset.sceneBreak;
+        });
+      }
+    }
+    const fileName = `${project.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()
+      .replace(/^-|-$/g, "") || "manuscript"}.${extension}`;
+    return {
+      ok: true,
+      result: {
+        format, preset: presetKey, mime, fileName, extension,
+        body, wordCount,
+        chapters: sections.map((s2) => ({ heading: s2.heading, scenes: s2.scenes.length })),
+        sceneCount: scenes.length,
+      },
+    };
+  });
+
+  // ── Per-document word-count targets ─────────────────────────────────
+  // scene-set-target stores a goal on one scene; target-progress rolls
+  // every scene's word count against its goal and the project total.
+  registerLensAction("creative-writing", "scene-set-target", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const scene = (s.scenes.get(cwAid(ctx)) || []).find((x) => x.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    scene.targetWords = Math.max(0, Math.round(cwNum(params.targetWords)));
+    scene.updatedAt = cwNow();
+    saveCwState();
+    return { ok: true, result: { sceneId: scene.id, targetWords: scene.targetWords } };
+  });
+
+  registerLensAction("creative-writing", "target-progress", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const project = cwProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    const scenes = (s.scenes.get(userId) || [])
+      .filter((x) => x.projectId === project.id)
+      .sort((a, b) => a.order - b.order);
+    const docs = scenes.map((sc) => {
+      const target = Math.max(0, Math.round(cwNum(sc.targetWords)));
+      const pct = target > 0 ? Math.min(999, Math.round((sc.wordCount / target) * 100)) : null;
+      return {
+        sceneId: sc.id, title: sc.title, chapterId: sc.chapterId,
+        wordCount: sc.wordCount, targetWords: target,
+        progressPct: pct,
+        met: target > 0 ? sc.wordCount >= target : null,
+      };
+    });
+    const totalWords = scenes.reduce((a, x) => a + x.wordCount, 0);
+    const docsWithTargets = docs.filter((d) => d.targetWords > 0);
+    const sceneTargetSum = docsWithTargets.reduce((a, d) => a + d.targetWords, 0);
+    return {
+      ok: true,
+      result: {
+        documents: docs,
+        totalWords,
+        projectTarget: project.targetWords,
+        projectProgressPct: project.targetWords
+          ? Math.min(999, Math.round((totalWords / project.targetWords) * 100)) : null,
+        docsWithTargets: docsWithTargets.length,
+        docsMet: docsWithTargets.filter((d) => d.met).length,
+        sceneTargetSum,
+      },
+    };
+  });
+
+  // ── World / setting bible — notes linked into scenes ────────────────
+  // Reuses the existing note substrate (kind location/lore/worldbuilding)
+  // and adds a many-to-many link between notes and scenes.
+  registerLensAction("creative-writing", "note-link-scene", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const note = (s.notes.get(userId) || []).find((n) => n.id === params.noteId);
+    if (!note) return { ok: false, error: "note not found" };
+    const scene = (s.scenes.get(userId) || []).find((x) => x.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    if (note.projectId !== scene.projectId) {
+      return { ok: false, error: "note and scene are in different projects" };
+    }
+    if (!Array.isArray(note.linkedSceneIds)) note.linkedSceneIds = [];
+    const link = params.linked !== false;
+    if (link && !note.linkedSceneIds.includes(scene.id)) note.linkedSceneIds.push(scene.id);
+    if (!link) note.linkedSceneIds = note.linkedSceneIds.filter((id) => id !== scene.id);
+    note.updatedAt = cwNow();
+    saveCwState();
+    return { ok: true, result: { noteId: note.id, linkedSceneIds: note.linkedSceneIds } };
+  });
+
+  registerLensAction("creative-writing", "setting-bible", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    if (!cwProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const sceneNames = new Map((s.scenes.get(userId) || [])
+      .filter((x) => x.projectId === String(params.projectId))
+      .map((x) => [x.id, x.title]));
+    const settingKinds = ["location", "lore", "worldbuilding", "item"];
+    let entries = (s.notes.get(userId) || [])
+      .filter((n) => n.projectId === String(params.projectId) && settingKinds.includes(n.kind));
+    if (params.kind) entries = entries.filter((n) => n.kind === String(params.kind));
+    const mapped = entries.map((n) => {
+      const linked = (Array.isArray(n.linkedSceneIds) ? n.linkedSceneIds : [])
+        .filter((id) => sceneNames.has(id))
+        .map((id) => ({ sceneId: id, title: sceneNames.get(id) }));
+      return {
+        id: n.id, title: n.title, kind: n.kind, body: n.body,
+        linkedScenes: linked, linkedCount: linked.length,
+        updatedAt: n.updatedAt,
+      };
+    });
+    return {
+      ok: true,
+      result: {
+        entries: mapped,
+        count: mapped.length,
+        byKind: settingKinds.map((k) => ({ kind: k, count: mapped.filter((e) => e.kind === k).length })),
+      },
+    };
+  });
+
+  // ── Revision snapshot diff ──────────────────────────────────────────
+  // Line-level diff between a snapshot and either the live scene or
+  // another snapshot, using a longest-common-subsequence walk.
+  function cwDiffLines(aLines, bLines) {
+    const n = aLines.length, m = bLines.length;
+    const lcs = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) {
+        lcs[i][j] = aLines[i] === bLines[j]
+          ? lcs[i + 1][j + 1] + 1
+          : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+      }
+    }
+    const out = [];
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (aLines[i] === bLines[j]) { out.push({ type: "equal", text: aLines[i] }); i++; j++; }
+      else if (lcs[i + 1][j] >= lcs[i][j + 1]) { out.push({ type: "removed", text: aLines[i] }); i++; }
+      else { out.push({ type: "added", text: bLines[j] }); j++; }
+    }
+    while (i < n) { out.push({ type: "removed", text: aLines[i] }); i++; }
+    while (j < m) { out.push({ type: "added", text: bLines[j] }); j++; }
+    return out;
+  }
+  registerLensAction("creative-writing", "snapshot-diff", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const snaps = s.snapshots.get(userId) || [];
+    const from = snaps.find((sn) => sn.id === params.fromId);
+    if (!from) return { ok: false, error: "from snapshot not found" };
+    let toContent; let toLabel;
+    if (params.toId) {
+      const to = snaps.find((sn) => sn.id === params.toId);
+      if (!to) return { ok: false, error: "to snapshot not found" };
+      toContent = to.content || ""; toLabel = to.title;
+    } else {
+      const scene = (s.scenes.get(userId) || []).find((x) => x.id === from.sceneId);
+      if (!scene) return { ok: false, error: "scene no longer exists" };
+      toContent = scene.content || ""; toLabel = "Current draft";
+    }
+    const aLines = String(from.content || "").split("\n");
+    const bLines = String(toContent).split("\n");
+    const diff = cwDiffLines(aLines, bLines);
+    const added = diff.filter((d) => d.type === "added").length;
+    const removed = diff.filter((d) => d.type === "removed").length;
+    const fromWords = cwWords(from.content || "");
+    const toWords = cwWords(toContent);
+    return {
+      ok: true,
+      result: {
+        fromLabel: from.title, toLabel,
+        diff,
+        addedLines: added, removedLines: removed,
+        unchangedLines: diff.filter((d) => d.type === "equal").length,
+        fromWords, toWords, wordDelta: toWords - fromWords,
+      },
+    };
+  });
+
+  // ── Manuscript statistics — pacing, word frequency, dialogue ratio ──
+  const CW_STOPWORDS = new Set([
+    "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "at", "for",
+    "with", "as", "by", "is", "was", "were", "be", "been", "are", "it", "its",
+    "he", "she", "they", "i", "you", "we", "him", "her", "them", "his", "their",
+    "that", "this", "these", "those", "had", "has", "have", "not", "no", "so",
+    "then", "than", "from", "up", "out", "down", "into", "over", "if", "all",
+  ]);
+  registerLensAction("creative-writing", "manuscript-stats", (ctx, _a, params = {}) => {
+    const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = cwAid(ctx);
+    const project = cwProject(s, userId, params.projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    let scenes = (s.scenes.get(userId) || []).filter((x) => x.projectId === project.id);
+    if (params.sceneId) scenes = scenes.filter((x) => x.id === String(params.sceneId));
+    const text = scenes.map((sc) => sc.content || "").filter(Boolean).join("\n\n");
+    if (!text.trim()) {
+      return { ok: true, result: { hasData: false, message: "No prose written yet." } };
+    }
+    const words = text.split(/\s+/).filter(Boolean);
+    const sentences = text.split(/[.!?]+/).map((x) => x.trim()).filter(Boolean);
+    const paragraphs = text.split(/\n\n+/).map((x) => x.trim()).filter(Boolean);
+
+    // Dialogue vs prose — characters inside matched quote pairs.
+    const dialogueMatches = text.match(/[""][^""]*[""]|"[^"]*"/g) || [];
+    const dialogueChars = dialogueMatches.reduce((a, q) => a + q.length, 0);
+    const totalChars = text.replace(/\s+/g, " ").length || 1;
+    const dialoguePct = Math.round((dialogueChars / totalChars) * 100);
+
+    // Word frequency, stopwords filtered.
+    const freq = new Map();
+    for (const raw of words) {
+      const w = raw.toLowerCase().replace(/[^a-z']/g, "");
+      if (w.length < 3 || CW_STOPWORDS.has(w)) continue;
+      freq.set(w, (freq.get(w) || 0) + 1);
+    }
+    const topWords = [...freq.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 20)
+      .map(([word, count]) => ({ word, count }));
+
+    // Adverb (-ly) and overused-crutch detection.
+    const lyWords = words.filter((w) => /ly[.,!?;:"']?$/i.test(w) && w.length > 4).length;
+    const sentenceLengths = sentences.map((sn) => sn.split(/\s+/).filter(Boolean).length);
+    const avgSentence = sentenceLengths.length
+      ? Math.round((words.length / sentenceLengths.length) * 10) / 10 : 0;
+    const longSentences = sentenceLengths.filter((l) => l > 30).length;
+    const shortSentences = sentenceLengths.filter((l) => l <= 8).length;
+
+    // Per-scene pacing — short avg-sentence + high dialogue reads "fast".
+    const pacing = scenes.filter((sc) => sc.content).map((sc) => {
+      const sw = (sc.content || "").split(/\s+/).filter(Boolean).length;
+      const ss = (sc.content || "").split(/[.!?]+/).filter((x) => x.trim()).length || 1;
+      const dq = ((sc.content || "").match(/[""][^""]*[""]|"[^"]*"/g) || []).length;
+      const avg = sw / ss;
+      return {
+        sceneId: sc.id, title: sc.title, wordCount: sw,
+        avgSentenceLength: Math.round(avg * 10) / 10,
+        tempo: avg < 11 ? "fast" : avg < 17 ? "moderate" : "slow",
+        dialogueLines: dq,
+      };
+    });
+
+    return {
+      ok: true,
+      result: {
+        hasData: true,
+        wordCount: words.length,
+        sentenceCount: sentences.length,
+        paragraphCount: paragraphs.length,
+        sceneCount: scenes.filter((sc) => sc.content).length,
+        avgSentenceLength: avgSentence,
+        avgParagraphWords: paragraphs.length
+          ? Math.round(words.length / paragraphs.length) : 0,
+        dialoguePct,
+        prosePct: 100 - dialoguePct,
+        uniqueWords: freq.size,
+        adverbCount: lyWords,
+        adverbPer1000: words.length ? Math.round((lyWords / words.length) * 1000) : 0,
+        longSentences,
+        shortSentences,
+        topWords,
+        pacing,
+        estimatedReadMinutes: Math.ceil(words.length / 250),
+      },
+    };
+  });
 }

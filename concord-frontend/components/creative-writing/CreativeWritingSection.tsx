@@ -7,7 +7,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { PenTool, Plus, BookText, LayoutGrid, Users, GitBranch, TrendingUp, Loader2 } from 'lucide-react';
+import {
+  PenTool, Plus, BookText, LayoutGrid, Users, GitBranch, TrendingUp, Loader2,
+  Globe, FileDown, Target, BarChart3, GitCompare,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { CwBinderPanel } from './CwBinderPanel';
@@ -16,6 +19,11 @@ import { CwCharactersPanel } from './CwCharactersPanel';
 import { CwThreadsPanel } from './CwThreadsPanel';
 import { CwProgressPanel } from './CwProgressPanel';
 import { CwResearchPanel } from './CwResearchPanel';
+import { CwBiblePanel } from './CwBiblePanel';
+import { CwCompilePanel } from './CwCompilePanel';
+import { CwTargetsPanel } from './CwTargetsPanel';
+import { CwStatsPanel } from './CwStatsPanel';
+import { CwSnapshotDiffPanel } from './CwSnapshotDiffPanel';
 
 interface Project { id: string; title: string; genre: string; targetWords: number; wordCount?: number }
 interface Dash {
@@ -23,14 +31,20 @@ interface Dash {
   scenes: number; characters: number; threads: number;
   byStatus: Record<string, number>;
 }
-type TabId = 'binder' | 'corkboard' | 'characters' | 'plot' | 'research' | 'progress';
+type TabId = 'binder' | 'corkboard' | 'characters' | 'plot' | 'research'
+  | 'bible' | 'progress' | 'targets' | 'stats' | 'revisions' | 'compile';
 const TABS: { id: TabId; label: string; icon: typeof BookText }[] = [
   { id: 'binder', label: 'Binder', icon: BookText },
   { id: 'corkboard', label: 'Corkboard', icon: LayoutGrid },
   { id: 'characters', label: 'Characters', icon: Users },
   { id: 'plot', label: 'Plot', icon: GitBranch },
   { id: 'research', label: 'Research', icon: BookText },
+  { id: 'bible', label: 'Setting Bible', icon: Globe },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
+  { id: 'targets', label: 'Targets', icon: Target },
+  { id: 'stats', label: 'Statistics', icon: BarChart3 },
+  { id: 'revisions', label: 'Revisions', icon: GitCompare },
+  { id: 'compile', label: 'Compile', icon: FileDown },
 ];
 
 export function CreativeWritingSection() {
@@ -148,7 +162,12 @@ export function CreativeWritingSection() {
                 {tab === 'characters' && <CwCharactersPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'plot' && <CwThreadsPanel projectId={activeProject} onChange={refreshDash} />}
                 {tab === 'research' && <CwResearchPanel projectId={activeProject} />}
+                {tab === 'bible' && <CwBiblePanel projectId={activeProject} />}
                 {tab === 'progress' && <CwProgressPanel projectId={activeProject} />}
+                {tab === 'targets' && <CwTargetsPanel projectId={activeProject} />}
+                {tab === 'stats' && <CwStatsPanel projectId={activeProject} />}
+                {tab === 'revisions' && <CwSnapshotDiffPanel projectId={activeProject} />}
+                {tab === 'compile' && <CwCompilePanel projectId={activeProject} />}
               </div>
             </>
           )}

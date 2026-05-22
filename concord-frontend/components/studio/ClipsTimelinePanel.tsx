@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -12,9 +12,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', startBeats: '0', lengthBeats: '4', kind: 'midi' });
 
-  useEffect(() => { refresh(); }, [projectId, trackId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!projectId) { setClips([]); setLoading(false); return; }
     setLoading(true);
     try {
@@ -22,7 +20,9 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
       setClips((res.data?.result?.clips || []) as Clip[]);
     } catch (e) { console.error('[Clips] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [projectId, trackId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function create() {
     if (!projectId || !trackId || !form.name.trim()) return;

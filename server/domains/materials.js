@@ -5,6 +5,8 @@
 // crystalline materials. Free with API key from materialsproject.org
 // (set MATERIALS_PROJECT_API_KEY env).
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const MP_BASE = "https://api.materialsproject.org";
 
 export default function registerMaterialsActions(registerLensAction) {
@@ -418,6 +420,537 @@ export default function registerMaterialsActions(registerLensAction) {
       };
     } catch (e) {
       return { ok: false, error: `materials project unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ─── Saved materials shortlist (Granta MI-shape comparison set) ──────
+
+  function getMaterialsState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.materialsLens) STATE.materialsLens = {};
+    if (!(STATE.materialsLens.saved instanceof Map)) STATE.materialsLens.saved = new Map(); // userId -> Array
+    return STATE.materialsLens;
+  }
+  function saveMaterials() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const mtId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const mtActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const mtClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const mtNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const mtSaved = (s, userId) => { if (!s.saved.has(userId)) s.saved.set(userId, []); return s.saved.get(userId); };
+
+  registerLensAction("materials", "shortlist-add", (ctx, _a, params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mtClean(params.name, 160);
+    if (!name) return { ok: false, error: "material name required" };
+    const list = mtSaved(s, mtActor(ctx));
+    const refId = mtClean(params.refId, 120) || name.toLowerCase();
+    if (list.some((m) => m.refId === refId)) return { ok: false, error: "material already shortlisted" };
+    const material = {
+      id: mtId("mt"),
+      refId,
+      name,
+      formula: mtClean(params.formula, 80) || null,
+      category: mtClean(params.category, 60) || "general",
+      properties: {
+        density: mtNum(params.density),
+        tensileStrengthMPa: mtNum(params.tensileStrengthMPa),
+        meltingPointC: mtNum(params.meltingPointC),
+        youngsModulusGPa: mtNum(params.youngsModulusGPa),
+        costPerKg: mtNum(params.costPerKg),
+      },
+      notes: mtClean(params.notes, 1000) || "",
+      addedAt: new Date().toISOString(),
+    };
+    list.push(material);
+    saveMaterials();
+    return { ok: true, result: { material } };
+  });
+
+  registerLensAction("materials", "shortlist-list", (ctx, _a, params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let list = [...mtSaved(s, mtActor(ctx))];
+    if (params.category) list = list.filter((m) => m.category === params.category);
+    return { ok: true, result: { materials: list, count: list.length } };
+  });
+
+  registerLensAction("materials", "shortlist-remove", (ctx, _a, params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = mtSaved(s, mtActor(ctx));
+    const i = list.findIndex((m) => m.id === params.id);
+    if (i < 0) return { ok: false, error: "material not found" };
+    list.splice(i, 1);
+    saveMaterials();
+    return { ok: true, result: { removed: params.id } };
+  });
+
+  // shortlist-compare — side-by-side property table + the best material
+  // per property (Granta MI's core selection workflow).
+  registerLensAction("materials", "shortlist-compare", (ctx, _a, _params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = mtSaved(s, mtActor(ctx));
+    if (list.length < 2) return { ok: false, error: "shortlist at least 2 materials to compare" };
+    const PROPS = [
+      { key: "density", label: "Density", lowerBetter: true },
+      { key: "tensileStrengthMPa", label: "Tensile strength (MPa)", lowerBetter: false },
+      { key: "meltingPointC", label: "Melting point (°C)", lowerBetter: false },
+      { key: "youngsModulusGPa", label: "Young's modulus (GPa)", lowerBetter: false },
+      { key: "costPerKg", label: "Cost per kg", lowerBetter: true },
+    ];
+    const comparison = PROPS.map((p) => {
+      const vals = list.map((m) => ({ id: m.id, name: m.name, value: m.properties[p.key] }))
+        .filter((v) => v.value != null);
+      let best = null;
+      if (vals.length > 0) {
+        best = vals.reduce((acc, v) => {
+          if (!acc) return v;
+          return p.lowerBetter ? (v.value < acc.value ? v : acc) : (v.value > acc.value ? v : acc);
+        }, null);
+      }
+      return { property: p.label, key: p.key, values: vals, best: best ? best.name : null };
+    });
+    return { ok: true, result: { materials: list.map((m) => ({ id: m.id, name: m.name, formula: m.formula })), comparison } };
+  });
+
+  registerLensAction("materials", "shortlist-dashboard", (ctx, _a, _params = {}) => {
+    const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = mtSaved(s, mtActor(ctx));
+    const byCategory = {};
+    for (const m of list) byCategory[m.category] = (byCategory[m.category] || 0) + 1;
+    return { ok: true, result: { shortlisted: list.length, byCategory } };
+  });
+
+  // ─── Ashby chart / property plot ────────────────────────────────────
+  // Build a 2D material-selection scatter from the user's shortlist.
+  // Returns one point per material on the requested X/Y property axes,
+  // plus log-scale guide-line slopes for material-index selection
+  // (e.g. specific strength = strength / density).
+  registerLensAction("materials", "ashby-plot", (ctx, _a, params = {}) => {
+    try {
+      const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const PROP_META = {
+        density: { label: "Density (g/cm³)", lowerBetter: true },
+        tensileStrengthMPa: { label: "Tensile strength (MPa)", lowerBetter: false },
+        meltingPointC: { label: "Melting point (°C)", lowerBetter: false },
+        youngsModulusGPa: { label: "Young's modulus (GPa)", lowerBetter: false },
+        costPerKg: { label: "Cost per kg", lowerBetter: true },
+      };
+      const xKey = mtClean(params.xKey, 40) || "density";
+      const yKey = mtClean(params.yKey, 40) || "tensileStrengthMPa";
+      if (!PROP_META[xKey] || !PROP_META[yKey]) {
+        return { ok: false, error: `axis must be one of: ${Object.keys(PROP_META).join(", ")}` };
+      }
+      const list = mtSaved(s, mtActor(ctx));
+      const points = list
+        .map((m) => ({
+          id: m.id, name: m.name, category: m.category,
+          x: m.properties[xKey], y: m.properties[yKey],
+        }))
+        .filter((p) => p.x != null && p.y != null && p.x > 0 && p.y > 0);
+      if (points.length === 0) {
+        return { ok: true, result: { points: [], xKey, yKey, xLabel: PROP_META[xKey].label, yLabel: PROP_META[yKey].label, message: "Shortlist materials with both axis properties to plot." } };
+      }
+      // Material index: ratio of Y to X (handles "maximize Y / minimize X").
+      const indexed = points.map((p) => ({ ...p, materialIndex: Math.round((p.y / p.x) * 100) / 100 }));
+      indexed.sort((a, b) => b.materialIndex - a.materialIndex);
+      return {
+        ok: true,
+        result: {
+          xKey, yKey,
+          xLabel: PROP_META[xKey].label, yLabel: PROP_META[yKey].label,
+          points: indexed,
+          count: indexed.length,
+          bestIndex: indexed[0] ? { name: indexed[0].name, materialIndex: indexed[0].materialIndex } : null,
+          guideNote: "Material index = Y/X. Higher index sits toward the top-left selection corner.",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── Multi-criteria selection wizard ────────────────────────────────
+  // Weighted-objective ranking against design requirements. Each
+  // criterion has a property key, a weight (0-100), and a goal
+  // (max|min). Scores each shortlisted material by min-max normalising
+  // every criterion across the candidate set, then a weighted sum.
+  registerLensAction("materials", "multi-criteria-rank", (ctx, _a, params = {}) => {
+    try {
+      const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const VALID = ["density", "tensileStrengthMPa", "meltingPointC", "youngsModulusGPa", "costPerKg"];
+      const rawCriteria = Array.isArray(params.criteria) ? params.criteria : [];
+      const criteria = rawCriteria
+        .map((c) => ({
+          key: mtClean(c?.key, 40),
+          weight: Math.max(0, Math.min(100, mtNum(c?.weight) ?? 0)),
+          goal: c?.goal === "min" ? "min" : "max",
+        }))
+        .filter((c) => VALID.includes(c.key) && c.weight > 0);
+      if (criteria.length === 0) {
+        return { ok: false, error: "supply at least one criterion { key, weight, goal }" };
+      }
+      const list = mtSaved(s, mtActor(ctx));
+      if (list.length === 0) return { ok: false, error: "shortlist materials before ranking" };
+      const totalWeight = criteria.reduce((t, c) => t + c.weight, 0);
+      // Per-criterion min/max for normalisation.
+      const bounds = {};
+      for (const c of criteria) {
+        const vals = list.map((m) => m.properties[c.key]).filter((v) => v != null);
+        bounds[c.key] = { min: vals.length ? Math.min(...vals) : 0, max: vals.length ? Math.max(...vals) : 0 };
+      }
+      const ranked = list.map((m) => {
+        let score = 0;
+        const breakdown = [];
+        let missing = 0;
+        for (const c of criteria) {
+          const v = m.properties[c.key];
+          const { min, max } = bounds[c.key];
+          let norm = 0;
+          if (v == null) { missing++; }
+          else if (max === min) { norm = 1; }
+          else {
+            norm = (v - min) / (max - min);
+            if (c.goal === "min") norm = 1 - norm;
+          }
+          const contribution = (norm * c.weight) / totalWeight;
+          score += contribution;
+          breakdown.push({ key: c.key, value: v, normalized: Math.round(norm * 100) / 100, weight: c.weight, contribution: Math.round(contribution * 1000) / 1000 });
+        }
+        return { id: m.id, name: m.name, category: m.category, score: Math.round(score * 1000) / 1000, scorePct: Math.round(score * 100), missingCriteria: missing, breakdown };
+      }).sort((a, b) => b.score - a.score);
+      return {
+        ok: true,
+        result: {
+          criteria, totalWeight,
+          rankings: ranked, count: ranked.length,
+          recommended: ranked[0]?.name || null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── 3D crystal-structure viewer data ───────────────────────────────
+  // Pulls the structure (lattice + atom sites) for a Materials Project
+  // material_id so the frontend can render it in WebGL.
+  registerLensAction("materials", "mp-structure", async (_ctx, _artifact, params = {}) => {
+    try {
+      const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
+      if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required (free at materialsproject.org)" };
+      const materialId = String(params.materialId || "").trim();
+      if (!/^mp-\d+$/.test(materialId)) return { ok: false, error: "materialId format must be 'mp-<digits>'" };
+      const url = `${MP_BASE}/materials/summary/?material_ids=${encodeURIComponent(materialId)}&_fields=material_id,formula_pretty,structure,symmetry,volume`;
+      const data = await cachedFetchJson(url, {
+        opts: { headers: { "X-API-KEY": apiKey, Accept: "application/json" } },
+        ttlMs: 24 * 60 * 60 * 1000,
+      });
+      const m = data?.data?.[0];
+      if (!m || !m.structure) return { ok: false, error: `structure not found for ${materialId}` };
+      const st = m.structure;
+      const lattice = st.lattice || {};
+      const sites = (st.sites || []).map((site) => ({
+        species: (site.species || []).map((sp) => sp.element).join("/") || site.label || "?",
+        abc: site.abc || [0, 0, 0],
+        xyz: site.xyz || [0, 0, 0],
+      }));
+      return {
+        ok: true,
+        result: {
+          materialId: m.material_id,
+          formula: m.formula_pretty,
+          crystalSystem: m.symmetry?.crystal_system,
+          spaceGroup: m.symmetry?.symbol,
+          volume: m.volume,
+          lattice: {
+            a: lattice.a, b: lattice.b, c: lattice.c,
+            alpha: lattice.alpha, beta: lattice.beta, gamma: lattice.gamma,
+            matrix: lattice.matrix || null,
+          },
+          sites,
+          atomCount: sites.length,
+          source: "materials-project",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `materials project unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ─── Material datasheet generator ───────────────────────────────────
+  // Assembles an exportable spec sheet from a shortlist material id, or
+  // from inline properties passed in params. Returns structured
+  // sections plus a plain-text rendering for copy/export.
+  registerLensAction("materials", "datasheet", (ctx, _a, params = {}) => {
+    try {
+      const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let mat = null;
+      if (params.id) {
+        const list = mtSaved(s, mtActor(ctx));
+        mat = list.find((m) => m.id === params.id) || null;
+        if (!mat) return { ok: false, error: "material not found in shortlist" };
+      } else {
+        const name = mtClean(params.name, 160);
+        if (!name) return { ok: false, error: "id (shortlist) or name + properties required" };
+        mat = {
+          name, formula: mtClean(params.formula, 80) || null, category: mtClean(params.category, 60) || "general",
+          properties: {
+            density: mtNum(params.density),
+            tensileStrengthMPa: mtNum(params.tensileStrengthMPa),
+            meltingPointC: mtNum(params.meltingPointC),
+            youngsModulusGPa: mtNum(params.youngsModulusGPa),
+            costPerKg: mtNum(params.costPerKg),
+          },
+          notes: mtClean(params.notes, 1000) || "",
+        };
+      }
+      const p = mat.properties || {};
+      const propRows = [
+        { label: "Density", value: p.density, unit: "g/cm³" },
+        { label: "Tensile strength", value: p.tensileStrengthMPa, unit: "MPa" },
+        { label: "Melting point", value: p.meltingPointC, unit: "°C" },
+        { label: "Young's modulus", value: p.youngsModulusGPa, unit: "GPa" },
+        { label: "Cost per kg", value: p.costPerKg, unit: "USD" },
+      ].filter((r) => r.value != null);
+      const derived = [];
+      if (p.tensileStrengthMPa != null && p.density != null && p.density > 0) {
+        derived.push({ label: "Specific strength", value: Math.round((p.tensileStrengthMPa / p.density) * 100) / 100, unit: "MPa·cm³/g" });
+      }
+      if (p.youngsModulusGPa != null && p.density != null && p.density > 0) {
+        derived.push({ label: "Specific stiffness", value: Math.round((p.youngsModulusGPa / p.density) * 100) / 100, unit: "GPa·cm³/g" });
+      }
+      const generatedAt = new Date().toISOString();
+      const lines = [
+        `MATERIAL DATASHEET — ${mat.name}`,
+        mat.formula ? `Formula: ${mat.formula}` : null,
+        `Category: ${mat.category}`,
+        `Generated: ${generatedAt}`,
+        "",
+        "MEASURED PROPERTIES",
+        ...propRows.map((r) => `  ${r.label}: ${r.value} ${r.unit}`),
+        derived.length ? "" : null,
+        derived.length ? "DERIVED PROPERTIES" : null,
+        ...derived.map((r) => `  ${r.label}: ${r.value} ${r.unit}`),
+        mat.notes ? "" : null,
+        mat.notes ? `NOTES\n  ${mat.notes}` : null,
+      ].filter((l) => l != null);
+      return {
+        ok: true,
+        result: {
+          datasheet: {
+            name: mat.name, formula: mat.formula, category: mat.category,
+            generatedAt,
+            measuredProperties: propRows,
+            derivedProperties: derived,
+            notes: mat.notes || "",
+          },
+          plainText: lines.join("\n"),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── Test-data import (CSV) ─────────────────────────────────────────
+  // Ingest mechanical test results from raw CSV text into a material
+  // record. Parses header + rows, computes summary statistics
+  // (count / mean / min / max / stdev) per numeric column.
+  registerLensAction("materials", "import-test-csv", (ctx, _a, params = {}) => {
+    try {
+      const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const csv = String(params.csv == null ? "" : params.csv);
+      if (!csv.trim()) return { ok: false, error: "csv text required" };
+      const rows = csv.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      if (rows.length < 2) return { ok: false, error: "csv must have a header row plus at least one data row" };
+      const header = rows[0].split(",").map((h) => h.trim());
+      const records = [];
+      for (const line of rows.slice(1)) {
+        const cells = line.split(",").map((c) => c.trim());
+        const rec = {};
+        header.forEach((h, i) => { rec[h] = cells[i] != null ? cells[i] : ""; });
+        records.push(rec);
+      }
+      // Per-column numeric stats.
+      const stats = {};
+      for (const col of header) {
+        const nums = records.map((r) => Number(r[col])).filter((n) => Number.isFinite(n));
+        if (nums.length === 0) continue;
+        const mean = nums.reduce((t, n) => t + n, 0) / nums.length;
+        const variance = nums.reduce((t, n) => t + (n - mean) ** 2, 0) / nums.length;
+        stats[col] = {
+          count: nums.length,
+          mean: Math.round(mean * 1000) / 1000,
+          min: Math.min(...nums),
+          max: Math.max(...nums),
+          stdev: Math.round(Math.sqrt(variance) * 1000) / 1000,
+        };
+      }
+      let attachedTo = null;
+      if (params.id) {
+        const list = mtSaved(s, mtActor(ctx));
+        const mat = list.find((m) => m.id === params.id);
+        if (mat) {
+          if (!Array.isArray(mat.testData)) mat.testData = [];
+          mat.testData.push({ id: mtId("tst"), importedAt: new Date().toISOString(), columns: header, rowCount: records.length, stats });
+          attachedTo = mat.name;
+          saveMaterials();
+        }
+      }
+      return {
+        ok: true,
+        result: {
+          columns: header,
+          rowCount: records.length,
+          rows: records.slice(0, 200),
+          stats,
+          attachedTo,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── Standards cross-reference ──────────────────────────────────────
+  // Link a material to ASTM / ISO / EN / DIN / JIS designations. Built
+  // from a curated reference table of common engineering alloy/polymer
+  // equivalences — returns the matched standard set, never synthesizes.
+  const STANDARDS_TABLE = {
+    "stainless 304": [
+      { body: "UNS", id: "S30400" }, { body: "ASTM", id: "A240/A276" },
+      { body: "EN", id: "1.4301 (X5CrNi18-10)" }, { body: "JIS", id: "SUS304" },
+      { body: "ISO", id: "X5CrNi18-10" },
+    ],
+    "stainless 316": [
+      { body: "UNS", id: "S31600" }, { body: "ASTM", id: "A240/A276" },
+      { body: "EN", id: "1.4401 (X5CrNiMo17-12-2)" }, { body: "JIS", id: "SUS316" },
+    ],
+    "aluminum 6061": [
+      { body: "UNS", id: "A96061" }, { body: "ASTM", id: "B209/B221" },
+      { body: "EN", id: "AW-6061 (AlMg1SiCu)" }, { body: "ISO", id: "AlMg1SiCu" },
+    ],
+    "aluminum 7075": [
+      { body: "UNS", id: "A97075" }, { body: "ASTM", id: "B209" },
+      { body: "EN", id: "AW-7075 (AlZn5.5MgCu)" },
+    ],
+    "carbon steel a36": [
+      { body: "ASTM", id: "A36" }, { body: "UNS", id: "K02600" },
+      { body: "EN", id: "S235JR (1.0038)" }, { body: "JIS", id: "SS400" },
+    ],
+    "titanium grade 5": [
+      { body: "UNS", id: "R56400" }, { body: "ASTM", id: "B265/B348" },
+      { body: "EN", id: "3.7165 (TiAl6V4)" }, { body: "ISO", id: "Ti-6Al-4V" },
+    ],
+    "abs": [{ body: "ASTM", id: "D4673" }, { body: "ISO", id: "2580" }],
+    "polycarbonate": [{ body: "ASTM", id: "D3935" }, { body: "ISO", id: "7391" }],
+    "nylon 6": [{ body: "ASTM", id: "D4066" }, { body: "ISO", id: "1874" }],
+    "copper c11000": [{ body: "UNS", id: "C11000" }, { body: "ASTM", id: "B152" }, { body: "EN", id: "Cu-ETP (CW004A)" }],
+  };
+  registerLensAction("materials", "standards-crossref", (_ctx, _a, params = {}) => {
+    try {
+      const query = mtClean(params.material, 120).toLowerCase();
+      if (!query) {
+        return { ok: true, result: { available: Object.keys(STANDARDS_TABLE), message: "Pass a material name to cross-reference (e.g. 'stainless 304', 'aluminum 6061')." } };
+      }
+      let key = Object.keys(STANDARDS_TABLE).find((k) => k === query);
+      if (!key) key = Object.keys(STANDARDS_TABLE).find((k) => query.includes(k) || k.includes(query));
+      if (!key) {
+        return {
+          ok: true,
+          result: {
+            material: params.material, matched: false,
+            standards: [],
+            available: Object.keys(STANDARDS_TABLE),
+            disclaimer: "No curated cross-reference for this material — Concord does not synthesize standard designations. Verify against the official standard body.",
+          },
+        };
+      }
+      return {
+        ok: true,
+        result: {
+          material: params.material, matched: true, matchedKey: key,
+          standards: STANDARDS_TABLE[key],
+          source: "curated-engineering-equivalence-table",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ─── Sustainability / embodied-carbon metrics ───────────────────────
+  // Per-material embodied carbon (kg CO₂e/kg), embodied energy, and
+  // recyclability from a curated reference table (ICE / industry
+  // averages). Computes total footprint for a given mass.
+  const CARBON_TABLE = {
+    "steel": { embodiedCarbon: 1.9, embodiedEnergy: 25, recyclability: 90, renewable: false },
+    "stainless steel": { embodiedCarbon: 6.2, embodiedEnergy: 75, recyclability: 85, renewable: false },
+    "aluminum": { embodiedCarbon: 8.2, embodiedEnergy: 155, recyclability: 95, renewable: false },
+    "recycled aluminum": { embodiedCarbon: 1.7, embodiedEnergy: 29, recyclability: 95, renewable: false },
+    "titanium": { embodiedCarbon: 35, embodiedEnergy: 360, recyclability: 80, renewable: false },
+    "copper": { embodiedCarbon: 3.8, embodiedEnergy: 42, recyclability: 90, renewable: false },
+    "concrete": { embodiedCarbon: 0.13, embodiedEnergy: 0.95, recyclability: 30, renewable: false },
+    "glass": { embodiedCarbon: 0.85, embodiedEnergy: 15, recyclability: 70, renewable: false },
+    "abs": { embodiedCarbon: 3.8, embodiedEnergy: 95, recyclability: 25, renewable: false },
+    "polycarbonate": { embodiedCarbon: 6.0, embodiedEnergy: 110, recyclability: 20, renewable: false },
+    "nylon": { embodiedCarbon: 7.9, embodiedEnergy: 120, recyclability: 20, renewable: false },
+    "carbon fiber": { embodiedCarbon: 24, embodiedEnergy: 286, recyclability: 15, renewable: false },
+    "wood": { embodiedCarbon: 0.46, embodiedEnergy: 8.5, recyclability: 60, renewable: true },
+    "bamboo": { embodiedCarbon: 0.24, embodiedEnergy: 5.6, recyclability: 70, renewable: true },
+  };
+  registerLensAction("materials", "sustainability", (_ctx, _a, params = {}) => {
+    try {
+      const query = mtClean(params.material, 120).toLowerCase();
+      if (!query) {
+        return { ok: true, result: { available: Object.keys(CARBON_TABLE), message: "Pass a material name for embodied-carbon metrics." } };
+      }
+      let key = Object.keys(CARBON_TABLE).find((k) => k === query);
+      if (!key) key = Object.keys(CARBON_TABLE).find((k) => query.includes(k) || k.includes(query));
+      if (!key) {
+        return {
+          ok: true,
+          result: {
+            material: params.material, matched: false,
+            available: Object.keys(CARBON_TABLE),
+            disclaimer: "No curated sustainability data for this material — Concord does not estimate embodied carbon for unknown materials.",
+          },
+        };
+      }
+      const ref = CARBON_TABLE[key];
+      const massKg = mtNum(params.massKg);
+      const footprint = massKg != null && massKg > 0
+        ? {
+            massKg,
+            totalCarbonKgCO2e: Math.round(ref.embodiedCarbon * massKg * 100) / 100,
+            totalEnergyMJ: Math.round(ref.embodiedEnergy * massKg * 100) / 100,
+          }
+        : null;
+      const ratings = Object.entries(CARBON_TABLE).map(([k, v]) => v.embodiedCarbon).sort((a, b) => a - b);
+      const rank = ratings.indexOf(ref.embodiedCarbon) + 1;
+      const grade = ref.embodiedCarbon < 1 ? "A" : ref.embodiedCarbon < 4 ? "B" : ref.embodiedCarbon < 10 ? "C" : ref.embodiedCarbon < 25 ? "D" : "E";
+      return {
+        ok: true,
+        result: {
+          material: params.material, matched: true, matchedKey: key,
+          metrics: {
+            embodiedCarbonKgCO2ePerKg: ref.embodiedCarbon,
+            embodiedEnergyMJPerKg: ref.embodiedEnergy,
+            recyclabilityPct: ref.recyclability,
+            renewable: ref.renewable,
+            carbonGrade: grade,
+            carbonRank: `${rank} of ${ratings.length} (lower = greener)`,
+          },
+          footprint,
+          source: "curated-ICE-industry-averages",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
 }

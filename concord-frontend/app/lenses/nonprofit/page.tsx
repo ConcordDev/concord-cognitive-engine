@@ -11,6 +11,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PropublicaSearch } from '@/components/nonprofit/PropublicaSearch';
 import { NonprofitActionPanel } from '@/components/nonprofit/NonprofitActionPanel';
+import { CampaignManager } from '@/components/nonprofit/CampaignManager';
+import { NonprofitWorkbench } from '@/components/nonprofit/NonprofitWorkbench';
 import { PipingProvider } from '@/components/panel-polish';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1968,6 +1970,17 @@ export default function NonprofitLensPage() {
       {/* Bespoke ProPublica Nonprofit Explorer with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PropublicaSearch />
+      </section>
+
+      {/* Fundraising workbench: campaign CRUD + donation log + dashboard */}
+      <section className="mt-4">
+        <CampaignManager />
+      </section>
+
+      {/* Bloomerang/Givebutter feature surface: donor CRM, recurring giving,
+          communications, tax receipts, donation pages, volunteers, P2P events */}
+      <section className="mt-4">
+        <NonprofitWorkbench />
       </section>
 
       <PipingProvider>

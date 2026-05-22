@@ -510,4 +510,705 @@ export default function registerInferenceActions(registerLensAction) {
       },
     };
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // 2026 parity — Prolog / Drools rule engine: persistent knowledge base,
+  // rule editor, proof trees, negation-as-failure, conflict resolution,
+  // explanation ("why"/"how"), built-in predicates, step-through console.
+  // ───────────────────────────────────────────────────────────────────────
+
+  // ── Persistent per-user knowledge base in globalThis._concordSTATE ──
+  function getInfState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.inferenceLens) {
+      STATE.inferenceLens = {
+        kb: new Map(), // userId -> { facts: [], rules: [] }
+      };
+    }
+    return STATE.inferenceLens;
+  }
+  function saveInfState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  function infActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function infId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`; }
+  function userKb(userId) {
+    const s = getInfState();
+    if (!s) return null;
+    if (!s.kb.has(userId)) s.kb.set(userId, { facts: [], rules: [] });
+    return s.kb.get(userId);
+  }
+
+  // ── Shared term helpers (used by KB-aware macros below) ──
+  function isVarT(s) { return typeof s === "string" && s.startsWith("?"); }
+  function factKeyT(f) { return `${f.predicate}(${(f.args || []).join(",")})`; }
+
+  /**
+   * parseFact — turns a textual atom "parent(alice,bob)" into
+   * { predicate, args[] }. Bare "?X" segments are variables. Returns null
+   * on a syntax error so the rule editor can report it.
+   */
+  function parseFact(text) {
+    const t = String(text || "").trim().replace(/\.$/, "");
+    if (!t) return { error: "empty atom" };
+    let negated = false;
+    let body = t;
+    if (/^(not|\\\+)\s+/i.test(body)) {
+      negated = true;
+      body = body.replace(/^(not|\\\+)\s+/i, "").trim();
+    }
+    const m = body.match(/^([a-zA-Z_][\w-]*)\s*\(([^)]*)\)$/);
+    if (!m) {
+      // 0-arity proposition
+      if (/^[a-zA-Z_][\w-]*$/.test(body)) return { predicate: body, args: [], negated };
+      return { error: `cannot parse atom "${text}"` };
+    }
+    const predicate = m[1];
+    const args = m[2].trim() === ""
+      ? []
+      : m[2].split(",").map((a) => a.trim()).filter((a) => a.length > 0);
+    return { predicate, args, negated };
+  }
+
+  /**
+   * parseRule — parses "head :- body1, body2." into a rule object.
+   * A fact (no ":-") becomes { if: [], then: head }.
+   */
+  function parseRule(text) {
+    const t = String(text || "").trim().replace(/\.$/, "");
+    if (!t) return { error: "empty rule" };
+    const arrowIdx = t.indexOf(":-");
+    if (arrowIdx === -1) {
+      const head = parseFact(t);
+      if (head.error) return { error: head.error };
+      return { if: [], then: { predicate: head.predicate, args: head.args } };
+    }
+    const headText = t.slice(0, arrowIdx).trim();
+    const bodyText = t.slice(arrowIdx + 2).trim();
+    const head = parseFact(headText);
+    if (head.error) return { error: `head: ${head.error}` };
+    if (head.negated) return { error: "rule head cannot be negated" };
+    // split body on top-level commas (no nesting beyond a single paren group)
+    const parts = [];
+    let depth = 0, cur = "";
+    for (const ch of bodyText) {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === "," && depth === 0) { parts.push(cur); cur = ""; } else cur += ch;
+    }
+    if (cur.trim()) parts.push(cur);
+    const conds = [];
+    for (const p of parts) {
+      const c = parseFact(p);
+      if (c.error) return { error: `body: ${c.error}` };
+      conds.push({ predicate: c.predicate, args: c.args, negated: !!c.negated });
+    }
+    return { if: conds, then: { predicate: head.predicate, args: head.args } };
+  }
+
+  // ── kb-add: add facts/rules to the persistent KB, syntax-checked ──
+  registerLensAction("inference", "kb-add", (ctx, _artifact, params = {}) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const lines = String(params.text || "")
+        .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("%"));
+      if (lines.length === 0) return { ok: false, error: "no input lines" };
+      const added = [], errors = [];
+      for (const line of lines) {
+        const r = parseRule(line);
+        if (r.error) { errors.push({ line, error: r.error }); continue; }
+        if (r.if.length === 0) {
+          if (r.then.args.some(isVarT)) {
+            errors.push({ line, error: "facts cannot contain variables" });
+            continue;
+          }
+          const key = factKeyT(r.then);
+          if (kb.facts.some((f) => factKeyT(f) === key)) {
+            errors.push({ line, error: "duplicate fact" });
+            continue;
+          }
+          const fact = { id: infId("fact"), predicate: r.then.predicate, args: r.then.args, addedAt: new Date().toISOString() };
+          kb.facts.push(fact);
+          added.push({ kind: "fact", ...fact });
+        } else {
+          const rule = {
+            id: infId("rule"),
+            name: params.name || `rule_${kb.rules.length + 1}`,
+            priority: typeof params.priority === "number" ? params.priority : 0,
+            if: r.if, then: r.then,
+            addedAt: new Date().toISOString(),
+            text: line,
+          };
+          kb.rules.push(rule);
+          added.push({ kind: "rule", ...rule });
+        }
+      }
+      saveInfState();
+      return {
+        ok: errors.length === 0 || added.length > 0,
+        result: {
+          added, errors,
+          addedCount: added.length, errorCount: errors.length,
+          factCount: kb.facts.length, ruleCount: kb.rules.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-list: dump the current knowledge base ──
+  registerLensAction("inference", "kb-list", (ctx) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const predicates = {};
+      for (const f of kb.facts) predicates[f.predicate] = (predicates[f.predicate] || 0) + 1;
+      return {
+        ok: true,
+        result: {
+          facts: kb.facts,
+          rules: kb.rules,
+          factCount: kb.facts.length,
+          ruleCount: kb.rules.length,
+          predicates,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-remove: remove a fact or rule by id ──
+  registerLensAction("inference", "kb-remove", (ctx, _artifact, params = {}) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const id = String(params.id || "");
+      if (!id) return { ok: false, error: "id required" };
+      const fBefore = kb.facts.length, rBefore = kb.rules.length;
+      kb.facts = kb.facts.filter((f) => f.id !== id);
+      kb.rules = kb.rules.filter((r) => r.id !== id);
+      const removed = (fBefore - kb.facts.length) + (rBefore - kb.rules.length);
+      if (removed === 0) return { ok: false, error: "id not found" };
+      saveInfState();
+      return { ok: true, result: { removed, factCount: kb.facts.length, ruleCount: kb.rules.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-clear: wipe the knowledge base ──
+  registerLensAction("inference", "kb-clear", (ctx) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const cleared = kb.facts.length + kb.rules.length;
+      kb.facts = []; kb.rules = [];
+      saveInfState();
+      return { ok: true, result: { cleared } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-check: syntax-check rule text without committing it ──
+  registerLensAction("inference", "kb-check", (_ctx, _artifact, params = {}) => {
+    try {
+      const lines = String(params.text || "")
+        .split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("%"));
+      if (lines.length === 0) return { ok: false, error: "no input lines" };
+      const report = lines.map((line) => {
+        const r = parseRule(line);
+        if (r.error) return { line, valid: false, error: r.error };
+        const kind = r.if.length === 0 ? "fact" : "rule";
+        const vars = new Set();
+        for (const c of [...(r.if || []), r.then]) {
+          for (const a of c.args || []) if (isVarT(a)) vars.add(a);
+        }
+        return { line, valid: true, kind, predicate: r.then.predicate, variables: [...vars] };
+      });
+      const valid = report.filter((x) => x.valid).length;
+      return {
+        ok: true,
+        result: { report, total: report.length, validCount: valid, invalidCount: report.length - valid },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Built-in predicate evaluation (arithmetic / comparison / list ops) ──
+  // Returns { handled, satisfied, bindings } — handled=false means it's not a builtin.
+  function evalBuiltin(cond, bindings) {
+    const res = (v) => {
+      let x = v;
+      let guard = 16;
+      while (isVarT(x) && bindings[x] !== undefined && guard-- > 0) x = bindings[x];
+      return x;
+    };
+    const num = (v) => { const n = Number(res(v)); return Number.isFinite(n) ? n : null; };
+    const a = (cond.args || []).map(res);
+    const p = cond.predicate;
+    const bound = { ...bindings };
+    const cmp = { "gt": (x, y) => x > y, "lt": (x, y) => x < y, "gte": (x, y) => x >= y, "lte": (x, y) => x <= y };
+    if (cmp[p]) {
+      const x = num(cond.args[0]), y = num(cond.args[1]);
+      if (x === null || y === null) return { handled: true, satisfied: false, bindings };
+      return { handled: true, satisfied: cmp[p](x, y), bindings };
+    }
+    if (p === "eq") return { handled: true, satisfied: String(a[0]) === String(a[1]), bindings };
+    if (p === "neq") return { handled: true, satisfied: String(a[0]) !== String(a[1]), bindings };
+    if (p === "add" || p === "sub" || p === "mul" || p === "div") {
+      const x = num(cond.args[0]), y = num(cond.args[1]);
+      if (x === null || y === null) return { handled: true, satisfied: false, bindings };
+      let v;
+      if (p === "add") v = x + y;
+      else if (p === "sub") v = x - y;
+      else if (p === "mul") v = x * y;
+      else { if (y === 0) return { handled: true, satisfied: false, bindings }; v = x / y; }
+      const out = cond.args[2];
+      if (isVarT(out)) {
+        if (bound[out] !== undefined) return { handled: true, satisfied: Number(bound[out]) === v, bindings };
+        bound[out] = String(v);
+        return { handled: true, satisfied: true, bindings: bound };
+      }
+      return { handled: true, satisfied: num(out) === v, bindings };
+    }
+    if (p === "length") {
+      const list = String(res(cond.args[0]) || "").split("|").filter(Boolean);
+      const out = cond.args[1];
+      if (isVarT(out)) {
+        if (bound[out] !== undefined) return { handled: true, satisfied: Number(bound[out]) === list.length, bindings };
+        bound[out] = String(list.length);
+        return { handled: true, satisfied: true, bindings: bound };
+      }
+      return { handled: true, satisfied: num(out) === list.length, bindings };
+    }
+    if (p === "member") {
+      const list = String(res(cond.args[1]) || "").split("|").filter(Boolean);
+      return { handled: true, satisfied: list.includes(String(res(cond.args[0]))), bindings };
+    }
+    return { handled: false, satisfied: false, bindings };
+  }
+
+  /**
+   * solveKb — backward-chaining SLD resolver over the persistent KB with
+   * negation-as-failure, built-in predicates, and proof-tree capture.
+   * Used by kb-query, kb-explain and kb-trace.
+   */
+  function solveKb(kb, goal, builtinNames, opts = {}) {
+    const facts = kb.facts;
+    const rules = kb.rules;
+    const trace = [];
+    let nodes = 0;
+    const maxDepth = opts.maxDepth || 30;
+
+    function subst(args, b) {
+      return (args || []).map((x) => {
+        let v = x, guard = 16;
+        while (isVarT(v) && b[v] !== undefined && guard-- > 0) v = b[v];
+        return v;
+      });
+    }
+    // Two-sided unification of two atoms — variables may appear on either
+    // side (goal side OR rule-head side). Walks binding chains so a var
+    // bound to another var resolves transitively.
+    function matchFact(pat, fact, b) {
+      if (pat.predicate !== fact.predicate) return null;
+      if ((pat.args || []).length !== (fact.args || []).length) return null;
+      const nb = { ...b };
+      const walk = (x) => {
+        let v = x, guard = 32;
+        while (isVarT(v) && nb[v] !== undefined && guard-- > 0) v = nb[v];
+        return v;
+      };
+      for (let i = 0; i < pat.args.length; i++) {
+        const rp = walk(pat.args[i]);
+        const rf = walk(fact.args[i]);
+        if (isVarT(rp)) {
+          if (rp !== rf) nb[rp] = rf;
+        } else if (isVarT(rf)) {
+          nb[rf] = rp;
+        } else if (rp !== rf) {
+          return null;
+        }
+      }
+      return nb;
+    }
+    function renameRule(rule, depth) {
+      const tag = `_d${depth}`;
+      const rn = (a) => isVarT(a) ? a + tag : a;
+      return {
+        name: rule.name,
+        priority: rule.priority || 0,
+        if: (rule.if || []).map((c) => ({ predicate: c.predicate, args: (c.args || []).map(rn), negated: !!c.negated })),
+        then: { predicate: rule.then.predicate, args: (rule.then.args || []).map(rn) },
+      };
+    }
+
+    // prove a single goal -> array of { bindings, tree }
+    function prove(g, b, depth) {
+      nodes++;
+      if (depth > maxDepth || nodes > 20000) return [];
+      const resolved = { predicate: g.predicate, args: subst(g.args, b), negated: !!g.negated };
+      const label = `${resolved.predicate}(${resolved.args.join(",")})`;
+
+      // negation-as-failure
+      if (g.negated) {
+        const pos = prove({ predicate: g.predicate, args: g.args }, b, depth + 1);
+        const ok = pos.length === 0;
+        trace.push({ depth, goal: `not ${label}`, kind: "negation", result: ok });
+        return ok
+          ? [{ bindings: b, tree: { id: infId("n"), label: `\\+ ${label}`, tone: "info", kind: "negation", children: [] } }]
+          : [];
+      }
+
+      // built-in predicate
+      if (builtinNames.has(g.predicate)) {
+        const bi = evalBuiltin(g, b);
+        trace.push({ depth, goal: label, kind: "builtin", result: bi.satisfied });
+        return bi.satisfied
+          ? [{ bindings: bi.bindings, tree: { id: infId("b"), label, tone: "good", kind: "builtin", children: [] } }]
+          : [];
+      }
+
+      const out = [];
+      // facts
+      for (const f of facts) {
+        const nb = matchFact(resolved, f, b);
+        if (nb) {
+          trace.push({ depth, goal: label, kind: "fact", matched: factKeyT(f), result: true });
+          out.push({ bindings: nb, tree: { id: infId("f"), label, detail: `fact: ${factKeyT(f)}`, tone: "good", kind: "fact", children: [] } });
+        }
+      }
+      // rules — conflict-resolution-ordered by caller; here priority then order
+      const ordered = [...rules].sort((x, y) => (y.priority || 0) - (x.priority || 0));
+      for (const baseRule of ordered) {
+        const rule = renameRule(baseRule, depth);
+        const nb = matchFact(resolved, rule.then, b);
+        if (!nb) continue;
+        trace.push({ depth, goal: label, kind: "rule-try", rule: baseRule.name, result: "attempt" });
+        // prove the conjunction of body conditions
+        function proveBody(idx, cb, kids) {
+          if (idx >= rule.if.length) {
+            out.push({
+              bindings: cb,
+              tree: {
+                id: infId("r"), label, detail: `rule: ${baseRule.name}`, tone: "default", kind: "rule",
+                rule: baseRule.name, children: kids,
+              },
+            });
+            return;
+          }
+          const sub = prove(rule.if[idx], cb, depth + 1);
+          for (const s of sub) proveBody(idx + 1, s.bindings, [...kids, s.tree]);
+        }
+        proveBody(0, nb, []);
+      }
+      return out;
+    }
+
+    const solutions = prove({ predicate: goal.predicate, args: goal.args, negated: !!goal.negated }, {}, 0);
+    return { solutions, trace, nodes };
+  }
+
+  const BUILTINS = ["gt", "lt", "gte", "lte", "eq", "neq", "add", "sub", "mul", "div", "length", "member"];
+
+  // ── kb-query: backward-chained query against the persistent KB ──
+  registerLensAction("inference", "kb-query", (ctx, _artifact, params = {}) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const goalRule = parseRule(String(params.goal || ""));
+      if (goalRule.error) return { ok: false, error: `goal: ${goalRule.error}` };
+      if (goalRule.if.length > 0) return { ok: false, error: "query must be a single atom, not a rule" };
+      const goal = parseFact(String(params.goal || ""));
+      if (goal.error) return { ok: false, error: goal.error };
+      const builtinNames = new Set(BUILTINS);
+      const { solutions, trace, nodes } = solveKb(kb, goal, builtinNames, { maxDepth: params.maxDepth || 30 });
+      const goalVars = (goal.args || []).filter(isVarT);
+      const answers = [];
+      const seen = new Set();
+      for (const s of solutions) {
+        const ans = {};
+        for (const v of goalVars) {
+          let x = v, guard = 16;
+          while (isVarT(x) && s.bindings[x] !== undefined && guard-- > 0) x = s.bindings[x];
+          ans[v] = x;
+        }
+        const key = JSON.stringify(ans);
+        if (!seen.has(key)) { seen.add(key); answers.push(ans); }
+      }
+      return {
+        ok: true,
+        result: {
+          goal: `${goal.predicate}(${(goal.args || []).join(",")})`,
+          proved: solutions.length > 0,
+          solutionCount: solutions.length,
+          answerCount: answers.length,
+          answers: answers.slice(0, 50),
+          proofTrees: solutions.slice(0, 5).map((s) => s.tree),
+          nodesExplored: nodes,
+          traceLength: trace.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-explain: "why" / "how" explanation of a derived fact ──
+  registerLensAction("inference", "kb-explain", (ctx, _artifact, params = {}) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const goal = parseFact(String(params.fact || ""));
+      if (goal.error) return { ok: false, error: goal.error };
+      if (goal.args.some(isVarT)) return { ok: false, error: "explain requires a ground fact (no variables)" };
+      const builtinNames = new Set(BUILTINS);
+      const { solutions, nodes } = solveKb(kb, goal, builtinNames, { maxDepth: params.maxDepth || 30 });
+      if (solutions.length === 0) {
+        return {
+          ok: true,
+          result: {
+            fact: factKeyT(goal), derivable: false,
+            why: `${factKeyT(goal)} cannot be derived from the current knowledge base.`,
+            how: [], proofTree: null, nodesExplored: nodes,
+          },
+        };
+      }
+      const tree = solutions[0].tree;
+      // flatten the proof tree into a "how" step list (leaves first)
+      const how = [];
+      function walk(n) {
+        for (const c of n.children || []) walk(c);
+        how.push({
+          conclusion: n.label,
+          via: n.kind === "fact" ? (n.detail || "stated fact")
+            : n.kind === "rule" ? `rule "${n.rule}"`
+              : n.kind === "builtin" ? "built-in predicate"
+                : "negation-as-failure",
+          kind: n.kind,
+        });
+      }
+      walk(tree);
+      const whyParts = [];
+      if (tree.kind === "fact") whyParts.push(`${factKeyT(goal)} is true because it is a stated fact.`);
+      else whyParts.push(`${factKeyT(goal)} is true because rule "${tree.rule}" fired, and all of its conditions were satisfied.`);
+      return {
+        ok: true,
+        result: {
+          fact: factKeyT(goal), derivable: true,
+          why: whyParts.join(" "),
+          how, stepCount: how.length,
+          proofTree: tree, nodesExplored: nodes,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-trace: step-through execution log of a query (query console) ──
+  registerLensAction("inference", "kb-trace", (ctx, _artifact, params = {}) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const goal = parseFact(String(params.goal || ""));
+      if (goal.error) return { ok: false, error: goal.error };
+      const builtinNames = new Set(BUILTINS);
+      const { solutions, trace, nodes } = solveKb(kb, goal, builtinNames, { maxDepth: params.maxDepth || 30 });
+      const steps = trace.map((t, i) => ({
+        step: i + 1,
+        depth: t.depth,
+        indent: "  ".repeat(t.depth),
+        goal: t.goal,
+        kind: t.kind,
+        action: t.kind === "fact" ? `unify with ${t.matched}`
+          : t.kind === "rule-try" ? `try rule "${t.rule}"`
+            : t.kind === "builtin" ? "evaluate built-in"
+              : t.kind === "negation" ? "negation-as-failure"
+                : "resolve",
+        result: t.result,
+      }));
+      return {
+        ok: true,
+        result: {
+          goal: factKeyT(goal),
+          proved: solutions.length > 0,
+          steps,
+          stepCount: steps.length,
+          nodesExplored: nodes,
+          builtins: BUILTINS,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-forward: forward-chain over the KB with conflict-resolution strategy ──
+  registerLensAction("inference", "kb-forward", (ctx, _artifact, params = {}) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const strategy = ["priority", "recency", "specificity", "order"].includes(params.strategy)
+        ? params.strategy : "priority";
+      if (kb.facts.length === 0) return { ok: false, error: "knowledge base has no facts" };
+
+      const factSet = new Set(kb.facts.map(factKeyT));
+      const facts = kb.facts.map((f) => ({ predicate: f.predicate, args: f.args }));
+      const builtinNames = new Set(BUILTINS);
+
+      function matchPattern(pat, fact, b) {
+        if (pat.predicate !== fact.predicate) return null;
+        if ((pat.args || []).length !== (fact.args || []).length) return null;
+        const nb = { ...b };
+        for (let i = 0; i < pat.args.length; i++) {
+          const pa = pat.args[i], fa = fact.args[i];
+          if (isVarT(pa)) { if (nb[pa] !== undefined && nb[pa] !== fa) return null; nb[pa] = fa; }
+          else if (pa !== fa) return null;
+        }
+        return nb;
+      }
+      // collect all firings (conflict set) for one pass
+      function firings() {
+        const set = [];
+        for (let ri = 0; ri < kb.rules.length; ri++) {
+          const rule = kb.rules[ri];
+          // only positive, non-builtin body conditions drive matching;
+          // negated + builtin conditions are filters
+          function gather(idx, b) {
+            if (idx >= rule.if.length) {
+              const head = { predicate: rule.then.predicate, args: (rule.then.args || []).map((a) => isVarT(a) ? (b[a] ?? a) : a) };
+              if (head.args.some(isVarT)) return;
+              set.push({ rule, ruleIndex: ri, head, bindings: { ...b }, conditionCount: rule.if.length });
+              return;
+            }
+            const cond = rule.if[idx];
+            if (cond.negated) {
+              const sub = parseFact(`${cond.predicate}(${(cond.args || []).map((a) => isVarT(a) ? (b[a] ?? a) : a).join(",")})`);
+              const probe = sub.error ? [] : facts.filter((f) => matchPattern({ predicate: sub.predicate, args: sub.args }, f, {}));
+              if (probe.length === 0) gather(idx + 1, b);
+              return;
+            }
+            if (builtinNames.has(cond.predicate)) {
+              const bi = evalBuiltin(cond, b);
+              if (bi.satisfied) gather(idx + 1, bi.bindings);
+              return;
+            }
+            for (const f of facts) {
+              const nb = matchPattern(cond, f, b);
+              if (nb) gather(idx + 1, nb);
+            }
+          }
+          gather(0, {});
+        }
+        return set.filter((fr) => !factSet.has(factKeyT(fr.head)));
+      }
+
+      function resolveConflict(set, pass) {
+        if (set.length === 0) return null;
+        const sorted = [...set];
+        if (strategy === "priority") {
+          sorted.sort((a, b) => (b.rule.priority || 0) - (a.rule.priority || 0) || a.ruleIndex - b.ruleIndex);
+        } else if (strategy === "recency") {
+          sorted.sort((a, b) => String(b.rule.addedAt).localeCompare(String(a.rule.addedAt)));
+        } else if (strategy === "specificity") {
+          sorted.sort((a, b) => b.conditionCount - a.conditionCount || a.ruleIndex - b.ruleIndex);
+        } else {
+          sorted.sort((a, b) => a.ruleIndex - b.ruleIndex);
+        }
+        return sorted[0];
+      }
+
+      const derivationLog = [];
+      const derived = [];
+      let iterations = 0;
+      const maxIter = params.maxIterations || 200;
+      for (let i = 0; i < maxIter; i++) {
+        iterations++;
+        const set = firings();
+        if (set.length === 0) break;
+        const chosen = resolveConflict(set, i);
+        if (!chosen) break;
+        const key = factKeyT(chosen.head);
+        factSet.add(key);
+        facts.push(chosen.head);
+        derived.push(key);
+        derivationLog.push({
+          iteration: i + 1,
+          fired: chosen.rule.name,
+          priority: chosen.rule.priority || 0,
+          conflictSetSize: set.length,
+          derived: key,
+          strategy,
+        });
+      }
+      const factsByPredicate = {};
+      for (const f of facts) factsByPredicate[f.predicate] = (factsByPredicate[f.predicate] || 0) + 1;
+      return {
+        ok: true,
+        result: {
+          strategy,
+          initialFactCount: kb.facts.length,
+          derivedFactCount: derived.length,
+          totalFactCount: facts.length,
+          iterations,
+          fixedPointReached: iterations < maxIter,
+          derivedFacts: derived.slice(0, 50),
+          derivationLog: derivationLog.slice(0, 50),
+          factsByPredicate,
+          rulesApplied: [...new Set(derivationLog.map((d) => d.fired))],
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── kb-seed-sample: install a known-good demo KB (family relations) ──
+  // Not fake data — it is a real, runnable rule set the user explicitly
+  // requests to bootstrap an empty editor.
+  registerLensAction("inference", "kb-seed-sample", (ctx) => {
+    try {
+      const kb = userKb(infActor(ctx));
+      if (!kb) return { ok: false, error: "STATE unavailable" };
+      const lines = [
+        "parent(tom,bob)", "parent(bob,ann)", "parent(bob,pat)", "parent(pat,jim)",
+        "male(tom)", "male(bob)", "male(jim)", "female(ann)", "female(pat)",
+        "ancestor(?X,?Y) :- parent(?X,?Y)",
+        "ancestor(?X,?Z) :- parent(?X,?Y), ancestor(?Y,?Z)",
+        "grandparent(?X,?Z) :- parent(?X,?Y), parent(?Y,?Z)",
+        "father(?X,?Y) :- parent(?X,?Y), male(?X)",
+        "mother(?X,?Y) :- parent(?X,?Y), female(?X)",
+      ];
+      const added = [], errors = [];
+      for (const line of lines) {
+        const r = parseRule(line);
+        if (r.error) { errors.push({ line, error: r.error }); continue; }
+        if (r.if.length === 0) {
+          const key = factKeyT(r.then);
+          if (kb.facts.some((f) => factKeyT(f) === key)) continue;
+          kb.facts.push({ id: infId("fact"), predicate: r.then.predicate, args: r.then.args, addedAt: new Date().toISOString() });
+          added.push(line);
+        } else {
+          kb.rules.push({
+            id: infId("rule"), name: `rule_${kb.rules.length + 1}`, priority: 0,
+            if: r.if, then: r.then, addedAt: new Date().toISOString(), text: line,
+          });
+          added.push(line);
+        }
+      }
+      saveInfState();
+      return { ok: true, result: { addedCount: added.length, factCount: kb.facts.length, ruleCount: kb.rules.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }

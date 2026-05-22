@@ -21,6 +21,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only projectId should retrigger
   useEffect(() => { refresh(); }, [projectId]);
 
   async function refresh() {

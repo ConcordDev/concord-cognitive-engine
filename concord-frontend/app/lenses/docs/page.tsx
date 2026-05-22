@@ -9,10 +9,12 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DocsToolingGallery } from '@/components/docs/DocsToolingGallery';
+import { DocsWorkspace } from '@/components/docs/DocsWorkspace';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { useState, useMemo, useCallback, useRef} from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import {
@@ -246,6 +248,21 @@ export default function DocsLensPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
 
+  // Live workspace stats from the docs domain (docs-dashboard macro).
+  const [docsStats, setDocsStats] = useState<{
+    pages: number; topLevelPages: number; totalBlocks: number;
+    words: number; openTodos: number; doneTodos: number;
+  } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void lensRun('docs', 'docs-dashboard', {}).then((r) => {
+      if (alive && r.data?.ok) {
+        setDocsStats(r.data.result as typeof docsStats);
+      }
+    });
+    return () => { alive = false; };
+  }, []);
+
   // Filter sidebar sections by search query (matches section name)
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) return sections;
@@ -321,7 +338,7 @@ export default function DocsLensPage() {
         </div>
       </header>
 
-      {/* Quick Stats Row */}
+      {/* Quick Stats Row — live workspace stats from docs-dashboard */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -331,8 +348,8 @@ export default function DocsLensPage() {
         >
           <FileText className="w-5 h-5 text-neon-blue" />
           <div>
-            <p className="text-lg font-bold">{sections.length}</p>
-            <p className="text-xs text-gray-500">Total Docs</p>
+            <p className="text-lg font-bold">{docsStats?.pages ?? 0}</p>
+            <p className="text-xs text-gray-500">Workspace Pages</p>
           </div>
         </motion.div>
         <motion.div
@@ -341,10 +358,10 @@ export default function DocsLensPage() {
           transition={{ delay: 1 * 0.05 }}
           className="panel p-3 flex items-center gap-3"
         >
-          <Clock className="w-5 h-5 text-neon-green" />
+          <Layers className="w-5 h-5 text-neon-green" />
           <div>
-            <p className="text-lg font-bold">3</p>
-            <p className="text-xs text-gray-500">Recently Updated</p>
+            <p className="text-lg font-bold">{docsStats?.totalBlocks ?? 0}</p>
+            <p className="text-xs text-gray-500">Total Blocks</p>
           </div>
         </motion.div>
         <motion.div
@@ -353,10 +370,10 @@ export default function DocsLensPage() {
           transition={{ delay: 2 * 0.05 }}
           className="panel p-3 flex items-center gap-3"
         >
-          <GitBranch className="w-5 h-5 text-neon-purple" />
+          <CheckCircle2 className="w-5 h-5 text-neon-purple" />
           <div>
-            <p className="text-lg font-bold">4</p>
-            <p className="text-xs text-gray-500">Version Count</p>
+            <p className="text-lg font-bold">{docsStats?.openTodos ?? 0}</p>
+            <p className="text-xs text-gray-500">Open To-dos</p>
           </div>
         </motion.div>
         <motion.div
@@ -365,10 +382,10 @@ export default function DocsLensPage() {
           transition={{ delay: 3 * 0.05 }}
           className="panel p-3 flex items-center gap-3"
         >
-          <CheckCircle2 className="w-5 h-5 text-neon-cyan" />
+          <Clock className="w-5 h-5 text-neon-cyan" />
           <div>
-            <p className="text-lg font-bold">98%</p>
-            <p className="text-xs text-gray-500">Schema Coverage</p>
+            <p className="text-lg font-bold">{(docsStats?.words ?? 0).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">Words Written</p>
           </div>
         </motion.div>
       </div>
@@ -985,6 +1002,9 @@ export default function DocsLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <DocsWorkspace />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <DocsToolingGallery />
       </section>

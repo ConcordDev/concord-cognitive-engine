@@ -2,12 +2,14 @@
 
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GarageSection } from '@/components/automotive/GarageSection';
+import { AdvancedToolsPanel } from '@/components/automotive/AdvancedToolsPanel';
 import { VinDecoder } from '@/components/automotive/VinDecoder';
 import { FuelRepairPanel } from '@/components/automotive/FuelRepairPanel';
 import { VehicleHistory } from '@/components/automotive/VehicleHistory';
@@ -641,6 +643,9 @@ export default function AutomotiveLensPage() {
       <div className="px-4 mt-3">
         <GarageSection />
       </div>
+      <div className="px-4 mt-3">
+        <AdvancedToolsPanel />
+      </div>
     <LensPageShell
       domain="automotive"
       title="Automotive"
@@ -736,6 +741,7 @@ export default function AutomotiveLensPage() {
       </section>
 
       <section className="mt-6">
+      <section className="mt-6"><LensFeedButton domain="automotive" /></section>
         <VehicleHistory />
       </section>
     </LensPageShell>

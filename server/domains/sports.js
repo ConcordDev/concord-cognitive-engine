@@ -7,8 +7,28 @@
 // TheSportsDB free dev key "3"; production may set SPORTSDB_API_KEY.
 // ESPN's public scoreboard endpoint is unkeyed (rate-limited).
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json";
 const ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports";
+const ESPN_SITE = "https://site.api.espn.com/apis/site/v2/sports";
+
+// ESPN sport-slug → API path. Shared by scoreboard, schedule, news,
+// game-summary, standings, roster macros.
+const ESPN_SPORT_PATH = {
+  nba:   "basketball/nba",
+  wnba:  "basketball/wnba",
+  ncaab: "basketball/mens-college-basketball",
+  ncaaf: "football/college-football",
+  nfl:   "football/nfl",
+  mlb:   "baseball/mlb",
+  nhl:   "hockey/nhl",
+};
+function espnPathFor(sport, league) {
+  const k = String(sport || "").toLowerCase().trim();
+  if (k === "soccer") return `soccer/${league || "eng.1"}`;
+  return ESPN_SPORT_PATH[k] || null;
+}
 
 export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "performanceStats", (ctx, artifact, _params) => { const stats = artifact.data?.stats || []; if (stats.length === 0) return { ok: true, result: { message: "Add performance statistics to analyze." } }; const values = stats.map(s => parseFloat(s.value) || 0); const avg = values.reduce((s,v)=>s+v,0)/values.length; const best = Math.max(...values); const worst = Math.min(...values); const recent5 = values.slice(-5); const trend = recent5.length >= 2 ? (recent5[recent5.length-1] > recent5[0] ? "improving" : "declining") : "insufficient"; return { ok: true, result: { metric: stats[0]?.metric || "performance", average: Math.round(avg*100)/100, best, worst, trend, recentAvg: Math.round(recent5.reduce((s,v)=>s+v,0)/recent5.length*100)/100, consistency: Math.round(Math.sqrt(values.reduce((s,v)=>s+Math.pow(v-avg,2),0)/values.length)*100)/100, dataPoints: values.length } }; });
@@ -520,6 +540,481 @@ export default function registerSportsActions(registerLensAction) {
         watchlist: (s.watchlist.get(userId) || []).length,
         trackedAthletes: (s.athletes.get(userId) || []).length,
         predictionAccuracy: decided > 0 ? Math.round((correct / decided) * 100) : null,
+      },
+    };
+  });
+
+  // feed — ingest real recent sports fixtures from TheSportsDB as
+  // visible DTUs. Free public API (public test key "3").
+  registerLensAction("sports", "feed", async (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    // League rotation: EPL, NBA, NFL, MLB, NHL.
+    const leagues = ["4328", "4387", "4391", "4424", "4380"];
+    const league = leagues[new Date().getDate() % leagues.length];
+    try {
+      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=${league}`);
+      if (!r.ok) return { ok: false, error: `thesportsdb ${r.status}` };
+      const data = await r.json();
+      const events = (Array.isArray(data?.events) ? data.events : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const ev of events) {
+        const id = `sportevent_${ev.idEvent}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const score = (ev.intHomeScore != null && ev.intAwayScore != null)
+          ? `${ev.intHomeScore}–${ev.intAwayScore}` : "result pending";
+        const title = `${ev.strEvent || "Match"} (${score})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nLeague: ${ev.strLeague || "?"}\nDate: ${ev.dateEvent || "?"}\n${ev.strHomeTeam} ${ev.intHomeScore ?? "-"} — ${ev.intAwayScore ?? "-"} ${ev.strAwayTeam}\nVenue: ${ev.strVenue || "?"}`,
+          tags: ["sports", "feed", "fixture", "thesportsdb"],
+          source: "thesportsdb-feed",
+          meta: { eventId: ev.idEvent, league: ev.strLeague, home: ev.strHomeTeam, away: ev.strAwayTeam, date: ev.dateEvent },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveSportsState();
+      return { ok: true, result: { ingested, skipped, source: "thesportsdb-fixtures", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // ESPN spectator core — play-by-play, schedules, news, player pages,
+  // standings, win-probability. All free unkeyed public ESPN endpoints
+  // via cachedFetchJson (5-min TTL). Pure-compute analytics layered on
+  // top. Backlog: docs/lens-specs/sports.md.
+  // ════════════════════════════════════════════════════════════════════
+
+  // ── Live game detail / play-by-play ─────────────────────────────────
+  // ESPN game summary endpoint: header + boxscore + scoring plays +
+  // last-play. params: { sport, league?, eventId }
+  registerLensAction("sports", "espn-game-summary", async (_ctx, _a, params = {}) => {
+    const path = espnPathFor(params.sport, params.league);
+    if (!path) return { ok: false, error: `unsupported sport (try: ${Object.keys(ESPN_SPORT_PATH).join(", ")}, soccer)` };
+    const eventId = String(params.eventId || "").trim();
+    if (!eventId) return { ok: false, error: "eventId required" };
+    try {
+      const data = await cachedFetchJson(
+        `${ESPN_SITE}/${path}/summary?event=${encodeURIComponent(eventId)}`,
+        { ttlMs: 60_000 },
+      );
+      const comp = data?.header?.competitions?.[0] || {};
+      const teams = (comp.competitors || []).map((c) => ({
+        team: c.team?.displayName, abbrev: c.team?.abbreviation,
+        score: c.score != null ? Number(c.score) : null,
+        homeAway: c.homeAway, winner: !!c.winner,
+        logo: c.team?.logos?.[0]?.href || c.team?.logo || null,
+        record: c.record?.[0]?.displayValue || null,
+      }));
+      // Scoring / key plays — works across pbp + scoringPlays shapes.
+      const rawPlays = Array.isArray(data?.scoringPlays) ? data.scoringPlays
+        : Array.isArray(data?.plays) ? data.plays : [];
+      const plays = rawPlays.slice(-60).map((p) => ({
+        id: p.id || p.sequenceNumber || null,
+        text: p.text || p.shortText || p.type?.text || "",
+        period: p.period?.number ?? p.period ?? null,
+        clock: p.clock?.displayValue || p.clock || null,
+        scoreValue: p.scoreValue ?? null,
+        homeScore: p.homeScore ?? null,
+        awayScore: p.awayScore ?? null,
+        team: p.team?.abbreviation || p.team?.displayName || null,
+        scoringPlay: !!p.scoringPlay,
+      }));
+      const article = data?.article || data?.gamepackageJSON?.article || null;
+      return {
+        ok: true,
+        result: {
+          eventId, sport: String(params.sport).toLowerCase(),
+          status: data?.header?.competitions?.[0]?.status?.type?.description
+            || comp.status?.type?.description || null,
+          completed: !!(comp.status?.type?.completed),
+          teams,
+          venue: comp.venue?.fullName || data?.gameInfo?.venue?.fullName || null,
+          plays, playCount: plays.length,
+          recap: article ? { headline: article.headline, body: (article.story || "").slice(0, 600) } : null,
+          source: "espn-summary",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `espn unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Schedules / calendar of upcoming fixtures ───────────────────────
+  // Pulls ESPN scoreboard for a date range and returns upcoming +
+  // completed fixtures. params: { sport, league?, days? (1-14), date? }
+  registerLensAction("sports", "espn-schedule", async (_ctx, _a, params = {}) => {
+    const path = espnPathFor(params.sport, params.league);
+    if (!path) return { ok: false, error: `unsupported sport (try: ${Object.keys(ESPN_SPORT_PATH).join(", ")}, soccer)` };
+    const days = Math.max(1, Math.min(14, Math.round(spNum(params.days, 7))));
+    const start = (() => {
+      const d = params.date && /^\d{8}$/.test(String(params.date))
+        ? new Date(`${String(params.date).slice(0,4)}-${String(params.date).slice(4,6)}-${String(params.date).slice(6,8)}`)
+        : new Date();
+      return d;
+    })();
+    const fmt = (d) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+    try {
+      const fixtures = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(start.getTime() + i * 86400000);
+        let data;
+        try {
+          data = await cachedFetchJson(`${ESPN_SCOREBOARD}/${path}/scoreboard?dates=${fmt(d)}`, { ttlMs: 300_000 });
+        } catch { continue; }
+        for (const ev of data?.events || []) {
+          const comp = ev.competitions?.[0] || {};
+          const cs = (comp.competitors || []);
+          const home = cs.find((c) => c.homeAway === "home") || cs[0] || {};
+          const away = cs.find((c) => c.homeAway === "away") || cs[1] || {};
+          fixtures.push({
+            id: ev.id, name: ev.shortName || ev.name, date: ev.date,
+            day: fmt(d),
+            home: home.team?.abbreviation || home.team?.displayName || "?",
+            away: away.team?.abbreviation || away.team?.displayName || "?",
+            homeScore: home.score != null ? Number(home.score) : null,
+            awayScore: away.score != null ? Number(away.score) : null,
+            status: ev.status?.type?.description || null,
+            state: ev.status?.type?.state || null,
+            completed: !!ev.status?.type?.completed,
+            venue: comp.venue?.fullName || null,
+          });
+        }
+      }
+      fixtures.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      return {
+        ok: true,
+        result: {
+          fixtures, count: fixtures.length,
+          upcoming: fixtures.filter((f) => !f.completed && f.state !== "post").length,
+          sport: String(params.sport).toLowerCase(), days, source: "espn-scoreboard",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `espn unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── League standings tables (ESPN real data) ────────────────────────
+  // params: { sport, league? }
+  registerLensAction("sports", "espn-standings", async (_ctx, _a, params = {}) => {
+    const path = espnPathFor(params.sport, params.league);
+    if (!path) return { ok: false, error: `unsupported sport (try: ${Object.keys(ESPN_SPORT_PATH).join(", ")}, soccer)` };
+    try {
+      const data = await cachedFetchJson(
+        `${ESPN_SITE}/${path}/standings?level=3`, { ttlMs: 600_000 },
+      );
+      const groups = [];
+      const walk = (node) => {
+        if (!node) return;
+        const entries = node.standings?.entries;
+        if (Array.isArray(entries) && entries.length) {
+          groups.push({
+            name: node.name || node.displayName || "League",
+            teams: entries.map((e) => {
+              const stat = (k) => {
+                const s = (e.stats || []).find((x) => x.name === k || x.type === k);
+                return s ? (s.value ?? (s.displayValue != null ? Number(s.displayValue) : null)) : null;
+              };
+              return {
+                team: e.team?.displayName || e.team?.name,
+                abbrev: e.team?.abbreviation,
+                logo: e.team?.logos?.[0]?.href || null,
+                wins: stat("wins"), losses: stat("losses"),
+                ties: stat("ties"), winPercent: stat("winPercent"),
+                pointsFor: stat("pointsFor"), pointsAgainst: stat("pointsAgainst"),
+                gamesBehind: stat("gamesBehind"),
+                streak: ((e.stats || []).find((x) => x.name === "streak") || {}).displayValue || null,
+                rank: stat("playoffSeed") ?? stat("rank") ?? null,
+              };
+            }),
+          });
+        }
+        for (const c of node.children || []) walk(c);
+      };
+      for (const c of data?.children || [data]) walk(c);
+      return {
+        ok: true,
+        result: { groups, groupCount: groups.length, sport: String(params.sport).toLowerCase(), source: "espn-standings" },
+      };
+    } catch (e) {
+      return { ok: false, error: `espn unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── News / headlines feed (ESPN public news API) ────────────────────
+  // params: { sport, league?, limit? }
+  registerLensAction("sports", "espn-news", async (_ctx, _a, params = {}) => {
+    const path = espnPathFor(params.sport, params.league);
+    if (!path) return { ok: false, error: `unsupported sport (try: ${Object.keys(ESPN_SPORT_PATH).join(", ")}, soccer)` };
+    const limit = Math.max(1, Math.min(30, Math.round(spNum(params.limit, 12))));
+    try {
+      const data = await cachedFetchJson(
+        `${ESPN_SITE}/${path}/news?limit=${limit}`, { ttlMs: 300_000 },
+      );
+      const articles = (data?.articles || []).slice(0, limit).map((a) => ({
+        headline: a.headline, description: a.description || null,
+        published: a.published || null,
+        byline: a.byline || null,
+        type: a.type || null,
+        image: a.images?.[0]?.url || null,
+        link: a.links?.web?.href || a.links?.mobile?.href || null,
+      }));
+      return {
+        ok: true,
+        result: { articles, count: articles.length, sport: String(params.sport).toLowerCase(), source: "espn-news" },
+      };
+    } catch (e) {
+      return { ok: false, error: `espn unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Team roster + player profiles (TheSportsDB) ─────────────────────
+  // params: { teamId } — TheSportsDB team id (from team-lookup)
+  registerLensAction("sports", "team-roster", async (_ctx, _a, params = {}) => {
+    const teamId = String(params.teamId || "").trim();
+    if (!teamId) return { ok: false, error: "teamId required (from team-lookup)" };
+    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    try {
+      const data = await cachedFetchJson(
+        `${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/lookup_all_players.php?id=${encodeURIComponent(teamId)}`,
+        { ttlMs: 3_600_000 },
+      );
+      const players = (data?.player || []).map((p) => ({
+        id: p.idPlayer, name: p.strPlayer,
+        position: p.strPosition || null,
+        nationality: p.strNationality || null,
+        birthDate: p.dateBorn || null,
+        height: p.strHeight || null, weight: p.strWeight || null,
+        number: p.strNumber || null,
+        thumb: p.strThumb || p.strCutout || null,
+        team: p.strTeam || null, sport: p.strSport || null,
+        description: (p.strDescriptionEN || "").slice(0, 400) || null,
+        wage: p.strWage || null, signing: p.strSigning || null,
+      }));
+      return {
+        ok: true,
+        result: { players, count: players.length, teamId, source: "thesportsdb" },
+      };
+    } catch (e) {
+      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Player profile lookup (TheSportsDB) ─────────────────────────────
+  // params: { name } — searches players by name
+  registerLensAction("sports", "player-lookup", async (_ctx, _a, params = {}) => {
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "player name required" };
+    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    try {
+      const data = await cachedFetchJson(
+        `${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/searchplayers.php?p=${encodeURIComponent(name)}`,
+        { ttlMs: 3_600_000 },
+      );
+      const players = (data?.player || []).map((p) => ({
+        id: p.idPlayer, name: p.strPlayer,
+        team: p.strTeam || null, sport: p.strSport || null,
+        position: p.strPosition || null,
+        nationality: p.strNationality || null,
+        birthDate: p.dateBorn || null, birthLocation: p.strBirthLocation || null,
+        height: p.strHeight || null, weight: p.strWeight || null,
+        thumb: p.strThumb || p.strCutout || null,
+        description: (p.strDescriptionEN || "").slice(0, 600) || null,
+        wage: p.strWage || null, signing: p.strSigning || null,
+        gender: p.strGender || null,
+      }));
+      return {
+        ok: true,
+        result: { players, count: players.length, query: name, source: "thesportsdb" },
+      };
+    } catch (e) {
+      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Game reminders (persistent per-user) ────────────────────────────
+  registerLensAction("sports", "reminder-set", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.reminders instanceof Map)) s.reminders = new Map();
+    const matchup = spClean(params.matchup, 120);
+    if (!matchup) return { ok: false, error: "matchup required" };
+    const reminder = {
+      id: spId("rmd"), matchup,
+      sport: spClean(params.sport, 24).toLowerCase() || "general",
+      eventId: spClean(params.eventId, 40) || null,
+      kickoff: spClean(params.kickoff, 40) || null,
+      note: spClean(params.note, 200) || null,
+      createdAt: spNow(),
+    };
+    spListB(s.reminders, spAid(ctx)).push(reminder);
+    saveSportsState();
+    return { ok: true, result: { reminder } };
+  });
+
+  registerLensAction("sports", "reminder-list", (ctx, _a, _params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.reminders instanceof Map)) s.reminders = new Map();
+    const now = Date.now();
+    const reminders = [...(s.reminders.get(spAid(ctx)) || [])]
+      .map((r) => ({
+        ...r,
+        upcoming: r.kickoff ? new Date(r.kickoff).getTime() > now : null,
+      }))
+      .sort((a, b) => String(a.kickoff || a.createdAt).localeCompare(String(b.kickoff || b.createdAt)));
+    return { ok: true, result: { reminders, count: reminders.length } };
+  });
+
+  registerLensAction("sports", "reminder-delete", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.reminders instanceof Map)) s.reminders = new Map();
+    const arr = s.reminders.get(spAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "reminder not found" };
+    arr.splice(i, 1);
+    saveSportsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Bracket builder (persistent per-user, single-elimination) ───────
+  registerLensAction("sports", "bracket-create", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.brackets instanceof Map)) s.brackets = new Map();
+    const name = spClean(params.name, 80);
+    if (!name) return { ok: false, error: "bracket name required" };
+    let teams = Array.isArray(params.teams)
+      ? params.teams.map((t) => spClean(t, 60)).filter(Boolean)
+      : [];
+    // Single-elimination needs a power-of-2 field.
+    if (teams.length < 2) return { ok: false, error: "at least 2 teams required" };
+    let size = 2;
+    while (size < teams.length) size *= 2;
+    while (teams.length < size) teams.push("BYE");
+    // Build round 0 matchups (seed pairing 1v8, 2v7…).
+    const matches = [];
+    for (let i = 0; i < size / 2; i++) {
+      matches.push({
+        id: spId("mt"), round: 0, slot: i,
+        teamA: teams[i], teamB: teams[size - 1 - i],
+        winner: teams[size - 1 - i] === "BYE" ? teams[i]
+          : teams[i] === "BYE" ? teams[size - 1 - i] : null,
+      });
+    }
+    const bracket = {
+      id: spId("brk"), name, size, teams,
+      rounds: Math.log2(size), matches, createdAt: spNow(),
+    };
+    spListB(s.brackets, spAid(ctx)).push(bracket);
+    saveSportsState();
+    return { ok: true, result: { bracket } };
+  });
+
+  registerLensAction("sports", "bracket-list", (ctx, _a, _params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.brackets instanceof Map)) s.brackets = new Map();
+    return { ok: true, result: { brackets: s.brackets.get(spAid(ctx)) || [] } };
+  });
+
+  registerLensAction("sports", "bracket-advance", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.brackets instanceof Map)) s.brackets = new Map();
+    const bracket = (s.brackets.get(spAid(ctx)) || []).find((b) => b.id === params.bracketId);
+    if (!bracket) return { ok: false, error: "bracket not found" };
+    const match = bracket.matches.find((m) => m.id === params.matchId);
+    if (!match) return { ok: false, error: "match not found" };
+    const winner = spClean(params.winner, 60);
+    if (winner !== match.teamA && winner !== match.teamB) {
+      return { ok: false, error: "winner must be one of the match teams" };
+    }
+    match.winner = winner;
+    // Snapshot previously-set winners keyed by (round, slot) so they
+    // survive the downstream rebuild — without this, advancing a later
+    // round wipes its own result and a champion can never be crowned.
+    const priorWinners = new Map(
+      bracket.matches.map((m) => [`${m.round}:${m.slot}`, m.winner]),
+    );
+    // Rebuild downstream rounds from current winners.
+    let cur = bracket.matches.filter((m) => m.round === 0).sort((a, b) => a.slot - b.slot);
+    bracket.matches = bracket.matches.filter((m) => m.round === 0);
+    let round = 1;
+    while (cur.length > 1) {
+      const next = [];
+      for (let i = 0; i < cur.length; i += 2) {
+        const a = cur[i].winner, b = cur[i + 1]?.winner;
+        const teamA = a || null, teamB = b || null;
+        // Keep a prior winner only if it's still a participant.
+        const prior = priorWinners.get(`${round}:${i / 2}`);
+        const winnerStillValid = prior && (prior === teamA || prior === teamB) ? prior : null;
+        next.push({
+          id: spId("mt"), round, slot: i / 2,
+          teamA, teamB,
+          winner: winnerStillValid,
+        });
+      }
+      bracket.matches.push(...next);
+      cur = next; round++;
+    }
+    const finalMatch = bracket.matches[bracket.matches.length - 1];
+    bracket.champion = finalMatch && finalMatch.winner ? finalMatch.winner : null;
+    saveSportsState();
+    return { ok: true, result: { bracket } };
+  });
+
+  registerLensAction("sports", "bracket-delete", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.brackets instanceof Map)) s.brackets = new Map();
+    const arr = s.brackets.get(spAid(ctx)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "bracket not found" };
+    arr.splice(i, 1);
+    saveSportsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Win-probability / advanced analytics overlay ────────────────────
+  // Pure-compute Elo-style model from score differential, time
+  // remaining, and home advantage. Works on a live ESPN game or any
+  // ad-hoc score state. params: { homeScore, awayScore, period,
+  //   periodsTotal?, clock? (mm:ss), homeField? }
+  registerLensAction("sports", "win-probability", (_ctx, _a, params = {}) => {
+    const homeScore = spNum(params.homeScore, 0);
+    const awayScore = spNum(params.awayScore, 0);
+    const period = Math.max(1, spNum(params.period, 1));
+    const periodsTotal = Math.max(period, spNum(params.periodsTotal, 4));
+    const homeField = params.homeField === false ? 0 : spNum(params.homeField, 2.5);
+    // Fraction of game elapsed (0..1).
+    let clockFrac = 0;
+    if (typeof params.clock === "string" && /^\d{1,2}:\d{2}$/.test(params.clock)) {
+      const [m, sec] = params.clock.split(":").map(Number);
+      // assume 12-min periods unless overridden
+      const periodLen = spNum(params.periodMinutes, 12);
+      clockFrac = Math.max(0, 1 - (m + sec / 60) / periodLen);
+    }
+    const elapsed = Math.min(1, ((period - 1) + clockFrac) / periodsTotal);
+    const remaining = Math.max(0.0001, 1 - elapsed);
+    // Margin, adjusted by home-field, scaled by remaining time. The
+    // closer to the end, the more a lead "locks in" the result.
+    const adjMargin = (homeScore - awayScore) + homeField;
+    // Logistic curve: scale steepens as the game progresses.
+    const steepness = 0.12 + 0.55 * (1 - remaining);
+    const z = adjMargin * steepness / Math.sqrt(remaining);
+    const homeWinPct = Math.round((1 / (1 + Math.exp(-z))) * 1000) / 10;
+    const leader = homeScore > awayScore ? "home" : awayScore > homeScore ? "away" : "tied";
+    return {
+      ok: true,
+      result: {
+        homeWinPct,
+        awayWinPct: Math.round((100 - homeWinPct) * 10) / 10,
+        leader, margin: homeScore - awayScore,
+        elapsedFraction: Math.round(elapsed * 1000) / 1000,
+        period, periodsTotal,
+        favored: homeWinPct >= 50 ? "home" : "away",
+        confidence: Math.abs(homeWinPct - 50) >= 35 ? "high"
+          : Math.abs(homeWinPct - 50) >= 15 ? "moderate" : "tossup",
+        model: "logistic-margin-time (pure-compute, illustrative)",
       },
     };
   });

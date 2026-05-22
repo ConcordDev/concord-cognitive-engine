@@ -303,3 +303,143 @@ describe("legal — dashboard-summary", () => {
     assert.equal(r.result.runningTimers, 1);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Parity backlog (May 2026) — intake forms, payment portal, budgets
+// ═════════════════════════════════════════════════════════════════
+
+describe("legal — client intake forms", () => {
+  it("intake-forms-create rejects a form with no fields", () => {
+    const r = call("intake-forms-create", ctxA, { name: "Empty Form", fields: [] });
+    assert.equal(r.ok, false);
+  });
+
+  it("creates a form, lists it scoped per user, sanitizes field keys", () => {
+    const r = call("intake-forms-create", ctxA, {
+      name: "PI Intake",
+      matterType: "litigation",
+      fields: [
+        { key: "Full Name!", label: "Full name", type: "text", required: true },
+        { label: "Email", type: "email" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.match(r.result.form.number, /^IF-\d{4}$/);
+    assert.equal(r.result.form.fields[0].key, "full_name_");
+    const list = call("intake-forms-list", ctxA);
+    assert.equal(list.result.forms.length, 1);
+    assert.equal(list.result.forms[0].submissionCount, 0);
+    assert.equal(call("intake-forms-list", ctxB).result.forms.length, 0);
+  });
+
+  it("intake-submit enforces required fields and records a submission", () => {
+    const form = call("intake-forms-create", ctxA, {
+      name: "F", fields: [{ key: "name", label: "Name", type: "text", required: true }],
+    }).result.form;
+    const missing = call("intake-submit", ctxA, { formId: form.id, answers: {} });
+    assert.equal(missing.ok, false);
+    assert.match(missing.error, /required/i);
+    const ok = call("intake-submit", ctxA, {
+      formId: form.id, contactName: "Jane Prospect", contactEmail: "jane@x.com",
+      answers: { name: "Jane Prospect" },
+    });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.submission.status, "new");
+    assert.equal(call("intake-submissions-list", ctxA, { formId: form.id }).result.submissions.length, 1);
+  });
+
+  it("intake-convert turns a submission into a client contact + open matter", () => {
+    const form = call("intake-forms-create", ctxA, {
+      name: "F", matterType: "family", fields: [{ key: "name", label: "Name", required: true }],
+    }).result.form;
+    const sub = call("intake-submit", ctxA, {
+      formId: form.id, contactName: "Bob Client", answers: { name: "Bob Client" },
+    }).result.submission;
+    const conv = call("intake-convert", ctxA, { id: sub.id, hourlyRate: 250 });
+    assert.equal(conv.ok, true);
+    assert.equal(conv.result.contact.kind, "client");
+    assert.equal(conv.result.matter.matterType, "family");
+    assert.equal(conv.result.matter.hourlyRate, 250);
+    assert.equal(call("contacts-list", ctxA).result.contacts.length, 1);
+    // Cannot double-convert
+    assert.equal(call("intake-convert", ctxA, { id: sub.id }).ok, false);
+  });
+});
+
+describe("legal — client payment portal", () => {
+  it("payment-record rejects with no invoice or matter", () => {
+    const r = call("payment-record", ctxA, { amount: 100 });
+    assert.equal(r.ok, false);
+  });
+
+  it("recording a card payment computes a processing fee and net amount", () => {
+    const m = call("matters-create", ctxA, { name: "M", hourlyRate: 100 }).result.matter;
+    const r = call("payment-record", ctxA, { matterId: m.id, amount: 1000, method: "card" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.payment.processingFee, 29);
+    assert.equal(r.result.payment.netAmount, 971);
+    assert.match(r.result.payment.number, /^PMT-\d{5}$/);
+  });
+
+  it("a full payment against an invoice flips it to paid", () => {
+    const m = call("matters-create", ctxA, { name: "M", hourlyRate: 100 }).result.matter;
+    call("time-entries-create", ctxA, { matterId: m.id, hours: 3 });
+    const inv = call("invoices-from-time", ctxA, { matterId: m.id }).result.invoice;
+    assert.equal(inv.status, "open");
+    const pay = call("payment-record", ctxA, { invoiceId: inv.id, amount: inv.total, method: "ach" });
+    assert.equal(pay.ok, true);
+    assert.equal(pay.result.invoice.status, "paid");
+    assert.equal(pay.result.payment.processingFee, 0);
+  });
+
+  it("payment-portal-summary aggregates open invoices + balances", () => {
+    const m = call("matters-create", ctxA, { name: "M", hourlyRate: 100 }).result.matter;
+    call("time-entries-create", ctxA, { matterId: m.id, hours: 5 });
+    const inv = call("invoices-from-time", ctxA, { matterId: m.id }).result.invoice;
+    call("payment-record", ctxA, { invoiceId: inv.id, amount: 200, method: "check" });
+    const r = call("payment-portal-summary", ctxA, { matterId: m.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.openInvoices.length, 1);
+    assert.equal(r.result.openInvoices[0].paid, 200);
+    assert.equal(r.result.openInvoices[0].balance, 300);
+    assert.equal(r.result.totalDue, 300);
+  });
+});
+
+describe("legal — matter budgeting + realization reporting", () => {
+  it("budget-set requires a real matter and a non-negative amount", () => {
+    assert.equal(call("budget-set", ctxA, { matterId: "nope", budgetAmount: 100 }).ok, false);
+    const m = call("matters-create", ctxA, { name: "M" }).result.matter;
+    assert.equal(call("budget-set", ctxA, { matterId: m.id, budgetAmount: -5 }).ok, false);
+    const r = call("budget-set", ctxA, { matterId: m.id, budgetAmount: 5000, budgetHours: 20 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.budget.budgetAmount, 5000);
+  });
+
+  it("budget-report computes realization, collection rate and budget consumption", () => {
+    const m = call("matters-create", ctxA, { name: "M", hourlyRate: 100 }).result.matter;
+    call("budget-set", ctxA, { matterId: m.id, budgetAmount: 1000 });
+    call("time-entries-create", ctxA, { matterId: m.id, hours: 10 }); // $1000 worked
+    const inv = call("invoices-from-time", ctxA, { matterId: m.id }).result.invoice;
+    call("payment-record", ctxA, { invoiceId: inv.id, amount: 600, method: "ach" });
+    const r = call("budget-report", ctxA, { matterId: m.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.workedValue, 1000);
+    assert.equal(r.result.billedValue, 1000);
+    assert.equal(r.result.collectedValue, 600);
+    assert.equal(r.result.realizationRate, 1);
+    assert.equal(r.result.collectionRate, 0.6);
+    assert.equal(r.result.budgetStatus.consumedFraction, 1);
+  });
+
+  it("realization-rollup aggregates firm-wide worked/billed/collected", () => {
+    const m1 = call("matters-create", ctxA, { name: "M1", hourlyRate: 100 }).result.matter;
+    const m2 = call("matters-create", ctxA, { name: "M2", hourlyRate: 200 }).result.matter;
+    call("time-entries-create", ctxA, { matterId: m1.id, hours: 2 }); // $200
+    call("time-entries-create", ctxA, { matterId: m2.id, hours: 1 }); // $200
+    const r = call("realization-rollup", ctxA);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.matters.length, 2);
+    assert.equal(r.result.totals.worked, 400);
+  });
+});

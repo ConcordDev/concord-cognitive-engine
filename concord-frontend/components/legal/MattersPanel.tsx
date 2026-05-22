@@ -25,7 +25,6 @@ interface Detail {
 }
 
 const TYPES = ['litigation','transactional','family','probate','criminal','employment','ip','real_estate','corporate','immigration','tax','bankruptcy','other'];
-const STATUSES = ['intake','open','pending','closed','archived'];
 const BILLING = ['hourly','flat','contingency','pro_bono'];
 
 export function MattersPanel() {
@@ -38,6 +37,7 @@ export function MattersPanel() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filter]);
 
   async function refresh() {

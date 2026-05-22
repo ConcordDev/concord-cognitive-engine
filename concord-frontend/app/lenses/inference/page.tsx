@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { InferenceFrameworks } from '@/components/inference/InferenceFrameworks';
+import { RuleEngineWorkbench } from '@/components/inference/RuleEngineWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -800,6 +801,10 @@ export default function InferenceLensPage() {
           </div>
         )}
       </div>
+      <section className="mt-6 rounded-xl border border-cyan-500/15 bg-zinc-950/40 p-4">
+        <RuleEngineWorkbench />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <InferenceFrameworks />
       </section>

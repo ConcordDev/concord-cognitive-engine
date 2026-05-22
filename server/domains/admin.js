@@ -483,4 +483,756 @@ export default function registerAdminActions(registerLensAction) {
     artifact.data.systemHealth = result;
     return { ok: true, result };
   });
+
+  // ===========================================================================
+  // Ops-console backlog — Datadog / Grafana parity.
+  // Persistent per-deployment ops state lives in globalThis._concordSTATE.adminLens.
+  //  - Time-series ring buffers (history charts)
+  //  - User-defined alert rules + thresholds
+  //  - Per-user/per-tenant admin actions (suspend, role-change, quota)
+  //  - Log search/tail buffer
+  //  - Distributed-trace / request-waterfall store
+  //  - Feature flags
+  //  - Incident timeline + on-call acknowledgement
+  // ===========================================================================
+
+  /** Lazily provision the per-domain ops state container. */
+  function adminState() {
+    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+    if (!STATE.adminLens) {
+      STATE.adminLens = {
+        // metric -> [{ t, v }] ring buffer (one shared deployment-wide series)
+        series: new Map(),
+        alertRules: new Map(), // ruleId -> rule
+        tenants: new Map(), // userId -> { suspended, role, quotaMb, notes, updatedAt }
+        logBuffer: [], // [{ id, t, level, source, message }]
+        traces: new Map(), // traceId -> { traceId, endpoint, t, totalMs, spans:[] }
+        featureFlags: new Map(), // flagId -> flag
+        incidents: new Map(), // incidentId -> incident
+      };
+    }
+    return STATE.adminLens;
+  }
+
+  function rid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function nowIso() {
+    return new Date().toISOString();
+  }
+
+  function clampNum(v, lo, hi, fallback) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(hi, Math.max(lo, n));
+  }
+
+  const MAX_SERIES_POINTS = 2880; // ~48h at 1-min cadence
+  const MAX_LOG_BUFFER = 5000;
+  const MAX_TRACES = 1000;
+
+  // ---------------------------------------------------------------------------
+  // Feature 1 — Historical time-series charts with selectable ranges.
+  // recordMetric ingests a point; metricHistory reads back a windowed,
+  // optionally down-sampled series for any selected range.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * recordMetric — append one observation to a named time-series ring buffer.
+   * params.metric (string), params.value (number), params.timestamp? (ISO/ms)
+   */
+  registerLensAction("admin", "recordMetric", (ctx, artifact, params) => {
+    try {
+      const metric = String((params && params.metric) || "").trim();
+      if (!metric) return { ok: false, error: "metric is required" };
+      const value = Number(params && params.value);
+      if (!Number.isFinite(value)) return { ok: false, error: "value must be a number" };
+      const t = params && params.timestamp ? new Date(params.timestamp).getTime() : Date.now();
+      if (!Number.isFinite(t)) return { ok: false, error: "invalid timestamp" };
+
+      const st = adminState();
+      if (!st.series.has(metric)) st.series.set(metric, []);
+      const buf = st.series.get(metric);
+      buf.push({ t, v: value });
+      buf.sort((a, b) => a.t - b.t);
+      if (buf.length > MAX_SERIES_POINTS) buf.splice(0, buf.length - MAX_SERIES_POINTS);
+
+      return { ok: true, result: { metric, points: buf.length, recordedAt: new Date(t).toISOString() } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /**
+   * metricHistory — read a windowed time-series for charting.
+   * params.metric (string), params.rangeMinutes? (default 1440 = 24h),
+   * params.buckets? (down-sample target point count, default 120)
+   */
+  registerLensAction("admin", "metricHistory", (ctx, artifact, params) => {
+    try {
+      const metric = String((params && params.metric) || "").trim();
+      const st = adminState();
+      const rangeMinutes = clampNum(params && params.rangeMinutes, 5, 2880, 1440);
+      const buckets = clampNum(params && params.buckets, 10, 600, 120);
+
+      if (metric) {
+        const buf = st.series.get(metric) || [];
+        const cutoff = Date.now() - rangeMinutes * 60 * 1000;
+        const windowed = buf.filter((p) => p.t >= cutoff);
+        const series = downsample(windowed, buckets);
+        const values = series.map((p) => p.v);
+        return {
+          ok: true,
+          result: {
+            metric,
+            rangeMinutes,
+            points: series.length,
+            rawPoints: windowed.length,
+            series,
+            stats: summarise(values),
+          },
+        };
+      }
+
+      // No metric => list available metrics with cardinality.
+      const metrics = [...st.series.entries()].map(([name, buf]) => ({
+        metric: name,
+        points: buf.length,
+        latest: buf.length ? buf[buf.length - 1].v : null,
+        latestAt: buf.length ? new Date(buf[buf.length - 1].t).toISOString() : null,
+      }));
+      return { ok: true, result: { metrics, total: metrics.length } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  function downsample(points, target) {
+    if (points.length <= target) {
+      return points.map((p) => ({ t: new Date(p.t).toISOString(), v: Math.round(p.v * 1000) / 1000 }));
+    }
+    const out = [];
+    const size = points.length / target;
+    for (let i = 0; i < target; i++) {
+      const slice = points.slice(Math.floor(i * size), Math.floor((i + 1) * size));
+      if (!slice.length) continue;
+      const avg = slice.reduce((s, p) => s + p.v, 0) / slice.length;
+      out.push({ t: new Date(slice[slice.length - 1].t).toISOString(), v: Math.round(avg * 1000) / 1000 });
+    }
+    return out;
+  }
+
+  function summarise(values) {
+    if (!values.length) return { count: 0, min: null, max: null, avg: null, p95: null };
+    const sorted = [...values].sort((a, b) => a - b);
+    const sum = sorted.reduce((s, v) => s + v, 0);
+    const p95Idx = Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95));
+    return {
+      count: sorted.length,
+      min: Math.round(sorted[0] * 1000) / 1000,
+      max: Math.round(sorted[sorted.length - 1] * 1000) / 1000,
+      avg: Math.round((sum / sorted.length) * 1000) / 1000,
+      p95: Math.round(sorted[p95Idx] * 1000) / 1000,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Feature 2 — Alert rules + thresholds editable from the UI.
+  // alertRuleUpsert / alertRuleDelete manage rules; alertEvaluate runs every
+  // rule against the live metric series and returns firing/ok states.
+  // ---------------------------------------------------------------------------
+
+  const ALERT_COMPARATORS = [">", ">=", "<", "<=", "=="];
+  const ALERT_SEVERITIES = ["info", "warning", "critical"];
+
+  /**
+   * alertRuleUpsert — create or update an alert rule.
+   * params.rule: { id?, name, metric, comparator, threshold, severity?, windowMinutes?,
+   *   aggregation? ('avg'|'max'|'min'|'last'), enabled? }
+   */
+  registerLensAction("admin", "alertRuleUpsert", (ctx, artifact, params) => {
+    try {
+      const input = (params && params.rule) || {};
+      const name = String(input.name || "").trim();
+      const metric = String(input.metric || "").trim();
+      if (!name) return { ok: false, error: "rule.name is required" };
+      if (!metric) return { ok: false, error: "rule.metric is required" };
+      const comparator = ALERT_COMPARATORS.includes(input.comparator) ? input.comparator : ">";
+      const threshold = Number(input.threshold);
+      if (!Number.isFinite(threshold)) return { ok: false, error: "rule.threshold must be a number" };
+      const severity = ALERT_SEVERITIES.includes(input.severity) ? input.severity : "warning";
+      const aggregation = ["avg", "max", "min", "last"].includes(input.aggregation)
+        ? input.aggregation
+        : "avg";
+
+      const st = adminState();
+      const existing = input.id ? st.alertRules.get(input.id) : null;
+      const id = existing ? existing.id : rid("alert");
+      const rule = {
+        id,
+        name,
+        metric,
+        comparator,
+        threshold,
+        severity,
+        aggregation,
+        windowMinutes: clampNum(input.windowMinutes, 1, 1440, 15),
+        enabled: input.enabled !== false,
+        createdAt: existing ? existing.createdAt : nowIso(),
+        updatedAt: nowIso(),
+      };
+      st.alertRules.set(id, rule);
+      return { ok: true, result: { rule, totalRules: st.alertRules.size } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /** alertRuleDelete — remove an alert rule. params.ruleId */
+  registerLensAction("admin", "alertRuleDelete", (ctx, artifact, params) => {
+    try {
+      const ruleId = String((params && params.ruleId) || "");
+      const st = adminState();
+      if (!st.alertRules.has(ruleId)) return { ok: false, error: "rule not found" };
+      st.alertRules.delete(ruleId);
+      return { ok: true, result: { deleted: ruleId, totalRules: st.alertRules.size } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /**
+   * alertEvaluate — list every rule with its live firing state.
+   * Evaluates each enabled rule against its metric's recent window.
+   */
+  registerLensAction("admin", "alertEvaluate", (ctx, artifact) => {
+    try {
+      const st = adminState();
+      const rules = [...st.alertRules.values()];
+      const evaluated = rules.map((rule) => {
+        const buf = st.series.get(rule.metric) || [];
+        const cutoff = Date.now() - rule.windowMinutes * 60 * 1000;
+        const windowed = buf.filter((p) => p.t >= cutoff).map((p) => p.v);
+        let observed = null;
+        if (windowed.length) {
+          if (rule.aggregation === "max") observed = Math.max(...windowed);
+          else if (rule.aggregation === "min") observed = Math.min(...windowed);
+          else if (rule.aggregation === "last") observed = windowed[windowed.length - 1];
+          else observed = windowed.reduce((s, v) => s + v, 0) / windowed.length;
+          observed = Math.round(observed * 1000) / 1000;
+        }
+        let firing = false;
+        if (rule.enabled && observed !== null) {
+          if (rule.comparator === ">") firing = observed > rule.threshold;
+          else if (rule.comparator === ">=") firing = observed >= rule.threshold;
+          else if (rule.comparator === "<") firing = observed < rule.threshold;
+          else if (rule.comparator === "<=") firing = observed <= rule.threshold;
+          else if (rule.comparator === "==") firing = observed === rule.threshold;
+        }
+        return {
+          ...rule,
+          observed,
+          dataPoints: windowed.length,
+          state: !rule.enabled ? "disabled" : observed === null ? "no-data" : firing ? "firing" : "ok",
+        };
+      });
+      const firingCount = evaluated.filter((r) => r.state === "firing").length;
+      return {
+        ok: true,
+        result: {
+          evaluatedAt: nowIso(),
+          rules: evaluated,
+          summary: {
+            total: evaluated.length,
+            firing: firingCount,
+            ok: evaluated.filter((r) => r.state === "ok").length,
+            noData: evaluated.filter((r) => r.state === "no-data").length,
+            disabled: evaluated.filter((r) => r.state === "disabled").length,
+            criticalFiring: evaluated.filter((r) => r.state === "firing" && r.severity === "critical").length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Feature 3 — Per-user / per-tenant admin actions: suspend, role-change,
+  // quota edit. tenantAction mutates; tenantList reads back the roster.
+  // ---------------------------------------------------------------------------
+
+  const TENANT_ROLES = ["member", "moderator", "admin", "owner"];
+
+  function tenantRecord(st, userId) {
+    if (!st.tenants.has(userId)) {
+      st.tenants.set(userId, {
+        userId,
+        suspended: false,
+        role: "member",
+        quotaMb: 1024,
+        notes: "",
+        updatedAt: nowIso(),
+        history: [],
+      });
+    }
+    return st.tenants.get(userId);
+  }
+
+  /**
+   * tenantAction — apply an admin action to a tenant.
+   * params.userId, params.action ('suspend'|'unsuspend'|'role'|'quota'|'note'),
+   * params.role? params.quotaMb? params.note?
+   */
+  registerLensAction("admin", "tenantAction", (ctx, artifact, params) => {
+    try {
+      const userId = String((params && params.userId) || "").trim();
+      if (!userId) return { ok: false, error: "userId is required" };
+      const action = String((params && params.action) || "").trim();
+      const st = adminState();
+      const rec = tenantRecord(st, userId);
+      const actorId = (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "system";
+      let change;
+
+      if (action === "suspend") {
+        rec.suspended = true;
+        change = "suspended account";
+      } else if (action === "unsuspend") {
+        rec.suspended = false;
+        change = "reinstated account";
+      } else if (action === "role") {
+        const role = String((params && params.role) || "");
+        if (!TENANT_ROLES.includes(role)) {
+          return { ok: false, error: `role must be one of ${TENANT_ROLES.join(", ")}` };
+        }
+        const prev = rec.role;
+        rec.role = role;
+        change = `role ${prev} -> ${role}`;
+      } else if (action === "quota") {
+        rec.quotaMb = clampNum(params && params.quotaMb, 0, 1048576, rec.quotaMb);
+        change = `quota set to ${rec.quotaMb} MB`;
+      } else if (action === "note") {
+        rec.notes = String((params && params.note) || "").slice(0, 500);
+        change = "note updated";
+      } else {
+        return { ok: false, error: "action must be suspend|unsuspend|role|quota|note" };
+      }
+
+      rec.updatedAt = nowIso();
+      rec.history.unshift({ at: nowIso(), actorId, change });
+      if (rec.history.length > 50) rec.history.length = 50;
+      return { ok: true, result: { tenant: { ...rec, history: rec.history.slice(0, 10) }, change } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /** tenantList — list all managed tenants. params.filter? ('suspended'|'all') */
+  registerLensAction("admin", "tenantList", (ctx, artifact, params) => {
+    try {
+      const st = adminState();
+      const filter = String((params && params.filter) || "all");
+      let tenants = [...st.tenants.values()];
+      if (filter === "suspended") tenants = tenants.filter((t) => t.suspended);
+      tenants = tenants
+        .map((t) => ({ ...t, history: t.history.slice(0, 5) }))
+        .sort((a, b) => (b.updatedAt > a.updatedAt ? 1 : -1));
+      return {
+        ok: true,
+        result: {
+          tenants,
+          summary: {
+            total: st.tenants.size,
+            suspended: [...st.tenants.values()].filter((t) => t.suspended).length,
+            admins: [...st.tenants.values()].filter((t) => t.role === "admin" || t.role === "owner")
+              .length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Feature 4 — Log search / tail panel with severity filter.
+  // logAppend ingests a log line; logSearch queries the ring buffer.
+  // ---------------------------------------------------------------------------
+
+  const LOG_LEVELS = ["debug", "info", "warn", "error", "fatal"];
+  const LOG_RANK = { debug: 0, info: 1, warn: 2, error: 3, fatal: 4 };
+
+  /**
+   * logAppend — append a structured log line to the tail buffer.
+   * params.level, params.message, params.source?, params.timestamp?
+   */
+  registerLensAction("admin", "logAppend", (ctx, artifact, params) => {
+    try {
+      const level = LOG_LEVELS.includes(params && params.level) ? params.level : "info";
+      const message = String((params && params.message) || "").trim();
+      if (!message) return { ok: false, error: "message is required" };
+      const t = params && params.timestamp ? new Date(params.timestamp).getTime() : Date.now();
+      const st = adminState();
+      const entry = {
+        id: rid("log"),
+        t: Number.isFinite(t) ? t : Date.now(),
+        level,
+        source: String((params && params.source) || "app").slice(0, 64),
+        message: message.slice(0, 2000),
+      };
+      st.logBuffer.push(entry);
+      st.logBuffer.sort((a, b) => a.t - b.t);
+      if (st.logBuffer.length > MAX_LOG_BUFFER) {
+        st.logBuffer.splice(0, st.logBuffer.length - MAX_LOG_BUFFER);
+      }
+      return { ok: true, result: { id: entry.id, bufferSize: st.logBuffer.length } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /**
+   * logSearch — query the log buffer.
+   * params.minLevel? ('debug'..'fatal'), params.query? (substring),
+   * params.source?, params.limit? (default 100)
+   */
+  registerLensAction("admin", "logSearch", (ctx, artifact, params) => {
+    try {
+      const st = adminState();
+      const minLevel = LOG_LEVELS.includes(params && params.minLevel) ? params.minLevel : "debug";
+      const minRank = LOG_RANK[minLevel];
+      const query = String((params && params.query) || "").toLowerCase();
+      const source = String((params && params.source) || "").toLowerCase();
+      const limit = clampNum(params && params.limit, 1, 1000, 100);
+
+      let rows = st.logBuffer.filter((r) => LOG_RANK[r.level] >= minRank);
+      if (query) rows = rows.filter((r) => r.message.toLowerCase().includes(query));
+      if (source) rows = rows.filter((r) => r.source.toLowerCase().includes(source));
+      const total = rows.length;
+      rows = rows.slice(-limit).reverse();
+
+      const byLevel = {};
+      for (const lvl of LOG_LEVELS) {
+        byLevel[lvl] = st.logBuffer.filter((r) => r.level === lvl).length;
+      }
+      return {
+        ok: true,
+        result: {
+          entries: rows.map((r) => ({ ...r, timestamp: new Date(r.t).toISOString() })),
+          matched: total,
+          returned: rows.length,
+          bufferSize: st.logBuffer.length,
+          byLevel,
+          sources: [...new Set(st.logBuffer.map((r) => r.source))].sort(),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Feature 5 — Distributed-trace / request-waterfall view for slow endpoints.
+  // traceRecord ingests a request trace with spans; traceList reads back
+  // the slowest traces and renders a waterfall-ready span layout.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * traceRecord — record a distributed request trace.
+   * params.trace: { id?, endpoint, totalMs?, timestamp?, spans:[{name, startMs, durationMs, service?}] }
+   */
+  registerLensAction("admin", "traceRecord", (ctx, artifact, params) => {
+    try {
+      const input = (params && params.trace) || {};
+      const endpoint = String(input.endpoint || "").trim();
+      if (!endpoint) return { ok: false, error: "trace.endpoint is required" };
+      const spansIn = Array.isArray(input.spans) ? input.spans : [];
+      const spans = spansIn
+        .map((s, i) => {
+          const startMs = clampNum(s.startMs, 0, 600000, 0);
+          const durationMs = clampNum(s.durationMs, 0, 600000, 0);
+          return {
+            id: rid("span"),
+            order: i,
+            name: String(s.name || `span_${i}`).slice(0, 120),
+            service: String(s.service || "app").slice(0, 64),
+            startMs,
+            durationMs,
+            endMs: startMs + durationMs,
+          };
+        })
+        .sort((a, b) => a.startMs - b.startMs);
+
+      const spanSpan = spans.length
+        ? Math.max(...spans.map((s) => s.endMs))
+        : 0;
+      const totalMs = Number.isFinite(Number(input.totalMs))
+        ? Number(input.totalMs)
+        : spanSpan;
+      const t = input.timestamp ? new Date(input.timestamp).getTime() : Date.now();
+      const traceId = input.id || rid("trace");
+
+      // Slowest span = critical-path bottleneck.
+      const slowest = spans.reduce((m, s) => (!m || s.durationMs > m.durationMs ? s : m), null);
+
+      const trace = {
+        traceId,
+        endpoint,
+        timestamp: new Date(Number.isFinite(t) ? t : Date.now()).toISOString(),
+        t: Number.isFinite(t) ? t : Date.now(),
+        totalMs: Math.round(totalMs * 100) / 100,
+        spanCount: spans.length,
+        spans,
+        bottleneck: slowest
+          ? { name: slowest.name, service: slowest.service, durationMs: slowest.durationMs }
+          : null,
+      };
+      const st = adminState();
+      st.traces.set(traceId, trace);
+      if (st.traces.size > MAX_TRACES) {
+        const oldest = [...st.traces.values()].sort((a, b) => a.t - b.t)[0];
+        if (oldest) st.traces.delete(oldest.traceId);
+      }
+      return { ok: true, result: { traceId, totalMs: trace.totalMs, spanCount: spans.length } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /**
+   * traceList — list traces, slowest-first, for the waterfall view.
+   * params.minMs? (only traces slower than this), params.endpoint?, params.limit?
+   */
+  registerLensAction("admin", "traceList", (ctx, artifact, params) => {
+    try {
+      const st = adminState();
+      const minMs = clampNum(params && params.minMs, 0, 600000, 0);
+      const endpoint = String((params && params.endpoint) || "").toLowerCase();
+      const limit = clampNum(params && params.limit, 1, 200, 50);
+
+      let traces = [...st.traces.values()].filter((tr) => tr.totalMs >= minMs);
+      if (endpoint) traces = traces.filter((tr) => tr.endpoint.toLowerCase().includes(endpoint));
+      traces.sort((a, b) => b.totalMs - a.totalMs);
+      const top = traces.slice(0, limit);
+
+      const all = [...st.traces.values()];
+      const durations = all.map((tr) => tr.totalMs).sort((a, b) => a - b);
+      const p95 = durations.length
+        ? durations[Math.min(durations.length - 1, Math.floor(durations.length * 0.95))]
+        : null;
+      return {
+        ok: true,
+        result: {
+          traces: top,
+          matched: traces.length,
+          stats: {
+            total: all.length,
+            slowest: durations.length ? durations[durations.length - 1] : null,
+            fastest: durations.length ? durations[0] : null,
+            p95,
+            avg: durations.length
+              ? Math.round((durations.reduce((s, v) => s + v, 0) / durations.length) * 100) / 100
+              : null,
+          },
+          endpoints: [...new Set(all.map((tr) => tr.endpoint))].sort(),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Feature 6 — Feature-flag toggles surfaced in the UI.
+  // featureFlagSet upserts/toggles a flag; featureFlagList reads them all.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * featureFlagSet — create, update, or toggle a feature flag.
+   * params.flag: { id?, key, enabled?, description?, rolloutPct? } OR
+   * params.toggle (flagId) to flip an existing flag.
+   */
+  registerLensAction("admin", "featureFlagSet", (ctx, artifact, params) => {
+    try {
+      const st = adminState();
+      if (params && params.toggle) {
+        const flag = st.featureFlags.get(String(params.toggle));
+        if (!flag) return { ok: false, error: "flag not found" };
+        flag.enabled = !flag.enabled;
+        flag.updatedAt = nowIso();
+        return { ok: true, result: { flag } };
+      }
+      const input = (params && params.flag) || {};
+      const key = String(input.key || "").trim();
+      if (!key) return { ok: false, error: "flag.key is required" };
+      const existing = input.id ? st.featureFlags.get(input.id) : null;
+      const id = existing ? existing.id : rid("flag");
+      const flag = {
+        id,
+        key,
+        enabled: input.enabled !== undefined ? !!input.enabled : existing ? existing.enabled : false,
+        description: String(input.description || (existing && existing.description) || "").slice(0, 280),
+        rolloutPct: clampNum(
+          input.rolloutPct !== undefined ? input.rolloutPct : existing && existing.rolloutPct,
+          0,
+          100,
+          100,
+        ),
+        createdAt: existing ? existing.createdAt : nowIso(),
+        updatedAt: nowIso(),
+      };
+      st.featureFlags.set(id, flag);
+      return { ok: true, result: { flag, totalFlags: st.featureFlags.size } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /** featureFlagList — list all feature flags. */
+  registerLensAction("admin", "featureFlagList", (ctx, artifact) => {
+    try {
+      const st = adminState();
+      const flags = [...st.featureFlags.values()].sort((a, b) => a.key.localeCompare(b.key));
+      return {
+        ok: true,
+        result: {
+          flags,
+          summary: {
+            total: flags.length,
+            enabled: flags.filter((f) => f.enabled).length,
+            partialRollout: flags.filter((f) => f.enabled && f.rolloutPct < 100).length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Feature 7 — Incident timeline + on-call acknowledgement workflow.
+  // incidentOpen creates; incidentUpdate adds timeline events / acks /
+  // resolves; incidentList reads back the incident roster + timelines.
+  // ---------------------------------------------------------------------------
+
+  const INCIDENT_SEVERITIES = ["sev1", "sev2", "sev3", "sev4"];
+
+  /**
+   * incidentOpen — declare a new incident.
+   * params.title, params.severity? ('sev1'..'sev4'), params.description?, params.service?
+   */
+  registerLensAction("admin", "incidentOpen", (ctx, artifact, params) => {
+    try {
+      const title = String((params && params.title) || "").trim();
+      if (!title) return { ok: false, error: "title is required" };
+      const severity = INCIDENT_SEVERITIES.includes(params && params.severity)
+        ? params.severity
+        : "sev3";
+      const st = adminState();
+      const id = rid("inc");
+      const actorId = (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "system";
+      const incident = {
+        id,
+        title: title.slice(0, 200),
+        severity,
+        service: String((params && params.service) || "platform").slice(0, 80),
+        description: String((params && params.description) || "").slice(0, 1000),
+        status: "open", // open -> acknowledged -> resolved
+        acknowledgedBy: null,
+        acknowledgedAt: null,
+        openedAt: nowIso(),
+        resolvedAt: null,
+        durationMs: null,
+        timeline: [{ at: nowIso(), actorId, kind: "opened", note: `Incident declared (${severity})` }],
+      };
+      st.incidents.set(id, incident);
+      return { ok: true, result: { incident } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /**
+   * incidentUpdate — advance an incident: acknowledge, note, or resolve.
+   * params.incidentId, params.action ('acknowledge'|'note'|'resolve'), params.note?
+   */
+  registerLensAction("admin", "incidentUpdate", (ctx, artifact, params) => {
+    try {
+      const incidentId = String((params && params.incidentId) || "");
+      const st = adminState();
+      const incident = st.incidents.get(incidentId);
+      if (!incident) return { ok: false, error: "incident not found" };
+      const action = String((params && params.action) || "");
+      const actorId = (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "system";
+      const note = String((params && params.note) || "").slice(0, 1000);
+
+      if (action === "acknowledge") {
+        if (incident.status === "resolved") return { ok: false, error: "incident already resolved" };
+        incident.status = "acknowledged";
+        incident.acknowledgedBy = actorId;
+        incident.acknowledgedAt = nowIso();
+        incident.timeline.push({
+          at: nowIso(),
+          actorId,
+          kind: "acknowledged",
+          note: note || "On-call engineer acknowledged",
+        });
+      } else if (action === "note") {
+        if (!note) return { ok: false, error: "note text is required" };
+        incident.timeline.push({ at: nowIso(), actorId, kind: "note", note });
+      } else if (action === "resolve") {
+        if (incident.status === "resolved") return { ok: false, error: "incident already resolved" };
+        incident.status = "resolved";
+        incident.resolvedAt = nowIso();
+        incident.durationMs = new Date(incident.resolvedAt).getTime() - new Date(incident.openedAt).getTime();
+        incident.timeline.push({
+          at: nowIso(),
+          actorId,
+          kind: "resolved",
+          note: note || "Incident resolved",
+        });
+      } else {
+        return { ok: false, error: "action must be acknowledge|note|resolve" };
+      }
+      return { ok: true, result: { incident } };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
+
+  /** incidentList — list incidents with timelines. params.status? ('open'|'active'|'resolved'|'all') */
+  registerLensAction("admin", "incidentList", (ctx, artifact, params) => {
+    try {
+      const st = adminState();
+      const filter = String((params && params.status) || "all");
+      let incidents = [...st.incidents.values()];
+      if (filter === "open") incidents = incidents.filter((i) => i.status === "open");
+      else if (filter === "active") incidents = incidents.filter((i) => i.status !== "resolved");
+      else if (filter === "resolved") incidents = incidents.filter((i) => i.status === "resolved");
+      incidents.sort((a, b) => (b.openedAt > a.openedAt ? 1 : -1));
+
+      const all = [...st.incidents.values()];
+      const resolved = all.filter((i) => i.status === "resolved" && i.durationMs != null);
+      const mttr = resolved.length
+        ? Math.round(resolved.reduce((s, i) => s + i.durationMs, 0) / resolved.length)
+        : null;
+      return {
+        ok: true,
+        result: {
+          incidents,
+          summary: {
+            total: all.length,
+            open: all.filter((i) => i.status === "open").length,
+            acknowledged: all.filter((i) => i.status === "acknowledged").length,
+            resolved: resolved.length,
+            unacknowledged: all.filter((i) => i.status === "open").length,
+            mttrMs: mttr,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    }
+  });
 }

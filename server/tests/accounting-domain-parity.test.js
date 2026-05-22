@@ -818,3 +818,323 @@ describe("accounting — financial ratios", () => {
     assert.ok(r.result.workingCapital === 10000);
   });
 });
+
+// ════════════════════════════════════════════════════════════════════
+//  2026 PARITY BACKLOG — QuickBooks Online feature gaps
+// ════════════════════════════════════════════════════════════════════
+
+async function callAsync(name, ctx, params = {}) {
+  const fn = ACTIONS.get(`accounting.${name}`);
+  if (!fn) throw new Error(`accounting.${name} not registered`);
+  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+}
+
+describe("accounting — [M] live bank feed aggregator", () => {
+  it("links an institution and lists it scoped per-user", () => {
+    const r = call("bank-feeds-link-institution", ctxA, { name: "Chase Business", accountMask: "4421" });
+    assert.equal(r.ok, true);
+    assert.match(r.result.institution.id, /^inst_/);
+    const list = call("bank-feeds-institutions-list", ctxA);
+    assert.equal(list.result.institutions.length, 1);
+    assert.equal(call("bank-feeds-institutions-list", ctxB).result.institutions.length, 0);
+  });
+
+  it("link rejects empty name", () => {
+    const r = call("bank-feeds-link-institution", ctxA, { name: "" });
+    assert.equal(r.ok, false);
+  });
+
+  it("unlinks an institution", () => {
+    const i = call("bank-feeds-link-institution", ctxA, { name: "Wells Fargo" }).result.institution;
+    const r = call("bank-feeds-unlink-institution", ctxA, { id: i.id });
+    assert.equal(r.ok, true);
+    assert.equal(call("bank-feeds-institutions-list", ctxA).result.institutions.length, 0);
+  });
+
+  it("sync errors clearly when no aggregator configured", async () => {
+    delete process.env.CONCORD_BANK_AGGREGATOR_URL;
+    delete process.env.CONCORD_BANK_AGGREGATOR_TOKEN;
+    const i = call("bank-feeds-link-institution", ctxA, { name: "Mercury" }).result.institution;
+    const r = await callAsync("bank-feeds-sync", ctxA, { id: i.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /CONCORD_BANK_AGGREGATOR_URL/);
+  });
+
+  it("sync pulls real transactions from a configured aggregator", async () => {
+    process.env.CONCORD_BANK_AGGREGATOR_URL = "https://agg.example.com";
+    process.env.CONCORD_BANK_AGGREGATOR_TOKEN = "tok_test";
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ transactions: [
+        { id: "ext_1", date: "2026-05-01", amount: -42.5, description: "Coffee" },
+        { id: "ext_2", date: "2026-05-02", amount: 1000, description: "Client" },
+      ] }),
+    });
+    const i = call("bank-feeds-link-institution", ctxA, { name: "Mercury", externalAccountId: "acc_99" }).result.institution;
+    const r = await callAsync("bank-feeds-sync", ctxA, { id: i.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.imported, 2);
+    // Idempotent — re-sync dedupes by externalId.
+    const r2 = await callAsync("bank-feeds-sync", ctxA, { id: i.id });
+    assert.equal(r2.result.imported, 0);
+    delete process.env.CONCORD_BANK_AGGREGATOR_URL;
+    delete process.env.CONCORD_BANK_AGGREGATOR_TOKEN;
+  });
+});
+
+describe("accounting — [M] multi-currency + FX revaluation", () => {
+  it("defaults to USD base and sets a new base", () => {
+    assert.equal(call("currency-list", ctxA).result.base, "USD");
+    const r = call("currency-set-base", ctxA, { base: "eur" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.base, "EUR");
+    assert.equal(call("currency-list", ctxA).result.base, "EUR");
+  });
+
+  it("rejects an invalid base currency code", () => {
+    assert.equal(call("currency-set-base", ctxA, { base: "EURO" }).ok, false);
+  });
+
+  it("refreshes FX rates from the free keyless provider", async () => {
+    try { (await import("../lib/external-fetch.js")).clearExternalFetchCache(); } catch { /* ignore */ }
+    globalThis.fetch = async (url) => {
+      assert.match(String(url), /open\.er-api\.com/);
+      return { ok: true, json: async () => ({ rates: { EUR: 0.92, GBP: 0.79 }, time_last_update_utc: "x" }) };
+    };
+    const r = await callAsync("currency-refresh-rates", ctxA, { symbols: ["EUR", "GBP"] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.updated, 2);
+    assert.equal(call("currency-list", ctxA).result.rates.length, 2);
+  });
+
+  it("computes unrealized gain/loss from booked vs current rate", async () => {
+    // Clear the external-fetch URL cache so this refresh isn't served a
+    // stale rate from a prior test in the same process.
+    try { (await import("../lib/external-fetch.js")).clearExternalFetchCache(); } catch { /* ignore */ }
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ rates: { EUR: 1.0 } }) });
+    await callAsync("currency-refresh-rates", ctxA, { symbols: ["EUR"] });
+    // 920 EUR booked at 0.92 → $1000 book; current 1.0 → $920 → $80 loss.
+    const r = call("fx-revaluation", ctxA, {
+      positions: [{ label: "EUR cash", currency: "EUR", foreignBalance: 920, bookedRate: 0.92 }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.lines[0].gainLoss, -80);
+    assert.equal(r.result.totalUnrealizedGainLoss, -80);
+    assert.equal(r.result.direction, "loss");
+  });
+
+  it("revaluation errors when no current rate is known", () => {
+    const r = call("fx-revaluation", ctxB, {
+      positions: [{ currency: "JPY", foreignBalance: 1000, bookedRate: 150 }],
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no current rate/);
+  });
+});
+
+describe("accounting — [M] dimensional tagging + segment P&L", () => {
+  it("creates dimensions and tags a journal entry", () => {
+    call("coa-list", ctxA);
+    const dim = call("dimension-create", ctxA, { kind: "project", name: "Apollo" });
+    assert.equal(dim.ok, true);
+    const je = call("je-post", ctxA, {
+      lines: [
+        { accountId: "acct_4000", debit: 0, credit: 500 },
+        { accountId: "acct_1000", debit: 500, credit: 0 },
+      ],
+    }).result.entry;
+    const tag = call("je-tag-dimension", ctxA, { entryId: je.id, dimensionId: dim.result.dimension.id });
+    assert.equal(tag.ok, true);
+    assert.equal(tag.result.entry.dimensions[0].name, "Apollo");
+  });
+
+  it("rejects an invalid dimension kind", () => {
+    assert.equal(call("dimension-create", ctxA, { kind: "bogus", name: "X" }).ok, false);
+  });
+
+  it("rejects a duplicate dimension", () => {
+    call("dimension-create", ctxA, { kind: "class", name: "Retail" });
+    assert.equal(call("dimension-create", ctxA, { kind: "class", name: "retail" }).ok, false);
+  });
+
+  it("segment-pl slices revenue/expense by dimension value", () => {
+    call("coa-list", ctxA);
+    const dim = call("dimension-create", ctxA, { kind: "location", name: "West" }).result.dimension;
+    const today = new Date().toISOString().slice(0, 10);
+    const je = call("je-post", ctxA, {
+      date: today,
+      lines: [
+        { accountId: "acct_4000", debit: 0, credit: 2000 },
+        { accountId: "acct_1000", debit: 2000, credit: 0 },
+      ],
+    }).result.entry;
+    call("je-tag-dimension", ctxA, { entryId: je.id, dimensionId: dim.id });
+    const r = call("segment-pl", ctxA, { kind: "location" });
+    assert.equal(r.ok, true);
+    const west = r.result.segments.find((s) => s.segment === "West");
+    assert.equal(west.revenue, 2000);
+    assert.equal(west.netIncome, 2000);
+  });
+});
+
+describe("accounting — [L] payroll tax e-filing + ACH", () => {
+  it("prepares a Form 941 from posted pay runs", () => {
+    const emp = call("employee-create", ctxA, { name: "Pat Dev", payType: "salary", rate: 120000 }).result.employee;
+    const q = Math.floor(new Date().getUTCMonth() / 3) + 1;
+    const y = new Date().getUTCFullYear();
+    call("payrun-create", ctxA, {
+      periodStart: `${y}-01-01`, periodEnd: `${y}-01-15`, payDate: new Date().toISOString().slice(0, 10),
+      lines: [{ employeeId: emp.id }],
+    });
+    const r = call("payroll-tax-efile", ctxA, { quarter: q, year: y });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.filing.form, "941");
+    assert.ok(r.result.filing.totalTaxLiability > 0);
+    assert.match(r.result.filing.status, /prepared|ready/);
+  });
+
+  it("rejects an invalid quarter", () => {
+    call("employee-create", ctxA, { name: "X", rate: 1000 });
+    call("payrun-create", ctxA, { lines: [{ employeeId: call("employee-list", ctxA).result.employees?.[0]?.id || "x" }] });
+    const r = call("payroll-tax-efile", ctxA, { quarter: 9 });
+    assert.equal(r.ok, false);
+  });
+
+  it("prepares an ACH batch from a pay run", () => {
+    const emp = call("employee-create", ctxA, { name: "Sam", payType: "hourly", rate: 40 }).result.employee;
+    const run = call("payrun-create", ctxA, { lines: [{ employeeId: emp.id, hours: 80 }] }).result.run;
+    const r = call("payroll-ach-batch", ctxA, { runId: run.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.batch.entryCount, 1);
+    assert.ok(r.result.batch.totalNet > 0);
+  });
+
+  it("ACH batch errors when run not found", () => {
+    assert.equal(call("payroll-ach-batch", ctxA, { runId: "nope" }).ok, false);
+  });
+});
+
+describe("accounting — [S] recurring bill scheduling", () => {
+  it("schedules and runs a recurring bill into a real bill + JE", () => {
+    call("coa-list", ctxA);
+    const v = call("vendors-create", ctxA, { name: "Landlord" }).result.vendor;
+    const rent = call("coa-list", ctxA).result.accounts.find((a) => a.code === "6100");
+    const r = call("recurring-bills-create", ctxA, {
+      vendorId: v.id, expenseAccountId: rent.id, total: 1500, cadence: "monthly", startAt: "2020-01-01",
+    });
+    assert.equal(r.ok, true);
+    const run = call("recurring-bills-run-due", ctxA);
+    assert.equal(run.ok, true);
+    assert.equal(run.result.created.length, 1);
+    assert.equal(run.result.created[0].total, 1500);
+    assert.ok(run.result.created[0].jeEntryId);
+  });
+
+  it("toggles and deletes a recurring bill", () => {
+    call("coa-list", ctxA);
+    const v = call("vendors-create", ctxA, { name: "ISP" }).result.vendor;
+    const acct = call("coa-list", ctxA).result.accounts.find((a) => a.code === "6200");
+    const rb = call("recurring-bills-create", ctxA, { vendorId: v.id, expenseAccountId: acct.id, total: 80 }).result.recurringBill;
+    assert.equal(call("recurring-bills-toggle", ctxA, { id: rb.id }).result.recurringBill.active, false);
+    assert.equal(call("recurring-bills-delete", ctxA, { id: rb.id }).ok, true);
+    assert.equal(call("recurring-bills-list", ctxA).result.recurringBills.length, 0);
+  });
+});
+
+describe("accounting — [M] receipt OCR → expense", () => {
+  const RECEIPT = "STAPLES #4421\n05/12/2026\nPrinter paper  12.99\nTAX  1.07\nTOTAL  14.06";
+
+  it("parses real OCR text into vendor/date/total/tax", () => {
+    const r = call("receipt-ocr", ctxA, { ocrText: RECEIPT });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.total, 14.06);
+    assert.equal(r.result.parsed.tax, 1.07);
+    assert.equal(r.result.parsed.date, "2026-05-12");
+    assert.equal(r.result.parsed.missing.length, 0);
+  });
+
+  it("rejects empty OCR text", () => {
+    assert.equal(call("receipt-ocr", ctxA, { ocrText: "  " }).ok, false);
+  });
+
+  it("posts a parsed receipt as a balanced expense JE", () => {
+    call("coa-list", ctxA);
+    const acct = call("coa-list", ctxA).result.accounts.find((a) => a.code === "6000");
+    const r = call("receipt-ocr-to-expense", ctxA, { ocrText: RECEIPT, accountId: acct.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.expense.amount, 14.06);
+    assert.equal(r.result.entry.totalDebit, 14.06);
+    assert.equal(r.result.entry.totalCredit, 14.06);
+  });
+});
+
+describe("accounting — [S] per-transaction edit audit log", () => {
+  it("records an audit entry when a journal entry posts", () => {
+    call("coa-list", ctxA);
+    call("je-post", ctxA, {
+      lines: [
+        { accountId: "acct_6000", debit: 30, credit: 0 },
+        { accountId: "acct_1000", debit: 0, credit: 30 },
+      ],
+    });
+    const r = call("audit-log-list", ctxA);
+    assert.equal(r.ok, true);
+    assert.ok(r.result.entries.some((e) => e.action === "je-post"));
+  });
+
+  it("filters the audit log by entity type and is per-user", () => {
+    call("coa-list", ctxA);
+    call("je-post", ctxA, {
+      lines: [
+        { accountId: "acct_6000", debit: 10, credit: 0 },
+        { accountId: "acct_1000", debit: 0, credit: 10 },
+      ],
+    });
+    const filtered = call("audit-log-list", ctxA, { entityType: "journal-entry" });
+    assert.ok(filtered.result.entries.every((e) => e.entityType === "journal-entry"));
+    assert.equal(call("audit-log-list", ctxB).result.entries.length, 0);
+  });
+});
+
+describe("accounting — [M] 1099 / W-2 IRS FIRE export", () => {
+  it("builds an IRS FIRE 1099-NEC file from paid 1099 vendors", () => {
+    call("coa-list", ctxA);
+    const v = call("vendors-create", ctxA, { name: "Contractor Jane", is1099: true, taxId: "12-3456789" }).result.vendor;
+    const exp = call("coa-list", ctxA).result.accounts.find((a) => a.code === "6000");
+    const year = new Date().getUTCFullYear() - 1;
+    const day = `${year}-06-01`;
+    const bill = call("bills-create", ctxA, { vendorId: v.id, total: 2500, expenseAccountId: exp.id, issuedAt: day, dueAt: day }).result.bill;
+    call("bills-pay", ctxA, { id: bill.id, paidAt: day });
+    const r = call("efile-1099-fire", ctxA, { year, payer: { name: "My LLC", tin: "98-7654321" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.payeeCount, 1);
+    assert.equal(r.result.totalReported, 2500);
+    assert.ok(r.result.fireFile.startsWith("T"));
+    assert.match(r.result.fireFile, /\nF/);
+  });
+
+  it("1099 export errors when payer EIN is invalid", () => {
+    const r = call("efile-1099-fire", ctxA, { payer: { name: "X", tin: "123" } });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /9-digit EIN/);
+  });
+
+  it("builds an SSA EFW2 W-2 file from this year's payroll", () => {
+    const emp = call("employee-create", ctxA, { name: "Pat Worker", payType: "salary", rate: 96000 }).result.employee;
+    const y = new Date().getUTCFullYear();
+    call("payrun-create", ctxA, {
+      periodStart: `${y}-01-01`, periodEnd: `${y}-01-15`, payDate: `${y}-01-16`,
+      lines: [{ employeeId: emp.id }],
+    });
+    const r = call("efile-w2-export", ctxA, { year: y, employer: { name: "My LLC", ein: "98-7654321" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.employeeCount, 1);
+    assert.ok(r.result.totalWages > 0);
+    assert.ok(r.result.efw2File.startsWith("RA"));
+  });
+
+  it("W-2 export errors when there is no payroll for the year", () => {
+    const r = call("efile-w2-export", ctxA, { year: 1999, employer: { name: "X", ein: "987654321" } });
+    assert.equal(r.ok, false);
+  });
+});

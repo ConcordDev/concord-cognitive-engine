@@ -24,10 +24,17 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { MeditationStudio } from '@/components/meditation/MeditationStudio';
+import { BreathingVisual } from '@/components/meditation/BreathingVisual';
+import { SoundscapePlayer } from '@/components/meditation/SoundscapePlayer';
+import { CoursesPanel } from '@/components/meditation/CoursesPanel';
+import { RemindersPanel } from '@/components/meditation/RemindersPanel';
+import { InsightsPanel } from '@/components/meditation/InsightsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wind, Play, Pause, RotateCcw, Sparkles, Send, Globe, Wand2,
   Loader2, Check, AlertTriangle, Flame, Clock, BookOpen, Heart,
+  GraduationCap, Bell, Volume2, Lightbulb,
 } from 'lucide-react';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -60,6 +67,16 @@ const DURATIONS = [3, 5, 10, 15, 20, 30, 45];
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'mint' | 'dm' | 'publish' | 'agent' | 'log';
+type StudioTab = 'studio' | 'breathe' | 'sounds' | 'courses' | 'reminders' | 'insights';
+
+const STUDIO_TABS: { id: StudioTab; label: string; icon: typeof Wind }[] = [
+  { id: 'studio', label: 'Library', icon: Sparkles },
+  { id: 'breathe', label: 'Breathe', icon: Wind },
+  { id: 'sounds', label: 'Sounds', icon: Volume2 },
+  { id: 'courses', label: 'Courses', icon: GraduationCap },
+  { id: 'reminders', label: 'Reminders', icon: Bell },
+  { id: 'insights', label: 'For You', icon: Lightbulb },
+];
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
@@ -82,6 +99,7 @@ export default function MeditationLensPage() {
   const [journalEntry, setJournalEntry] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
+  const [studioTab, setStudioTab] = useState<StudioTab>('studio');
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [streak, setStreak] = useState<StreakResult | null>(null);
   const [dailyPrompt, setDailyPrompt] = useState<PromptResult | null>(null);
@@ -537,6 +555,34 @@ export default function MeditationLensPage() {
           </AnimatePresence>
         </div>
       </div>
+      <section className="mt-6 mx-auto max-w-2xl px-4 sm:px-6">
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {STUDIO_TABS.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setStudioTab(t.id)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                  studioTab === t.id
+                    ? 'bg-purple-600/30 border-purple-500/50 text-purple-100'
+                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200',
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />{t.label}
+              </button>
+            );
+          })}
+        </div>
+        {studioTab === 'studio' && <MeditationStudio />}
+        {studioTab === 'breathe' && <BreathingVisual />}
+        {studioTab === 'sounds' && <SoundscapePlayer />}
+        {studioTab === 'courses' && <CoursesPanel />}
+        {studioTab === 'reminders' && <RemindersPanel />}
+        {studioTab === 'insights' && <InsightsPanel onPlayed={refetchSessions} />}
+      </section>
           <RecentMineCard domain="meditation" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="meditation" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="meditation" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

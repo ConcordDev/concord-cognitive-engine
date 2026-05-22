@@ -3,12 +3,14 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QuakeFeed } from '@/components/emergency-services/QuakeFeed';
 import { EmergencyServicesActionPanel } from '@/components/emergency-services/EmergencyServicesActionPanel';
+import { CADConsole } from '@/components/emergency-services/CADConsole';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -40,7 +42,7 @@ import {
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
-type ModeTab = 'Dashboard' | 'Calls' | 'Units' | 'Fire' | 'EMS' | 'Dispatch' | 'Resources' | 'Map';
+type ModeTab = 'Dashboard' | 'CAD' | 'Calls' | 'Units' | 'Fire' | 'EMS' | 'Dispatch' | 'Resources' | 'Map';
 
 interface CallData {
   callNumber: string;
@@ -108,6 +110,7 @@ type ArtifactDataUnion = CallData | UnitData | IncidentData | Record<string, unk
 
 const MODE_TABS: { key: ModeTab; label: string; icon: typeof Siren }[] = [
   { key: 'Dashboard', label: 'Dashboard', icon: BarChart3 },
+  { key: 'CAD', label: 'CAD Console', icon: Radio },
   { key: 'Calls', label: 'Calls', icon: Phone },
   { key: 'Units', label: 'Units', icon: Truck },
   { key: 'Fire', label: 'Fire', icon: Flame },
@@ -120,6 +123,7 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Siren }[] = [
 function getTypeForTab(tab: ModeTab): string {
   const map: Record<ModeTab, string> = {
     Dashboard: 'Call',
+    CAD: 'Call',
     Calls: 'Call',
     Units: 'Unit',
     Fire: 'FireIncident',
@@ -160,6 +164,7 @@ export default function EmergencyServicesLensPage() {
   useLensCommand(
     [
       { id: 'mode-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
+      { id: 'mode-cad', keys: 'a', description: 'CAD Console', category: 'navigation', action: () => setActiveMode('CAD') },
       { id: 'mode-calls', keys: 'c', description: 'Calls', category: 'navigation', action: () => setActiveMode('Calls') },
       { id: 'mode-units', keys: 'u', description: 'Units', category: 'navigation', action: () => setActiveMode('Units') },
       { id: 'mode-fire', keys: 'f', description: 'Fire', category: 'navigation', action: () => setActiveMode('Fire') },
@@ -383,6 +388,13 @@ export default function EmergencyServicesLensPage() {
         </div>
       )}
 
+      {activeMode === 'CAD' && (
+        <section className="rounded-xl border border-red-500/20 bg-zinc-950/50 p-4">
+          <CADConsole />
+        </section>
+      )}
+
+      {activeMode !== 'CAD' && (
       <div className="space-y-2">
         <AnimatePresence mode="popLayout">
           {items.map((item, idx) => {
@@ -465,6 +477,7 @@ export default function EmergencyServicesLensPage() {
           </div>
         )}
       </div>
+      )}
 
       {activeMode === 'Map' && (
         <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
@@ -503,6 +516,7 @@ export default function EmergencyServicesLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#emergency-services-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to emergency-services content</a>
+          <section className="mt-4"><LensFeedButton domain="emergency-services" label="Live seismic-event feed" /></section>
           <RecentMineCard domain="emergency-services" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="emergency-services" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

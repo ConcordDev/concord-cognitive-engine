@@ -12,6 +12,7 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
   const [draft, setDraft] = useState('');
   const [timestamp, setTimestamp] = useState('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [lessonId]);
 
   async function refresh() {

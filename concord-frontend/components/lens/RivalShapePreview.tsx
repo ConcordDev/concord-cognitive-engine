@@ -15,14 +15,10 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronRight, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { api, lensRun } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
-import { VSCodeShell } from '@/components/code/VSCodeShell';
 import { WalletShell } from '@/components/crypto/WalletShell';
-import { DocsShell } from '@/components/legal/DocsShell';
-import { InboxShell } from '@/components/message/InboxShell';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
-import { EHRShell } from '@/components/healthcare/EHRShell';
 import { FinanceShell } from '@/components/finance/FinanceShell';
 import { RealtorShell } from '@/components/realestate/RealtorShell';
 import { ShopifyShell } from '@/components/retail/ShopifyShell';
@@ -506,7 +502,7 @@ function AgriculturePreview() {
 /* ── Studio: hydrate from dashboard-summary + project + clips + scenes ── */
 
 function StudioPreview() {
-  const [d, setD] = useState<Record<string, unknown> | null>(null);
+  const [, setD] = useState<Record<string, unknown> | null>(null);
   const [proj, setProj] = useState<Record<string, unknown> | null>(null);
   const [clips, setClips] = useState<Array<Record<string, unknown>>>([]);
   const [scenes, setScenes] = useState<Array<Record<string, unknown>>>([]);

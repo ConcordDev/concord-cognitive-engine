@@ -26,6 +26,7 @@ export function ContactsPanel() {
   const [conflictQ, setConflictQ] = useState('');
   const [conflicts, setConflicts] = useState<{ hits: number; matches: ConflictMatch[] } | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filterKind]);
 
   async function refresh() {

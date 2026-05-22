@@ -1041,4 +1041,628 @@ export default function registerFilmStudiosActions(registerLensAction) {
     saveFmState();
     return { ok: true, result: { id: version.id, approvalStatus: version.approvalStatus } };
   });
+
+  // ════════════════════════════════════════════════════════════════════
+  //  Feature-parity backlog — NLE timeline, collaborative script,
+  //  storyboard drag-link, watch-party sync, budget actuals, multicam /
+  //  proxy media, festival submission tracker.
+  // ════════════════════════════════════════════════════════════════════
+
+  function getFmExtra() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.filmLensX) STATE.filmLensX = {};
+    const s = STATE.filmLensX;
+    for (const k of ["revisions", "media", "mcamGroups", "parties",
+      "partyChat", "festivals"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  // ── 1. Real NLE timeline — trim / ripple / reorder / transitions ────
+  registerLensAction("film-studios", "clip-update", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const clip = (s.clips.get(userId) || []).find((c) => c.id === params.id);
+    if (!clip) return { ok: false, error: "clip not found" };
+    const seq = (s.sequences.get(userId) || []).find((q) => q.id === clip.sequenceId);
+    const fps = seq ? (parseFloat(seq.fps) || 24) : 24;
+    if (params.name != null) {
+      const nm = fmClean(params.name, 120);
+      if (nm) clip.name = nm;
+    }
+    // Trim: set in/out points (frames into the source clip).
+    if (params.inFrame != null) clip.inFrame = Math.max(0, Math.round(fmNum(params.inFrame)));
+    if (params.outFrame != null) clip.outFrame = Math.max(0, Math.round(fmNum(params.outFrame)));
+    // Duration recomputed from trim handles when both are set, else direct.
+    if (clip.inFrame != null && clip.outFrame != null && clip.outFrame > clip.inFrame) {
+      clip.durationFrames = clip.outFrame - clip.inFrame;
+    } else if (params.durationFrames != null) {
+      const df = Math.round(fmNum(params.durationFrames));
+      if (df > 0) clip.durationFrames = df;
+    } else if (params.durationSec != null) {
+      const df = Math.round(Math.max(0, fmNum(params.durationSec)) * fps);
+      if (df > 0) clip.durationFrames = df;
+    }
+    if (params.transition != null) {
+      clip.transition = fmPick(params.transition, FM_TRANSITIONS, clip.transition);
+    }
+    if (params.transitionFrames != null) {
+      clip.transitionFrames = Math.max(0, Math.round(fmNum(params.transitionFrames)));
+    }
+    if (params.track != null) {
+      const tr = fmPick(params.track, FM_TRACKS, clip.track);
+      if (tr !== clip.track) {
+        clip.track = tr;
+        clip.order = (s.clips.get(userId) || [])
+          .filter((c) => c.sequenceId === clip.sequenceId && c.track === tr && c.id !== clip.id).length;
+      }
+    }
+    saveFmState();
+    return { ok: true, result: { clip } };
+  });
+
+  registerLensAction("film-studios", "clip-reorder", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const seq = (s.sequences.get(userId) || []).find((q) => q.id === params.sequenceId);
+    if (!seq) return { ok: false, error: "sequence not found" };
+    const track = fmPick(params.track, FM_TRACKS, "V1");
+    const ordered = Array.isArray(params.clipIds) ? params.clipIds.map(String) : [];
+    if (!ordered.length) return { ok: false, error: "clipIds array required" };
+    const trackClips = (s.clips.get(userId) || [])
+      .filter((c) => c.sequenceId === seq.id && c.track === track);
+    const byId = new Map(trackClips.map((c) => [c.id, c]));
+    let next = 0;
+    // Apply requested order first, then any remaining clips (ripple-safe).
+    for (const id of ordered) { const c = byId.get(id); if (c) { c.order = next++; byId.delete(id); } }
+    for (const c of [...byId.values()].sort((a, b) => a.order - b.order)) c.order = next++;
+    saveFmState();
+    return { ok: true, result: { sequenceId: seq.id, track, count: next } };
+  });
+
+  registerLensAction("film-studios", "clip-ripple-delete", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const arr = s.clips.get(userId) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "clip not found" };
+    const removed = arr[i];
+    arr.splice(i, 1);
+    // Ripple: close the gap on the same track.
+    const trackClips = arr
+      .filter((c) => c.sequenceId === removed.sequenceId && c.track === removed.track)
+      .sort((a, b) => a.order - b.order);
+    trackClips.forEach((c, idx) => { c.order = idx; });
+    saveFmState();
+    return { ok: true, result: { deleted: params.id, rippled: trackClips.length } };
+  });
+
+  // ── 2. Collaborative script editor — revisions & locked pages ───────
+  const FM_REVISION_COLORS = [
+    "white", "blue", "pink", "yellow", "green", "goldenrod",
+    "buff", "salmon", "cherry",
+  ];
+  registerLensAction("film-studios", "revision-create", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const s = getFmState(); const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const label = fmClean(params.label, 80);
+    if (!label) return { ok: false, error: "revision label required" };
+    const existing = (x.revisions.get(userId) || []).filter((r) => r.projectId === String(params.projectId));
+    const revision = {
+      id: fmId("rev"), projectId: String(params.projectId), label,
+      color: fmPick(params.color, FM_REVISION_COLORS, FM_REVISION_COLORS[existing.length % FM_REVISION_COLORS.length]),
+      ordinal: existing.length + 1,
+      author: fmClean(params.author, 60) || "Writer",
+      lockedPages: [],
+      createdAt: fmNow(),
+    };
+    fmListB(x.revisions, userId).push(revision);
+    saveFmState();
+    return { ok: true, result: { revision } };
+  });
+
+  registerLensAction("film-studios", "revision-list", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const revisions = (x.revisions.get(fmAid(ctx)) || [])
+      .filter((r) => r.projectId === String(params.projectId))
+      .sort((a, b) => a.ordinal - b.ordinal);
+    return { ok: true, result: { revisions, count: revisions.length } };
+  });
+
+  registerLensAction("film-studios", "revision-delete", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const arr = x.revisions.get(fmAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "revision not found" };
+    arr.splice(i, 1);
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("film-studios", "page-lock-toggle", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const rev = (x.revisions.get(fmAid(ctx)) || []).find((r) => r.id === params.revisionId);
+    if (!rev) return { ok: false, error: "revision not found" };
+    const page = fmClean(params.page, 16);
+    if (!page) return { ok: false, error: "page required" };
+    const idx = rev.lockedPages.indexOf(page);
+    if (idx >= 0) rev.lockedPages.splice(idx, 1);
+    else rev.lockedPages.push(page);
+    rev.lockedPages.sort();
+    saveFmState();
+    return { ok: true, result: { revisionId: rev.id, lockedPages: rev.lockedPages, locked: idx < 0 } };
+  });
+
+  registerLensAction("film-studios", "scene-revision-tag", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const x = getFmExtra();
+    const userId = fmAid(ctx);
+    const scene = (s.scenes.get(userId) || []).find((sc) => sc.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    if (params.revisionId) {
+      const rev = (x.revisions.get(userId) || []).find((r) => r.id === params.revisionId);
+      if (!rev) return { ok: false, error: "revision not found" };
+      scene.revisionId = rev.id;
+      scene.revisionColor = rev.color;
+    } else {
+      scene.revisionId = null;
+      scene.revisionColor = null;
+    }
+    saveFmState();
+    return { ok: true, result: { sceneId: scene.id, revisionId: scene.revisionId, revisionColor: scene.revisionColor } };
+  });
+
+  // ── 3. Shot-list ↔ storyboard drag-link ─────────────────────────────
+  registerLensAction("film-studios", "shot-relink-scene", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const shot = (s.shots.get(userId) || []).find((sh) => sh.id === params.shotId);
+    if (!shot) return { ok: false, error: "shot not found" };
+    const scene = (s.scenes.get(userId) || []).find((sc) => sc.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    shot.sceneId = scene.id;
+    shot.projectId = scene.projectId;
+    shot.number = String(
+      (s.shots.get(userId) || []).filter((sh) => sh.sceneId === scene.id && sh.id !== shot.id).length + 1,
+    );
+    saveFmState();
+    return { ok: true, result: { shotId: shot.id, sceneId: scene.id } };
+  });
+
+  registerLensAction("film-studios", "storyboard-reorder", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const scene = (s.scenes.get(userId) || []).find((sc) => sc.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    const ordered = Array.isArray(params.shotIds) ? params.shotIds.map(String) : [];
+    if (!ordered.length) return { ok: false, error: "shotIds array required" };
+    const sceneShots = (s.shots.get(userId) || []).filter((sh) => sh.sceneId === scene.id);
+    const byId = new Map(sceneShots.map((sh) => [sh.id, sh]));
+    let n = 1;
+    for (const id of ordered) { const sh = byId.get(id); if (sh) { sh.boardOrder = n++; byId.delete(id); } }
+    for (const sh of byId.values()) sh.boardOrder = n++;
+    saveFmState();
+    return { ok: true, result: { sceneId: scene.id, count: n - 1 } };
+  });
+
+  registerLensAction("film-studios", "shot-board-sequence", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const scene = (s.scenes.get(userId) || []).find((sc) => sc.id === params.sceneId);
+    if (!scene) return { ok: false, error: "scene not found" };
+    const shots = (s.shots.get(userId) || [])
+      .filter((sh) => sh.sceneId === scene.id)
+      .sort((a, b) => (a.boardOrder || 999) - (b.boardOrder || 999)
+        || a.createdAt.localeCompare(b.createdAt))
+      .map((sh, i) => ({
+        shotId: sh.id, number: sh.number, position: i + 1,
+        size: sh.size, angle: sh.angle, movement: sh.movement,
+        description: sh.description || null,
+        storyboardUrl: sh.storyboardUrl || null,
+        frameNotes: sh.frameNotes || null,
+        hasFrame: !!sh.storyboardUrl,
+      }));
+    return {
+      ok: true,
+      result: {
+        sceneId: scene.id, slugline: fmSlugline(scene),
+        frames: shots, count: shots.length,
+        framedCount: shots.filter((f) => f.hasFrame).length,
+      },
+    };
+  });
+
+  // ── 4. Watch-party synced playback + chat ───────────────────────────
+  registerLensAction("film-studios", "party-create", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const s = getFmState(); const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const title = fmClean(params.title, 120);
+    if (!title) return { ok: false, error: "party title required" };
+    let versionId = null;
+    if (params.versionId) {
+      const v = (s.versions.get(userId) || []).find((vv) => vv.id === params.versionId);
+      if (!v) return { ok: false, error: "version not found" };
+      versionId = v.id;
+    }
+    const code = `FILM-${Math.floor(1000 + Math.random() * 9000)}`;
+    const party = {
+      id: fmId("pty"), projectId: String(params.projectId), title, code,
+      versionId, host: userId,
+      playing: false, positionSec: 0, updatedAt: fmNow(),
+      participants: [userId], createdAt: fmNow(),
+    };
+    fmListB(x.parties, userId).push(party);
+    x.partyChat.set(party.id, []);
+    saveFmState();
+    return { ok: true, result: { party } };
+  });
+
+  registerLensAction("film-studios", "party-list", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const parties = (x.parties.get(fmAid(ctx)) || [])
+      .filter((p) => p.projectId === String(params.projectId))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { parties, count: parties.length } };
+  });
+
+  registerLensAction("film-studios", "party-state", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
+    if (!party) return { ok: false, error: "party not found" };
+    // Project the live position forward if playing.
+    let position = party.positionSec;
+    if (party.playing) {
+      const drift = (Date.now() - new Date(party.updatedAt).getTime()) / 1000;
+      position = Math.max(0, party.positionSec + drift);
+    }
+    return {
+      ok: true,
+      result: {
+        party: {
+          id: party.id, title: party.title, code: party.code,
+          versionId: party.versionId, playing: party.playing,
+          positionSec: Math.round(position * 100) / 100,
+          participantCount: party.participants.length,
+        },
+      },
+    };
+  });
+
+  registerLensAction("film-studios", "party-sync", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
+    if (!party) return { ok: false, error: "party not found" };
+    if (params.positionSec != null) party.positionSec = Math.max(0, fmNum(params.positionSec));
+    if (params.playing != null) party.playing = !!params.playing;
+    party.updatedAt = fmNow();
+    saveFmState();
+    return { ok: true, result: { id: party.id, playing: party.playing, positionSec: party.positionSec } };
+  });
+
+  registerLensAction("film-studios", "party-chat-post", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
+    if (!party) return { ok: false, error: "party not found" };
+    const text = fmClean(params.text, 500);
+    if (!text) return { ok: false, error: "message text required" };
+    const msg = {
+      id: fmId("msg"), partyId: party.id,
+      author: fmClean(params.author, 60) || "Guest",
+      text,
+      atSec: Math.max(0, Math.round(fmNum(params.atSec))),
+      createdAt: fmNow(),
+    };
+    if (!(x.partyChat.get(party.id) instanceof Array)) x.partyChat.set(party.id, []);
+    x.partyChat.get(party.id).push(msg);
+    saveFmState();
+    return { ok: true, result: { message: msg } };
+  });
+
+  registerLensAction("film-studios", "party-chat-list", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
+    if (!party) return { ok: false, error: "party not found" };
+    const messages = (x.partyChat.get(party.id) || [])
+      .slice()
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return { ok: true, result: { messages, count: messages.length } };
+  });
+
+  registerLensAction("film-studios", "party-delete", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const arr = x.parties.get(fmAid(ctx)) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "party not found" };
+    x.partyChat.delete(params.id);
+    arr.splice(i, 1);
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── 5. Budget actuals vs estimate + cost report ─────────────────────
+  registerLensAction("film-studios", "budget-line-update", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const line = (s.budget.get(fmAid(ctx)) || []).find((l) => l.id === params.id);
+    if (!line) return { ok: false, error: "budget line not found" };
+    if (params.description != null) {
+      const d = fmClean(params.description, 160);
+      if (d) line.description = d;
+    }
+    if (params.department != null) line.department = fmPick(params.department, FM_BUDGET_DEPTS, line.department);
+    if (params.estimated != null) line.estimated = Math.max(0, fmNum(params.estimated));
+    if (params.actual != null) line.actual = Math.max(0, fmNum(params.actual));
+    saveFmState();
+    return { ok: true, result: { line } };
+  });
+
+  registerLensAction("film-studios", "cost-report", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const projectId = String(params.projectId);
+    if (!fmProject(s, userId, projectId)) return { ok: false, error: "project not found" };
+    const lines = (s.budget.get(userId) || []).filter((l) => l.projectId === projectId);
+    const byDept = {};
+    for (const d of FM_BUDGET_DEPTS) {
+      byDept[d] = { estimated: 0, actual: 0, variance: 0, lineCount: 0, overItems: 0 };
+    }
+    for (const l of lines) {
+      const b = byDept[l.department];
+      b.estimated += l.estimated;
+      b.actual += l.actual;
+      b.lineCount += 1;
+      if (l.actual > l.estimated) b.overItems += 1;
+    }
+    for (const d of FM_BUDGET_DEPTS) {
+      byDept[d].variance = Math.round((byDept[d].actual - byDept[d].estimated) * 100) / 100;
+    }
+    const totalEstimated = lines.reduce((a, l) => a + l.estimated, 0);
+    const totalActual = lines.reduce((a, l) => a + l.actual, 0);
+    const variance = Math.round((totalActual - totalEstimated) * 100) / 100;
+    const committed = lines.filter((l) => l.actual > 0).reduce((a, l) => a + l.actual, 0);
+    // Per-line variance, biggest overruns first.
+    const lineReport = lines
+      .map((l) => ({
+        id: l.id, description: l.description, department: l.department,
+        estimated: l.estimated, actual: l.actual,
+        variance: Math.round((l.actual - l.estimated) * 100) / 100,
+        variancePct: l.estimated > 0
+          ? Math.round(((l.actual - l.estimated) / l.estimated) * 1000) / 10 : 0,
+        status: l.actual === 0 ? "pending" : l.actual > l.estimated ? "over" : l.actual < l.estimated ? "under" : "on_budget",
+      }))
+      .sort((a, b) => b.variance - a.variance);
+    return {
+      ok: true,
+      result: {
+        totalEstimated, totalActual, variance, committed,
+        spentPct: totalEstimated > 0 ? Math.round((totalActual / totalEstimated) * 1000) / 10 : 0,
+        overBudget: variance > 0,
+        byDept, lines: lineReport,
+        overrunLines: lineReport.filter((l) => l.status === "over").length,
+        topOverrun: lineReport.find((l) => l.status === "over")?.description || null,
+      },
+    };
+  });
+
+  // ── 6. Multicam / proxy media handling ──────────────────────────────
+  const FM_MEDIA_KIND = ["video", "audio", "image"];
+  const FM_PROXY_QUALITY = ["full", "proxy", "offline"];
+  registerLensAction("film-studios", "media-register", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const s = getFmState(); const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = fmClean(params.name, 160);
+    if (!name) return { ok: false, error: "media name required" };
+    const sourceUrl = fmClean(params.sourceUrl, 600);
+    if (sourceUrl && !/^https?:\/\//.test(sourceUrl)) return { ok: false, error: "sourceUrl must be http(s)" };
+    const proxyUrl = fmClean(params.proxyUrl, 600);
+    if (proxyUrl && !/^https?:\/\//.test(proxyUrl)) return { ok: false, error: "proxyUrl must be http(s)" };
+    const media = {
+      id: fmId("mda"), projectId: String(params.projectId), name,
+      kind: fmPick(params.kind, FM_MEDIA_KIND, "video"),
+      sourceUrl: sourceUrl || null,
+      proxyUrl: proxyUrl || null,
+      quality: proxyUrl ? "proxy" : fmPick(params.quality, FM_PROXY_QUALITY, "full"),
+      camera: fmClean(params.camera, 40) || null,
+      fps: parseFloat(params.fps) || null,
+      durationFrames: Math.max(0, Math.round(fmNum(params.durationFrames))),
+      mcamGroupId: null,
+      createdAt: fmNow(),
+    };
+    fmListB(x.media, userId).push(media);
+    saveFmState();
+    return { ok: true, result: { media } };
+  });
+
+  registerLensAction("film-studios", "media-list", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const media = (x.media.get(fmAid(ctx)) || [])
+      .filter((m) => m.projectId === String(params.projectId))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return {
+      ok: true,
+      result: {
+        media, count: media.length,
+        proxyCount: media.filter((m) => m.quality === "proxy").length,
+      },
+    };
+  });
+
+  registerLensAction("film-studios", "media-set-quality", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const media = (x.media.get(fmAid(ctx)) || []).find((m) => m.id === params.id);
+    if (!media) return { ok: false, error: "media not found" };
+    media.quality = fmPick(params.quality, FM_PROXY_QUALITY, media.quality);
+    saveFmState();
+    return { ok: true, result: { id: media.id, quality: media.quality } };
+  });
+
+  registerLensAction("film-studios", "media-delete", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const s = getFmState(); const userId = fmAid(ctx);
+    const arr = x.media.get(userId) || [];
+    const i = arr.findIndex((m) => m.id === params.id);
+    if (i < 0) return { ok: false, error: "media not found" };
+    arr.splice(i, 1);
+    // Detach from any clips referencing it.
+    for (const c of s.clips.get(userId) || []) {
+      if (c.mediaId === params.id) c.mediaId = null;
+    }
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("film-studios", "clip-set-media", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const x = getFmExtra();
+    const userId = fmAid(ctx);
+    const clip = (s.clips.get(userId) || []).find((c) => c.id === params.clipId);
+    if (!clip) return { ok: false, error: "clip not found" };
+    if (params.mediaId) {
+      const media = (x.media.get(userId) || []).find((m) => m.id === params.mediaId);
+      if (!media) return { ok: false, error: "media not found" };
+      clip.mediaId = media.id;
+    } else {
+      clip.mediaId = null;
+    }
+    if (params.mcamAngle != null) {
+      const a = Math.round(fmNum(params.mcamAngle));
+      clip.mcamAngle = a > 0 ? a : null;
+    }
+    saveFmState();
+    return { ok: true, result: { clipId: clip.id, mediaId: clip.mediaId, mcamAngle: clip.mcamAngle || null } };
+  });
+
+  registerLensAction("film-studios", "multicam-group", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const s = getFmState(); const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const name = fmClean(params.name, 120);
+    if (!name) return { ok: false, error: "group name required" };
+    const mediaIds = Array.isArray(params.mediaIds) ? params.mediaIds.map(String) : [];
+    if (mediaIds.length < 2) return { ok: false, error: "multicam group needs at least 2 media items" };
+    const projectMedia = (x.media.get(userId) || []).filter((m) => m.projectId === String(params.projectId));
+    const valid = mediaIds.filter((id) => projectMedia.some((m) => m.id === id));
+    if (valid.length < 2) return { ok: false, error: "at least 2 media items must belong to the project" };
+    const group = {
+      id: fmId("mcg"), projectId: String(params.projectId), name,
+      mediaIds: valid, angleCount: valid.length, createdAt: fmNow(),
+    };
+    fmListB(x.mcamGroups, userId).push(group);
+    // Stamp angle index onto member media.
+    valid.forEach((id, idx) => {
+      const m = projectMedia.find((mm) => mm.id === id);
+      if (m) { m.mcamGroupId = group.id; m.mcamAngle = idx + 1; }
+    });
+    saveFmState();
+    return { ok: true, result: { group } };
+  });
+
+  registerLensAction("film-studios", "multicam-list", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const mediaMap = new Map((x.media.get(userId) || []).map((m) => [m.id, m]));
+    const groups = (x.mcamGroups.get(userId) || [])
+      .filter((g) => g.projectId === String(params.projectId))
+      .map((g) => ({
+        ...g,
+        angles: g.mediaIds
+          .map((id) => mediaMap.get(id))
+          .filter(Boolean)
+          .map((m) => ({ id: m.id, name: m.name, camera: m.camera, quality: m.quality, mcamAngle: m.mcamAngle || null })),
+      }));
+    return { ok: true, result: { groups, count: groups.length } };
+  });
+
+  registerLensAction("film-studios", "multicam-delete", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const arr = x.mcamGroups.get(userId) || [];
+    const i = arr.findIndex((g) => g.id === params.id);
+    if (i < 0) return { ok: false, error: "multicam group not found" };
+    const [removed] = arr.splice(i, 1);
+    for (const m of x.media.get(userId) || []) {
+      if (m.mcamGroupId === removed.id) { m.mcamGroupId = null; m.mcamAngle = null; }
+    }
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── 7. Distribution / festival submission tracker ───────────────────
+  const FM_FESTIVAL_STATUS = [
+    "researching", "submitted", "in_consideration", "selected",
+    "rejected", "screened", "awarded", "withdrawn",
+  ];
+  registerLensAction("film-studios", "festival-submit", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const s = getFmState(); const userId = fmAid(ctx);
+    if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
+    const festival = fmClean(params.festival, 160);
+    if (!festival) return { ok: false, error: "festival name required" };
+    const submission = {
+      id: fmId("fst"), projectId: String(params.projectId), festival,
+      category: fmClean(params.category, 100) || null,
+      status: fmPick(params.status, FM_FESTIVAL_STATUS, "researching"),
+      submittedDate: fmClean(params.submittedDate, 10).slice(0, 10) || null,
+      deadline: fmClean(params.deadline, 10).slice(0, 10) || null,
+      fee: Math.max(0, fmNum(params.fee)),
+      platform: fmClean(params.platform, 60) || null,
+      notes: fmClean(params.notes, 600) || null,
+      createdAt: fmNow(),
+    };
+    fmListB(x.festivals, userId).push(submission);
+    saveFmState();
+    return { ok: true, result: { submission } };
+  });
+
+  registerLensAction("film-studios", "festival-list", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const subs = (x.festivals.get(fmAid(ctx)) || [])
+      .filter((f) => f.projectId === String(params.projectId))
+      .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999"));
+    const byStatus = {};
+    for (const st of FM_FESTIVAL_STATUS) byStatus[st] = 0;
+    let totalFees = 0;
+    for (const f of subs) { byStatus[f.status] = (byStatus[f.status] || 0) + 1; totalFees += f.fee; }
+    return {
+      ok: true,
+      result: {
+        submissions: subs, count: subs.length, byStatus, totalFees,
+        selected: subs.filter((f) => ["selected", "screened", "awarded"].includes(f.status)).length,
+        pending: subs.filter((f) => ["submitted", "in_consideration"].includes(f.status)).length,
+      },
+    };
+  });
+
+  registerLensAction("film-studios", "festival-update", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const sub = (x.festivals.get(fmAid(ctx)) || []).find((f) => f.id === params.id);
+    if (!sub) return { ok: false, error: "submission not found" };
+    if (params.festival != null) {
+      const fv = fmClean(params.festival, 160);
+      if (fv) sub.festival = fv;
+    }
+    if (params.category != null) sub.category = fmClean(params.category, 100) || null;
+    if (params.status != null) sub.status = fmPick(params.status, FM_FESTIVAL_STATUS, sub.status);
+    if (params.submittedDate != null) sub.submittedDate = fmClean(params.submittedDate, 10).slice(0, 10) || null;
+    if (params.deadline != null) sub.deadline = fmClean(params.deadline, 10).slice(0, 10) || null;
+    if (params.fee != null) sub.fee = Math.max(0, fmNum(params.fee));
+    if (params.platform != null) sub.platform = fmClean(params.platform, 60) || null;
+    if (params.notes != null) sub.notes = fmClean(params.notes, 600) || null;
+    saveFmState();
+    return { ok: true, result: { submission: sub } };
+  });
+
+  registerLensAction("film-studios", "festival-delete", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const arr = x.festivals.get(fmAid(ctx)) || [];
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "submission not found" };
+    arr.splice(i, 1);
+    saveFmState();
+    return { ok: true, result: { deleted: params.id } };
+  });
 }

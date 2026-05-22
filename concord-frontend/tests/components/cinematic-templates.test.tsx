@@ -48,7 +48,6 @@ describe('Phase 15 / cinematic — extended trigger coverage', () => {
   it('every template has at least one shot', () => {
     for (const [name, shots] of Object.entries(T)) {
       expect((shots as unknown[]).length).toBeGreaterThan(0);
-      // eslint-disable-next-line no-console
       if ((shots as unknown[]).length === 0) console.error(`empty template: ${name}`);
     }
   });
@@ -60,7 +59,6 @@ describe('Phase 15 / cinematic — extended trigger coverage', () => {
         expect(typeof s.duration_ms).toBe('number');
         expect((s.duration_ms as number) > 0).toBe(true);
         if (!s.camera || !s.duration_ms) {
-          // eslint-disable-next-line no-console
           console.error(`bad shot in ${name}:`, s);
         }
       }

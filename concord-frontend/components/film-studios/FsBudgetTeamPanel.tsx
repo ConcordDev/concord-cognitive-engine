@@ -5,8 +5,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Wallet, Users } from 'lucide-react';
+import { Loader2, Plus, Trash2, Wallet, Users, BarChart3 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 
 interface BudgetLine { id: string; department: string; description: string; estimated: number; actual: number }
 interface Budget {
@@ -14,6 +15,20 @@ interface Budget {
   byDept: Record<string, { estimated: number; actual: number }>;
   totalEstimated: number; totalActual: number; variance: number;
 }
+interface CostLine {
+  id: string; description: string; department: string; estimated: number;
+  actual: number; variance: number; variancePct: number; status: string;
+}
+interface CostReport {
+  totalEstimated: number; totalActual: number; variance: number; committed: number;
+  spentPct: number; overBudget: boolean;
+  byDept: Record<string, { estimated: number; actual: number; variance: number; lineCount: number; overItems: number }>;
+  lines: CostLine[]; overrunLines: number; topOverrun: string | null;
+}
+const STATUS_COLOR: Record<string, string> = {
+  over: 'text-rose-400', under: 'text-emerald-400',
+  on_budget: 'text-zinc-400', pending: 'text-amber-400',
+};
 interface CastMember { id: string; name: string; characterName: string | null; role: string; dailyRate: number }
 interface CrewMember { id: string; name: string; department: string; position: string | null }
 
@@ -22,26 +37,36 @@ const CAST_ROLES = ['lead', 'supporting', 'day_player', 'background'];
 
 export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
   const [budget, setBudget] = useState<Budget | null>(null);
+  const [cost, setCost] = useState<CostReport | null>(null);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCost, setShowCost] = useState(false);
   const [bForm, setBForm] = useState({ department: 'production', description: '', estimated: '', actual: '' });
   const [castForm, setCastForm] = useState({ name: '', characterName: '', role: 'supporting', dailyRate: '' });
   const [crewForm, setCrewForm] = useState({ name: '', department: '', position: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [b, c, cr] = await Promise.all([
+    const [b, ct, c, cr] = await Promise.all([
       lensRun('film-studios', 'budget-list', { projectId }),
+      lensRun('film-studios', 'cost-report', { projectId }),
       lensRun('film-studios', 'cast-list', { projectId }),
       lensRun('film-studios', 'crew-list', { projectId }),
     ]);
     setBudget((b.data?.result as Budget | null) || null);
+    setCost((ct.data?.result as CostReport | null) || null);
     setCast(c.data?.result?.members || []);
     setCrew(cr.data?.result?.members || []);
     setLoading(false);
     onChange();
   }, [projectId, onChange]);
+
+  // Inline actuals tracking — commit the actual spend on a line.
+  const updateActual = async (id: string, actual: number) => {
+    await lensRun('film-studios', 'budget-line-update', { id, actual: Math.max(0, actual) });
+    await refresh();
+  };
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -97,7 +122,42 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
               )}
             </span>
           )}
+          <button type="button" onClick={() => setShowCost((v) => !v)}
+            className="ml-auto flex items-center gap-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-2 py-0.5 rounded">
+            <BarChart3 className="w-3 h-3" /> {showCost ? 'Hide' : 'Cost report'}
+          </button>
         </h3>
+
+        {/* Cost report — actuals vs estimate, overruns */}
+        {showCost && cost && (
+          <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 mb-2 space-y-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <CostStat label="Estimated" value={`$${cost.totalEstimated.toLocaleString()}`} />
+              <CostStat label="Actual" value={`$${cost.totalActual.toLocaleString()}`} />
+              <CostStat label="Variance" value={`${cost.variance >= 0 ? '+' : ''}$${cost.variance.toLocaleString()}`}
+                accent={cost.overBudget ? 'text-rose-400' : 'text-emerald-400'} />
+              <CostStat label="Spent" value={`${cost.spentPct}%`} />
+              <CostStat label="Overruns" value={cost.overrunLines} accent={cost.overrunLines > 0 ? 'text-rose-400' : 'text-zinc-100'} />
+            </div>
+            {cost.topOverrun && (
+              <p className="text-[10px] text-rose-400">Biggest overrun: {cost.topOverrun}</p>
+            )}
+            {cost.lines.length > 0 && (
+              <ul className="space-y-0.5">
+                {cost.lines.map((l) => (
+                  <li key={l.id} className="flex items-center gap-2 text-[11px]">
+                    <span className="text-zinc-200 flex-1 truncate">{l.description}</span>
+                    <span className="font-mono text-zinc-500">${l.estimated.toLocaleString()} → ${l.actual.toLocaleString()}</span>
+                    <span className={cn('font-mono w-24 text-right', STATUS_COLOR[l.status] || 'text-zinc-400')}>
+                      {l.variance >= 0 ? '+' : ''}${l.variance.toLocaleString()}
+                      {l.variancePct !== 0 && <span className="text-zinc-600"> ({l.variancePct}%)</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-2">
           <select value={bForm.department} onChange={(e) => setBForm({ ...bForm, department: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
@@ -122,7 +182,14 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
               <li key={l.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-[9px] uppercase text-zinc-500 w-20 shrink-0">{l.department.replace(/_/g, ' ')}</span>
                 <span className="text-xs text-zinc-200 flex-1 truncate">{l.description}</span>
-                <span className="text-[11px] text-zinc-400 font-mono">${l.estimated.toLocaleString()} / ${l.actual.toLocaleString()}</span>
+                <span className="text-[11px] text-zinc-500 font-mono">est ${l.estimated.toLocaleString()}</span>
+                <label className="flex items-center gap-1">
+                  <span className="text-[9px] text-zinc-600 uppercase">act</span>
+                  <input inputMode="numeric" defaultValue={String(l.actual)}
+                    onBlur={(e) => { const v = Number(e.target.value); if (v !== l.actual) updateActual(l.id, v); }}
+                    className={cn('w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono',
+                      l.actual > l.estimated ? 'text-rose-300' : l.actual > 0 ? 'text-emerald-300' : 'text-zinc-300')} />
+                </label>
                 <button type="button" onClick={() => delLine(l.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -203,6 +270,15 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function CostStat({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
+  return (
+    <div className="bg-zinc-950/60 border border-zinc-800 rounded-lg p-1.5 text-center">
+      <p className={cn('text-sm font-bold', accent || 'text-zinc-100')}>{value}</p>
+      <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

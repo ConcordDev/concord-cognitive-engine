@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
+import { EtlWorkbench } from '@/components/transfer/EtlWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -18,7 +19,7 @@ import { motion } from 'framer-motion';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Shuffle, Search, ArrowRight, History, Layers, GitCompare, ChevronDown, Network, Globe, BookOpen, Cpu, Zap, Link2, SendHorizontal, CheckCircle2, X,
+  Shuffle, Search, ArrowRight, History, Layers, GitCompare, ChevronDown, Network, Zap, SendHorizontal, CheckCircle2, X,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -272,95 +273,18 @@ export default function TransferLensPage() {
       )}
       </div>
 
-      {/* Knowledge Transfer - Domain Mapping */}
+      {/* ETL Workbench — real connectors, pipelines, transforms, sync, run log */}
       <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
+        <h2 className="font-semibold mb-1 flex items-center gap-2">
           <Network className="w-4 h-4 text-neon-cyan" />
-          Knowledge Transfer - Domain Mapping
+          ETL Workbench — Connectors, Pipelines &amp; Sync
         </h2>
         <p className="text-sm text-gray-400 mb-4">
-          Visualize how knowledge domains connect and transfer patterns across the cognitive lattice.
+          Register real CSV/JSON connectors, build transformation pipelines with a drag-connect
+          mapping editor, dry-run a preview, then run full or incremental change-data-capture syncs.
+          Every metric below is computed live from your own data.
         </p>
-
-        {/* Domain Mapping Visualization */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-6">
-          <div className="grid grid-cols-3 gap-4 items-center">
-            {/* Source Domains */}
-            <div className="space-y-3">
-              <span className="text-[10px] text-gray-500 uppercase tracking-wider block text-center mb-2">Source Domains</span>
-              {[
-                { name: 'Machine Learning', icon: Cpu, color: 'neon-purple' },
-                { name: 'Linguistics', icon: BookOpen, color: 'neon-cyan' },
-                { name: 'Biology', icon: Globe, color: 'neon-green' },
-              ].map((domain) => {
-                const Icon = domain.icon;
-                return (
-                  <div key={domain.name} className={`bg-${domain.color}/5 border border-${domain.color}/20 rounded-lg p-3 flex items-center gap-2`}>
-                    <Icon className={`w-4 h-4 text-${domain.color}`} />
-                    <span className="text-xs text-white">{domain.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Connections Visualization */}
-            <div className="flex flex-col items-center justify-center space-y-2">
-              <div className="w-full flex items-center justify-center gap-1">
-                <div className="h-px flex-1 bg-gradient-to-r from-neon-purple/40 to-neon-cyan/40" />
-                <Zap className="w-4 h-4 text-neon-cyan animate-pulse" />
-                <div className="h-px flex-1 bg-gradient-to-r from-neon-cyan/40 to-neon-green/40" />
-              </div>
-              <div className="bg-black/60 border border-neon-cyan/20 rounded-lg p-3 text-center">
-                <Link2 className="w-5 h-5 text-neon-cyan mx-auto mb-1" />
-                <span className="text-[10px] text-gray-400 block">Transfer Engine</span>
-                <span className="text-xs font-mono text-neon-cyan">12 active</span>
-              </div>
-              <div className="w-full flex items-center justify-center gap-1">
-                <div className="h-px flex-1 bg-gradient-to-r from-neon-purple/40 to-neon-cyan/40" />
-                <Zap className="w-4 h-4 text-neon-purple animate-pulse" />
-                <div className="h-px flex-1 bg-gradient-to-r from-neon-cyan/40 to-neon-green/40" />
-              </div>
-            </div>
-
-            {/* Target Domains */}
-            <div className="space-y-3">
-              <span className="text-[10px] text-gray-500 uppercase tracking-wider block text-center mb-2">Target Domains</span>
-              {[
-                { name: 'Finance', icon: Shuffle, color: 'neon-green' },
-                { name: 'Healthcare', icon: Globe, color: 'neon-purple' },
-                { name: 'Education', icon: BookOpen, color: 'neon-cyan' },
-              ].map((domain) => {
-                const Icon = domain.icon;
-                return (
-                  <div key={domain.name} className={`bg-${domain.color}/5 border border-${domain.color}/20 rounded-lg p-3 flex items-center gap-2`}>
-                    <Icon className={`w-4 h-4 text-${domain.color}`} />
-                    <span className="text-xs text-white">{domain.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Transfer Metrics */}
-          <div className="grid grid-cols-4 gap-3 mt-6 pt-4 border-t border-white/5">
-            <div className="text-center">
-              <p className="text-lg font-bold text-neon-cyan">847</p>
-              <p className="text-[10px] text-gray-500">Patterns Mapped</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-neon-purple">94%</p>
-              <p className="text-[10px] text-gray-500">Transfer Accuracy</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-neon-green">23</p>
-              <p className="text-[10px] text-gray-500">Active Bridges</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-yellow-400">1.2s</p>
-              <p className="text-[10px] text-gray-500">Avg. Latency</p>
-            </div>
-          </div>
-        </div>
+        <EtlWorkbench />
       </div>
 
       <ConnectiveTissueBar lensId="transfer" />

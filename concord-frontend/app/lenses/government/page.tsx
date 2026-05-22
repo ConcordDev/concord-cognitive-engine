@@ -13,6 +13,13 @@ import PermitsPanel from '@/components/government/PermitsPanel';
 import InspectionsPanel from '@/components/government/InspectionsPanel';
 import AssetsPanel from '@/components/government/AssetsPanel';
 import OpenDataExplorer from '@/components/government/OpenDataExplorer';
+import PaymentsPanel from '@/components/government/PaymentsPanel';
+import MeetingsPanel from '@/components/government/MeetingsPanel';
+import ElectionsPanel from '@/components/government/ElectionsPanel';
+import ServiceRequestReporter from '@/components/government/ServiceRequestReporter';
+import AdvocacyPanel from '@/components/government/AdvocacyPanel';
+import DocumentLibraryPanel from '@/components/government/DocumentLibraryPanel';
+import NotificationsPanel from '@/components/government/NotificationsPanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { PipingProvider } from '@/components/panel-polish';
 import RepresentativeFinder from '@/components/government/RepresentativeFinder';
@@ -3593,14 +3600,21 @@ export default function GovernmentLensPage() {
 /* ------------------------------------------------------------------ */
 
 function CivicWorkbenchSection() {
-  const [active, setActive] = useState<'sr' | 'departments' | 'routing' | 'permits' | 'inspections' | 'assets' | 'opendata'>('sr');
+  const [active, setActive] = useState<'sr' | 'reporter' | 'departments' | 'routing' | 'permits' | 'inspections' | 'assets' | 'opendata' | 'payments' | 'meetings' | 'elections' | 'advocacy' | 'documents' | 'notifications'>('sr');
   const TABS = [
     { id: 'sr', label: '311 Requests' },
+    { id: 'reporter', label: 'Pin-drop report' },
     { id: 'departments', label: 'Departments' },
     { id: 'routing', label: 'Routing rules' },
     { id: 'permits', label: 'Permits' },
     { id: 'inspections', label: 'Inspections' },
     { id: 'assets', label: 'Assets' },
+    { id: 'payments', label: 'Payments' },
+    { id: 'meetings', label: 'Meetings' },
+    { id: 'elections', label: 'Elections' },
+    { id: 'advocacy', label: 'Advocacy' },
+    { id: 'documents', label: 'Documents' },
+    { id: 'notifications', label: 'Notifications' },
     { id: 'opendata', label: 'Open data' },
   ] as const;
   return (
@@ -3624,11 +3638,18 @@ function CivicWorkbenchSection() {
       </nav>
       <div>
         {active === 'sr' && <ServiceRequestsPanel />}
+        {active === 'reporter' && <ServiceRequestReporter />}
         {active === 'departments' && <DepartmentsPanel />}
         {active === 'routing' && <RoutingRulesPanel />}
         {active === 'permits' && <PermitsPanel />}
         {active === 'inspections' && <InspectionsPanel />}
         {active === 'assets' && <AssetsPanel />}
+        {active === 'payments' && <PaymentsPanel />}
+        {active === 'meetings' && <MeetingsPanel />}
+        {active === 'elections' && <ElectionsPanel />}
+        {active === 'advocacy' && <AdvocacyPanel />}
+        {active === 'documents' && <DocumentLibraryPanel />}
+        {active === 'notifications' && <NotificationsPanel />}
         {active === 'opendata' && <OpenDataExplorer />}
       </div>
     </section>

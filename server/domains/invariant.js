@@ -477,4 +477,649 @@ export default function registerInvariantActions(registerLensAction) {
       },
     };
   });
+
+  // ────────────────────────────────────────────────────────────────────
+  // Continuous monitoring / counterexamples / templates / temporal logic /
+  // violation history / quantified invariants. All per-user state lives in
+  // globalThis._concordSTATE.invariantLens, keyed by userId.
+  // ────────────────────────────────────────────────────────────────────
+
+  function invState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.invariantLens) STATE.invariantLens = {};
+    const s = STATE.invariantLens;
+    if (!(s.monitors instanceof Map)) s.monitors = new Map();   // userId -> Array<monitor>
+    if (!(s.violations instanceof Map)) s.violations = new Map(); // userId -> Array<violation>
+    if (!(s.histories instanceof Map)) s.histories = new Map();  // userId -> Array<stateSnapshot>
+    return s;
+  }
+  function invSave() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const invId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const invNow = () => new Date().toISOString();
+  const invActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const invList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
+  const SEVERITY_WEIGHT = { critical: 4, high: 3, medium: 2, low: 1 };
+
+  // Shared safe expression evaluator (AST-whitelisted) — reused by monitoring,
+  // counterexamples, temporal, and quantified macros.
+  function safeEval(expr, context) {
+    if (typeof expr !== "string" || !expr) return { value: null, error: "empty_expression" };
+    if (expr.length > MAX_EXPR_LEN) return { value: null, error: "expression_too_long" };
+    const astCheck = validateExpressionAST(expr);
+    if (!astCheck.ok) return { value: null, error: `unsafe_expression:${astCheck.reason}` };
+    function resolve(path, obj) {
+      const parts = String(path).split(".");
+      let current = obj;
+      for (const part of parts) {
+        if (current == null) return undefined;
+        const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
+        if (arrayMatch) {
+          current = current[arrayMatch[1]];
+          if (Array.isArray(current)) current = current[parseInt(arrayMatch[2])];
+          else return undefined;
+        } else {
+          current = current[part];
+        }
+      }
+      return current;
+    }
+    try {
+      const processed = expr.replace(/\b([a-zA-Z_]\w*(?:\.\w+(?:\[\d+\])?)*)\b/g, (match) => {
+        const reserved = new Set(["true", "false", "null", "undefined", "NaN", "Infinity", "typeof", "instanceof"]);
+        if (reserved.has(match)) return match;
+        const val = resolve(match, context);
+        if (val === undefined) return "undefined";
+        if (val === null) return "null";
+        if (typeof val === "string") return JSON.stringify(val);
+        if (typeof val === "boolean" || typeof val === "number") return String(val);
+        if (Array.isArray(val)) return `${val.length}`;
+        if (typeof val === "object") return "true";
+        return String(val);
+      });
+      // eslint-disable-next-line no-new-func
+      const fn = new Function(`"use strict"; return (${processed});`);
+      return { value: fn(), error: null };
+    } catch (err) {
+      return { value: null, error: err.message };
+    }
+  }
+
+  /**
+   * registerMonitor
+   * Register an invariant to be watched continuously across substrate ticks.
+   * params: { name, expression, severity?, description? }
+   */
+  registerLensAction("invariant", "registerMonitor", (ctx, artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      const name = String(p.name || "").trim().slice(0, 120);
+      const expression = String(p.expression || "").trim();
+      if (!name) return { ok: false, error: "name_required" };
+      if (!expression) return { ok: false, error: "expression_required" };
+      const astCheck = validateExpressionAST(expression);
+      if (!astCheck.ok) return { ok: false, error: `unsafe_expression:${astCheck.reason}` };
+      const severity = ["critical", "high", "medium", "low"].includes(p.severity) ? p.severity : "medium";
+      const monitor = {
+        id: invId("mon"),
+        name,
+        expression,
+        severity,
+        description: String(p.description || "").slice(0, 400),
+        active: true,
+        createdAt: invNow(),
+        lastCheckedAt: null,
+        lastResult: null,
+        checkCount: 0,
+        violationCount: 0,
+        consecutivePasses: 0,
+      };
+      invList(s.monitors, userId).unshift(monitor);
+      invSave();
+      return { ok: true, result: { monitor, totalMonitors: s.monitors.get(userId).length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * listMonitors — return all registered monitors for the caller.
+   */
+  registerLensAction("invariant", "listMonitors", (ctx, _artifact, _params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const monitors = invList(s.monitors, userId);
+      return {
+        ok: true,
+        result: {
+          monitors,
+          summary: {
+            total: monitors.length,
+            active: monitors.filter(m => m.active).length,
+            violating: monitors.filter(m => m.lastResult === "violation").length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * checkMonitors
+   * Evaluate every active monitor against a supplied state snapshot — this
+   * simulates one "substrate tick". Records violations into the history.
+   * params: { state: { key: value } }
+   */
+  registerLensAction("invariant", "checkMonitors", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const monitors = invList(s.monitors, userId);
+      const state = (params && params.state && typeof params.state === "object") ? params.state : {};
+      const ts = invNow();
+      const checked = [];
+      const newViolations = [];
+      for (const m of monitors) {
+        if (!m.active) continue;
+        const { value, error } = safeEval(m.expression, state);
+        const passed = error === null && value === true;
+        const status = error ? "error" : passed ? "pass" : "violation";
+        m.lastCheckedAt = ts;
+        m.lastResult = status;
+        m.checkCount += 1;
+        if (status === "violation" || status === "error") {
+          m.violationCount += 1;
+          m.consecutivePasses = 0;
+          const violation = {
+            id: invId("vio"),
+            monitorId: m.id,
+            name: m.name,
+            expression: m.expression,
+            severity: m.severity,
+            status,
+            evaluatedValue: value,
+            error,
+            state,
+            detectedAt: ts,
+            resolved: false,
+            resolvedAt: null,
+          };
+          invList(s.violations, userId).unshift(violation);
+          newViolations.push(violation);
+        } else {
+          m.consecutivePasses += 1;
+        }
+        checked.push({ monitorId: m.id, name: m.name, status, evaluatedValue: value, error });
+      }
+      // cap violation log
+      const vlog = invList(s.violations, userId);
+      if (vlog.length > 500) vlog.length = 500;
+      invSave();
+      return {
+        ok: true,
+        result: {
+          checkedAt: ts,
+          checked,
+          newViolations,
+          summary: {
+            evaluated: checked.length,
+            passed: checked.filter(c => c.status === "pass").length,
+            violations: checked.filter(c => c.status === "violation").length,
+            errors: checked.filter(c => c.status === "error").length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * setMonitorActive — pause or resume a monitor. params: { monitorId, active }
+   */
+  registerLensAction("invariant", "setMonitorActive", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      const monitors = invList(s.monitors, userId);
+      const m = monitors.find(x => x.id === p.monitorId);
+      if (!m) return { ok: false, error: "monitor_not_found" };
+      m.active = p.active !== false;
+      invSave();
+      return { ok: true, result: { monitor: m } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * removeMonitor — delete a monitor. params: { monitorId }
+   */
+  registerLensAction("invariant", "removeMonitor", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      const monitors = invList(s.monitors, userId);
+      const idx = monitors.findIndex(x => x.id === p.monitorId);
+      if (idx === -1) return { ok: false, error: "monitor_not_found" };
+      const [removed] = monitors.splice(idx, 1);
+      invSave();
+      return { ok: true, result: { removed: removed.id, totalMonitors: monitors.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * counterexample
+   * Given a failing invariant and a list of records, identify the precise
+   * records / field values that break the invariant. params:
+   *   { expression, records: [{...}], recordKey? }
+   * Each record is bound as the evaluation context; failing records are the
+   * counterexamples. Also performs single-field "blame" attribution.
+   */
+  registerLensAction("invariant", "counterexample", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const expression = String(p.expression || "").trim();
+      if (!expression) return { ok: false, error: "expression_required" };
+      const astCheck = validateExpressionAST(expression);
+      if (!astCheck.ok) return { ok: false, error: `unsafe_expression:${astCheck.reason}` };
+      const records = Array.isArray(p.records) ? p.records.slice(0, 1000) : [];
+      if (records.length === 0) return { ok: false, error: "records_required" };
+      const recordKey = typeof p.recordKey === "string" ? p.recordKey : null;
+
+      const counterexamples = [];
+      const fieldBlame = {};
+      records.forEach((rec, idx) => {
+        const context = (rec && typeof rec === "object") ? rec : {};
+        const { value, error } = safeEval(expression, context);
+        const passed = error === null && value === true;
+        if (!passed) {
+          // blame attribution: which fields appear in the expression
+          const fields = [...new Set((expression.match(/\b[a-zA-Z_]\w*\b/g) || [])
+            .filter(t => !["true", "false", "null", "undefined", "NaN", "Infinity", "typeof", "instanceof"].includes(t)))];
+          const offendingFields = fields
+            .filter(f => Object.prototype.hasOwnProperty.call(context, f))
+            .map(f => ({ field: f, value: context[f] }));
+          for (const of of offendingFields) {
+            fieldBlame[of.field] = (fieldBlame[of.field] || 0) + 1;
+          }
+          counterexamples.push({
+            index: idx,
+            recordId: recordKey && context[recordKey] != null ? String(context[recordKey]) : `record_${idx}`,
+            record: context,
+            evaluatedValue: value,
+            error,
+            offendingFields,
+          });
+        }
+      });
+
+      const blameRanking = Object.entries(fieldBlame)
+        .map(([field, count]) => ({ field, failureCount: count }))
+        .sort((a, b) => b.failureCount - a.failureCount);
+
+      return {
+        ok: true,
+        result: {
+          expression,
+          holds: counterexamples.length === 0,
+          counterexamples: counterexamples.slice(0, 100),
+          counterexampleCount: counterexamples.length,
+          recordsChecked: records.length,
+          blameRanking,
+          mostLikelyCause: blameRanking[0]?.field || null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * templates — return the built-in invariant library. params: { category? }
+   * Categories: uniqueness, referential, range, presence, format.
+   */
+  registerLensAction("invariant", "templates", (_ctx, _artifact, params) => {
+    try {
+      const all = [
+        {
+          id: "tpl_uniqueness", category: "uniqueness", name: "Unique Field",
+          description: "No two records share the same value for a key field.",
+          kind: "quantified", quantifier: "forall",
+          expressionTemplate: "count(collection, item.<field> == probe.<field>) <= 1",
+          params: ["collection", "field"],
+        },
+        {
+          id: "tpl_referential", category: "referential", name: "Referential Integrity",
+          description: "Every foreign key references an existing parent record.",
+          kind: "quantified", quantifier: "forall",
+          expressionTemplate: "parentExists == true",
+          params: ["childCollection", "foreignKey", "parentCollection", "parentKey"],
+        },
+        {
+          id: "tpl_range", category: "range", name: "Range Bound",
+          description: "A numeric field stays within [min, max].",
+          kind: "scalar",
+          expressionTemplate: "<field> >= <min> && <field> <= <max>",
+          params: ["field", "min", "max"],
+        },
+        {
+          id: "tpl_nonneg", category: "range", name: "Non-Negative",
+          description: "A numeric field is never negative (balances, counts).",
+          kind: "scalar",
+          expressionTemplate: "<field> >= 0",
+          params: ["field"],
+        },
+        {
+          id: "tpl_presence", category: "presence", name: "Required Field",
+          description: "A field is always present and non-null.",
+          kind: "scalar",
+          expressionTemplate: "<field> != null && <field> != undefined",
+          params: ["field"],
+        },
+        {
+          id: "tpl_conservation", category: "range", name: "Conservation Law",
+          description: "A total is conserved — debits equal credits.",
+          kind: "scalar",
+          expressionTemplate: "<debit> == <credit>",
+          params: ["debit", "credit"],
+        },
+        {
+          id: "tpl_eventual", category: "temporal", name: "Eventually Consistent",
+          description: "A condition must become true at some point in the history.",
+          kind: "temporal", operator: "eventually",
+          expressionTemplate: "<condition>",
+          params: ["condition"],
+        },
+        {
+          id: "tpl_always", category: "temporal", name: "Safety (Always)",
+          description: "A condition must hold in every state of the history.",
+          kind: "temporal", operator: "always",
+          expressionTemplate: "<condition>",
+          params: ["condition"],
+        },
+      ];
+      const category = params && typeof params.category === "string" ? params.category : null;
+      const templates = category ? all.filter(t => t.category === category) : all;
+      return {
+        ok: true,
+        result: {
+          templates,
+          categories: [...new Set(all.map(t => t.category))],
+          total: templates.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * temporalCheck
+   * Evaluate a temporal-logic invariant over a state history. params:
+   *   { operator: "always"|"eventually"|"until", condition, until? (for until), history: [{...}] }
+   * - always:     condition holds in every state
+   * - eventually: condition holds in at least one state
+   * - until:      `condition` holds in every state up to (and not requiring at)
+   *               the first state where `until` becomes true; `until` must
+   *               eventually hold.
+   */
+  registerLensAction("invariant", "temporalCheck", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const operator = ["always", "eventually", "until"].includes(p.operator) ? p.operator : null;
+      if (!operator) return { ok: false, error: "operator_must_be_always_eventually_or_until" };
+      const condition = String(p.condition || "").trim();
+      if (!condition) return { ok: false, error: "condition_required" };
+      const cCheck = validateExpressionAST(condition);
+      if (!cCheck.ok) return { ok: false, error: `unsafe_condition:${cCheck.reason}` };
+      let untilExpr = null;
+      if (operator === "until") {
+        untilExpr = String(p.until || "").trim();
+        if (!untilExpr) return { ok: false, error: "until_expression_required" };
+        const uCheck = validateExpressionAST(untilExpr);
+        if (!uCheck.ok) return { ok: false, error: `unsafe_until:${uCheck.reason}` };
+      }
+      // History can be supplied directly or pulled from recorded snapshots.
+      let history = Array.isArray(p.history) ? p.history : null;
+      if (!history) {
+        const s = invState();
+        if (s) history = invList(s.histories, invActor(ctx)).map(h => h.state);
+      }
+      history = (history || []).slice(0, 1000);
+      if (history.length === 0) return { ok: false, error: "history_required" };
+
+      const trace = history.map((st, i) => {
+        const context = (st && typeof st === "object") ? st : {};
+        const c = safeEval(condition, context);
+        const cHolds = c.error === null && c.value === true;
+        const row = { step: i, conditionHolds: cHolds, conditionError: c.error };
+        if (operator === "until") {
+          const u = safeEval(untilExpr, context);
+          row.untilHolds = u.error === null && u.value === true;
+        }
+        return row;
+      });
+
+      let holds = false;
+      let witnessStep = null;
+      let violationStep = null;
+      if (operator === "always") {
+        violationStep = trace.findIndex(t => !t.conditionHolds);
+        holds = violationStep === -1;
+        violationStep = violationStep === -1 ? null : violationStep;
+      } else if (operator === "eventually") {
+        witnessStep = trace.findIndex(t => t.conditionHolds);
+        holds = witnessStep !== -1;
+        witnessStep = witnessStep === -1 ? null : witnessStep;
+      } else { // until
+        const untilIdx = trace.findIndex(t => t.untilHolds);
+        if (untilIdx === -1) {
+          holds = false;
+          violationStep = trace.length - 1; // until never satisfied
+        } else {
+          witnessStep = untilIdx;
+          // condition must hold for every step before untilIdx
+          const bad = trace.slice(0, untilIdx).findIndex(t => !t.conditionHolds);
+          holds = bad === -1;
+          violationStep = bad === -1 ? null : bad;
+        }
+      }
+
+      return {
+        ok: true,
+        result: {
+          operator,
+          condition,
+          until: untilExpr,
+          holds,
+          witnessStep,
+          violationStep,
+          historyLength: history.length,
+          trace,
+          formula: operator === "always" ? `□ (${condition})`
+            : operator === "eventually" ? `◇ (${condition})`
+            : `(${condition}) U (${untilExpr})`,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * recordSnapshot — append a state snapshot to the per-user history so
+   * temporalCheck can run against it without re-supplying history.
+   * params: { state, label? }
+   */
+  registerLensAction("invariant", "recordSnapshot", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      const state = (p.state && typeof p.state === "object") ? p.state : {};
+      const snapshot = { id: invId("snap"), label: String(p.label || "").slice(0, 80), state, at: invNow() };
+      const hist = invList(s.histories, userId);
+      hist.push(snapshot);
+      if (hist.length > 500) hist.splice(0, hist.length - 500);
+      invSave();
+      return { ok: true, result: { snapshot, historyLength: hist.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * clearHistory — wipe the per-user state-snapshot history.
+   */
+  registerLensAction("invariant", "clearHistory", (ctx, _artifact, _params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      s.histories.set(userId, []);
+      invSave();
+      return { ok: true, result: { cleared: true, historyLength: 0 } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * violationHistory — return the violation timeline with severity and
+   * resolution status. params: { resolved?: boolean, limit? }
+   */
+  registerLensAction("invariant", "violationHistory", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      let log = invList(s.violations, userId).slice();
+      if (typeof p.resolved === "boolean") log = log.filter(v => v.resolved === p.resolved);
+      const limit = Math.min(Math.max(parseInt(p.limit) || 200, 1), 500);
+      const sliced = log.slice(0, limit);
+      const open = log.filter(v => !v.resolved);
+      return {
+        ok: true,
+        result: {
+          violations: sliced,
+          summary: {
+            total: log.length,
+            open: open.length,
+            resolved: log.filter(v => v.resolved).length,
+            critical: open.filter(v => v.severity === "critical").length,
+            high: open.filter(v => v.severity === "high").length,
+            medium: open.filter(v => v.severity === "medium").length,
+            low: open.filter(v => v.severity === "low").length,
+          },
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * resolveViolation — mark a recorded violation as resolved.
+   * params: { violationId, resolution? }
+   */
+  registerLensAction("invariant", "resolveViolation", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      const log = invList(s.violations, userId);
+      const v = log.find(x => x.id === p.violationId);
+      if (!v) return { ok: false, error: "violation_not_found" };
+      v.resolved = true;
+      v.resolvedAt = invNow();
+      v.resolution = String(p.resolution || "").slice(0, 300);
+      invSave();
+      return { ok: true, result: { violation: v } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * quantifiedCheck
+   * Evaluate a quantified invariant (∀ / ∃) over a collection. params:
+   *   { quantifier: "forall"|"exists", collection: [{...}], predicate, bind? }
+   * Each collection item is bound as the evaluation context (the `bind` name
+   * is purely cosmetic — the predicate references item fields directly).
+   * Returns the witness (∃) or counterexample (∀).
+   */
+  registerLensAction("invariant", "quantifiedCheck", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const quantifier = ["forall", "exists"].includes(p.quantifier) ? p.quantifier : null;
+      if (!quantifier) return { ok: false, error: "quantifier_must_be_forall_or_exists" };
+      const predicate = String(p.predicate || "").trim();
+      if (!predicate) return { ok: false, error: "predicate_required" };
+      const pCheck = validateExpressionAST(predicate);
+      if (!pCheck.ok) return { ok: false, error: `unsafe_predicate:${pCheck.reason}` };
+      const collection = Array.isArray(p.collection) ? p.collection.slice(0, 2000) : [];
+      if (collection.length === 0) return { ok: false, error: "collection_required" };
+
+      const evaluations = collection.map((item, idx) => {
+        const context = (item && typeof item === "object") ? item : { value: item };
+        const { value, error } = safeEval(predicate, context);
+        return {
+          index: idx,
+          holds: error === null && value === true,
+          error,
+          item: context,
+        };
+      });
+
+      const satisfying = evaluations.filter(e => e.holds);
+      const failing = evaluations.filter(e => !e.holds);
+
+      let holds, witness = null, counterexample = null;
+      if (quantifier === "forall") {
+        holds = failing.length === 0;
+        counterexample = failing[0] ? { index: failing[0].index, item: failing[0].item, error: failing[0].error } : null;
+      } else {
+        holds = satisfying.length > 0;
+        witness = satisfying[0] ? { index: satisfying[0].index, item: satisfying[0].item } : null;
+      }
+
+      return {
+        ok: true,
+        result: {
+          quantifier,
+          predicate,
+          holds,
+          witness,
+          counterexample,
+          collectionSize: collection.length,
+          satisfyingCount: satisfying.length,
+          failingCount: failing.length,
+          formula: quantifier === "forall" ? `∀ x ∈ C : (${predicate})` : `∃ x ∈ C : (${predicate})`,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }

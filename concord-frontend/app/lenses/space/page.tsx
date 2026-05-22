@@ -32,6 +32,9 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { UpcomingLaunches } from '@/components/space/UpcomingLaunches';
+import { LaunchWatchlist } from '@/components/space/LaunchWatchlist';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
+import { SpaceObservatory } from '@/components/space/SpaceObservatory';
 
 type ModeTab = 'Dashboard' | 'Missions' | 'Satellites' | 'LaunchOps' | 'Telemetry' | 'Crew' | 'Debris';
 
@@ -283,6 +286,10 @@ export default function SpaceLensPage() {
       </div>
       {/* Phase 4 (fourth wave) — REAL Wikipedia search for missions, satellites, agencies. */}
       <WikipediaSearchPanel domain="space" title="Wikipedia · space topics" />
+
+      {/* Live Observatory — ISS tracking, visible passes, 3D orbit, countdowns,
+          vehicle detail, sky map, filtered launches, NASA imagery. */}
+      <SpaceObservatory />
 
       {/* ── Header with starfield gradient ── */}
       <header className="bg-gradient-to-r from-indigo-900/20 via-transparent to-purple-900/20 rounded-xl p-4 flex items-center justify-between">
@@ -658,6 +665,10 @@ export default function SpaceLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <UpcomingLaunches />
+      </section>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <LensFeedButton domain="space" />
+        <LaunchWatchlist />
       </section>
     </div>
 

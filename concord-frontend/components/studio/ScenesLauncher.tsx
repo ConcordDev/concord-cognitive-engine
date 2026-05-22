@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Play, Plus, Loader2, Grid3x3 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -12,9 +12,7 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
 
-  useEffect(() => { refresh(); }, [projectId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!projectId) { setScenes([]); setLoading(false); return; }
     setLoading(true);
     try {
@@ -22,7 +20,9 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
       setScenes((res.data?.result?.scenes || []) as Scene[]);
     } catch (e) { console.error('[Scenes] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [projectId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function create() {
     if (!projectId || !name.trim()) return;

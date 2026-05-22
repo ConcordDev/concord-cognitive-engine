@@ -12,6 +12,14 @@ import { BarcodeLookup } from '@/components/household/BarcodeLookup';
 import { HouseholdActionPanel } from '@/components/household/HouseholdActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ChoreRotation } from '@/components/household/ChoreRotation';
+import { ChoreBoard } from '@/components/household/ChoreBoard';
+import { FamilyCalendar } from '@/components/household/FamilyCalendar';
+import { MealPlanner } from '@/components/household/MealPlanner';
+import { AllowanceTracker } from '@/components/household/AllowanceTracker';
+import { MemberNotifications } from '@/components/household/MemberNotifications';
+import { SharedShoppingLists } from '@/components/household/SharedShoppingLists';
+import { RecurringTemplates } from '@/components/household/RecurringTemplates';
+import { ExpenseSplitter } from '@/components/household/ExpenseSplitter';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1860,8 +1868,46 @@ export default function HouseholdLensPage() {
         <BarcodeLookup />
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <ChoreBoard />
+      </section>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ChoreRotation />
       </section>
+
+      {/* Cozi-shape coordination layer: shared calendar, meal planner, shopping
+          lists, allowance, notifications, recurring templates, expense splitting.
+          All wired to real per-user STATE-backed household.* macros. */}
+      <div className="mt-8">
+        <h2 className={cn(ds.heading2, 'mb-1')}>Family Coordination</h2>
+        <p className={cn(ds.textMuted, 'mb-4')}>
+          Shared calendar, meal planning, allowance, notifications, shopping lists and expense splitting — the Cozi coordination layer.
+        </p>
+        <div className="space-y-6">
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <FamilyCalendar />
+          </section>
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <MealPlanner />
+          </section>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <AllowanceTracker />
+            </section>
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <MemberNotifications />
+            </section>
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <SharedShoppingLists />
+            </section>
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <RecurringTemplates />
+            </section>
+          </div>
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ExpenseSplitter />
+          </section>
+        </div>
+      </div>
 
       {/* Tody + Sweepy-shape household workbench: grocery / chores / maintenance / summary + actions */}
       <PipingProvider>

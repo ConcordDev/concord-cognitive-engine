@@ -365,3 +365,244 @@ describe("whiteboard — workspace-summary", () => {
     assert.equal(r.result.openCommentCount, 1);
   });
 });
+
+describe("whiteboard — board-duplicate", () => {
+  it("clones a board with a deep-copied scene and a new id", () => {
+    const src = call("board-save", ctxA, { title: "Original", scene: { elements: [{ id: 'e1', kind: 'sticky', text: 'hi' }] } });
+    const dup = call("board-duplicate", ctxA, { id: src.result.board.id });
+    assert.equal(dup.ok, true);
+    assert.notEqual(dup.result.board.id, src.result.board.id);
+    assert.equal(dup.result.board.title, "Original (copy)");
+    assert.equal(dup.result.board.scene.elements[0].text, "hi");
+    // deep copy — mutating the clone does not touch the source
+    dup.result.board.scene.elements[0].text = "changed";
+    const reloaded = call("board-load", ctxA, { id: src.result.board.id });
+    assert.equal(reloaded.result.board.scene.elements[0].text, "hi");
+  });
+
+  it("rejects an unknown board id", () => {
+    assert.equal(call("board-duplicate", ctxA, { id: "nope" }).ok, false);
+  });
+});
+
+describe("whiteboard — meeting timer", () => {
+  it("start / get / stop lifecycle, board-scoped", () => {
+    assert.equal(call("timer-get", ctxA, { boardId: "b1" }).result.active, false);
+    const started = call("timer-start", ctxA, { boardId: "b1", minutes: 5, label: "Standup" });
+    assert.equal(started.ok, true);
+    assert.equal(started.result.timer.durationSec, 300);
+    const got = call("timer-get", ctxB, { boardId: "b1" });
+    assert.equal(got.result.active, true);
+    assert.equal(got.result.label, "Standup");
+    assert.ok(got.result.remainingSec > 290 && got.result.remainingSec <= 300);
+    call("timer-stop", ctxA, { boardId: "b1" });
+    assert.equal(call("timer-get", ctxA, { boardId: "b1" }).result.active, false);
+  });
+
+  it("clamps the duration and requires a boardId", () => {
+    assert.equal(call("timer-start", ctxA, { minutes: 5 }).ok, false);
+    const clamped = call("timer-start", ctxA, { boardId: "b2", minutes: 999 });
+    assert.equal(clamped.result.timer.durationSec, 7200); // 120 min cap
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+//  2026 parity backlog — CRDT ops, raster export, frames,
+//  connectors, embeds, presentation mode, reactions / live cursors.
+// ═════════════════════════════════════════════════════════════════
+
+function newBoard(ctx = ctxA, elements = []) {
+  return call("board-save", ctx, { title: "B", scene: { elements } }).result.board.id;
+}
+
+describe("whiteboard — CRDT/OT ops (ops-apply / ops-since)", () => {
+  it("ops-apply folds add/update/delete with monotonic clock", () => {
+    const id = newBoard();
+    const r1 = call("ops-apply", ctxA, { boardId: id, ops: [
+      { type: "add", element: { id: "e1", kind: "sticky", x: 0, y: 0, text: "one" } },
+      { type: "add", element: { id: "e2", kind: "sticky", x: 10, y: 10, text: "two" } },
+    ] });
+    assert.equal(r1.ok, true);
+    assert.equal(r1.result.accepted, 2);
+    assert.equal(r1.result.clock, 2);
+    const r2 = call("ops-apply", ctxA, { boardId: id, ops: [
+      { type: "update", element: { id: "e1", kind: "sticky", x: 5, y: 5, text: "edited" } },
+    ] });
+    assert.equal(r2.result.clock, 3);
+    const loaded = call("board-load", ctxA, { id });
+    const e1 = loaded.result.board.scene.elements.find(e => e.id === "e1");
+    assert.equal(e1.text, "edited");
+  });
+
+  it("delete op removes the element from the folded scene", () => {
+    const id = newBoard();
+    call("ops-apply", ctxA, { boardId: id, ops: [{ type: "add", element: { id: "e1", kind: "sticky" } }] });
+    call("ops-apply", ctxA, { boardId: id, ops: [{ type: "delete", elementId: "e1" }] });
+    const loaded = call("board-load", ctxA, { id });
+    assert.equal(loaded.result.board.scene.elements.length, 0);
+  });
+
+  it("ops-since returns only ops newer than the supplied clock", () => {
+    const id = newBoard();
+    call("ops-apply", ctxA, { boardId: id, ops: [{ type: "add", element: { id: "e1", kind: "sticky" } }] });
+    const apply2 = call("ops-apply", ctxA, { boardId: id, ops: [{ type: "add", element: { id: "e2", kind: "sticky" } }] });
+    const since = call("ops-since", ctxA, { boardId: id, sinceClock: 1 });
+    assert.equal(since.ok, true);
+    assert.equal(since.result.ops.length, 1);
+    assert.equal(since.result.ops[0].elementId, "e2");
+    assert.equal(since.result.clock, apply2.result.clock);
+  });
+
+  it("rejects empty ops array and unknown boards", () => {
+    const id = newBoard();
+    assert.equal(call("ops-apply", ctxA, { boardId: id, ops: [] }).ok, false);
+    assert.equal(call("ops-apply", ctxA, { boardId: "nope", ops: [{ type: "add", element: { id: "x" } }] }).ok, false);
+  });
+});
+
+describe("whiteboard — raster export plan", () => {
+  it("computes tight content bounds and pixel dimensions", () => {
+    const id = newBoard(ctxA, [
+      { id: "e1", kind: "sticky", x: 100, y: 100, w: 120, h: 80 },
+      { id: "e2", kind: "rect", x: 400, y: 300, w: 200, h: 100 },
+    ]);
+    const r = call("export-raster-plan", ctxA, { boardId: id, format: "png", scale: 2, padding: 40 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.format, "png");
+    assert.equal(r.result.bounds.x, 60); // 100 - 40 padding
+    assert.equal(r.result.pixelDimensions.width, r.result.bounds.width * 2);
+    assert.equal(r.result.drawOrder.length, 2);
+  });
+
+  it("tiles a PDF export into pages", () => {
+    const id = newBoard(ctxA, [{ id: "big", kind: "rect", x: 0, y: 0, w: 3000, h: 2000 }]);
+    const r = call("export-raster-plan", ctxA, { boardId: id, format: "pdf" });
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.pages));
+    assert.ok(r.result.pages.length > 1);
+  });
+
+  it("reports empty when the board has no elements", () => {
+    const id = newBoard();
+    const r = call("export-raster-plan", ctxA, { boardId: id });
+    assert.equal(r.result.empty, true);
+  });
+});
+
+describe("whiteboard — frames / sections", () => {
+  it("create / list / update / delete with member detection", () => {
+    const id = newBoard(ctxA, [{ id: "e1", kind: "sticky", x: 120, y: 120, w: 60, h: 60 }]);
+    const created = call("frame-create", ctxA, { boardId: id, label: "Phase 1", x: 0, y: 0, w: 400, h: 400 });
+    assert.equal(created.ok, true);
+    assert.deepEqual(created.result.frame.memberIds, ["e1"]);
+    const list = call("frame-list", ctxA, { boardId: id });
+    assert.equal(list.result.frames.length, 1);
+    const upd = call("frame-update", ctxA, { boardId: id, id: created.result.frame.id, label: "Phase 2" });
+    assert.equal(upd.result.frame.label, "Phase 2");
+    const del = call("frame-delete", ctxA, { boardId: id, id: created.result.frame.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("frame-list", ctxA, { boardId: id }).result.frames.length, 0);
+  });
+});
+
+describe("whiteboard — connectors with auto-routing", () => {
+  it("creates a connector and resolves an orthogonal route", () => {
+    const id = newBoard(ctxA, [
+      { id: "a", kind: "rect", x: 0, y: 0, w: 100, h: 80 },
+      { id: "b", kind: "rect", x: 400, y: 200, w: 100, h: 80 },
+    ]);
+    const r = call("connector-create", ctxA, { boardId: id, fromId: "a", toId: "b", label: "leads to" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.connector.unresolved, false);
+    assert.ok(r.result.connector.route.waypoints.length >= 2);
+    assert.ok(r.result.connector.route.length > 0);
+  });
+
+  it("rejects self-binding and missing endpoints", () => {
+    const id = newBoard(ctxA, [{ id: "a", kind: "rect" }]);
+    assert.equal(call("connector-create", ctxA, { boardId: id, fromId: "a", toId: "a" }).ok, false);
+    assert.equal(call("connector-create", ctxA, { boardId: id, fromId: "a", toId: "ghost" }).ok, false);
+  });
+
+  it("list then delete a connector", () => {
+    const id = newBoard(ctxA, [{ id: "a", kind: "rect" }, { id: "b", kind: "rect", x: 200 }]);
+    const c = call("connector-create", ctxA, { boardId: id, fromId: "a", toId: "b" });
+    assert.equal(call("connector-list", ctxA, { boardId: id }).result.connectors.length, 1);
+    call("connector-delete", ctxA, { boardId: id, id: c.result.connector.id });
+    assert.equal(call("connector-list", ctxA, { boardId: id }).result.connectors.length, 0);
+  });
+});
+
+describe("whiteboard — embeds", () => {
+  it("classifies and adds an image embed, lists, updates, deletes", async () => {
+    const id = newBoard();
+    const add = await call("embed-add", ctxA, { boardId: id, url: "https://example.com/pic.png", x: 10, y: 20 });
+    assert.equal(add.ok, true);
+    assert.equal(add.result.embed.kind, "image");
+    const list = call("embed-list", ctxA, { boardId: id });
+    assert.equal(list.result.embeds.length, 1);
+    const upd = call("embed-update", ctxA, { boardId: id, id: add.result.embed.id, title: "Renamed" });
+    assert.equal(upd.result.embed.title, "Renamed");
+    const del = call("embed-delete", ctxA, { boardId: id, id: add.result.embed.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("embed-list", ctxA, { boardId: id }).result.embeds.length, 0);
+  });
+
+  it("rejects a non-http url", async () => {
+    const id = newBoard();
+    const r = await call("embed-add", ctxA, { boardId: id, url: "ftp://bad" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("whiteboard — presentation mode", () => {
+  it("builds a slide deck from ordered frames", () => {
+    const id = newBoard(ctxA, [{ id: "e1", kind: "sticky", x: 50, y: 50, w: 40, h: 40 }]);
+    call("frame-create", ctxA, { boardId: id, label: "Intro", x: 0, y: 0, w: 200, h: 200 });
+    call("frame-create", ctxA, { boardId: id, label: "Detail", x: 200, y: 0, w: 200, h: 200 });
+    const r = call("presentation-build", ctxA, { boardId: id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.slideCount, 2);
+    assert.equal(r.result.slides[0].title, "Intro");
+    assert.ok(r.result.slides[0].camera.width > 0);
+  });
+
+  it("reports no slides when there are no frames", () => {
+    const id = newBoard();
+    const r = call("presentation-build", ctxA, { boardId: id });
+    assert.equal(r.result.slideCount, 0);
+  });
+});
+
+describe("whiteboard — reactions / live cursors", () => {
+  function captureEmits() {
+    const events = [];
+    globalThis._concordREALTIME = { io: { to: (room) => ({ emit: (name, payload) => events.push({ room, name, payload }) }) } };
+    return events;
+  }
+
+  it("reaction-send fans out a supported emoji", () => {
+    const events = captureEmits();
+    const id = newBoard();
+    const r = call("reaction-send", ctxA, { boardId: id, emoji: "🔥", x: 100, y: 200 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.reaction.emoji, "🔥");
+    assert.ok(events.find(e => e.name === "whiteboard:reaction"));
+  });
+
+  it("rejects an unsupported emoji", () => {
+    const id = newBoard();
+    assert.equal(call("reaction-send", ctxA, { boardId: id, emoji: "💩", x: 0, y: 0 }).ok, false);
+  });
+
+  it("presence-ping records a named cursor that presence-list returns", () => {
+    captureEmits();
+    const id = newBoard();
+    const ping = call("presence-ping", ctxA, { boardId: id, x: 12, y: 34, name: "Ada" });
+    assert.equal(ping.ok, true);
+    const list = call("presence-list", ctxA, { boardId: id });
+    assert.equal(list.result.participants.length, 1);
+    assert.equal(list.result.participants[0].name, "Ada");
+    assert.equal(list.result.selfId, "u");
+  });
+});

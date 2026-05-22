@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -462,6 +463,7 @@ export default function PetsLensPage() {
           );
         })()}
       </AnimatePresence>
+          <section className="mt-4"><LensFeedButton domain="pets" label="Live dog-breed feed" /></section>
           <RecentMineCard domain="pets" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="pets" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="pets" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { Swords, Plus, AlertTriangle, ChevronRight, Trophy, FileText } from 'lucide-react';
-import { useLensSession, type LensSession } from '@/hooks/useLensSession';
+import { useLensSession } from '@/hooks/useLensSession';
 import { SessionStepper } from '@/components/lens/SessionStepper';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { cn } from '@/lib/utils';

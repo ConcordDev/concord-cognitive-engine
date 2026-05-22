@@ -104,6 +104,7 @@ import ProjectsPanel, { type ChatProject } from '@/components/chat/ProjectsPanel
 import PromptsLibrary from '@/components/chat/PromptsLibrary';
 import ThreadSearchOverlay from '@/components/chat/ThreadSearchOverlay';
 import ScheduledTasksPanel from '@/components/chat/ScheduledTasksPanel';
+import ChatStudioPanel, { type StudioMessage } from '@/components/chat/ChatStudioPanel';
 import {
   WelcomePanel,
   ModeSelector,
@@ -546,7 +547,6 @@ export default function ChatLensPage() {
     })();
     return () => { cancelled = true; };
   // Re-fetch when auth flips (login → cross-device sessions appear).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // New state — Persona picker
@@ -604,6 +604,11 @@ export default function ChatLensPage() {
   const [scheduledPanelOpen, setScheduledPanelOpen] = useState(false);
   const [threadSearchOpen, setThreadSearchOpen] = useState(false);
   const [activeProject, setActiveProject] = useState<ChatProject | null>(null);
+
+  // ChatGPT-parity studio — voice / custom GPTs / canvas / memory /
+  // code interpreter / share links / image generation. One slide-over,
+  // seven tabs, each backed by a real chat-domain macro.
+  const [studioOpen, setStudioOpen] = useState(false);
 
   // Tool execution traces — when Concord (or the user via the palette)
   // runs a tool, the result appears inline in the thread as a trace
@@ -2937,6 +2942,22 @@ export default function ChatLensPage() {
                 <Clock className="w-3 h-3" />
                 <span>Schedule</span>
               </button>
+              {/* ChatGPT-parity studio — voice, custom GPTs, canvas,
+                  memory, code interpreter, share links, image gen. */}
+              <button
+                type="button"
+                onClick={() => setStudioOpen(true)}
+                className={cn(
+                  'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border rounded-full text-xs transition-colors',
+                  studioOpen
+                    ? 'border-violet-500/50 text-violet-300'
+                    : 'border-lattice-border text-gray-400 hover:text-violet-300 hover:border-violet-500/30',
+                )}
+                title="Studio — voice, custom GPTs, canvas, memory, code, share, images"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Studio</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setThreadSearchOpen(true)}
@@ -4015,6 +4036,43 @@ export default function ChatLensPage() {
           setThreadSearchOpen(false);
         }}
         projectId={activeProject?.id || null}
+      />
+      <ChatStudioPanel
+        open={studioOpen}
+        onClose={() => setStudioOpen(false)}
+        threadId={selectedConversation}
+        messages={messages
+          .filter((m): m is Message & { role: 'user' | 'assistant' | 'system' } => !!m.content)
+          .map<StudioMessage>((m) => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp,
+          }))}
+        onInsert={(text) => {
+          setInput((prev) => (prev ? `${prev}\n\n${text}` : text));
+          inputRef.current?.focus();
+        }}
+        onActivateAssistant={(a) => {
+          // A custom GPT becomes the active persona — its instructions
+          // drive the system prompt and its default mode is selected.
+          setSelectedPersona({
+            id: `gpt-${a.id}`,
+            name: a.name,
+            icon: Bot,
+            description: a.description || 'Custom GPT',
+            systemPrompt: a.instructions,
+          });
+          const mode = AI_MODES.find((m) => m.id === a.model);
+          if (mode) setAiMode(mode);
+          setStudioOpen(false);
+          const sysMsg: Message = {
+            id: `sys-${Date.now()}`,
+            role: 'system',
+            content: `Activated custom GPT "${a.name}". Its instructions now guide every reply in this conversation.`,
+            timestamp: new Date().toISOString(),
+          };
+          setLocalMessages((prev) => [...prev, sysMsg]);
+        }}
       />
       <div className="fixed top-4 right-20 z-30">
         <InitiativeBell />

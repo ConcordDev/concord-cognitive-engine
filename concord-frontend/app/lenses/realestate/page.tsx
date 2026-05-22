@@ -6,6 +6,7 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { LayoutDashboard as MobileTabDash, Home as MobileTabHome, DollarSign as MobileTabDollar, Building as MobileTabBuilding, Calendar as MobileTabCal, Map as MobileTabMap } from 'lucide-react';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -18,6 +19,7 @@ import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -86,6 +88,13 @@ import OpenHouseCalendar from '@/components/realestate/OpenHouseCalendar';
 import AISearchBar from '@/components/realestate/AISearchBar';
 import PropertyCompare from '@/components/realestate/PropertyCompare';
 import PropertyNotes from '@/components/realestate/PropertyNotes';
+import MapAreaSearch from '@/components/realestate/MapAreaSearch';
+import ListingPhotoGallery from '@/components/realestate/ListingPhotoGallery';
+import PriceHistoryPanel from '@/components/realestate/PriceHistoryPanel';
+import PreApprovalFlow from '@/components/realestate/PreApprovalFlow';
+import SavedSearchAlerts from '@/components/realestate/SavedSearchAlerts';
+import PropertyDetailPanel from '@/components/realestate/PropertyDetailPanel';
+import ContactAgentForm from '@/components/realestate/ContactAgentForm';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 
 /* ------------------------------------------------------------------ */
@@ -3391,6 +3400,7 @@ export default function RealEstateLensPage() {
           <RealEstateActionPanel />
         </section>
       </PipingProvider>
+          <section className="mt-4"><LensFeedButton domain="realestate" label="Live home-value feed" /></section>
           <RecentMineCard domain="realestate" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="realestate" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="realestate" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
@@ -3415,8 +3425,12 @@ export default function RealEstateLensPage() {
 /*  Zillow / Redfin-parity workbench section                            */
 /* ------------------------------------------------------------------ */
 
+type WorkbenchTab =
+  | 'browse' | 'mapsearch' | 'favs' | 'alerts' | 'tours' | 'avm' | 'priced' | 'detail'
+  | 'photos' | 'preapproval' | 'scores' | 'agents' | 'contact' | 'open' | 'ai' | 'compare' | 'notes';
+
 function RealtorWorkbenchSection() {
-  const [active, setActive] = useState<'browse' | 'detail' | 'favs' | 'tours' | 'avm' | 'scores' | 'agents' | 'open' | 'ai' | 'compare' | 'notes'>('browse');
+  const [active, setActive] = useState<WorkbenchTab>('browse');
   const [selected, setSelected] = useState<REListing | null>(null);
   const [comparePicks, setComparePicks] = useState<string[]>([]);
   const [tourFor, setTourFor] = useState<string | undefined>(undefined);
@@ -3424,13 +3438,27 @@ function RealtorWorkbenchSection() {
   const togglePick = (id: string) => setComparePicks(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 4 ? [...prev, id] : prev);
   const requestTour = (id: string) => { setTourFor(id); setActive('tours'); };
 
+  const selectById = useCallback(async (id: string) => {
+    try {
+      const r = await lensRun({ domain: 'realestate', action: 'listings-get', input: { id } });
+      if (r.data?.ok && r.data.result?.listing) setSelected(r.data.result.listing as REListing);
+    } catch (e) { console.error('[Workbench] listings-get failed', e); }
+  }, []);
+
   const TABS = [
     { id: 'browse', label: 'Browse', icon: Search },
+    { id: 'mapsearch', label: 'Map search', icon: Map },
     { id: 'favs', label: 'Saved', icon: Star },
+    { id: 'alerts', label: 'Alerts', icon: Bell },
     { id: 'tours', label: 'Tours', icon: Calendar },
     { id: 'avm', label: 'AVM', icon: Calculator },
+    { id: 'priced', label: 'Price history', icon: TrendingUp },
+    { id: 'detail', label: 'Property detail', icon: Building2 },
+    { id: 'photos', label: 'Photos & 3D', icon: Eye },
+    { id: 'preapproval', label: 'Pre-approval', icon: KeyRound },
     { id: 'scores', label: 'Schools/Walk', icon: MapPin },
     { id: 'agents', label: 'Agents', icon: User },
+    { id: 'contact', label: 'Contact agent', icon: Phone },
     { id: 'open', label: 'Open houses', icon: Calendar },
     { id: 'ai', label: 'AI search', icon: TrendingUp },
     { id: 'compare', label: 'Compare', icon: ArrowLeftRight },
@@ -3458,13 +3486,27 @@ function RealtorWorkbenchSection() {
           </button>
         ))}
       </nav>
+      {(active === 'photos' || active === 'priced' || active === 'detail' || active === 'notes' || active === 'contact') && (
+        <p className="text-[11px] text-gray-500">
+          {selected
+            ? <>Working with <span className="text-cyan-300">{selected.address || selected.id}</span>.</>
+            : 'Pick a listing in Browse or Map search to load this panel.'}
+        </p>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {active === 'browse' && <div className="lg:col-span-3"><ListingsBrowser onSelect={setSelected} onPickForCompare={togglePick} comparePicks={comparePicks} /></div>}
+        {active === 'mapsearch' && <div className="lg:col-span-3"><MapAreaSearch onSelect={setSelected} /></div>}
         {active === 'favs' && <div className="lg:col-span-3"><FavouritesPanel onSelect={setSelected} /></div>}
+        {active === 'alerts' && <div className="lg:col-span-3"><SavedSearchAlerts onSelect={setSelected} /></div>}
         {active === 'tours' && <div className="lg:col-span-3"><ToursPanel defaultListingId={tourFor} /></div>}
         {active === 'avm' && <div className="lg:col-span-2"><AVMEstimator /></div>}
+        {active === 'priced' && <div className="lg:col-span-3"><PriceHistoryPanel listingId={selected?.id} /></div>}
+        {active === 'detail' && <div className="lg:col-span-3"><PropertyDetailPanel listingId={selected?.id} onSelect={(l) => selectById(l.id)} /></div>}
+        {active === 'photos' && <div className="lg:col-span-3"><ListingPhotoGallery listingId={selected?.id} /></div>}
+        {active === 'preapproval' && <div className="lg:col-span-3"><PreApprovalFlow /></div>}
         {active === 'scores' && <div className="lg:col-span-3"><SchoolWalkPanel /></div>}
         {active === 'agents' && <div className="lg:col-span-3"><AgentMessenger /></div>}
+        {active === 'contact' && <div className="lg:col-span-3"><ContactAgentForm listingId={selected?.id} /></div>}
         {active === 'open' && <div className="lg:col-span-3"><OpenHouseCalendar /></div>}
         {active === 'ai' && <div className="lg:col-span-3"><AISearchBar /></div>}
         {active === 'compare' && <div className="lg:col-span-3"><PropertyCompare ids={comparePicks} onClear={() => setComparePicks([])} onRemove={togglePick} /></div>}

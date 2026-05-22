@@ -29,6 +29,7 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [days]);
 
   async function refresh() {

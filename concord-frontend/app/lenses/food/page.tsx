@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -15,6 +16,7 @@ import { OpenFoodFactsSearch } from '@/components/food/OpenFoodFactsSearch';
 import { BreweryPanel } from '@/components/food/BreweryPanel';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { FoodActionPanel } from '@/components/food/FoodActionPanel';
+import { FoodParityPanel } from '@/components/food/FoodParityPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import CookMode from '@/components/food/CookMode';
 import PantryTracker from '@/components/food/PantryTracker';
@@ -2700,6 +2702,10 @@ export default function FoodLensPage() {
       </header>
 
 
+      {/* Nutrition & recipe parity workbench — barcode scan, macro-goal
+          rings, recipe photos/ratings, pantry-aware planning, restaurant map. */}
+      <FoodParityPanel />
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(() => {
@@ -2834,6 +2840,7 @@ export default function FoodLensPage() {
         </section>
       </PipingProvider>
     </div>
+          <section className="mt-4"><LensFeedButton domain="food" label="Live food-product feed" /></section>
           <RecentMineCard domain="food" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="food" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="food" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

@@ -39,6 +39,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Hammer, Sparkles, Loader2, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import ForgeWorkbench from '@/components/forge/ForgeWorkbench';
+import ForgeStudio from '@/components/forge/ForgeStudio';
 
 export default function ForgeLensPage() {
   const [loading, setLoading] = useState(true);
@@ -135,7 +136,10 @@ export default function ForgeLensPage() {
             <Loader2 className="h-4 w-4 animate-spin" /> Loading Forge templates…
           </div>
         ) : (
-          <ForgeWorkbench />
+          <div className="space-y-6">
+            <ForgeStudio />
+            <ForgeWorkbench />
+          </div>
         )}
       </section>
       <section className="mx-auto mt-6 max-w-5xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

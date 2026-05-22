@@ -109,6 +109,7 @@ export default function QuoteChart({ symbol, quotes, isLive, lastUpdated, classN
     const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
     const fill = `${d} L ${pts[pts.length - 1].x.toFixed(2)} ${(PAD_T + innerH).toFixed(2)} L ${pts[0].x.toFixed(2)} ${(PAD_T + innerH).toFixed(2)} Z`;
     return { path: d, fillPath: fill, minY: minV, maxY: maxV };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- innerH/innerW are render-constant geometry; buffer is the only real input
   }, [buffer]);
 
   const accentLine = up ? '#34d399' : '#f87171';

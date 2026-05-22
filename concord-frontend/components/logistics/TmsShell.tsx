@@ -10,7 +10,7 @@
 
 import React from 'react';
 import {
-  Package, Truck, MapPin, AlertTriangle, CheckCircle, Clock,
+  Package, Truck, AlertTriangle, CheckCircle, Clock,
   Anchor, Plane, Calendar, ArrowRight, TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

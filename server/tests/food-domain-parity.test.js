@@ -295,6 +295,219 @@ describe("food.reservation + waitlist", () => {
   });
 });
 
+// ─── Parity backlog — barcode, recipe photos/ratings, calorie goals,
+// pantry-aware auto meal-plans, aisle-grouped shopping, restaurant map ──
+
+describe("food.barcode-lookup", () => {
+  it("rejects barcodes shorter than 6 digits", async () => {
+    const r = await call("barcode-lookup", ctxA, { barcode: "123" });
+    assert.equal(r.ok, false);
+  });
+
+  it("parses a real Open Food Facts product response", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        json: async () => ({
+          status: 1,
+          product: {
+            code: "3017620422003",
+            product_name: "Nutella",
+            brands: "Ferrero",
+            serving_size: "15g",
+            nutriscore_grade: "e",
+            nutriments: {
+              "energy-kcal_serving": 80, "proteins_serving": 0.9,
+              "carbohydrates_serving": 8.6, "fat_serving": 4.6,
+              "sugars_serving": 8.3, "sodium_serving": 0.0159,
+            },
+          },
+        }),
+      };
+    };
+    const r = await call("barcode-lookup", ctxA, { barcode: "3017620422003" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.found, true);
+    assert.equal(r.result.name, "Nutella");
+    assert.equal(r.result.nutrition.calories, 80);
+    assert.equal(r.result.nutrition.sodium_mg, 16);
+    assert.match(capturedUrl, /api\/v2\/product\/3017620422003/);
+  });
+
+  it("returns found:false on status 0", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ status: 0 }) });
+    const r = await call("barcode-lookup", ctxA, { barcode: "000000000000" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.found, false);
+  });
+});
+
+describe("food.recipe-add / recipe-list", () => {
+  it("adds a recipe and lists it scoped per user", () => {
+    const r = call("recipe-add", ctxA, {
+      title: "Veggie chili", slot: "Dinner", calories: 420,
+      ingredients: [{ item: "beans", qty: 2, unit: "can", aisle: "Canned" }],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.recipe.slot, "Dinner");
+    const list = call("recipe-list", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.recipes[0].avgRating, 0);
+    assert.equal(call("recipe-list", ctxB, {}).result.count, 0);
+  });
+
+  it("rejects empty title", () => {
+    assert.equal(call("recipe-add", ctxA, { title: "" }).ok, false);
+  });
+});
+
+describe("food.recipe-photo-*", () => {
+  it("add / list / delete recipe photos with step ordering", () => {
+    const rid = call("recipe-add", ctxA, { title: "Pasta" }).result.recipe.id;
+    const p1 = call("recipe-photo-add", ctxA, { recipeId: rid, dataUrl: "data:image/png;base64,AAA", stepNumber: 2 });
+    assert.equal(p1.ok, true);
+    call("recipe-photo-add", ctxA, { recipeId: rid, dataUrl: "data:image/png;base64,BBB", stepNumber: 1 });
+    const list = call("recipe-photo-list", ctxA, { recipeId: rid });
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.photos[0].stepNumber, 1); // sorted by step
+    const del = call("recipe-photo-delete", ctxA, { id: p1.result.photo.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("recipe-photo-list", ctxA, { recipeId: rid }).result.count, 1);
+  });
+
+  it("rejects photo with no recipeId or dataUrl", () => {
+    assert.equal(call("recipe-photo-add", ctxA, { dataUrl: "data:x" }).ok, false);
+    assert.equal(call("recipe-photo-add", ctxA, { recipeId: "r1" }).ok, false);
+  });
+});
+
+describe("food.recipe-rate + cook history", () => {
+  it("rating is 1-5, one per user, upserts", () => {
+    const rid = call("recipe-add", ctxA, { title: "Curry" }).result.recipe.id;
+    assert.equal(call("recipe-rate", ctxA, { recipeId: rid, rating: 9 }).ok, false);
+    const r1 = call("recipe-rate", ctxA, { recipeId: rid, rating: 4 });
+    assert.equal(r1.ok, true);
+    assert.equal(r1.result.updated, false);
+    const r2 = call("recipe-rate", ctxA, { recipeId: rid, rating: 5 });
+    assert.equal(r2.result.updated, true);
+    assert.equal(call("recipe-list", ctxA, {}).result.recipes[0].avgRating, 5);
+  });
+
+  it("recipe-cooked records cook-it-again history", () => {
+    const rid = call("recipe-add", ctxA, { title: "Soup" }).result.recipe.id;
+    call("recipe-cooked", ctxA, { recipeId: rid, servings: 2 });
+    const second = call("recipe-cooked", ctxA, { recipeId: rid });
+    assert.equal(second.result.cookCount, 2);
+    const hist = call("recipe-cook-history", ctxA, { recipeId: rid });
+    assert.equal(hist.result.count, 2);
+    assert.equal(hist.result.history[0].recipeTitle, "Soup");
+    assert.equal(call("recipe-list", ctxA, {}).result.recipes[0].cookCount, 2);
+  });
+});
+
+describe("food.nutrition-goal + day-summary", () => {
+  it("set / get goal and aggregate a day against it", () => {
+    assert.equal(call("nutrition-goal-get", ctxA, {}).result.goal, null);
+    const set = call("nutrition-goal-set", ctxA, { calories: 2000, protein_g: 150, carbs_g: 200, fat_g: 60 });
+    assert.equal(set.ok, true);
+    assert.equal(call("nutrition-goal-get", ctxA, {}).result.goal.calories, 2000);
+
+    const today = new Date().toISOString().slice(0, 10);
+    call("nutrition-log", ctxA, { dish: "Eggs", calories: 200, macros: { protein_g: 18, carbs_g: 2, fat_g: 14 } });
+    call("nutrition-log", ctxA, { dish: "Rice", calories: 300, macros: { protein_g: 6, carbs_g: 65, fat_g: 1 } });
+    const sum = call("nutrition-day-summary", ctxA, { date: today });
+    assert.equal(sum.ok, true);
+    assert.equal(sum.result.totals.calories, 500);
+    assert.equal(sum.result.totals.protein_g, 24);
+    assert.equal(sum.result.progress.calories.pct, 25);
+    assert.equal(sum.result.progress.calories.remaining, 1500);
+  });
+
+  it("rejects an all-zero goal", () => {
+    assert.equal(call("nutrition-goal-set", ctxA, { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }).ok, false);
+  });
+});
+
+describe("food.meal-plan-auto (pantry-aware)", () => {
+  it("requires recipes and slot coverage", () => {
+    const empty = call("meal-plan-auto", ctxA, { days: 3, mealsPerDay: 3 });
+    assert.equal(empty.ok, false);
+  });
+
+  it("builds a plan favouring pantry-stocked recipes", () => {
+    call("pantry-add", ctxA, { itemName: "chicken", qty: 1, unit: "lb" });
+    call("recipe-add", ctxA, { title: "Oatmeal", slot: "Breakfast", ingredients: [{ item: "oats", qty: 1, unit: "cup" }] });
+    call("recipe-add", ctxA, { title: "Chicken salad", slot: "Lunch", ingredients: [{ item: "chicken", qty: 1, unit: "lb" }] });
+    call("recipe-add", ctxA, { title: "Roast chicken", slot: "Dinner", ingredients: [{ item: "chicken", qty: 1, unit: "lb" }] });
+    const r = call("meal-plan-auto", ctxA, { startDate: "2026-07-01", days: 3, mealsPerDay: 3 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.meals.length, 9);
+    assert.equal(r.result.pantryItemsUsed, 1);
+    assert.ok(Array.isArray(r.result.ingredientsToBuy));
+    // plan persisted into meal-plan-list
+    assert.equal(call("meal-plan-list", ctxA, { startDate: "2026-07-01", days: 3 }).result.meals.length, 9);
+  });
+
+  it("avoidTags excludes matching recipes", () => {
+    call("recipe-add", ctxA, { title: "Beef stew", slot: "Dinner", tags: ["meat"] });
+    call("recipe-add", ctxA, { title: "Lentil stew", slot: "Dinner", tags: ["vegan"] });
+    call("recipe-add", ctxA, { title: "Toast", slot: "Breakfast" });
+    call("recipe-add", ctxA, { title: "Wrap", slot: "Lunch" });
+    const r = call("meal-plan-auto", ctxA, { days: 2, mealsPerDay: 3, avoidTags: ["meat"] });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.meals.every((m) => m.title !== "Beef stew"));
+  });
+});
+
+describe("food.store-layout + shopping-list-grouped", () => {
+  it("store layout set/get and aisle-ordered shopping list", () => {
+    const set = call("store-layout-set", ctxA, { storeName: "Local Mart", aisleOrder: ["Produce", "Dairy", "Canned"] });
+    assert.equal(set.ok, true);
+    assert.equal(call("store-layout-get", ctxA, {}).result.layouts.length, 1);
+
+    const rid = call("recipe-add", ctxA, {
+      title: "Salad", slot: "Lunch",
+      ingredients: [
+        { item: "Lettuce", qty: 1, unit: "head", aisle: "Produce" },
+        { item: "Cheese", qty: 1, unit: "block", aisle: "Dairy" },
+        { item: "Beans", qty: 1, unit: "can", aisle: "Canned" },
+      ],
+    }).result.recipe.id;
+    call("recipe-add", ctxA, { title: "Toast", slot: "Breakfast" });
+    call("recipe-add", ctxA, { title: "Stew", slot: "Dinner" });
+    call("meal-plan-auto", ctxA, { startDate: "2026-08-01", days: 1, mealsPerDay: 3 });
+    void rid;
+    const grouped = call("shopping-list-grouped", ctxA, { startDate: "2026-08-01", days: 1, storeName: "Local Mart" });
+    assert.equal(grouped.ok, true);
+    assert.equal(grouped.result.byAisle[0].aisle, "Produce");
+    assert.equal(grouped.result.totalItems, 3);
+  });
+
+  it("rejects empty aisleOrder", () => {
+    assert.equal(call("store-layout-set", ctxA, { storeName: "X", aisleOrder: [] }).ok, false);
+  });
+});
+
+describe("food.biz-map", () => {
+  it("returns geo markers with directions URLs, filters, distance sort", () => {
+    const a = call("biz-create", ctxA, { name: "Far Diner", cuisine: "diner", lat: 40.0, lng: -74.0 }).result.business.id;
+    const b = call("biz-create", ctxA, { name: "Near Cafe", cuisine: "cafe", lat: 40.71, lng: -74.0 }).result.business.id;
+    call("biz-create", ctxA, { name: "No Geo", cuisine: "thai" }); // no lat/lng
+    const r = call("biz-map", ctxA, { originLat: 40.72, originLng: -74.0 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.withoutGeo, 1);
+    assert.equal(r.result.markers[0].id, b); // nearest first
+    assert.ok(r.result.markers[0].distanceKm < r.result.markers[1].distanceKm);
+    assert.match(r.result.markers[0].directionsUrl, /openstreetmap\.org\/directions/);
+    void a;
+    const filtered = call("biz-map", ctxA, { cuisine: "cafe" });
+    assert.equal(filtered.result.count, 1);
+  });
+});
+
 describe("food.top-restaurants + facets + dashboard", () => {
   it("top-restaurants ranks by Bayesian score", () => {
     const a = call("biz-create", ctxA, { name: "Hyped", cuisine: "thai" }).result.business.id;

@@ -29,17 +29,22 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { LatticeRepos } from '@/components/lattice/LatticeRepos';
+import { TrainingRuns } from '@/components/lattice/TrainingRuns';
+import { RefreshSchedule } from '@/components/lattice/RefreshSchedule';
+import { AuditAndDrift } from '@/components/lattice/AuditAndDrift';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Network, Brain, ShieldCheck, History, Activity,
-  Loader2, RefreshCw, Check, X,
+  Loader2, RefreshCw, Check, X, LineChart, CalendarClock, ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 
-type TabKey = 'overview' | 'consent' | 'brains' | 'refresh' | 'federation';
+type TabKey =
+  | 'overview' | 'consent' | 'brains' | 'refresh' | 'federation'
+  | 'training' | 'schedule' | 'audit';
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
@@ -57,7 +62,10 @@ export default function LatticeLensPage() {
       { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
       { id: 'tab-consent', keys: 'c', description: 'Consent', category: 'navigation', action: () => setActiveTab('consent') },
       { id: 'tab-brains', keys: 'b', description: 'Brains', category: 'navigation', action: () => setActiveTab('brains') },
+      { id: 'tab-training', keys: 't', description: 'Training runs', category: 'navigation', action: () => setActiveTab('training') },
+      { id: 'tab-schedule', keys: 's', description: 'Schedule & A/B', category: 'navigation', action: () => setActiveTab('schedule') },
       { id: 'tab-refresh', keys: 'r', description: 'Refresh', category: 'navigation', action: () => setActiveTab('refresh') },
+      { id: 'tab-audit', keys: 'a', description: 'Audit & drift', category: 'navigation', action: () => setActiveTab('audit') },
       { id: 'tab-federation', keys: 'f', description: 'Federation', category: 'navigation', action: () => setActiveTab('federation') },
     ],
     { lensId: 'lattice' }
@@ -132,7 +140,10 @@ export default function LatticeLensPage() {
     { key: 'overview',   label: 'Overview',   icon: Activity },
     { key: 'consent',    label: 'Consent',    icon: ShieldCheck, count: myCorpus.data?.dtus?.filter(d => d.train_consented).length },
     { key: 'brains',     label: 'Brains',     icon: Brain, count: brainStats.data?.brains ? Object.keys(brainStats.data.brains).length : undefined },
+    { key: 'training',   label: 'Training',   icon: LineChart },
+    { key: 'schedule',   label: 'Schedule',   icon: CalendarClock },
     { key: 'refresh',    label: 'Refresh',    icon: RefreshCw },
+    { key: 'audit',      label: 'Audit',      icon: ScrollText },
     { key: 'federation', label: 'Federation', icon: Network },
   ];
 
@@ -291,6 +302,32 @@ export default function LatticeLensPage() {
                   </ul>
                 </>
               )}
+            </Section>
+          )}
+
+          {activeTab === 'training' && (
+            <Section k="training">
+              <h2 className="mb-3 text-base font-semibold text-fuchsia-200">Training runs &amp; eval</h2>
+              <p className="mb-4 max-w-prose text-xs text-fuchsia-700">
+                Experiment-tracking surface — run history with eval deltas, loss/accuracy curves,
+                per-version model rollback, and a corpus-sample inspector showing the actual rows
+                that fed a run.
+              </p>
+              <TrainingRuns />
+            </Section>
+          )}
+
+          {activeTab === 'schedule' && (
+            <Section k="schedule">
+              <h2 className="mb-3 text-base font-semibold text-fuchsia-200">Refresh schedule &amp; A/B</h2>
+              <RefreshSchedule />
+            </Section>
+          )}
+
+          {activeTab === 'audit' && (
+            <Section k="audit">
+              <h2 className="mb-3 text-base font-semibold text-fuchsia-200">Audit &amp; drift</h2>
+              <AuditAndDrift />
             </Section>
           )}
 

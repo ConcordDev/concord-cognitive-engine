@@ -11,6 +11,11 @@ import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { PoetryDbPanel } from '@/components/poetry/PoetryDbPanel';
 import { PoetryDbSearch } from '@/components/poetry/PoetryDbSearch';
 import { PoetryActionPanel } from '@/components/poetry/PoetryActionPanel';
+import { PoemWorkspace } from '@/components/poetry/PoemWorkspace';
+import { PoetryDiscovery } from '@/components/poetry/PoetryDiscovery';
+import { PoetryWorkshop } from '@/components/poetry/PoetryWorkshop';
+import { PoetryStudio } from '@/components/poetry/PoetryStudio';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -22,7 +27,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Feather, Plus, Search, Edit2, Trash2, BookOpen, X, Save, Sparkles,
   AlignLeft, Globe,
-  Hash, Music, Layers, Moon, Zap,
+  Hash, Music, Layers, Moon, Zap, Compass, Wand2,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -37,7 +42,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
 
-type PoetryTab = 'collection' | 'compose' | 'forms' | 'workshop';
+type PoetryTab = 'collection' | 'compose' | 'discover' | 'studio' | 'forms' | 'workshop';
 type PoemForm = 'free-verse' | 'sonnet' | 'haiku' | 'limerick' | 'villanelle' | 'ballad' | 'ode' | 'elegy' | 'acrostic' | 'other';
 
 interface Poem {
@@ -301,7 +306,11 @@ export default function PoetryPage() {
 
       { id: 'tab-forms', keys: 'f', description: 'Forms', category: 'navigation', action: () => setTab('forms') },
 
-      { id: 'tab-workshop', keys: 'w', description: 'Workshop', category: 'navigation', action: () => setTab('workshop') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+      { id: 'tab-workshop', keys: 'w', description: 'Workshop', category: 'navigation', action: () => setTab('workshop') },
+
+      { id: 'tab-discover', keys: 'd', description: 'Discover', category: 'navigation', action: () => setTab('discover') },
+
+      { id: 'tab-studio', keys: 's', description: 'Studio', category: 'navigation', action: () => setTab('studio') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
 
 
     ],
@@ -395,6 +404,8 @@ export default function PoetryPage() {
   const TABS: { id: PoetryTab; label: string; icon: typeof Feather }[] = [
     { id: 'collection', label: 'Collection', icon: BookOpen },
     { id: 'compose', label: 'Compose', icon: Feather },
+    { id: 'discover', label: 'Discover', icon: Compass },
+    { id: 'studio', label: 'Studio', icon: Wand2 },
     { id: 'forms', label: 'Forms', icon: AlignLeft },
     { id: 'workshop', label: 'Workshop', icon: Globe },
   ];
@@ -665,13 +676,17 @@ export default function PoetryPage() {
           </div>
         )}
 
-        {/* Workshop */}
+        {/* Discover — poem-a-day, themed collections, favorites, reading log */}
+        {tab === 'discover' && <PoetryDiscovery />}
+
+        {/* Studio — form templates + live checking, audio readings, chapbook export */}
+        {tab === 'studio' && <PoetryStudio />}
+
+        {/* Workshop — share poems + line-level peer critique */}
         {tab === 'workshop' && (
-          <div className="text-center py-16 text-gray-500">
-            <Globe className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm mb-2">Poetry Workshop</p>
-            <p className="text-xs text-gray-600">Share poems for critique, participate in collaborative verse, and discover other poets.</p>
-            <div className="mt-4 text-xs text-gray-600">Poetry DTUs: {contextDTUs.length}</div>
+          <div className="space-y-3">
+            <PoetryWorkshop />
+            <p className="text-xs text-gray-600">Poetry DTUs in context: {contextDTUs.length}</p>
           </div>
         )}
       </div>
@@ -679,6 +694,11 @@ export default function PoetryPage() {
       {/* Bespoke PoetryDB search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PoetryDbSearch />
+      </section>
+
+      <section className="mt-6">
+        <LensFeedButton domain="poetry" />
+        <PoemWorkspace />
       </section>
 
       {/* Poetry Foundation + Poets.org-shape workbench: meter / rhyme / form / frequency + actions */}

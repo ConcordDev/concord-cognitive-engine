@@ -6,22 +6,32 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckSquare, Sun, ListTodo, Repeat, Timer, Loader2 } from 'lucide-react';
+import { CheckSquare, Sun, ListTodo, Repeat, Timer, Loader2, Wand2, Bell, Filter, CalendarDays, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ProductivityTodayPanel } from './ProductivityTodayPanel';
 import { ProductivityTasksPanel } from './ProductivityTasksPanel';
 import { ProductivityHabitsPanel } from './ProductivityHabitsPanel';
 import { ProductivityFocusPanel } from './ProductivityFocusPanel';
+import { ProductivityQuickAddPanel } from './ProductivityQuickAddPanel';
+import { ProductivityRemindersPanel } from './ProductivityRemindersPanel';
+import { ProductivityFiltersPanel } from './ProductivityFiltersPanel';
+import { ProductivityCalendarPanel } from './ProductivityCalendarPanel';
+import { ProductivityCollabPanel } from './ProductivityCollabPanel';
 
 interface Dash {
   activeTasks: number; dueToday: number; projects: number; habits: number;
   completedToday: number; focusMinutesToday: number;
 }
-type TabId = 'today' | 'tasks' | 'habits' | 'focus';
+type TabId = 'today' | 'quickadd' | 'tasks' | 'filters' | 'calendar' | 'reminders' | 'collab' | 'habits' | 'focus';
 const TABS: { id: TabId; label: string; icon: typeof Sun }[] = [
   { id: 'today', label: 'Today', icon: Sun },
+  { id: 'quickadd', label: 'Quick add', icon: Wand2 },
   { id: 'tasks', label: 'Tasks', icon: ListTodo },
+  { id: 'filters', label: 'Filters', icon: Filter },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  { id: 'reminders', label: 'Reminders', icon: Bell },
+  { id: 'collab', label: 'Collaborate', icon: Users },
   { id: 'habits', label: 'Habits', icon: Repeat },
   { id: 'focus', label: 'Focus', icon: Timer },
 ];
@@ -76,7 +86,12 @@ export function ProductivityTaskSection() {
 
       <div className="p-4">
         {tab === 'today' && <ProductivityTodayPanel onChange={refreshDash} />}
+        {tab === 'quickadd' && <ProductivityQuickAddPanel onChange={refreshDash} />}
         {tab === 'tasks' && <ProductivityTasksPanel onChange={refreshDash} />}
+        {tab === 'filters' && <ProductivityFiltersPanel onChange={refreshDash} />}
+        {tab === 'calendar' && <ProductivityCalendarPanel onChange={refreshDash} />}
+        {tab === 'reminders' && <ProductivityRemindersPanel onChange={refreshDash} />}
+        {tab === 'collab' && <ProductivityCollabPanel onChange={refreshDash} />}
         {tab === 'habits' && <ProductivityHabitsPanel onChange={refreshDash} />}
         {tab === 'focus' && <ProductivityFocusPanel onChange={refreshDash} />}
       </div>

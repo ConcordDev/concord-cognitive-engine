@@ -13,6 +13,7 @@ import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubMedPanel } from '@/components/research/PubMedPanel';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { NeuroActionPanel } from '@/components/neuro/NeuroActionPanel';
+import { EegWorkbench } from '@/components/neuro/EegWorkbench';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -387,6 +388,13 @@ export default function NeuroLensPage() {
         <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="neuro" /></div>}
       </div>
+      {/* EEGLAB / MNE-Python parity — real EEG/MEG analysis workbench.
+          Every value rendered comes from a neuro-domain macro running on
+          a user-imported recording (no synthetic data). */}
+      <section className="mt-6">
+        <EegWorkbench />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <NeuroFeed />
       </section>

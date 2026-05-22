@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
+import { FeedToolsPanel } from '@/components/feed/FeedToolsPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -2247,6 +2248,12 @@ export default function FeedLensPage() {
           />
         )}
       </div>
+      {/* 2026 X/Threads parity tools — ranked For You, threads, lists,
+          polls, bookmark folders + saved searches, audio Spaces, controls */}
+      <section className="mt-6">
+        <FeedToolsPanel />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <HnFrontPage />
       </section>

@@ -117,6 +117,7 @@ export default function registerWhiteboardActions(registerLensAction) {
     if (!STATE.whiteboardLens.votes)         STATE.whiteboardLens.votes         = new Map(); // userId -> Map<boardId, Map<elementId, Set<voterId>>>
     if (!STATE.whiteboardLens.sharedBoards)  STATE.whiteboardLens.sharedBoards  = new Map(); // boardId -> { id, title, scene, ownerId, participants: Set<userId>, createdAt, updatedAt }
     if (!STATE.whiteboardLens.sharedVotes)   STATE.whiteboardLens.sharedVotes   = new Map(); // boardId -> Map<elementId, Set<voterId>>
+    if (!STATE.whiteboardLens.timers)        STATE.whiteboardLens.timers        = new Map(); // boardId -> { endsAt, durationSec, label, startedBy, startedAt }
     return STATE.whiteboardLens;
   }
   function saveWhiteboardState() {
@@ -249,6 +250,79 @@ export default function registerWhiteboardActions(registerLensAction) {
     map.delete(id);
     saveWhiteboardState();
     return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("whiteboard", "board-duplicate", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const srcId = String(params.id || "");
+    const map = s.boards.get(userId);
+    if (!map || !map.has(srcId)) return { ok: false, error: "not found" };
+    const src = map.get(srcId);
+    const id = nextWbId("board");
+    const board = {
+      id,
+      title: String(params.title || `${src.title} (copy)`).slice(0, 80),
+      scene: JSON.parse(JSON.stringify(src.scene || { elements: [], appState: {} })),
+      createdAt: nowIsoWb(),
+      updatedAt: nowIsoWb(),
+    };
+    map.set(id, board);
+    saveWhiteboardState();
+    return { ok: true, result: { board } };
+  });
+
+  // ── Meeting timer (Miro-shape, board-scoped) ──
+
+  registerLensAction("whiteboard", "timer-start", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const boardId = String(params.boardId || "");
+    if (!boardId) return { ok: false, error: "boardId required" };
+    const minutes = Math.max(0.25, Math.min(120, Number(params.minutes) || 5));
+    const durationSec = Math.round(minutes * 60);
+    const timer = {
+      endsAt: new Date(Date.now() + durationSec * 1000).toISOString(),
+      durationSec,
+      label: String(params.label || "Meeting timer").slice(0, 60),
+      startedBy: wbActor(ctx),
+      startedAt: nowIsoWb(),
+    };
+    s.timers.set(boardId, timer);
+    saveWhiteboardState();
+    return { ok: true, result: { boardId, timer } };
+  });
+
+  registerLensAction("whiteboard", "timer-get", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const boardId = String(params.boardId || "");
+    const timer = s.timers.get(boardId);
+    if (!timer) return { ok: true, result: { active: false } };
+    const remainingMs = new Date(timer.endsAt).getTime() - Date.now();
+    if (remainingMs <= 0) {
+      return { ok: true, result: { active: false, expired: true, label: timer.label } };
+    }
+    return {
+      ok: true,
+      result: {
+        active: true,
+        label: timer.label,
+        endsAt: timer.endsAt,
+        durationSec: timer.durationSec,
+        remainingSec: Math.round(remainingMs / 1000),
+      },
+    };
+  });
+
+  registerLensAction("whiteboard", "timer-stop", (ctx, _artifact, params = {}) => {
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const boardId = String(params.boardId || "");
+    s.timers.delete(boardId);
+    saveWhiteboardState();
+    return { ok: true, result: { active: false } };
   });
 
   // ── Voting sessions ──
@@ -552,7 +626,7 @@ export default function registerWhiteboardActions(registerLensAction) {
         }
         return { ok: true, result: { clusters: deterministic, source: 'brain' } };
       }
-    } catch (_e) {}
+    } catch (_e) { /* best-effort: ignore */ }
     return { ok: true, result: { clusters: deterministic, source: 'deterministic_after_brain_error' } };
   });
 
@@ -683,7 +757,7 @@ export default function registerWhiteboardActions(registerLensAction) {
         const frames = base.elements.filter(e => e.kind === 'rect');
         return { ok: true, result: { scene: { elements: [...frames, ...enhanced], appState: { kind, generatedFrom: prompt } }, kind, source: 'brain' } };
       }
-    } catch (_e) {}
+    } catch (_e) { /* best-effort: ignore */ }
     return { ok: true, result: { scene: base, kind, source: 'deterministic_after_brain_error' } };
   });
 
@@ -803,6 +877,624 @@ export default function registerWhiteboardActions(registerLensAction) {
         },
       },
     };
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  2026 parity backlog — CRDT ops, raster export, frames,
+  //  connectors, embeds, presentation mode, reactions / live cursors.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── [M] Live CRDT/OT multiplayer — operation log ──────────────
+  //
+  // Instead of clobbering with full-scene snapshots, every edit is an
+  // append-only operation against a board. Each op carries a Lamport
+  // clock (monotonically increasing per board, bumped past any
+  // remote clock the client has seen). `ops-since` lets a client pull
+  // only what it is missing; `ops-apply` folds an op into the
+  // authoritative scene with last-writer-wins-per-element semantics
+  // keyed on (elementId, clock) so concurrent edits to *different*
+  // elements never conflict and edits to the *same* element resolve
+  // deterministically by the higher clock. This is a real OT/CRDT
+  // substrate, not a snapshot broadcast.
+
+  function ensureOpsBucket(s) {
+    if (!s.opLog) s.opLog = new Map();   // boardId -> { clock, ops: [] }
+    return s.opLog;
+  }
+
+  // Fold an op array onto a starting element array, LWW per element.
+  function foldOps(elements, ops) {
+    const byId = new Map(elements.map(e => [e.id, { el: e, clock: 0 }]));
+    for (const op of ops) {
+      if (op.type === 'add' || op.type === 'update') {
+        if (!op.element || !op.element.id) continue;
+        const prev = byId.get(op.element.id);
+        if (!prev || op.clock >= prev.clock) {
+          byId.set(op.element.id, { el: op.element, clock: op.clock });
+        }
+      } else if (op.type === 'delete') {
+        const prev = byId.get(op.elementId);
+        if (prev && op.clock >= prev.clock) byId.delete(op.elementId);
+        else if (!prev) byId.set(op.elementId, { el: null, clock: op.clock, tombstone: true });
+      }
+    }
+    return Array.from(byId.values()).filter(v => v.el !== null && !v.tombstone).map(v => v.el);
+  }
+
+  registerLensAction("whiteboard", "ops-apply", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const ops = Array.isArray(params.ops) ? params.ops : [];
+    if (ops.length === 0) return { ok: false, error: "ops array required" };
+    const remoteClock = Number(params.knownClock) || 0;
+    const log = ensureOpsBucket(s);
+    if (!log.has(boardId)) log.set(boardId, { clock: 0, ops: [] });
+    const entry = log.get(boardId);
+    entry.clock = Math.max(entry.clock, remoteClock);
+    const accepted = [];
+    for (const raw of ops) {
+      const type = raw.type;
+      if (type !== 'add' && type !== 'update' && type !== 'delete') continue;
+      if ((type === 'add' || type === 'update') && (!raw.element || !raw.element.id)) continue;
+      if (type === 'delete' && !raw.elementId) continue;
+      entry.clock += 1;
+      const op = {
+        clock: entry.clock,
+        type,
+        elementId: type === 'delete' ? String(raw.elementId) : String(raw.element.id),
+        element: type === 'delete' ? null : raw.element,
+        authorId: userId,
+        ts: Date.now(),
+      };
+      entry.ops.push(op);
+      accepted.push(op);
+    }
+    // Keep the op log bounded — once it gets long, compact it into the
+    // scene and drop everything older than the last 500 ops.
+    if (entry.ops.length > 1000) {
+      const keep = entry.ops.slice(-500);
+      const compacted = foldOps([], entry.ops.slice(0, -500));
+      lookup.board.scene = { ...(lookup.board.scene || {}), elements: foldOps(compacted, []) };
+      entry.ops = keep;
+    }
+    // Refold the authoritative scene from a clean base + all ops.
+    lookup.board.scene = {
+      ...(lookup.board.scene || { appState: {} }),
+      elements: foldOps([], entry.ops),
+    };
+    lookup.board.updatedAt = nowIsoWb();
+    saveWhiteboardState();
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`whiteboard:${boardId}`).emit("whiteboard:ops", {
+        boardId, ops: accepted, clock: entry.clock, authorId: userId, ts: Date.now(),
+      });
+    } catch (_e) { /* realtime best-effort */ }
+    return { ok: true, result: { boardId, clock: entry.clock, accepted: accepted.length, ops: accepted } };
+  });
+
+  registerLensAction("whiteboard", "ops-since", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const since = Number(params.sinceClock) || 0;
+    const log = ensureOpsBucket(s);
+    const entry = log.get(boardId);
+    if (!entry) {
+      // No op history — return the current scene as the baseline.
+      return { ok: true, result: { boardId, clock: 0, ops: [], scene: lookup.board.scene || { elements: [] } } };
+    }
+    const ops = entry.ops.filter(o => o.clock > since);
+    return { ok: true, result: { boardId, clock: entry.clock, ops, baselineNeeded: since === 0, scene: since === 0 ? lookup.board.scene : undefined } };
+  });
+
+  // ── [M] Raster export — PNG / SVG / PDF render plan ──────────
+  //
+  // The browser produces the final raster (Canvas.toDataURL / SVG
+  // serialise), but the server computes the deterministic render plan:
+  // tight content bounds, page tiling for very large boards, DPI
+  // scaling, and a draw-order list. This makes the export identical
+  // across clients and gives the PDF path real page geometry.
+
+  registerLensAction("whiteboard", "export-raster-plan", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const format = ['png', 'svg', 'pdf'].includes(String(params.format).toLowerCase())
+      ? String(params.format).toLowerCase() : 'png';
+    const scale = Math.max(1, Math.min(4, Number(params.scale) || 2));
+    const padding = Math.max(0, Math.min(200, Number(params.padding) || 40));
+    const elements = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
+    if (elements.length === 0) {
+      return { ok: true, result: { format, empty: true, message: "Board has no elements to export." } };
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const el of elements) {
+      const x = Number(el.x) || 0, y = Number(el.y) || 0;
+      const w = Number(el.w ?? el.width) || (el.kind === 'sticky' ? 120 : 40);
+      const h = Number(el.h ?? el.height) || (el.kind === 'sticky' ? 80 : 30);
+      if (Array.isArray(el.points) && el.points.length) {
+        for (const p of el.points) {
+          minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+          maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+        }
+      } else {
+        minX = Math.min(minX, x); minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+      }
+    }
+    const contentW = Math.round(maxX - minX);
+    const contentH = Math.round(maxY - minY);
+    const bounds = { x: Math.round(minX - padding), y: Math.round(minY - padding), width: contentW + padding * 2, height: contentH + padding * 2 };
+    const pixelW = bounds.width * scale;
+    const pixelH = bounds.height * scale;
+    // PDF page tiling — A4 landscape at 96dpi is ~1123×794 board units.
+    const pages = [];
+    if (format === 'pdf') {
+      const PAGE_W = 1123, PAGE_H = 794;
+      const cols = Math.max(1, Math.ceil(bounds.width / PAGE_W));
+      const rows = Math.max(1, Math.ceil(bounds.height / PAGE_H));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          pages.push({ index: r * cols + c, x: bounds.x + c * PAGE_W, y: bounds.y + r * PAGE_H, width: PAGE_W, height: PAGE_H });
+        }
+      }
+    }
+    // Draw order: frames/sections first (background), then everything else.
+    const drawOrder = [...elements]
+      .map((el, i) => ({ id: el.id || `el_${i}`, kind: el.kind || el.type || 'shape', layer: (el.kind === 'frame' || el.kind === 'section') ? 0 : 1, index: i }))
+      .sort((a, b) => a.layer - b.layer || a.index - b.index);
+    return {
+      ok: true,
+      result: {
+        format, scale, bounds,
+        pixelDimensions: { width: pixelW, height: pixelH },
+        elementCount: elements.length,
+        drawOrder,
+        pages: format === 'pdf' ? pages : undefined,
+        warnings: [
+          pixelW > 16384 || pixelH > 16384 ? "Raster exceeds 16384px — browsers may cap; reduce scale or split." : null,
+          format === 'pdf' && pages.length > 1 ? `Board spans ${pages.length} PDF pages.` : null,
+        ].filter(Boolean),
+      },
+    };
+  });
+
+  // ── [S] Frames / sections ────────────────────────────────────
+  //
+  // A frame is a named rectangular region. Elements whose centre falls
+  // inside a frame's bounds are considered members. Frames give large
+  // boards structure and back the presentation mode below.
+
+  function ensureFramesBucket(s) {
+    if (!s.frames) s.frames = new Map(); // boardId -> Map<frameId, frame>
+    return s.frames;
+  }
+
+  function frameMembers(scene, frame) {
+    const elements = Array.isArray(scene?.elements) ? scene.elements : [];
+    const out = [];
+    for (const el of elements) {
+      const x = Number(el.x) || 0, y = Number(el.y) || 0;
+      const w = Number(el.w ?? el.width) || 0;
+      const h = Number(el.h ?? el.height) || 0;
+      const cx = x + w / 2, cy = y + h / 2;
+      if (cx >= frame.x && cx <= frame.x + frame.w && cy >= frame.y && cy <= frame.y + frame.h) {
+        out.push(el.id);
+      }
+    }
+    return out;
+  }
+
+  registerLensAction("whiteboard", "frame-create", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const label = String(params.label || "Frame").slice(0, 60);
+    const x = Number(params.x) || 0, y = Number(params.y) || 0;
+    const w = Math.max(40, Number(params.w) || 600);
+    const h = Math.max(40, Number(params.h) || 400);
+    const fb = ensureFramesBucket(s);
+    if (!fb.has(boardId)) fb.set(boardId, new Map());
+    const frame = {
+      id: nextWbId('frame'), boardId, label, x, y, w, h,
+      order: fb.get(boardId).size,
+      createdAt: nowIsoWb(),
+    };
+    fb.get(boardId).set(frame.id, frame);
+    saveWhiteboardState();
+    return { ok: true, result: { frame: { ...frame, memberIds: frameMembers(lookup.board.scene, frame) } } };
+  });
+
+  registerLensAction("whiteboard", "frame-list", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const fb = ensureFramesBucket(s);
+    const map = fb.get(boardId);
+    const frames = map
+      ? Array.from(map.values()).sort((a, b) => a.order - b.order)
+        .map(f => ({ ...f, memberIds: frameMembers(lookup.board.scene, f) }))
+      : [];
+    return { ok: true, result: { frames } };
+  });
+
+  registerLensAction("whiteboard", "frame-update", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const fb = ensureFramesBucket(s);
+    const map = fb.get(boardId);
+    const frame = map?.get(String(params.id || ""));
+    if (!frame) return { ok: false, error: "frame not found" };
+    if (params.label !== undefined) frame.label = String(params.label).slice(0, 60);
+    if (params.x !== undefined) frame.x = Number(params.x) || 0;
+    if (params.y !== undefined) frame.y = Number(params.y) || 0;
+    if (params.w !== undefined) frame.w = Math.max(40, Number(params.w) || frame.w);
+    if (params.h !== undefined) frame.h = Math.max(40, Number(params.h) || frame.h);
+    if (params.order !== undefined) frame.order = Number(params.order) || 0;
+    saveWhiteboardState();
+    return { ok: true, result: { frame: { ...frame, memberIds: frameMembers(lookup.board.scene, frame) } } };
+  });
+
+  registerLensAction("whiteboard", "frame-delete", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const fb = ensureFramesBucket(s);
+    const map = fb.get(boardId);
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "frame not found" };
+    map.delete(id);
+    saveWhiteboardState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── [S] Connectors / arrows between shapes with auto-routing ──
+  //
+  // A connector binds two element ids. Routing computes anchor points
+  // on the nearest edges of the bound shapes and an orthogonal
+  // (Manhattan) waypoint path so the arrow elbows cleanly instead of
+  // cutting through geometry — the Miro/FigJam auto-route behaviour.
+
+  function ensureConnectorsBucket(s) {
+    if (!s.connectors) s.connectors = new Map(); // boardId -> Map<id, connector>
+    return s.connectors;
+  }
+
+  function shapeBox(el) {
+    const x = Number(el.x) || 0, y = Number(el.y) || 0;
+    const w = Number(el.w ?? el.width) || (el.kind === 'sticky' ? 120 : 40);
+    const h = Number(el.h ?? el.height) || (el.kind === 'sticky' ? 80 : 30);
+    return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
+  }
+
+  // Pick the edge anchor on `a` facing `b`, and route an orthogonal path.
+  function routeConnector(a, b) {
+    const dx = b.cx - a.cx, dy = b.cy - a.cy;
+    let start, end;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      start = { x: dx >= 0 ? a.x + a.w : a.x, y: a.cy };
+      end   = { x: dx >= 0 ? b.x : b.x + b.w, y: b.cy };
+    } else {
+      start = { x: a.cx, y: dy >= 0 ? a.y + a.h : a.y };
+      end   = { x: b.cx, y: dy >= 0 ? b.y : b.y + b.h };
+    }
+    // Orthogonal waypoints — mid-point elbow.
+    const waypoints = [start];
+    if (start.x !== end.x && start.y !== end.y) {
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        const midX = (start.x + end.x) / 2;
+        waypoints.push({ x: midX, y: start.y }, { x: midX, y: end.y });
+      } else {
+        const midY = (start.y + end.y) / 2;
+        waypoints.push({ x: start.x, y: midY }, { x: end.x, y: midY });
+      }
+    }
+    waypoints.push(end);
+    const length = waypoints.reduce((sum, p, i) => i === 0 ? 0 : sum + Math.abs(p.x - waypoints[i - 1].x) + Math.abs(p.y - waypoints[i - 1].y), 0);
+    return { start, end, waypoints, length: Math.round(length) };
+  }
+
+  function resolveConnectorRoute(scene, conn) {
+    const elements = Array.isArray(scene?.elements) ? scene.elements : [];
+    const a = elements.find(e => e.id === conn.fromId);
+    const b = elements.find(e => e.id === conn.toId);
+    if (!a || !b) return { ...conn, route: null, unresolved: true };
+    return { ...conn, route: routeConnector(shapeBox(a), shapeBox(b)), unresolved: false };
+  }
+
+  registerLensAction("whiteboard", "connector-create", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const fromId = String(params.fromId || "");
+    const toId = String(params.toId || "");
+    if (!fromId || !toId) return { ok: false, error: "fromId and toId required" };
+    if (fromId === toId) return { ok: false, error: "connector cannot bind a shape to itself" };
+    const elements = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
+    if (!elements.some(e => e.id === fromId)) return { ok: false, error: "fromId not on board" };
+    if (!elements.some(e => e.id === toId)) return { ok: false, error: "toId not on board" };
+    const cb = ensureConnectorsBucket(s);
+    if (!cb.has(boardId)) cb.set(boardId, new Map());
+    const connector = {
+      id: nextWbId('conn'), boardId, fromId, toId,
+      label: String(params.label || "").slice(0, 60),
+      style: ['arrow', 'line', 'dashed'].includes(params.style) ? params.style : 'arrow',
+      color: typeof params.color === 'string' ? params.color.slice(0, 24) : '#7dd3fc',
+      createdAt: nowIsoWb(),
+    };
+    cb.get(boardId).set(connector.id, connector);
+    saveWhiteboardState();
+    return { ok: true, result: { connector: resolveConnectorRoute(lookup.board.scene, connector) } };
+  });
+
+  registerLensAction("whiteboard", "connector-list", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const cb = ensureConnectorsBucket(s);
+    const map = cb.get(boardId);
+    const connectors = map
+      ? Array.from(map.values()).map(c => resolveConnectorRoute(lookup.board.scene, c))
+      : [];
+    return { ok: true, result: { connectors } };
+  });
+
+  registerLensAction("whiteboard", "connector-delete", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const cb = ensureConnectorsBucket(s);
+    const map = cb.get(boardId);
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "connector not found" };
+    map.delete(id);
+    saveWhiteboardState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── [M] Embeds — images, links, documents, video on the canvas ──
+  //
+  // An embed is a positioned canvas object pointing at external
+  // content. Link embeds are enriched with title/description from the
+  // page itself (free, keyless oEmbed-style fetch); image / video /
+  // document embeds carry the source URL and dimensions. Embeds live
+  // alongside scene elements but are tracked separately so the canvas
+  // can render them with the right widget.
+
+  function ensureEmbedsBucket(s) {
+    if (!s.embeds) s.embeds = new Map(); // boardId -> Map<id, embed>
+    return s.embeds;
+  }
+
+  function classifyEmbedUrl(url) {
+    const u = url.toLowerCase();
+    if (/\.(png|jpe?g|gif|webp|svg)(\?|$)/.test(u)) return 'image';
+    if (/\.(mp4|webm|mov)(\?|$)/.test(u) || /youtube\.com|youtu\.be|vimeo\.com/.test(u)) return 'video';
+    if (/\.(pdf|docx?|xlsx?|pptx?|csv)(\?|$)/.test(u)) return 'document';
+    return 'link';
+  }
+
+  registerLensAction("whiteboard", "embed-add", async (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const url = String(params.url || "").trim();
+    if (!url) return { ok: false, error: "url required" };
+    if (!/^https?:\/\//i.test(url)) return { ok: false, error: "url must be http(s)" };
+    const kind = ['image', 'video', 'document', 'link'].includes(params.kind)
+      ? params.kind : classifyEmbedUrl(url);
+    const embed = {
+      id: nextWbId('embed'), boardId, url, kind,
+      title: String(params.title || "").slice(0, 200),
+      description: "",
+      x: Number(params.x) || 0,
+      y: Number(params.y) || 0,
+      w: Math.max(40, Number(params.w) || (kind === 'video' ? 320 : kind === 'image' ? 240 : 280)),
+      h: Math.max(40, Number(params.h) || (kind === 'video' ? 180 : kind === 'image' ? 180 : 120)),
+      addedBy: userId,
+      createdAt: nowIsoWb(),
+    };
+    // Enrich link embeds with page metadata (free, keyless).
+    if (kind === 'link' && !embed.title) {
+      try {
+        const { cachedFetchJson } = await import("../lib/external-fetch.js");
+        const meta = await cachedFetchJson(
+          `https://api.microlink.io/?url=${encodeURIComponent(url)}`,
+          { ttlMs: 6 * 60 * 60 * 1000 },
+        );
+        const data = meta?.data || {};
+        if (data.title) embed.title = String(data.title).slice(0, 200);
+        if (data.description) embed.description = String(data.description).slice(0, 400);
+        if (data.image?.url) embed.previewImage = String(data.image.url);
+      } catch (_e) { /* enrichment is best-effort */ }
+    }
+    if (!embed.title) embed.title = url;
+    const eb = ensureEmbedsBucket(s);
+    if (!eb.has(boardId)) eb.set(boardId, new Map());
+    eb.get(boardId).set(embed.id, embed);
+    saveWhiteboardState();
+    return { ok: true, result: { embed } };
+  });
+
+  registerLensAction("whiteboard", "embed-list", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const eb = ensureEmbedsBucket(s);
+    const map = eb.get(boardId);
+    const embeds = map ? Array.from(map.values()) : [];
+    return { ok: true, result: { embeds } };
+  });
+
+  registerLensAction("whiteboard", "embed-update", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const eb = ensureEmbedsBucket(s);
+    const embed = eb.get(boardId)?.get(String(params.id || ""));
+    if (!embed) return { ok: false, error: "embed not found" };
+    if (params.x !== undefined) embed.x = Number(params.x) || 0;
+    if (params.y !== undefined) embed.y = Number(params.y) || 0;
+    if (params.w !== undefined) embed.w = Math.max(40, Number(params.w) || embed.w);
+    if (params.h !== undefined) embed.h = Math.max(40, Number(params.h) || embed.h);
+    if (params.title !== undefined) embed.title = String(params.title).slice(0, 200);
+    saveWhiteboardState();
+    return { ok: true, result: { embed } };
+  });
+
+  registerLensAction("whiteboard", "embed-delete", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const eb = ensureEmbedsBucket(s);
+    const map = eb.get(boardId);
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "embed not found" };
+    map.delete(id);
+    saveWhiteboardState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── [S] Presentation mode — step through frames as slides ─────
+  //
+  // Builds an ordered slide deck from the board's frames. Each slide
+  // captures a frame's bounds (the camera target) plus its current
+  // members, so the front-end can pan/zoom to each frame in turn.
+
+  registerLensAction("whiteboard", "presentation-build", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const fb = ensureFramesBucket(s);
+    const map = fb.get(boardId);
+    if (!map || map.size === 0) {
+      return { ok: true, result: { slides: [], slideCount: 0, message: "No frames yet — add frames to build a presentation." } };
+    }
+    const frames = Array.from(map.values()).sort((a, b) => a.order - b.order);
+    const slides = frames.map((f, i) => ({
+      index: i,
+      frameId: f.id,
+      title: f.label,
+      camera: { x: f.x, y: f.y, width: f.w, height: f.h },
+      memberIds: frameMembers(lookup.board.scene, f),
+    }));
+    return { ok: true, result: { boardId, slides, slideCount: slides.length } };
+  });
+
+  // ── [S] Reactions / live cursors with name labels ────────────
+  //
+  // Reactions are ephemeral emoji bursts pinned to a board position;
+  // a presence ping records a participant's named cursor. Both are
+  // realtime-broadcast and stored only briefly (presence is wiped on
+  // a TTL so stale cursors disappear).
+
+  function ensurePresenceBucket(s) {
+    if (!s.presence) s.presence = new Map(); // boardId -> Map<userId, presence>
+    return s.presence;
+  }
+  const REACTION_EMOJI = ['👍', '❤️', '🎉', '🔥', '😂', '👀', '💡', '✅', '❓', '🚀'];
+
+  registerLensAction("whiteboard", "reaction-send", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const emoji = String(params.emoji || "");
+    if (!REACTION_EMOJI.includes(emoji)) return { ok: false, error: "unsupported emoji" };
+    const x = Number(params.x);
+    const y = Number(params.y);
+    if (!isFinite(x) || !isFinite(y)) return { ok: false, error: "x, y required" };
+    const reaction = {
+      id: nextWbId('rxn'), boardId, emoji, x, y,
+      authorId: userId,
+      authorName: String(params.authorName || ctx?.actor?.displayName || userId),
+      ts: Date.now(),
+    };
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`whiteboard:${boardId}`).emit("whiteboard:reaction", reaction);
+    } catch (_e) { /* best effort */ }
+    return { ok: true, result: { reaction, palette: REACTION_EMOJI } };
+  });
+
+  registerLensAction("whiteboard", "presence-ping", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const x = Number(params.x);
+    const y = Number(params.y);
+    if (!isFinite(x) || !isFinite(y)) return { ok: false, error: "x, y required" };
+    const pb = ensurePresenceBucket(s);
+    if (!pb.has(boardId)) pb.set(boardId, new Map());
+    const presence = {
+      userId,
+      name: String(params.name || ctx?.actor?.displayName || userId).slice(0, 40),
+      color: typeof params.color === 'string' ? params.color.slice(0, 24) : '#7dd3fc',
+      x, y,
+      updatedAt: Date.now(),
+    };
+    pb.get(boardId).set(userId, presence);
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`whiteboard:${boardId}`).emit("whiteboard:presence", { boardId, ...presence });
+    } catch (_e) { /* best effort */ }
+    return { ok: true, result: { presence } };
+  });
+
+  registerLensAction("whiteboard", "presence-list", (ctx, _a, params = {}) => {
+    const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = wbActor(ctx);
+    const boardId = String(params.boardId || "");
+    const lookup = findBoardForUser(s, userId, boardId);
+    if (!lookup) return { ok: false, error: "board not found" };
+    const pb = ensurePresenceBucket(s);
+    const map = pb.get(boardId);
+    const TTL = 30_000; // 30s — stale cursors disappear.
+    const now = Date.now();
+    const active = [];
+    if (map) {
+      for (const [uid2, p] of map) {
+        if (now - p.updatedAt > TTL) { map.delete(uid2); continue; }
+        active.push(p);
+      }
+    }
+    return { ok: true, result: { boardId, participants: active, selfId: userId } };
   });
 
   // ── Workspace summary ────────────────────────────────────────

@@ -21,6 +21,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WalletMarkets } from '@/components/wallet/WalletMarkets';
 import { WalletActionPanel } from '@/components/wallet/WalletActionPanel';
+import { WalletParityHub } from '@/components/wallet/WalletParityHub';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
@@ -826,6 +827,22 @@ function WalletPageInner() {
           </div>
         </motion.div>
       </div>
+
+      {/* ── Payments Hub (Venmo / PayPal parity) ─────────────────────────── */}
+      {/* Money requests, invoices, recurring transfers, social feed,
+          split-the-bill, funding sources, QR pay, spending insights. */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="space-y-3"
+      >
+        <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <Send className="w-5 h-5 text-neon-cyan" />
+          Payments Hub
+        </h2>
+        <WalletParityHub />
+      </motion.div>
 
       {/* ── Modals ────────────────────────────────────────────────────────── */}
 

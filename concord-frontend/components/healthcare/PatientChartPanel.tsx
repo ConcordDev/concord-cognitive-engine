@@ -57,6 +57,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   const [labDraft, setLabDraft] = useState({ test: 'glucose', value: '' });
   const [showLabForm, setShowLabForm] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only patientId should retrigger
   useEffect(() => { refresh(); }, [patientId]);
 
   async function refresh() {

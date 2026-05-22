@@ -5,8 +5,8 @@
  * custom fields, attachments, threaded comments and activity history.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2, X, Trash2, Plus, Link2, Paperclip, MessageSquare, History, GitBranch } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Loader2, X, Trash2, Link2, Paperclip, MessageSquare, History, GitBranch, Upload, FileDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +28,10 @@ interface Detail {
   subtasks: { id: string; ref: string; title: string; status: string }[];
   subtaskProgress: number | null;
   relations: { id: string; kind: string; task: { id: string; ref: string; title: string } | null }[];
-  attachments: { id: string; name: string; url: string }[];
+  attachments: {
+    id: string; name: string; url?: string; kind?: string;
+    fileName?: string; mimeType?: string; bytes?: number;
+  }[];
   comments: { id: string; body: string; author: string; parentCommentId: string | null; mentions: string[]; createdAt: string }[];
   activity: { id: string; action: string; detail: string | null; at: string }[];
 }
@@ -52,6 +55,9 @@ export function PjTaskDetail({
   const [comment, setComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [att, setAtt] = useState({ name: '', url: '' });
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [rel, setRel] = useState({ toTaskId: '', kind: 'blocks' });
   const [subtaskTitle, setSubtaskTitle] = useState('');
 
@@ -96,6 +102,45 @@ export function PjTaskDetail({
     await refresh();
   };
 
+  // Read the selected file as base64 and upload it as a binary attachment.
+  const uploadFile = async (file: File) => {
+    setUploadError(null);
+    if (file.size > 5 * 1024 * 1024) { setUploadError('File exceeds the 5 MB limit.'); return; }
+    setUploading(true);
+    try {
+      const data: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('read failed'));
+        reader.readAsDataURL(file);
+      });
+      const r = await lensRun('projects', 'attachment-upload', {
+        taskId, fileName: file.name,
+        mimeType: file.type || 'application/octet-stream', data,
+      });
+      if (r.data?.ok === false) setUploadError(r.data?.error || 'Upload failed.');
+      else await refresh();
+    } catch {
+      setUploadError('Could not read the file.');
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Fetch a binary attachment and trigger a browser download.
+  const downloadAttachment = async (id: string, fileName: string) => {
+    const r = await lensRun<{ data: string; mimeType: string; fileName: string }>(
+      'projects', 'attachment-download', { id });
+    const res = r.data?.result;
+    if (!r.data?.ok || !res) return;
+    const link = document.createElement('a');
+    link.href = `data:${res.mimeType};base64,${res.data}`;
+    link.download = res.fileName || fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
   const addComment = async () => {
     if (!comment.trim()) return;
     await lensRun('projects', 'task-comment-add', { taskId, body: comment.trim(), parentCommentId: replyTo || undefined });
@@ -113,7 +158,6 @@ export function PjTaskDetail({
   }
 
   const t = detail.task;
-  const labelColor = (name: string) => labels.find((l) => l.name === name)?.color || 'zinc';
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto p-4">
@@ -281,19 +325,45 @@ export function PjTaskDetail({
             <ul className="space-y-1 mb-1.5">
               {detail.attachments.map((a) => (
                 <li key={a.id} className="flex items-center gap-2 text-[11px]">
-                  <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-indigo-400 hover:underline">{a.name}</a>
+                  {a.kind === 'binary' ? (
+                    <>
+                      <FileDown className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <button type="button" onClick={() => downloadAttachment(a.id, a.fileName || a.name)}
+                        className="flex-1 truncate text-emerald-400 hover:underline text-left">{a.name}</button>
+                      <span className="text-[9px] text-zinc-600">{fmtBytes(a.bytes || 0)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="w-3 h-3 text-indigo-400 shrink-0" />
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-indigo-400 hover:underline">{a.name}</a>
+                    </>
+                  )}
                   <button type="button" onClick={() => lensRun('projects', 'attachment-delete', { id: a.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               ))}
+              {detail.attachments.length === 0 && (
+                <li className="text-[10px] text-zinc-600 italic">No attachments yet.</li>
+              )}
             </ul>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-1.5">
               <input placeholder="Name" value={att.name} onChange={(e) => setAtt({ ...att, name: e.target.value })}
                 className="w-28 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
-              <input placeholder="https://…" value={att.url} onChange={(e) => setAtt({ ...att, url: e.target.value })}
+              <input placeholder="https://… link" value={att.url} onChange={(e) => setAtt({ ...att, url: e.target.value })}
                 className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
-              <button type="button" onClick={addAttachment} className="text-[11px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200">Add</button>
+              <button type="button" onClick={addAttachment} className="text-[11px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200">Add link</button>
             </div>
+            <div className="flex items-center gap-2">
+              <input ref={fileInputRef} type="file" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadFile(f); }} />
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                className="flex items-center gap-1 text-[11px] px-2 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 rounded text-white">
+                {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                {uploading ? 'Uploading…' : 'Upload file'}
+              </button>
+              <span className="text-[9px] text-zinc-600">Binary files up to 5 MB</span>
+            </div>
+            {uploadError && <p className="text-[10px] text-rose-400 mt-1">{uploadError}</p>}
           </Section>
 
           {/* Comments */}
@@ -341,6 +411,12 @@ export function PjTaskDetail({
 }
 
 const selCls = 'w-full bg-zinc-900 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100';
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function cssColor(c: string): string {
   const map: Record<string, string> = {

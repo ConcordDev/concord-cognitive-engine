@@ -19,6 +19,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
+import { DxWorkbench } from "@/components/dx-platform/DxWorkbench";
 
 interface OnboardingProgress {
   installed?: { vscode?: boolean; jetbrains?: boolean };
@@ -179,6 +180,18 @@ export default function DxPlatformPage() {
             <li><strong>Council macros</strong> (the small subset that consult the conscious brain for repair suggestions) round-trip to the cloud; you can disable them per-rule via severity weights.</li>
           </ul>
         </section>
+        {/* DX workbench — chat-with-codebase, PR review, search, team
+            dashboard, detector config, usage analytics, CI integration */}
+        <section aria-labelledby="workbench-heading" className="space-y-3">
+          <h2 id="workbench-heading" className="text-lg font-medium">DX workbench</h2>
+          <p className="text-sm text-zinc-400">
+            Index a codebase by pasting files, then ask questions about it,
+            review diffs, search across files, share findings with a team,
+            tune detectors, track usage, and emit a CI gate — all in-browser.
+          </p>
+          <DxWorkbench />
+        </section>
+
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <DevToolingPulse />
         </section>

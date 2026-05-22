@@ -4695,6 +4695,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    domain: 'meditation',
+    label: 'Meditation',
+    artifacts: ['session', 'track', 'course', 'reminder', 'mood_checkin', 'milestone'],
+    macros: { list: 'lens.meditation.list', get: 'lens.meditation.get', run: 'lens.meditation.run', export: 'lens.meditation.export' },
+    exports: ['json'],
+    actions: ['play', 'sessionLog', 'breathwork', 'mood-checkin', 'enrollCourse', 'completeCourseDay', 'setReminder', 'recommendations'],
+    category: 'lifestyle',
+    dataTier: 'REAL_LIVE',
+    emptyState: {
+      headline: 'Begin your practice.',
+      caption: 'Pick a track, run a breathwork pattern, log a session. Streaks, courses, and mood check-ins build your practice substrate.',
+      firstActionLabel: 'Start a session',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Pick a track or breathwork pattern from the library and play it through.' },
+        { caption: 'Log each session — streaks and milestones roll up automatically.' },
+        { caption: 'mood-checkin pairs your practice with how you feel; recommendations adapt over time.' },
+      ],
+    },
+  },
+  {
     domain: 'sentinel',
     label: 'Sentinel',
     artifacts: ['intel_report', 'shield_event', 'semantic_alert'],
@@ -4961,6 +4983,54 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'lens.crisis-ops.list', get: 'lens.crisis-ops.get', run: 'lens.crisis-ops.run' }, exports: ['json'], actions: ['active_for_player', 'resolve'], category: 'social' },
   { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
   { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'lens.ghost-tracker.list', get: 'lens.ghost-tracker.get', run: 'lens.ghost-tracker.run' }, exports: ['json'], actions: ['residues', 'confront'], category: 'knowledge' },
+  // Phase 5 — cross-lens multi-step workflow session index.
+  {
+    domain: 'sessions',
+    label: 'Sessions',
+    artifacts: ['lens_session'],
+    macros: { list: 'lens.sessions.list', get: 'lens.sessions.get', run: 'lens.sessions.run' },
+    exports: ['json'],
+    actions: ['search', 'pause', 'resume', 'rename', 'annotate', 'detail', 'stale', 'bulk_close'],
+    category: 'productivity',
+    dataTier: 'REAL_LIVE',
+    sessionTable: 'lens_sessions',
+    emptyState: {
+      headline: 'No sessions yet.',
+      caption: 'Sessions persist multi-step work across visits — open a war campaign in kingdoms, a research arc in paper. Visit any session-aware lens to start one.',
+      firstActionLabel: 'Browse lenses',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Every session-aware lens records its multi-step state here so you can leave and resume across days.' },
+        { caption: 'Filter by status, search by lens or title, and open a session to see its full step-transition timeline.' },
+        { caption: 'Pause idle work, rename sessions, annotate them, and bulk-close abandoned ones in one sweep.' },
+      ],
+    },
+  },
+
+  {
+    domain: 'forecast',
+    label: 'Forecast',
+    artifacts: ['world_forecast'],
+    macros: { list: 'lens.forecast.list', get: 'lens.forecast.get', run: 'lens.forecast.run' },
+    exports: ['json'],
+    actions: ['compose', 'recent', 'multiDay', 'hourly', 'regional', 'accuracy', 'archive', 'subscribeAlert', 'listAlerts', 'unsubscribeAlert', 'checkAlerts'],
+    category: 'knowledge',
+    dataTier: 'SIM_GRADE_A',
+    emptyState: {
+      headline: 'No forecast yet.',
+      caption: 'Compose a 24-hour world outlook from forward-sim, drift, faction strategy, and embodied climate baselines. Then extend it to multi-day, hourly, or per-district views.',
+      firstActionLabel: 'Compose forecast',
+      firstActionMacro: { name: 'compose', input: { worldId: 'concordia-hub', persist: true } },
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Compose a forecast — it folds the live simulation state into a 24h weather + ecology + faction + drift outlook.' },
+        { caption: 'Switch to the multi-day, hourly, or per-district tabs. Confidence honestly decays the further out you look.' },
+        { caption: 'Subscribe to alerts so a high-confidence severe event, drift, or weather kind surfaces the moment it is predicted.' },
+      ],
+    },
+  },
 ];
 
 // ---- Sub-lens auto-registration ----

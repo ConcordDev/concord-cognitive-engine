@@ -45,6 +45,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ClaimVerificationPanel } from '@/components/grounding/ClaimVerificationPanel';
+import { FactGroundingWorkbench } from '@/components/grounding/FactGroundingWorkbench';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 
 export default function GroundingLensPage() {
@@ -478,6 +479,12 @@ export default function GroundingLensPage() {
       {/* Fact-check / source / decompose workbench */}
       <section className="mt-6">
         <ClaimVerificationPanel />
+      </section>
+
+      {/* Ground News parity — multi-source aggregation, bias, trending,
+          audit trail, shareable cards, rebuttals */}
+      <section className="mt-6">
+        <FactGroundingWorkbench />
       </section>
 
       {/* ---- Grounding Domain Actions ---- */}

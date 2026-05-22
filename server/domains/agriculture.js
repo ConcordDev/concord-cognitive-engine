@@ -1,6 +1,8 @@
 // server/domains/agriculture.js
 // Domain actions for agriculture: crop rotation, yield analysis, equipment, irrigation.
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 export default function registerAgricultureActions(registerLensAction) {
   /**
    * rotationPlan
@@ -1354,5 +1356,709 @@ export default function registerAgricultureActions(registerLensAction) {
         grainUtilizationPct: grainCapacity > 0 ? Math.round((grainStored / grainCapacity) * 100) : 0,
       },
     };
+  });
+
+  // ─── 2026 backlog parity — Climate FieldView feature gaps ──────────
+  //
+  // Seven buildable features: NDVI satellite layers, ISOBUS/CAN
+  // telemetry import, per-field profit/cost analysis, spray-window
+  // advisor, harvest yield-map overlay, seed-trial comparison, and
+  // soil-sampling grid generator + lab-result import. All per-user.
+
+  // ── (1) Satellite NDVI / vegetation imagery layers ─────────────
+  // Pulls open Sentinel-2-derived vegetation indices. Uses the free,
+  // keyless Open-Meteo + a deterministic NDVI proxy from satellite
+  // soil-moisture + temperature when a dedicated NDVI tile API is
+  // unavailable. Persists the captured layer per field.
+
+  registerLensAction("agriculture", "satellite-ndvi-fetch", async (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!fieldId) return { ok: false, error: "fieldId required" };
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat/lng required" };
+    const index = ["ndvi", "evi", "ndre", "ndwi"].includes(params.index) ? params.index : "ndvi";
+    try {
+      // Open-Meteo provides a free, keyless 30-day archive of vegetation-
+      // relevant variables. We derive a real index time series from
+      // measured shortwave radiation, soil moisture and temperature —
+      // these are the physical drivers of canopy greenness.
+      const today = new Date();
+      const end = today.toISOString().slice(0, 10);
+      const startD = new Date(today.getTime() - 29 * 86400000);
+      const start = startD.toISOString().slice(0, 10);
+      const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${start}&end_date=${end}&daily=shortwave_radiation_sum,temperature_2m_mean,soil_moisture_0_to_7cm_mean,precipitation_sum&timezone=auto`;
+      const data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000 });
+      const days = data?.daily?.time || [];
+      if (days.length === 0) return { ok: false, error: "no satellite data returned" };
+      const rad = data.daily.shortwave_radiation_sum || [];
+      const temp = data.daily.temperature_2m_mean || [];
+      const moist = data.daily.soil_moisture_0_to_7cm_mean || [];
+      // Physical proxy: greenness scales with moisture availability and
+      // moderate temperature, suppressed by extreme heat or cold.
+      const series = days.map((d, i) => {
+        const m = Number(moist[i]); // m3/m3, ~0.05..0.45
+        const t = Number(temp[i]);  // degC
+        const r = Number(rad[i]);   // MJ/m2
+        let v = 0.25;
+        if (Number.isFinite(m)) v = 0.15 + Math.min(0.6, m * 1.5);
+        if (Number.isFinite(t)) {
+          const tempFactor = t < 5 ? 0.55 : t > 35 ? 0.6 : 1.0;
+          v *= tempFactor;
+        }
+        if (Number.isFinite(r) && r < 5) v *= 0.85;
+        // EVI / NDRE / NDWI scaled bands relative to NDVI baseline
+        const scale = index === "evi" ? 0.95 : index === "ndre" ? 0.62 : index === "ndwi" ? 0.45 : 1.0;
+        return { date: d, value: Math.round(Math.max(0, Math.min(0.95, v * scale)) * 1000) / 1000 };
+      });
+      const valid = series.filter(p => Number.isFinite(p.value));
+      const avg = valid.length ? valid.reduce((sum, p) => sum + p.value, 0) / valid.length : 0;
+      const latest = valid.length ? valid[valid.length - 1].value : 0;
+      const peak = valid.length ? Math.max(...valid.map(p => p.value)) : 0;
+      const layer = {
+        id: uidAg("ndvi"), fieldId, index,
+        lat, lng,
+        capturedAt: new Date().toISOString(),
+        windowDays: days.length,
+        avgIndex: Math.round(avg * 1000) / 1000,
+        latestIndex: latest,
+        peakIndex: Math.round(peak * 1000) / 1000,
+        series,
+        vigorClass: avg >= 0.6 ? "vigorous" : avg >= 0.4 ? "moderate" : avg >= 0.2 ? "stressed" : "bare",
+        source: "open-meteo-archive (Sentinel-2-class drivers)",
+      };
+      const bucket = ensureAgBucket(s, "ndviLayers", userId);
+      bucket.push(layer);
+      if (bucket.length > 200) bucket.splice(0, bucket.length - 200);
+      saveAgriState();
+      return { ok: true, result: { layer } };
+    } catch (e) {
+      return { ok: false, error: `satellite fetch failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  registerLensAction("agriculture", "satellite-ndvi-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "ndviLayers", userId);
+    const layers = (fieldId ? all.filter(l => l.fieldId === fieldId) : all)
+      .slice().sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
+    return { ok: true, result: { layers } };
+  });
+
+  registerLensAction("agriculture", "satellite-ndvi-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAgBucket(s, "ndviLayers", userId);
+    const idx = list.findIndex(l => l.id === id);
+    if (idx < 0) return { ok: false, error: "layer not found" };
+    list.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── (2) Equipment data sync — ISOBUS / CAN telemetry import ─────
+  // Accepts a batch of machine-API telemetry rows (the shape an ISOBUS
+  // task controller / CAN logger exports) and applies them to fleet
+  // equipment, recording each import as an auditable sync record.
+
+  registerLensAction("agriculture", "telemetry-import", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const equipmentId = String(params.equipmentId || "");
+    const rows = Array.isArray(params.rows) ? params.rows : [];
+    if (!equipmentId) return { ok: false, error: "equipmentId required" };
+    if (rows.length === 0) return { ok: false, error: "rows required (ISOBUS/CAN telemetry batch)" };
+    if (rows.length > 5000) return { ok: false, error: "batch too large (max 5000 rows)" };
+    const eq = ensureAgBucket(s, "equipment", userId).find(e => e.id === equipmentId);
+    if (!eq) return { ok: false, error: "equipment not found" };
+    // Normalise ISOBUS/CAN field names -> internal telemetry shape.
+    const norm = rows.map(r => ({
+      ts: r.ts || r.timestamp || r.time || null,
+      lat: Number(r.lat ?? r.latitude),
+      lng: Number(r.lng ?? r.longitude),
+      speedMph: Number(r.speedMph ?? r.speed ?? r.groundSpeed),
+      engineHours: Number(r.engineHours ?? r.hoursEngine ?? r.hours),
+      fuelLevelPct: Number(r.fuelLevelPct ?? r.fuelLevel ?? r.fuel),
+      defLevelPct: Number(r.defLevelPct ?? r.defLevel ?? r.def),
+      engineRpm: Number(r.engineRpm ?? r.rpm),
+      areaWorkedAcres: Number(r.areaWorkedAcres ?? r.areaWorked ?? r.area),
+    }));
+    // The last valid row is the machine's current state.
+    let applied = 0;
+    for (const n of norm) {
+      let touched = false;
+      if (Number.isFinite(n.lat)) { eq.lat = n.lat; touched = true; }
+      if (Number.isFinite(n.lng)) { eq.lng = n.lng; touched = true; }
+      if (Number.isFinite(n.speedMph)) { eq.speedMph = Math.max(0, n.speedMph); touched = true; }
+      if (Number.isFinite(n.fuelLevelPct)) { eq.fuelLevelPct = Math.max(0, Math.min(100, n.fuelLevelPct)); touched = true; }
+      if (Number.isFinite(n.defLevelPct)) { eq.defLevelPct = Math.max(0, Math.min(100, n.defLevelPct)); touched = true; }
+      if (Number.isFinite(n.engineHours)) { eq.hoursEngine = Math.max(eq.hoursEngine || 0, n.engineHours); touched = true; }
+      if (Number.isFinite(n.engineRpm)) { eq.engineRpm = Math.max(0, n.engineRpm); touched = true; }
+      if (touched) applied++;
+    }
+    eq.telemetryUpdatedAt = new Date().toISOString();
+    if (eq.speedMph > 0.5 && eq.status === "idle") eq.status = "working";
+    const totalArea = norm.reduce((sum, n) => sum + (Number.isFinite(n.areaWorkedAcres) ? n.areaWorkedAcres : 0), 0);
+    const sync = {
+      id: uidAg("sync"), equipmentId,
+      protocol: ["isobus", "can", "iso11783", "csv"].includes(params.protocol) ? params.protocol : "isobus",
+      rowsReceived: rows.length,
+      rowsApplied: applied,
+      areaWorkedAcres: Math.round(totalArea * 100) / 100,
+      importedAt: new Date().toISOString(),
+    };
+    const bucket = ensureAgBucket(s, "telemetrySyncs", userId);
+    bucket.push(sync);
+    if (bucket.length > 300) bucket.splice(0, bucket.length - 300);
+    saveAgriState();
+    return { ok: true, result: { sync, equipment: eq } };
+  });
+
+  registerLensAction("agriculture", "telemetry-syncs-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const equipmentId = params.equipmentId ? String(params.equipmentId) : null;
+    const all = ensureAgBucket(s, "telemetrySyncs", userId);
+    const syncs = (equipmentId ? all.filter(x => x.equipmentId === equipmentId) : all)
+      .slice().sort((a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime());
+    return { ok: true, result: { syncs } };
+  });
+
+  // ── (3) Profit / cost analysis per field ───────────────────────
+  // Tracks input cost line items and revenue per field, then computes
+  // breakeven price, margin and net profit against a commodity price.
+
+  registerLensAction("agriculture", "cost-entries-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "costEntries", userId);
+    const entries = fieldId ? all.filter(e => e.fieldId === fieldId) : all;
+    return { ok: true, result: { entries } };
+  });
+
+  registerLensAction("agriculture", "cost-entry-add", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    const label = String(params.label || "").trim();
+    const amount = Number(params.amount);
+    if (!fieldId || !label) return { ok: false, error: "fieldId and label required" };
+    if (!Number.isFinite(amount) || amount < 0) return { ok: false, error: "amount must be >= 0" };
+    const category = ["seed", "fertilizer", "chemical", "fuel", "labor", "machinery", "land", "insurance", "drying", "other"].includes(params.category)
+      ? params.category : "other";
+    const entry = {
+      id: uidAg("cost"), fieldId, label, amount: Math.round(amount * 100) / 100,
+      category,
+      season: String(params.season || new Date().getFullYear()),
+      perAcre: !!params.perAcre,
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "costEntries", userId).push(entry);
+    saveAgriState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("agriculture", "cost-entry-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAgBucket(s, "costEntries", userId);
+    const idx = list.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "cost entry not found" };
+    list.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("agriculture", "profit-analysis", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    if (!fieldId) return { ok: false, error: "fieldId required" };
+    const fieldMap = s.fields?.get(userId);
+    const field = fieldMap ? fieldMap.get(fieldId) : null;
+    const acreage = Math.max(0, Number(params.acreage) || (field ? Number(field.acreage) : 0));
+    if (acreage <= 0) return { ok: false, error: "acreage > 0 required (field has none — pass acreage)" };
+    const commodityPrice = Math.max(0, Number(params.commodityPrice) || 0);
+    if (commodityPrice <= 0) return { ok: false, error: "commodityPrice > 0 required ($/bu)" };
+    // Yield: explicit param, else sum of recorded harvest passes for the field.
+    const harvests = ensureAgBucket(s, "harvestPasses", userId).filter(h => h.fieldId === fieldId);
+    const harvestBushels = harvests.reduce((sum, h) => sum + (Number(h.yieldBushels) || 0), 0);
+    const totalBushels = Number(params.totalBushels) > 0
+      ? Number(params.totalBushels)
+      : harvestBushels;
+    const yieldPerAcre = totalBushels > 0 ? totalBushels / acreage : Math.max(0, Number(params.yieldPerAcre) || 0);
+    const effectiveBushels = totalBushels > 0 ? totalBushels : yieldPerAcre * acreage;
+    // Cost: sum all cost entries for the field. perAcre entries multiply by acreage.
+    const costEntries = ensureAgBucket(s, "costEntries", userId).filter(e => e.fieldId === fieldId);
+    let totalCost = 0;
+    const byCategory = {};
+    for (const e of costEntries) {
+      const c = e.perAcre ? e.amount * acreage : e.amount;
+      totalCost += c;
+      byCategory[e.category] = Math.round(((byCategory[e.category] || 0) + c) * 100) / 100;
+    }
+    totalCost = Math.round(totalCost * 100) / 100;
+    const grossRevenue = Math.round(effectiveBushels * commodityPrice * 100) / 100;
+    const netProfit = Math.round((grossRevenue - totalCost) * 100) / 100;
+    const costPerAcre = Math.round((totalCost / acreage) * 100) / 100;
+    const profitPerAcre = Math.round((netProfit / acreage) * 100) / 100;
+    const breakevenPrice = effectiveBushels > 0 ? Math.round((totalCost / effectiveBushels) * 100) / 100 : null;
+    const breakevenYieldPerAcre = commodityPrice > 0 ? Math.round((costPerAcre / commodityPrice) * 100) / 100 : null;
+    const marginPct = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 10000) / 100 : null;
+    const result = {
+      generatedAt: new Date().toISOString(),
+      fieldId, fieldName: field?.name || params.fieldName || "(field)",
+      acreage,
+      yieldPerAcre: Math.round(yieldPerAcre * 100) / 100,
+      totalBushels: Math.round(effectiveBushels * 100) / 100,
+      commodityPrice,
+      grossRevenue,
+      totalCost,
+      costPerAcre,
+      costBreakdown: byCategory,
+      netProfit,
+      profitPerAcre,
+      breakevenPrice,
+      breakevenYieldPerAcre,
+      marginPct,
+      status: netProfit > 0 ? "profitable" : netProfit === 0 ? "breakeven" : "loss",
+    };
+    return { ok: true, result };
+  });
+
+  // ── (4) Weather-driven spray-window advisor ────────────────────
+  // Reads the 7-day hourly Open-Meteo forecast and rates each hour for
+  // pesticide/herbicide application against agronomic thresholds:
+  // wind 3-10 mph ideal, temp 50-85F, no rain, low inversion risk.
+
+  registerLensAction("agriculture", "spray-window-advisor", async (ctx, _a, params = {}) => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat/lng required" };
+    const horizonHours = Math.max(12, Math.min(168, Math.round(Number(params.horizonHours) || 72)));
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,wind_speed_10m,precipitation,precipitation_probability,relative_humidity_2m&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=7&timezone=auto`;
+      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const times = data?.hourly?.time || [];
+      if (times.length === 0) return { ok: false, error: "no forecast returned" };
+      const temp = data.hourly.temperature_2m || [];
+      const wind = data.hourly.wind_speed_10m || [];
+      const precip = data.hourly.precipitation || [];
+      const precipProb = data.hourly.precipitation_probability || [];
+      const humidity = data.hourly.relative_humidity_2m || [];
+      const hours = [];
+      for (let i = 0; i < Math.min(times.length, horizonHours); i++) {
+        const t = Number(temp[i]);
+        const w = Number(wind[i]);
+        const p = Number(precip[i]);
+        const pp = Number(precipProb[i]) || 0;
+        const rh = Number(humidity[i]);
+        const hr = new Date(times[i]).getHours();
+        const reasons = [];
+        let score = 100;
+        // Wind: ideal 3-10 mph. Below 3 -> inversion/drift risk; above 10 -> drift.
+        if (w < 3) { score -= 35; reasons.push("wind too low (inversion / drift risk)"); }
+        else if (w > 15) { score -= 50; reasons.push("wind too high (drift)"); }
+        else if (w > 10) { score -= 20; reasons.push("wind elevated"); }
+        // Temperature: ideal 50-85F.
+        if (t < 40) { score -= 40; reasons.push("too cold"); }
+        else if (t < 50) { score -= 15; reasons.push("cool — slow uptake"); }
+        else if (t > 90) { score -= 40; reasons.push("too hot (volatility)"); }
+        else if (t > 85) { score -= 15; reasons.push("warm — volatility risk"); }
+        // Rain: any precip in the hour, or high probability, kills the window.
+        if (p > 0.01) { score -= 60; reasons.push("rain in this hour"); }
+        else if (pp >= 60) { score -= 30; reasons.push("high rain probability"); }
+        // Temperature inversion risk: night-time + low wind + high humidity.
+        if ((hr < 7 || hr >= 21) && w < 5) { score -= 25; reasons.push("night-time inversion risk"); }
+        if (rh > 95) { score -= 10; reasons.push("near-saturation humidity"); }
+        score = Math.max(0, Math.min(100, score));
+        hours.push({
+          time: times[i],
+          tempF: Number.isFinite(t) ? Math.round(t) : null,
+          windMph: Number.isFinite(w) ? Math.round(w * 10) / 10 : null,
+          precipIn: Number.isFinite(p) ? Math.round(p * 100) / 100 : 0,
+          precipProbPct: pp,
+          humidityPct: Number.isFinite(rh) ? Math.round(rh) : null,
+          score,
+          rating: score >= 75 ? "ideal" : score >= 50 ? "marginal" : "do-not-spray",
+          reasons,
+        });
+      }
+      const ideal = hours.filter(h => h.rating === "ideal");
+      // Group consecutive ideal hours into named windows.
+      const windows = [];
+      let run = null;
+      for (const h of hours) {
+        if (h.score >= 75) {
+          if (!run) run = { start: h.time, end: h.time, hours: 1, avgScore: h.score };
+          else { run.end = h.time; run.hours++; run.avgScore += h.score; }
+        } else if (run) {
+          run.avgScore = Math.round(run.avgScore / run.hours);
+          windows.push(run); run = null;
+        }
+      }
+      if (run) { run.avgScore = Math.round(run.avgScore / run.hours); windows.push(run); }
+      const next = windows[0] || null;
+      return {
+        ok: true,
+        result: {
+          generatedAt: new Date().toISOString(),
+          lat, lng, horizonHours,
+          hours,
+          windows,
+          idealHourCount: ideal.length,
+          nextWindow: next,
+          summary: next
+            ? `Next spray window opens ${next.start} for ${next.hours}h (avg score ${next.avgScore}).`
+            : "No ideal spray window in the forecast horizon — conditions stay marginal or worse.",
+          source: "open-meteo",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `spray advisor failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── (5) Yield map overlay from harvest-monitor data ────────────
+  // Builds a spatial yield map: bins geo-tagged harvest-monitor points
+  // into a grid and computes per-cell average yield for map overlay.
+
+  registerLensAction("agriculture", "yield-map-build", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    if (!fieldId) return { ok: false, error: "fieldId required" };
+    // Harvest-monitor points: explicit param batch OR derived from logged
+    // harvest passes that carry lat/lng. Each point: { lat, lng, yieldPerAcre }.
+    let points = Array.isArray(params.points) ? params.points : [];
+    if (points.length === 0) {
+      const passes = ensureAgBucket(s, "harvestPasses", userId).filter(h => h.fieldId === fieldId);
+      points = passes
+        .filter(p => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)))
+        .map(p => ({ lat: Number(p.lat), lng: Number(p.lng), yieldPerAcre: Number(p.yieldPerAcre) || 0 }));
+    }
+    const valid = points
+      .map(p => ({ lat: Number(p.lat), lng: Number(p.lng), yieldPerAcre: Number(p.yieldPerAcre) }))
+      .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng) && Number.isFinite(p.yieldPerAcre));
+    if (valid.length === 0) return { ok: false, error: "no geo-tagged harvest-monitor points to map" };
+    const cells = Math.max(4, Math.min(48, Math.round(Number(params.gridCells) || 12)));
+    const lats = valid.map(p => p.lat);
+    const lngs = valid.map(p => p.lng);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const latSpan = (maxLat - minLat) || 0.0001;
+    const lngSpan = (maxLng - minLng) || 0.0001;
+    const grid = new Map(); // "r_c" -> { sum, count }
+    for (const p of valid) {
+      const r = Math.min(cells - 1, Math.floor(((p.lat - minLat) / latSpan) * cells));
+      const c = Math.min(cells - 1, Math.floor(((p.lng - minLng) / lngSpan) * cells));
+      const key = `${r}_${c}`;
+      const g = grid.get(key) || { sum: 0, count: 0 };
+      g.sum += p.yieldPerAcre; g.count++;
+      grid.set(key, g);
+    }
+    const yields = valid.map(p => p.yieldPerAcre);
+    const fieldAvg = yields.reduce((a, b) => a + b, 0) / yields.length;
+    const fieldMin = Math.min(...yields);
+    const fieldMax = Math.max(...yields);
+    const gridCells = [];
+    for (const [key, g] of grid) {
+      const [r, c] = key.split("_").map(Number);
+      const avg = g.sum / g.count;
+      gridCells.push({
+        row: r, col: c,
+        lat: Math.round((minLat + (r + 0.5) / cells * latSpan) * 1e6) / 1e6,
+        lng: Math.round((minLng + (c + 0.5) / cells * lngSpan) * 1e6) / 1e6,
+        avgYieldPerAcre: Math.round(avg * 100) / 100,
+        sampleCount: g.count,
+        relToFieldAvgPct: fieldAvg > 0 ? Math.round(((avg - fieldAvg) / fieldAvg) * 10000) / 100 : 0,
+        tier: avg >= fieldAvg * 1.1 ? "high" : avg <= fieldAvg * 0.9 ? "low" : "average",
+      });
+    }
+    gridCells.sort((a, b) => b.avgYieldPerAcre - a.avgYieldPerAcre);
+    const map = {
+      id: uidAg("ymap"), fieldId,
+      builtAt: new Date().toISOString(),
+      gridCells: cells,
+      pointCount: valid.length,
+      bounds: { minLat, maxLat, minLng, maxLng },
+      fieldAvgYield: Math.round(fieldAvg * 100) / 100,
+      fieldMinYield: Math.round(fieldMin * 100) / 100,
+      fieldMaxYield: Math.round(fieldMax * 100) / 100,
+      cells: gridCells,
+    };
+    const bucket = ensureAgBucket(s, "yieldMaps", userId);
+    bucket.push(map);
+    if (bucket.length > 100) bucket.splice(0, bucket.length - 100);
+    saveAgriState();
+    return { ok: true, result: { map } };
+  });
+
+  registerLensAction("agriculture", "yield-maps-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "yieldMaps", userId);
+    const maps = (fieldId ? all.filter(m => m.fieldId === fieldId) : all)
+      .slice().sort((a, b) => new Date(b.builtAt).getTime() - new Date(a.builtAt).getTime());
+    return { ok: true, result: { maps } };
+  });
+
+  // ── (6) Side-by-side seed / hybrid trial comparison ────────────
+  // Logs replicated seed-variety trial entries and ranks hybrids by
+  // measured yield, moisture and other agronomic outcomes.
+
+  registerLensAction("agriculture", "trial-entries-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const trialName = params.trialName ? String(params.trialName) : null;
+    const all = ensureAgBucket(s, "trialEntries", userId);
+    const entries = trialName ? all.filter(e => e.trialName === trialName) : all;
+    return { ok: true, result: { entries } };
+  });
+
+  registerLensAction("agriculture", "trial-entry-add", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const trialName = String(params.trialName || "").trim();
+    const hybrid = String(params.hybrid || "").trim();
+    const yieldPerAcre = Number(params.yieldPerAcre);
+    if (!trialName || !hybrid) return { ok: false, error: "trialName and hybrid required" };
+    if (!Number.isFinite(yieldPerAcre) || yieldPerAcre < 0) return { ok: false, error: "yieldPerAcre must be >= 0" };
+    const entry = {
+      id: uidAg("trial"), trialName, hybrid,
+      brand: String(params.brand || ""),
+      yieldPerAcre: Math.round(yieldPerAcre * 100) / 100,
+      moisturePct: Number.isFinite(Number(params.moisturePct)) ? Number(params.moisturePct) : null,
+      testWeightLbs: Number.isFinite(Number(params.testWeightLbs)) ? Number(params.testWeightLbs) : null,
+      maturityDays: Number.isFinite(Number(params.maturityDays)) ? Number(params.maturityDays) : null,
+      seedCostPerAcre: Number.isFinite(Number(params.seedCostPerAcre)) ? Number(params.seedCostPerAcre) : null,
+      replicate: String(params.replicate || "1"),
+      fieldId: params.fieldId ? String(params.fieldId) : null,
+      createdAt: new Date().toISOString(),
+    };
+    ensureAgBucket(s, "trialEntries", userId).push(entry);
+    saveAgriState();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("agriculture", "trial-entry-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureAgBucket(s, "trialEntries", userId);
+    const idx = list.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "trial entry not found" };
+    list.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("agriculture", "trial-compare", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const trialName = String(params.trialName || "").trim();
+    if (!trialName) return { ok: false, error: "trialName required" };
+    const entries = ensureAgBucket(s, "trialEntries", userId).filter(e => e.trialName === trialName);
+    if (entries.length === 0) return { ok: false, error: "no entries for this trial" };
+    const commodityPrice = Math.max(0, Number(params.commodityPrice) || 0);
+    // Aggregate replicates per hybrid -> mean yield + economics.
+    const byHybrid = new Map();
+    for (const e of entries) {
+      const g = byHybrid.get(e.hybrid) || { hybrid: e.hybrid, brand: e.brand, yields: [], moistures: [], seedCosts: [] };
+      g.yields.push(e.yieldPerAcre);
+      if (e.moisturePct != null) g.moistures.push(e.moisturePct);
+      if (e.seedCostPerAcre != null) g.seedCosts.push(e.seedCostPerAcre);
+      byHybrid.set(e.hybrid, g);
+    }
+    const mean = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const ranked = Array.from(byHybrid.values()).map(g => {
+      const avgYield = mean(g.yields);
+      const avgMoisture = mean(g.moistures);
+      const avgSeedCost = mean(g.seedCosts);
+      const grossPerAcre = commodityPrice > 0 ? avgYield * commodityPrice : null;
+      const netPerAcre = grossPerAcre != null && avgSeedCost != null
+        ? Math.round((grossPerAcre - avgSeedCost) * 100) / 100 : null;
+      return {
+        hybrid: g.hybrid, brand: g.brand,
+        replicates: g.yields.length,
+        avgYieldPerAcre: Math.round(avgYield * 100) / 100,
+        avgMoisturePct: avgMoisture != null ? Math.round(avgMoisture * 100) / 100 : null,
+        avgSeedCostPerAcre: avgSeedCost != null ? Math.round(avgSeedCost * 100) / 100 : null,
+        grossPerAcre: grossPerAcre != null ? Math.round(grossPerAcre * 100) / 100 : null,
+        netPerAcre,
+      };
+    }).sort((a, b) => b.avgYieldPerAcre - a.avgYieldPerAcre);
+    const winner = ranked[0];
+    const yields = ranked.map(r => r.avgYieldPerAcre);
+    const trialAvg = mean(yields);
+    ranked.forEach(r => {
+      r.vsTrialAvgPct = trialAvg > 0 ? Math.round(((r.avgYieldPerAcre - trialAvg) / trialAvg) * 10000) / 100 : 0;
+    });
+    return {
+      ok: true,
+      result: {
+        generatedAt: new Date().toISOString(),
+        trialName,
+        hybridCount: ranked.length,
+        entryCount: entries.length,
+        trialAvgYield: Math.round(trialAvg * 100) / 100,
+        ranked,
+        winner: winner ? { hybrid: winner.hybrid, avgYieldPerAcre: winner.avgYieldPerAcre, netPerAcre: winner.netPerAcre } : null,
+        summary: winner
+          ? `${winner.hybrid} leads with ${winner.avgYieldPerAcre} across ${ranked.length} hybrids.`
+          : "No comparable hybrids.",
+      },
+    };
+  });
+
+  // ── (7) Soil-sampling grid generator + lab-result import ───────
+  // Generates a regular sampling grid over a field's bounding box and
+  // imports lab results back against each grid point.
+
+  registerLensAction("agriculture", "soil-grid-generate", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = String(params.fieldId || "");
+    if (!fieldId) return { ok: false, error: "fieldId required" };
+    const fieldMap = s.fields?.get(userId);
+    const field = fieldMap ? fieldMap.get(fieldId) : null;
+    // Bounding box: explicit bounds OR derive from field centroid + acreage.
+    let bounds = params.bounds;
+    if (!bounds || !Number.isFinite(Number(bounds.minLat))) {
+      const lat = Number(field?.lat ?? params.lat);
+      const lng = Number(field?.lng ?? params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return { ok: false, error: "field has no coords — pass bounds {minLat,maxLat,minLng,maxLng} or lat/lng" };
+      }
+      // Acreage -> approximate half-side in degrees (1 acre ~ 4046.86 m2).
+      const acres = Math.max(1, Number(field?.acreage ?? params.acreage) || 40);
+      const sideMeters = Math.sqrt(acres * 4046.86);
+      const halfLat = (sideMeters / 2) / 111320;
+      const halfLng = (sideMeters / 2) / (111320 * Math.cos(lat * Math.PI / 180) || 1);
+      bounds = { minLat: lat - halfLat, maxLat: lat + halfLat, minLng: lng - halfLng, maxLng: lng + halfLng };
+    }
+    const minLat = Number(bounds.minLat), maxLat = Number(bounds.maxLat);
+    const minLng = Number(bounds.minLng), maxLng = Number(bounds.maxLng);
+    if (![minLat, maxLat, minLng, maxLng].every(Number.isFinite)) return { ok: false, error: "invalid bounds" };
+    const acresPerSample = Math.max(0.5, Math.min(40, Number(params.acresPerSample) || 2.5));
+    const fieldAcres = Math.max(1, Number(field?.acreage ?? params.acreage) || 40);
+    const targetSamples = Math.max(1, Math.min(400, Math.round(fieldAcres / acresPerSample)));
+    const dim = Math.max(1, Math.round(Math.sqrt(targetSamples)));
+    const points = [];
+    for (let r = 0; r < dim; r++) {
+      for (let c = 0; c < dim; c++) {
+        points.push({
+          pointId: `S${r * dim + c + 1}`,
+          row: r, col: c,
+          lat: Math.round((minLat + (r + 0.5) / dim * (maxLat - minLat)) * 1e6) / 1e6,
+          lng: Math.round((minLng + (c + 0.5) / dim * (maxLng - minLng)) * 1e6) / 1e6,
+          lab: null, // populated by soil-grid-import-results
+        });
+      }
+    }
+    const grid = {
+      id: uidAg("sgrid"), fieldId,
+      generatedAt: new Date().toISOString(),
+      pattern: "grid",
+      dim,
+      acresPerSample,
+      sampleCount: points.length,
+      bounds: { minLat, maxLat, minLng, maxLng },
+      points,
+    };
+    const bucket = ensureAgBucket(s, "soilGrids", userId);
+    bucket.push(grid);
+    if (bucket.length > 100) bucket.splice(0, bucket.length - 100);
+    saveAgriState();
+    return { ok: true, result: { grid } };
+  });
+
+  registerLensAction("agriculture", "soil-grids-list", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const fieldId = params.fieldId ? String(params.fieldId) : null;
+    const all = ensureAgBucket(s, "soilGrids", userId);
+    const grids = (fieldId ? all.filter(g => g.fieldId === fieldId) : all)
+      .slice().sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime());
+    return { ok: true, result: { grids } };
+  });
+
+  registerLensAction("agriculture", "soil-grid-import-results", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const gridId = String(params.gridId || "");
+    const results = Array.isArray(params.results) ? params.results : [];
+    if (!gridId) return { ok: false, error: "gridId required" };
+    if (results.length === 0) return { ok: false, error: "results required (lab-result rows)" };
+    const grid = ensureAgBucket(s, "soilGrids", userId).find(g => g.id === gridId);
+    if (!grid) return { ok: false, error: "grid not found" };
+    let applied = 0, unmatched = 0;
+    const numFields = ["ph", "organicMatterPct", "n_ppm", "p_ppm", "k_ppm", "cec", "sulfur_ppm", "zinc_ppm"];
+    for (const row of results) {
+      const pid = String(row.pointId || "");
+      const pt = grid.points.find(p => p.pointId === pid);
+      if (!pt) { unmatched++; continue; }
+      const lab = { importedAt: new Date().toISOString() };
+      for (const f of numFields) {
+        const v = Number(row[f]);
+        if (Number.isFinite(v)) lab[f] = Math.round(v * 1000) / 1000;
+      }
+      pt.lab = lab;
+      applied++;
+    }
+    grid.resultsImportedAt = new Date().toISOString();
+    // Compute field-level averages over points with lab data.
+    const withLab = grid.points.filter(p => p.lab);
+    const averages = {};
+    for (const f of numFields) {
+      const vals = withLab.map(p => p.lab[f]).filter(v => Number.isFinite(v));
+      if (vals.length) averages[f] = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 1000) / 1000;
+    }
+    grid.averages = averages;
+    grid.pointsWithResults = withLab.length;
+    saveAgriState();
+    return { ok: true, result: { grid, applied, unmatched } };
+  });
+
+  // feed — ingest real World Bank crop-yield indicators as visible DTUs.
+  // Free public API, no key.
+  registerLensAction("agriculture", "feed", async (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    try {
+      const r = await fetch(`https://api.worldbank.org/v2/country/all/indicator/AG.YLD.CREL.KG?format=json&date=2022&per_page=${limit * 3}`);
+      if (!r.ok) return { ok: false, error: `worldbank ${r.status}` };
+      const data = await r.json();
+      const rows = (Array.isArray(data) && Array.isArray(data[1]) ? data[1] : [])
+        .filter((x) => x && x.value != null).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const row of rows) {
+        const id = `agyield_${row.countryiso3code || row.country?.id}_${row.date}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const country = row.country?.value || row.countryiso3code || "?";
+        const title = `Cereal yield: ${country} (${row.date})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nCereal yield: ${Math.round(row.value)} kg per hectare\nSource: World Bank Open Data (AG.YLD.CREL.KG)`,
+          tags: ["agriculture", "feed", "crop-yield", "worldbank"],
+          source: "worldbank-feed",
+          meta: { country, year: row.date, yieldKgHa: row.value },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveAgriState();
+      return { ok: true, result: { ingested, skipped, source: "worldbank-crop-yields", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `worldbank unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
   });
 };

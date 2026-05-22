@@ -537,4 +537,636 @@ export default function registerGoalsActions(registerLensAction) {
       },
     };
   });
+
+  // ====================================================================
+  // Feature-parity backlog — OKR alignment tree, cadence check-ins,
+  // team/shared goals, templates + recurring, progress charts, reminders,
+  // and goal dependencies. All persist per-user in globalThis._concordSTATE.
+  // ====================================================================
+
+  function getGoalsState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.goalsLens) {
+      STATE.goalsLens = {
+        objectives: new Map(), // userId -> Array<objective>  (alignment tree nodes)
+        checkins: new Map(),   // userId -> Array<checkin>
+        team: new Map(),       // userId -> Array<teamGoal>
+        recurring: new Map(),  // userId -> Array<recurringGoal>
+        reminders: new Map(),  // userId -> Array<reminder>
+        deps: new Map(),       // userId -> Array<{ from, to, kind }>
+        seq: new Map(),        // userId -> { obj, chk, team, rec, rem, dep }
+      };
+    }
+    return STATE.goalsLens;
+  }
+
+  function actId(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "anon";
+  }
+
+  function ensureList(map, userId) {
+    if (!map.has(userId)) map.set(userId, []);
+    return map.get(userId);
+  }
+
+  function nextSeq(s, userId, key) {
+    if (!s.seq.has(userId)) s.seq.set(userId, { obj: 1, chk: 1, team: 1, rec: 1, rem: 1, dep: 1 });
+    const seq = s.seq.get(userId);
+    const n = seq[key]++;
+    return n;
+  }
+
+  function save() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch { /* non-fatal */ }
+    }
+  }
+
+  // --- Built-in goal templates by category (structure only, no sample user data) ---
+  const GOAL_TEMPLATES = [
+    {
+      id: "tpl_okr_quarter",
+      category: "okr",
+      name: "Quarterly OKR",
+      description: "One objective with 3 measurable key results for a 90-day cycle.",
+      cadence: "quarterly",
+      keyResults: ["Key result 1 (metric)", "Key result 2 (metric)", "Key result 3 (metric)"],
+    },
+    {
+      id: "tpl_health",
+      category: "health",
+      name: "Health & Fitness",
+      description: "Build a recurring fitness habit with weekly milestones.",
+      cadence: "weekly",
+      keyResults: ["Sessions per week", "Target measurement", "Consistency streak"],
+    },
+    {
+      id: "tpl_learning",
+      category: "learning",
+      name: "Skill Mastery",
+      description: "Learn a new skill broken into staged milestones.",
+      cadence: "monthly",
+      keyResults: ["Fundamentals complete", "Practice hours logged", "Capstone delivered"],
+    },
+    {
+      id: "tpl_career",
+      category: "career",
+      name: "Career Growth",
+      description: "Advance a professional outcome over a half-year horizon.",
+      cadence: "quarterly",
+      keyResults: ["Skill checkpoint", "Visibility checkpoint", "Outcome checkpoint"],
+    },
+    {
+      id: "tpl_project",
+      category: "project",
+      name: "Project Delivery",
+      description: "Ship a project with clear scope, build and launch phases.",
+      cadence: "once",
+      keyResults: ["Scope locked", "Build complete", "Launched"],
+    },
+    {
+      id: "tpl_finance",
+      category: "finance",
+      name: "Financial Goal",
+      description: "Save or invest toward a target amount on a schedule.",
+      cadence: "monthly",
+      keyResults: ["Monthly contribution", "Milestone amount", "Target reached"],
+    },
+  ];
+
+  /**
+   * alignmentTree
+   * Build an OKR alignment tree linking key results to parent objectives.
+   * Maintains a per-user objective registry; each objective may declare a
+   * parentId, forming a multi-level alignment hierarchy across teams.
+   * params.op: 'list' | 'upsert' | 'remove'
+   *   upsert -> { id?, title, parentId?, owner?, team?, level?, keyResults?:[] }
+   *   remove -> { id }
+   */
+  registerLensAction("goals", "alignmentTree", (ctx, _artifact, params = {}) => {
+    const s = getGoalsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const list = ensureList(s.objectives, userId);
+    const op = params.op || "list";
+
+    if (op === "upsert") {
+      if (!params.title || typeof params.title !== "string") {
+        return { ok: false, error: "title required" };
+      }
+      let obj = params.id ? list.find((o) => o.id === params.id) : null;
+      if (obj) {
+        if (obj.id === params.parentId) return { ok: false, error: "objective cannot be its own parent" };
+        obj.title = params.title;
+        obj.parentId = params.parentId || null;
+        obj.owner = params.owner ?? obj.owner ?? null;
+        obj.team = params.team ?? obj.team ?? null;
+        obj.level = params.level ?? obj.level ?? "company";
+        obj.keyResults = Array.isArray(params.keyResults) ? params.keyResults : (obj.keyResults || []);
+        obj.updatedAt = new Date().toISOString();
+      } else {
+        obj = {
+          id: `obj_${nextSeq(s, userId, "obj")}`,
+          title: params.title,
+          parentId: params.parentId || null,
+          owner: params.owner || null,
+          team: params.team || null,
+          level: params.level || "company",
+          keyResults: Array.isArray(params.keyResults) ? params.keyResults : [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        list.push(obj);
+      }
+      save();
+    } else if (op === "remove") {
+      const idx = list.findIndex((o) => o.id === params.id);
+      if (idx === -1) return { ok: false, error: "objective not found" };
+      list.splice(idx, 1);
+      // Orphan children -> promote to root
+      for (const o of list) if (o.parentId === params.id) o.parentId = null;
+      save();
+    }
+
+    // Build tree
+    const byId = new Map(list.map((o) => [o.id, { ...o, children: [] }]));
+    const roots = [];
+    for (const node of byId.values()) {
+      if (node.parentId && byId.has(node.parentId)) {
+        byId.get(node.parentId).children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+    const depth = (n) => (n.children.length === 0 ? 1 : 1 + Math.max(...n.children.map(depth)));
+    const krTotal = list.reduce((acc, o) => acc + (o.keyResults?.length || 0), 0);
+
+    return {
+      ok: true,
+      result: {
+        tree: roots,
+        flat: list,
+        stats: {
+          objectiveCount: list.length,
+          rootCount: roots.length,
+          maxDepth: roots.length ? Math.max(...roots.map(depth)) : 0,
+          keyResultsLinked: krTotal,
+          teams: [...new Set(list.map((o) => o.team).filter(Boolean))],
+        },
+      },
+    };
+  });
+
+  /**
+   * checkin
+   * Cadence check-ins — weekly status updates with confidence ratings.
+   * params.op: 'list' | 'add' | 'remove'
+   *   add -> { goalId, status?('on_track'|'at_risk'|'off_track'), confidence(0-1),
+   *            progress?(0-100), note?, period? }
+   */
+  registerLensAction("goals", "checkin", (ctx, _artifact, params = {}) => {
+    const s = getGoalsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const list = ensureList(s.checkins, userId);
+    const op = params.op || "list";
+
+    if (op === "add") {
+      if (!params.goalId) return { ok: false, error: "goalId required" };
+      const confidence = Math.max(0, Math.min(1, Number(params.confidence) || 0));
+      const allowed = ["on_track", "at_risk", "off_track"];
+      const status = allowed.includes(params.status) ? params.status
+        : confidence >= 0.7 ? "on_track" : confidence >= 0.4 ? "at_risk" : "off_track";
+      const entry = {
+        id: `chk_${nextSeq(s, userId, "chk")}`,
+        goalId: params.goalId,
+        status,
+        confidence,
+        progress: params.progress != null ? Math.max(0, Math.min(100, Number(params.progress))) : null,
+        note: typeof params.note === "string" ? params.note.slice(0, 1000) : "",
+        period: params.period || new Date().toISOString().slice(0, 10),
+        createdAt: new Date().toISOString(),
+      };
+      list.push(entry);
+      save();
+    } else if (op === "remove") {
+      const idx = list.findIndex((c) => c.id === params.id);
+      if (idx === -1) return { ok: false, error: "check-in not found" };
+      list.splice(idx, 1);
+      save();
+    }
+
+    let filtered = list;
+    if (params.goalId && op === "list") filtered = list.filter((c) => c.goalId === params.goalId);
+    const seqNum = (c) => Number(String(c.id).replace(/^chk_/, "")) || 0;
+    const sorted = [...filtered].sort(
+      (a, b) => (b.createdAt || "").localeCompare(a.createdAt || "") || seqNum(b) - seqNum(a),
+    );
+    const confValues = sorted.map((c) => c.confidence);
+    const counts = { on_track: 0, at_risk: 0, off_track: 0 };
+    for (const c of sorted) counts[c.status] = (counts[c.status] || 0) + 1;
+
+    return {
+      ok: true,
+      result: {
+        checkins: sorted,
+        stats: {
+          count: sorted.length,
+          avgConfidence: confValues.length
+            ? Math.round((confValues.reduce((a, b) => a + b, 0) / confValues.length) * 1000) / 1000
+            : 0,
+          latestStatus: sorted[0]?.status || null,
+          statusCounts: counts,
+        },
+      },
+    };
+  });
+
+  /**
+   * teamGoal
+   * Team / shared goals with per-member contribution tracking.
+   * params.op: 'list' | 'create' | 'update' | 'contribute' | 'remove'
+   *   create  -> { title, description?, members?:[name], target?(default 100) }
+   *   update  -> { id, title?, description?, target? }
+   *   contribute -> { id, member, amount(progress units), note? }
+   *   remove  -> { id }
+   */
+  registerLensAction("goals", "teamGoal", (ctx, _artifact, params = {}) => {
+    const s = getGoalsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const list = ensureList(s.team, userId);
+    const op = params.op || "list";
+
+    const recompute = (g) => {
+      g.totalContributed = Math.round(g.contributions.reduce((a, c) => a + c.amount, 0) * 100) / 100;
+      g.progress = g.target > 0 ? Math.min(100, Math.round((g.totalContributed / g.target) * 10000) / 100) : 0;
+      const byMember = {};
+      for (const c of g.contributions) byMember[c.member] = (byMember[c.member] || 0) + c.amount;
+      g.byMember = Object.entries(byMember).map(([member, amount]) => ({
+        member,
+        amount: Math.round(amount * 100) / 100,
+        sharePct: g.totalContributed > 0 ? Math.round((amount / g.totalContributed) * 10000) / 100 : 0,
+      })).sort((a, b) => b.amount - a.amount);
+    };
+
+    if (op === "create") {
+      if (!params.title) return { ok: false, error: "title required" };
+      const g = {
+        id: `team_${nextSeq(s, userId, "team")}`,
+        title: params.title,
+        description: params.description || "",
+        members: Array.isArray(params.members) ? [...new Set(params.members.filter(Boolean))] : [],
+        target: Number(params.target) > 0 ? Number(params.target) : 100,
+        contributions: [],
+        createdAt: new Date().toISOString(),
+      };
+      recompute(g);
+      list.push(g);
+      save();
+      return { ok: true, result: { teamGoal: g, teamGoals: list } };
+    }
+
+    const g = params.id ? list.find((x) => x.id === params.id) : null;
+    if (["update", "contribute", "remove"].includes(op) && !g) {
+      return { ok: false, error: "team goal not found" };
+    }
+
+    if (op === "update") {
+      if (params.title) g.title = params.title;
+      if (params.description != null) g.description = params.description;
+      if (Number(params.target) > 0) g.target = Number(params.target);
+      recompute(g);
+      save();
+    } else if (op === "contribute") {
+      if (!params.member) return { ok: false, error: "member required" };
+      const amount = Number(params.amount);
+      if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be positive" };
+      if (!g.members.includes(params.member)) g.members.push(params.member);
+      g.contributions.push({
+        id: `contrib_${g.contributions.length + 1}`,
+        member: params.member,
+        amount,
+        note: typeof params.note === "string" ? params.note.slice(0, 500) : "",
+        at: new Date().toISOString(),
+      });
+      recompute(g);
+      save();
+    } else if (op === "remove") {
+      list.splice(list.indexOf(g), 1);
+      save();
+    }
+
+    return { ok: true, result: { teamGoal: g || null, teamGoals: list } };
+  });
+
+  /**
+   * templates
+   * Goal templates by category + recurring goal management.
+   * params.op: 'list' | 'recurring-list' | 'recurring-create' | 'recurring-remove' | 'recurring-run-due'
+   *   recurring-create -> { title, cadence('daily'|'weekly'|'monthly'|'quarterly'),
+   *                         category?, startAt?, templateId? }
+   *   recurring-remove -> { id }
+   *   recurring-run-due -> instantiates concrete goal occurrences whose nextDue <= now
+   */
+  registerLensAction("goals", "templates", (ctx, _artifact, params = {}) => {
+    const s = getGoalsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const op = params.op || "list";
+
+    if (op === "list") {
+      return { ok: true, result: { templates: GOAL_TEMPLATES } };
+    }
+
+    const list = ensureList(s.recurring, userId);
+    const cadenceDays = { daily: 1, weekly: 7, monthly: 30, quarterly: 91 };
+
+    if (op === "recurring-create") {
+      if (!params.title) return { ok: false, error: "title required" };
+      const cadence = cadenceDays[params.cadence] ? params.cadence : "weekly";
+      const start = params.startAt ? new Date(params.startAt) : new Date();
+      if (isNaN(start.getTime())) return { ok: false, error: "invalid startAt" };
+      const rec = {
+        id: `rec_${nextSeq(s, userId, "rec")}`,
+        title: params.title,
+        cadence,
+        category: params.category || null,
+        templateId: params.templateId || null,
+        startAt: start.toISOString(),
+        nextDue: start.toISOString(),
+        occurrences: 0,
+        createdAt: new Date().toISOString(),
+      };
+      list.push(rec);
+      save();
+      return { ok: true, result: { recurring: rec, recurringGoals: list } };
+    }
+
+    if (op === "recurring-remove") {
+      const idx = list.findIndex((r) => r.id === params.id);
+      if (idx === -1) return { ok: false, error: "recurring goal not found" };
+      list.splice(idx, 1);
+      save();
+      return { ok: true, result: { recurringGoals: list } };
+    }
+
+    if (op === "recurring-run-due") {
+      const now = Date.now();
+      const created = [];
+      for (const rec of list) {
+        let guard = 0;
+        while (new Date(rec.nextDue).getTime() <= now && guard < 500) {
+          created.push({
+            recurringId: rec.id,
+            title: rec.title,
+            category: rec.category,
+            occurrence: rec.occurrences + 1,
+            dueAt: rec.nextDue,
+          });
+          rec.occurrences += 1;
+          rec.nextDue = new Date(
+            new Date(rec.nextDue).getTime() + cadenceDays[rec.cadence] * 86400000,
+          ).toISOString();
+          guard++;
+        }
+      }
+      save();
+      return { ok: true, result: { created, recurringGoals: list } };
+    }
+
+    // recurring-list (default for non-list ops fall here too)
+    return { ok: true, result: { recurringGoals: list } };
+  });
+
+  /**
+   * progressChart
+   * Progress charts — burndown and trend series from a goal's history.
+   * artifact/params.history = [{ date, progress (0-100) }]
+   * params.target (default 100), params.targetDate (optional ISO)
+   * Returns burndown (remaining work), trend (cumulative progress) and an
+   * ideal line for comparison — ready to feed ChartKit.
+   */
+  registerLensAction("goals", "progressChart", (ctx, artifact, params = {}) => {
+    const history = (Array.isArray(params.history) && params.history.length
+      ? params.history
+      : artifact?.data?.history) || [];
+    const target = Number(params.target) > 0 ? Number(params.target) : 100;
+
+    const sorted = history
+      .map((h) => ({ date: h.date, progress: Number(h.progress) || 0, t: new Date(h.date).getTime() }))
+      .filter((h) => !isNaN(h.t))
+      .sort((a, b) => a.t - b.t);
+
+    if (sorted.length === 0) {
+      return { ok: true, result: { trend: [], burndown: [], stats: { points: 0 }, empty: true } };
+    }
+
+    const first = sorted[0].t;
+    const targetDate = params.targetDate ? new Date(params.targetDate).getTime() : sorted[sorted.length - 1].t;
+    const span = Math.max(1, targetDate - first);
+
+    const trend = sorted.map((h) => {
+      const frac = Math.min(1, Math.max(0, (h.t - first) / span));
+      return {
+        date: h.date,
+        progress: Math.round(h.progress * 100) / 100,
+        ideal: Math.round(frac * target * 100) / 100,
+      };
+    });
+
+    const burndown = sorted.map((h) => {
+      const frac = Math.min(1, Math.max(0, (h.t - first) / span));
+      return {
+        date: h.date,
+        remaining: Math.round((target - h.progress) * 100) / 100,
+        idealRemaining: Math.round((target - frac * target) * 100) / 100,
+      };
+    });
+
+    const last = sorted[sorted.length - 1];
+    const days = Math.max(1, (last.t - first) / 86400000);
+    const velocity = Math.round(((last.progress - sorted[0].progress) / days) * 1000) / 1000;
+    const idealFrac = Math.min(1, Math.max(0, (last.t - first) / span));
+    const expected = idealFrac * target;
+    const variance = Math.round((last.progress - expected) * 100) / 100;
+
+    return {
+      ok: true,
+      result: {
+        trend,
+        burndown,
+        stats: {
+          points: sorted.length,
+          currentProgress: last.progress,
+          target,
+          remaining: Math.round((target - last.progress) * 100) / 100,
+          velocityPerDay: velocity,
+          varianceFromIdeal: variance,
+          pace: variance >= 0 ? "ahead" : variance > -10 ? "on_track" : "behind",
+        },
+      },
+    };
+  });
+
+  /**
+   * reminder
+   * Reminders + scheduled review prompts for goals.
+   * params.op: 'list' | 'create' | 'remove' | 'complete' | 'due'
+   *   create -> { goalId?, label, dueAt(ISO), cadence?('once'|'daily'|'weekly'|'monthly'),
+   *               kind?('review'|'checkin'|'deadline') }
+   *   complete -> { id }  (reschedules if recurring, else marks done)
+   *   due -> returns reminders whose dueAt <= now and not done
+   */
+  registerLensAction("goals", "reminder", (ctx, _artifact, params = {}) => {
+    const s = getGoalsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const list = ensureList(s.reminders, userId);
+    const op = params.op || "list";
+    const cadenceDays = { daily: 1, weekly: 7, monthly: 30 };
+
+    if (op === "create") {
+      if (!params.label) return { ok: false, error: "label required" };
+      const due = params.dueAt ? new Date(params.dueAt) : new Date();
+      if (isNaN(due.getTime())) return { ok: false, error: "invalid dueAt" };
+      const kinds = ["review", "checkin", "deadline"];
+      const cadences = ["once", "daily", "weekly", "monthly"];
+      const rem = {
+        id: `rem_${nextSeq(s, userId, "rem")}`,
+        goalId: params.goalId || null,
+        label: String(params.label).slice(0, 300),
+        kind: kinds.includes(params.kind) ? params.kind : "review",
+        cadence: cadences.includes(params.cadence) ? params.cadence : "once",
+        dueAt: due.toISOString(),
+        done: false,
+        firedCount: 0,
+        createdAt: new Date().toISOString(),
+      };
+      list.push(rem);
+      save();
+      return { ok: true, result: { reminder: rem, reminders: list } };
+    }
+
+    if (["remove", "complete"].includes(op)) {
+      const rem = list.find((r) => r.id === params.id);
+      if (!rem) return { ok: false, error: "reminder not found" };
+      if (op === "remove") {
+        list.splice(list.indexOf(rem), 1);
+      } else {
+        rem.firedCount += 1;
+        if (rem.cadence !== "once" && cadenceDays[rem.cadence]) {
+          rem.dueAt = new Date(new Date(rem.dueAt).getTime() + cadenceDays[rem.cadence] * 86400000).toISOString();
+          rem.done = false;
+        } else {
+          rem.done = true;
+        }
+      }
+      save();
+      return { ok: true, result: { reminders: list } };
+    }
+
+    if (op === "due") {
+      const now = Date.now();
+      const due = list.filter((r) => !r.done && new Date(r.dueAt).getTime() <= now)
+        .sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""));
+      return { ok: true, result: { due, count: due.length } };
+    }
+
+    // list
+    const sorted = [...list].sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""));
+    return {
+      ok: true,
+      result: {
+        reminders: sorted,
+        stats: {
+          total: sorted.length,
+          pending: sorted.filter((r) => !r.done).length,
+          overdue: sorted.filter((r) => !r.done && new Date(r.dueAt).getTime() <= Date.now()).length,
+        },
+      },
+    };
+  });
+
+  /**
+   * dependencies
+   * Goal dependencies — model "this goal blocks that one".
+   * params.op: 'list' | 'link' | 'unlink'
+   *   link   -> { from(blocker goalId), to(blocked goalId), kind?('blocks'|'relates') }
+   *   unlink -> { from, to }
+   * Detects cycles and computes a blocked/ready partition.
+   */
+  registerLensAction("goals", "dependencies", (ctx, _artifact, params = {}) => {
+    const s = getGoalsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const list = ensureList(s.deps, userId);
+    const op = params.op || "list";
+
+    if (op === "link") {
+      const { from, to } = params;
+      if (!from || !to) return { ok: false, error: "from and to required" };
+      if (from === to) return { ok: false, error: "a goal cannot depend on itself" };
+      const kind = params.kind === "relates" ? "relates" : "blocks";
+      // Cycle check (only for blocking edges)
+      if (kind === "blocks") {
+        const adj = new Map();
+        for (const e of list.filter((x) => x.kind === "blocks")) {
+          if (!adj.has(e.from)) adj.set(e.from, []);
+          adj.get(e.from).push(e.to);
+        }
+        if (!adj.has(from)) adj.set(from, []);
+        adj.get(from).push(to);
+        // Detect cycle reachable from `to` back to `from`
+        const seen = new Set();
+        const stack = [to];
+        while (stack.length) {
+          const node = stack.pop();
+          if (node === from) return { ok: false, error: "dependency would create a cycle" };
+          if (seen.has(node)) continue;
+          seen.add(node);
+          for (const nxt of (adj.get(node) || [])) stack.push(nxt);
+        }
+      }
+      const existing = list.find((e) => e.from === from && e.to === to);
+      if (existing) {
+        existing.kind = kind;
+      } else {
+        list.push({ id: `dep_${nextSeq(s, userId, "dep")}`, from, to, kind, createdAt: new Date().toISOString() });
+      }
+      save();
+    } else if (op === "unlink") {
+      const idx = list.findIndex((e) => e.from === params.from && e.to === params.to);
+      if (idx === -1) return { ok: false, error: "dependency not found" };
+      list.splice(idx, 1);
+      save();
+    }
+
+    // Partition: a goal is "blocked" if it is the `to` of any blocking edge.
+    const blockingEdges = list.filter((e) => e.kind === "blocks");
+    const blockedSet = new Set(blockingEdges.map((e) => e.to));
+    const allNodes = new Set();
+    for (const e of list) { allNodes.add(e.from); allNodes.add(e.to); }
+    const blockers = {};
+    for (const e of blockingEdges) {
+      if (!blockers[e.to]) blockers[e.to] = [];
+      blockers[e.to].push(e.from);
+    }
+
+    return {
+      ok: true,
+      result: {
+        edges: list,
+        blockedGoals: [...blockedSet],
+        readyGoals: [...allNodes].filter((n) => !blockedSet.has(n)),
+        blockersByGoal: blockers,
+        stats: {
+          edgeCount: list.length,
+          blockingCount: blockingEdges.length,
+          nodeCount: allNodes.size,
+        },
+      },
+    };
+  });
 }

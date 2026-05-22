@@ -29,7 +29,9 @@ export function TrustAccountsPanel() {
   const [showTxnForm, setShowTxnForm] = useState(false);
   const [reconForm, setReconForm] = useState({ bankBalance: '' });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (activeAcct) refreshAccount(activeAcct.id); }, [activeAcct?.id]);
 
   async function refresh() {

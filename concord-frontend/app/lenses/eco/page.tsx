@@ -14,6 +14,11 @@ import { ClimateActions } from '@/components/eco/ClimateActions';
 import { SpeciesIdentifier } from '@/components/eco/SpeciesIdentifier';
 import { EnergyEstimator } from '@/components/eco/EnergyEstimator';
 import { BiodiversityLog } from '@/components/eco/BiodiversityLog';
+import { ObservationFeed } from '@/components/eco/ObservationFeed';
+import { FootprintTrend } from '@/components/eco/FootprintTrend';
+import { EcoChallenges } from '@/components/eco/EcoChallenges';
+import { EnvAlerts } from '@/components/eco/EnvAlerts';
+import { SpeciesSuggest } from '@/components/eco/SpeciesSuggest';
 import { api } from '@/lib/api/client';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -26,6 +31,7 @@ import {
   Thermometer, Cloud, Zap, Fish, Bug, Mountain, Globe,
   ArrowUpRight, ArrowDownRight, Eye, Shield, Waves, Sprout,
   ChevronDown, ChevronRight, Search, X, Recycle, CheckCircle2,
+  Bird, LineChart, Flame, Bell,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -39,7 +45,7 @@ import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type EcoTab = 'overview' | 'populations' | 'climate' | 'biodiversity' | 'impact' | 'weather' | 'air' | 'actions' | 'species' | 'energy' | 'lifelist';
+type EcoTab = 'overview' | 'populations' | 'climate' | 'biodiversity' | 'impact' | 'weather' | 'air' | 'actions' | 'species' | 'energy' | 'lifelist' | 'feed' | 'footprint' | 'challenges' | 'alerts';
 
 interface PopulationEntry {
   species: string;
@@ -273,7 +279,11 @@ export default function EcoLensPage() {
     { id: 'air', label: 'Air quality', icon: Wind },
     { id: 'actions', label: 'Climate actions', icon: Leaf },
     { id: 'species', label: 'Species ID', icon: Bug },
+    { id: 'feed', label: 'Sightings feed', icon: Bird },
     { id: 'lifelist', label: 'Life list', icon: TreeDeciduous },
+    { id: 'footprint', label: 'Footprint trend', icon: LineChart },
+    { id: 'challenges', label: 'Challenges', icon: Flame },
+    { id: 'alerts', label: 'Eco alerts', icon: Bell },
     { id: 'energy', label: 'Solar estimator', icon: Sun },
     { id: 'populations', label: 'Populations', icon: Fish },
     { id: 'climate', label: 'Climate sim', icon: Thermometer },
@@ -1257,23 +1267,30 @@ export default function EcoLensPage() {
         </div>
       )}
       {activeTab === 'species' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <SpeciesIdentifier
-            onAccept={async (s, imageDataUrl) => {
-              try {
-                await api.post('/api/lens/run', {
-                  domain: 'eco', action: 'biodiversity-log',
-                  input: { commonName: s.commonName, scientificName: s.scientificName, imageDataUrl, observedAt: new Date().toISOString() },
-                });
-              } catch (e) {
-                console.error('[Eco] log species failed', e);
-              }
-            }}
-          />
-          <BiodiversityLog />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SpeciesIdentifier
+              onAccept={async (s, imageDataUrl) => {
+                try {
+                  await api.post('/api/lens/run', {
+                    domain: 'eco', action: 'biodiversity-log',
+                    input: { commonName: s.commonName, scientificName: s.scientificName, imageDataUrl, observedAt: new Date().toISOString() },
+                  });
+                } catch (e) {
+                  console.error('[Eco] log species failed', e);
+                }
+              }}
+            />
+            <BiodiversityLog />
+          </div>
+          <SpeciesSuggest />
         </div>
       )}
+      {activeTab === 'feed' && <ObservationFeed />}
       {activeTab === 'lifelist' && <BiodiversityLog />}
+      {activeTab === 'footprint' && <FootprintTrend />}
+      {activeTab === 'challenges' && <EcoChallenges />}
+      {activeTab === 'alerts' && <EnvAlerts />}
       {activeTab === 'energy' && <EnergyEstimator />}
 
       {/* Bespoke Open-Meteo weather + AQI with Save-as-DTU */}

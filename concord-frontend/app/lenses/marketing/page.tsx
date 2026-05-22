@@ -11,6 +11,14 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketingDashboardSection } from '@/components/marketing/MarketingDashboardSection';
 import { MarketingFeed } from '@/components/marketing/MarketingFeed';
 import { MarketingActionPanel } from '@/components/marketing/MarketingActionPanel';
+import { MarketingEmailPanel } from '@/components/marketing/MarketingEmailPanel';
+import { MarketingWorkflowsPanel } from '@/components/marketing/MarketingWorkflowsPanel';
+import { MarketingPagesPanel } from '@/components/marketing/MarketingPagesPanel';
+import { MarketingSocialPanel } from '@/components/marketing/MarketingSocialPanel';
+import { MarketingScoringPanel } from '@/components/marketing/MarketingScoringPanel';
+import { MarketingSEOPanel } from '@/components/marketing/MarketingSEOPanel';
+import { MarketingContactsPanel } from '@/components/marketing/MarketingContactsPanel';
+import { MarketingCalendarPanel } from '@/components/marketing/MarketingCalendarPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -25,7 +33,7 @@ import {
   Megaphone, Target, BarChart3, Users, Mail, Share2,
   Plus, Search, X, Trash2, TrendingUp, DollarSign, Eye, MousePointerClick, Globe,
   Layers, ChevronDown,
-  PenTool, Zap,
+  PenTool, Zap, Workflow, LayoutTemplate, SlidersHorizontal, Contact, CalendarDays,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -38,8 +46,12 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'campaigns' | 'content' | 'analytics' | 'audiences' | 'email' | 'social' | 'seo';
+type ModeTab =
+  | 'campaigns' | 'content' | 'analytics' | 'audiences'
+  | 'email' | 'workflows' | 'pages' | 'social' | 'scoring' | 'seo' | 'crm' | 'calendar';
 type ArtifactType = 'Campaign' | 'Content' | 'Analytic' | 'Audience' | 'EmailTemplate' | 'SocialPost' | 'SEOAudit';
+/** Tabs backed by a purpose-built backend-wired panel (not artifact CRUD). */
+const PANEL_TABS: ModeTab[] = ['email', 'workflows', 'pages', 'social', 'scoring', 'seo', 'crm', 'calendar'];
 type Status = 'draft' | 'active' | 'paused' | 'completed' | 'scheduled' | 'archived';
 
 interface MarketingArtifact {
@@ -101,8 +113,13 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof Megaphone; artifactT
   { id: 'analytics', label: 'Analytics', icon: BarChart3, artifactType: 'Analytic' },
   { id: 'audiences', label: 'Audiences', icon: Users, artifactType: 'Audience' },
   { id: 'email', label: 'Email', icon: Mail, artifactType: 'EmailTemplate' },
+  { id: 'workflows', label: 'Workflows', icon: Workflow, artifactType: 'Campaign' },
+  { id: 'pages', label: 'Landing Pages', icon: LayoutTemplate, artifactType: 'Campaign' },
   { id: 'social', label: 'Social', icon: Share2, artifactType: 'SocialPost' },
+  { id: 'scoring', label: 'Lead Scoring', icon: SlidersHorizontal, artifactType: 'Campaign' },
   { id: 'seo', label: 'SEO', icon: Globe, artifactType: 'SEOAudit' },
+  { id: 'crm', label: 'CRM', icon: Contact, artifactType: 'Campaign' },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays, artifactType: 'Campaign' },
 ];
 
 const STATUS_CONFIG: Record<Status, { label: string; color: string }> = {
@@ -406,6 +423,26 @@ export default function MarketingLensPage() {
   );
 
   /* ------------------------------------------------------------------ */
+  /*  Backend-wired panels (HubSpot-parity execution surfaces)           */
+  /* ------------------------------------------------------------------ */
+
+  const renderPanel = () => {
+    switch (activeTab) {
+      case 'email': return <MarketingEmailPanel />;
+      case 'workflows': return <MarketingWorkflowsPanel />;
+      case 'pages': return <MarketingPagesPanel />;
+      case 'social': return <MarketingSocialPanel />;
+      case 'scoring': return <MarketingScoringPanel />;
+      case 'seo': return <MarketingSEOPanel />;
+      case 'crm': return <MarketingContactsPanel />;
+      case 'calendar': return <MarketingCalendarPanel />;
+      default: return null;
+    }
+  };
+
+  const isPanelTab = PANEL_TABS.includes(activeTab);
+
+  /* ------------------------------------------------------------------ */
   /*  Render                                                             */
   /* ------------------------------------------------------------------ */
 
@@ -509,8 +546,8 @@ export default function MarketingLensPage() {
         ))}
       </nav>
 
-      {showDashboard ? renderDashboard() : renderLibrary()}
-      {renderEditor()}
+      {showDashboard ? renderDashboard() : isPanelTab ? renderPanel() : renderLibrary()}
+      {!isPanelTab && renderEditor()}
 
       <div className="border-t border-white/10">
         <button onClick={() => setShowFeatures(!showFeatures)}

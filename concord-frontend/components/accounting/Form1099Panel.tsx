@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -15,16 +15,16 @@ export function Form1099Panel() {
   const [data, setData] = useState<{ year: number; threshold: number; vendors: Form1099Row[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { refresh(); }, [year]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'accounting', action: 'summary-1099', input: { year } });
       setData(r.data?.result || null);
     } catch (e) { console.error('[1099] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [year]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const reportable = data?.vendors.filter(v => v.reportable) || [];

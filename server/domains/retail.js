@@ -1257,4 +1257,772 @@ export default function registerRetailActions(registerLensAction) {
       },
     };
   });
+
+  // feed — ingest real consumer retail products from the Open Beauty
+  // Facts open database as visible DTUs. Free, no key.
+  registerLensAction("retail", "feed", async (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const page = (new Date().getDate() % 8) + 1;
+    try {
+      const r = await fetch(`https://world.openbeautyfacts.org/api/v2/search?fields=code,product_name,brands,categories&page_size=${limit}&page=${page}`);
+      if (!r.ok) return { ok: false, error: `openbeautyfacts ${r.status}` };
+      const data = await r.json();
+      const products = (Array.isArray(data?.products) ? data.products : []).filter((p) => p.product_name).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const p of products) {
+        const id = `obf_${p.code}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `Retail product: ${p.product_name}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nBrand: ${p.brands || "?"}\nCategory: ${(p.categories || "?").slice(0, 200)}\nBarcode: ${p.code}\nSource: Open Beauty Facts`,
+          tags: ["retail", "feed", "product", "openbeautyfacts"],
+          source: "openbeautyfacts-feed",
+          meta: { code: p.code, name: p.product_name, brands: p.brands },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveRetailState();
+      return { ok: true, result: { ingested, skipped, source: "openbeautyfacts-products", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `openbeautyfacts unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  //  2026 PARITY BACKLOG — Shopify feature gaps
+  // ════════════════════════════════════════════════════════════════════
+
+  // ── [M] Storefront — buyer-facing public shop ────────────────────
+  //
+  // A merchant publishes products to a public storefront and gets a
+  // shareable slug. Buyers browse + add to a buyer cart + place an
+  // order. Buyer carts are keyed off the merchant's userId so they
+  // don't collide with the admin POS carts.
+
+  function ensureStorefront(s, userId) {
+    if (!s.storefronts) s.storefronts = new Map();
+    if (!s.storefronts.has(userId)) {
+      s.storefronts.set(userId, {
+        slug: null, name: "", tagline: "",
+        published: false, theme: "minimal",
+        publishedSkus: [], updatedAt: nowIsoRet(),
+      });
+    }
+    return s.storefronts.get(userId);
+  }
+
+  registerLensAction("retail", "storefront-get", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    return { ok: true, result: { storefront: ensureStorefront(s, userId) } };
+  });
+
+  registerLensAction("retail", "storefront-configure", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sf = ensureStorefront(s, userId);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 60) return { ok: false, error: "name too long" };
+    sf.name = name;
+    sf.tagline = String(params.tagline || "").slice(0, 140);
+    if (["minimal", "bold", "warm"].includes(params.theme)) sf.theme = params.theme;
+    if (!sf.slug) {
+      sf.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || `shop-${userId.slice(0, 6)}`;
+    }
+    sf.updatedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { storefront: sf } };
+  });
+
+  registerLensAction("retail", "storefront-publish", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sf = ensureStorefront(s, userId);
+    if (!sf.slug) return { ok: false, error: "configure the storefront before publishing" };
+    const published = params.published !== false;
+    const skus = Array.isArray(params.publishedSkus) ? params.publishedSkus.map(String) : null;
+    if (skus) {
+      const productMap = s.products.get(userId);
+      const valid = skus.filter((sk) => productMap && productMap.has(sk));
+      sf.publishedSkus = valid;
+    }
+    sf.published = published;
+    sf.updatedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { storefront: sf, publicUrl: published ? `/shop/${sf.slug}` : null } };
+  });
+
+  // Buyer-facing read — returns published catalog with stock + ratings.
+  registerLensAction("retail", "storefront-catalog", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sf = ensureStorefront(s, userId);
+    if (!sf.published) return { ok: true, result: { published: false, products: [] } };
+    const productMap = s.products.get(userId);
+    const reviews = ensureRetailBucket(s, "reviews", userId);
+    const skuFilter = sf.publishedSkus.length > 0 ? new Set(sf.publishedSkus) : null;
+    const products = [];
+    if (productMap) {
+      for (const p of productMap.values()) {
+        if (skuFilter && !skuFilter.has(p.sku)) continue;
+        const skuReviews = reviews.filter((r) => r.sku === p.sku && r.status === "published");
+        const avgRating = skuReviews.length > 0
+          ? Math.round((skuReviews.reduce((sum, r) => sum + r.rating, 0) / skuReviews.length) * 10) / 10
+          : null;
+        products.push({
+          sku: p.sku, name: p.name, price: p.price, category: p.category,
+          inStock: p.stock > 0, stock: p.stock,
+          avgRating, reviewCount: skuReviews.length,
+        });
+      }
+    }
+    products.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      ok: true,
+      result: { published: true, storeName: sf.name, tagline: sf.tagline, theme: sf.theme, products },
+    };
+  });
+
+  // Buyer places an order from the storefront. Decrements stock, writes
+  // a real order tagged channel:'storefront'.
+  registerLensAction("retail", "storefront-checkout", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sf = ensureStorefront(s, userId);
+    if (!sf.published) return { ok: false, error: "storefront not published" };
+    const lines = Array.isArray(params.lines) ? params.lines : [];
+    if (lines.length === 0) return { ok: false, error: "at least one line required" };
+    const buyerName = String(params.buyerName || "").trim();
+    const buyerEmail = String(params.buyerEmail || "").trim().toLowerCase();
+    if (!buyerName) return { ok: false, error: "buyerName required" };
+    if (!buyerEmail) return { ok: false, error: "buyerEmail required" };
+    const productMap = s.products.get(userId);
+    if (!productMap) return { ok: false, error: "no catalog" };
+    const orderLines = [];
+    for (const ln of lines) {
+      const sku = String(ln.sku || "");
+      const qty = Math.max(1, Math.round(Number(ln.qty) || 1));
+      const product = productMap.get(sku);
+      if (!product) return { ok: false, error: `product not found: ${sku}` };
+      if (product.stock < qty) return { ok: false, error: `insufficient stock for ${product.name} (${product.stock} available)` };
+      orderLines.push({ sku, name: product.name, unitPrice: product.price, qty });
+    }
+    for (const ln of orderLines) {
+      const product = productMap.get(ln.sku);
+      product.stock = Math.max(0, product.stock - ln.qty);
+    }
+    const subtotal = orderLines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    if (!s.seq.has(userId)) s.seq.set(userId, { order: 1 });
+    const seq = s.seq.get(userId);
+    const order = {
+      id: nextRetailId("ord"),
+      number: `ORD-${String(seq.order).padStart(5, "0")}`,
+      lines: orderLines,
+      subtotal: Math.round(subtotal * 100) / 100,
+      discount: 0,
+      tax: 0,
+      total: Math.round(subtotal * 100) / 100,
+      tenders: [{ kind: "storefront", amount: Math.round(subtotal * 100) / 100 }],
+      tendered: Math.round(subtotal * 100) / 100,
+      change: 0,
+      channel: "storefront",
+      buyerName, buyerEmail,
+      fulfillmentStatus: "unfulfilled",
+      completedAt: nowIsoRet(),
+    };
+    seq.order++;
+    if (!s.orders.has(userId)) s.orders.set(userId, []);
+    s.orders.get(userId).unshift(order);
+    saveRetailState();
+    return { ok: true, result: { order } };
+  });
+
+  // ── [S] Order fulfillment workflow — pick / pack / ship ──────────
+
+  const FULFILLMENT_STAGES = ["unfulfilled", "picking", "packed", "shipped", "delivered"];
+
+  registerLensAction("retail", "fulfillment-queue", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const orders = s.orders.get(userId) || [];
+    const queue = orders
+      .filter((o) => (o.fulfillmentStatus || "unfulfilled") !== "delivered")
+      .map((o) => ({
+        id: o.id, number: o.number, total: o.total,
+        itemCount: o.lines.reduce((sum, l) => sum + l.qty, 0),
+        channel: o.channel || "pos",
+        buyerName: o.buyerName || null,
+        fulfillmentStatus: o.fulfillmentStatus || "unfulfilled",
+        trackingNumber: o.trackingNumber || null,
+        completedAt: o.completedAt,
+      }));
+    const counts = {};
+    for (const st of FULFILLMENT_STAGES) counts[st] = 0;
+    for (const o of orders) counts[o.fulfillmentStatus || "unfulfilled"]++;
+    return { ok: true, result: { queue, counts, stages: FULFILLMENT_STAGES } };
+  });
+
+  registerLensAction("retail", "fulfillment-advance", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const orderId = String(params.orderId || "");
+    const orders = s.orders.get(userId) || [];
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return { ok: false, error: "order not found" };
+    const current = order.fulfillmentStatus || "unfulfilled";
+    let target = params.toStatus ? String(params.toStatus) : null;
+    if (!target) {
+      const idx = FULFILLMENT_STAGES.indexOf(current);
+      if (idx < 0 || idx >= FULFILLMENT_STAGES.length - 1) {
+        return { ok: false, error: "order already fully fulfilled" };
+      }
+      target = FULFILLMENT_STAGES[idx + 1];
+    }
+    if (!FULFILLMENT_STAGES.includes(target)) return { ok: false, error: "invalid fulfillment status" };
+    if (FULFILLMENT_STAGES.indexOf(target) <= FULFILLMENT_STAGES.indexOf(current)) {
+      return { ok: false, error: `cannot move fulfillment backward (${current} → ${target})` };
+    }
+    order.fulfillmentStatus = target;
+    if (!Array.isArray(order.fulfillmentLog)) order.fulfillmentLog = [];
+    order.fulfillmentLog.push({ status: target, at: nowIsoRet() });
+    // A notification is recorded for the buyer when shipped/delivered.
+    let notification = null;
+    if ((target === "shipped" || target === "delivered") && order.buyerEmail) {
+      const notes = ensureRetailBucket(s, "notifications", userId);
+      notification = {
+        id: nextRetailId("ntf"),
+        orderId: order.id, orderNumber: order.number,
+        to: order.buyerEmail,
+        kind: target === "shipped" ? "shipment_notice" : "delivery_notice",
+        message: target === "shipped"
+          ? `Your order ${order.number} has shipped${order.trackingNumber ? ` — tracking ${order.trackingNumber}` : ""}.`
+          : `Your order ${order.number} was delivered.`,
+        sentAt: nowIsoRet(),
+      };
+      notes.unshift(notification);
+    }
+    saveRetailState();
+    return { ok: true, result: { order: { id: order.id, number: order.number, fulfillmentStatus: order.fulfillmentStatus, fulfillmentLog: order.fulfillmentLog }, notification } };
+  });
+
+  registerLensAction("retail", "fulfillment-notifications", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const notifications = ensureRetailBucket(s, "notifications", userId);
+    return { ok: true, result: { notifications: notifications.slice(0, 100) } };
+  });
+
+  // ── [M] Shipping labels + tracking ───────────────────────────────
+  //
+  // Beyond rate quotes: buy a label for an order and track it. When
+  // CONCORD_SHIPPING_PROVIDER_URL + token are configured, the buy/track
+  // calls hit a real carrier-aggregator REST API. Without config they
+  // return a clear "not configured" error — no synthesized tracking.
+
+  async function shippingProviderFetch(path, { method = "GET", body } = {}) {
+    const base = process.env.CONCORD_SHIPPING_PROVIDER_URL;
+    const token = process.env.CONCORD_SHIPPING_PROVIDER_TOKEN;
+    if (!base) throw new Error("CONCORD_SHIPPING_PROVIDER_URL not configured");
+    const url = `${base.replace(/\/$/, "")}${path}`;
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    const data = await r.json();
+    if (!r.ok) throw new Error(`shipping provider ${path} ${r.status}: ${data?.error || data?.message || "unknown"}`);
+    return data;
+  }
+
+  registerLensAction("retail", "shipping-label-buy", async (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const orderId = String(params.orderId || "");
+    const carrier = String(params.carrier || "").trim().toLowerCase();
+    const service = String(params.service || "ground").trim();
+    const orders = s.orders.get(userId) || [];
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return { ok: false, error: "order not found" };
+    if (!carrier) return { ok: false, error: "carrier required (e.g. usps, ups, fedex)" };
+    if (order.shippingLabel) return { ok: false, error: "label already purchased for this order" };
+    if (!process.env.CONCORD_SHIPPING_PROVIDER_URL) {
+      return { ok: false, error: "Shipping carrier not configured. Set CONCORD_SHIPPING_PROVIDER_URL to buy real labels." };
+    }
+    const toAddress = params.toAddress && typeof params.toAddress === "object" ? params.toAddress : null;
+    if (!toAddress) return { ok: false, error: "toAddress required" };
+    try {
+      const resp = await shippingProviderFetch("/v1/labels", {
+        method: "POST",
+        body: {
+          carrier, service,
+          to_address: toAddress,
+          parcel: params.parcel || { weight_oz: 16 },
+          reference: order.number,
+        },
+      });
+      const label = {
+        id: nextRetailId("lbl"),
+        orderId: order.id, orderNumber: order.number,
+        carrier, service,
+        trackingNumber: String(resp.tracking_number || resp.trackingNumber || ""),
+        labelUrl: String(resp.label_url || resp.labelUrl || ""),
+        costCents: Math.round(Number(resp.rate_cents ?? resp.rateCents ?? 0)),
+        purchasedAt: nowIsoRet(),
+        trackingStatus: "label_created",
+      };
+      order.shippingLabel = label;
+      order.trackingNumber = label.trackingNumber;
+      ensureRetailBucket(s, "shippingLabels", userId).unshift(label);
+      saveRetailState();
+      return { ok: true, result: { label } };
+    } catch (e) {
+      return { ok: false, error: `label purchase failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  registerLensAction("retail", "shipping-labels-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const labels = ensureRetailBucket(s, "shippingLabels", userId);
+    return { ok: true, result: { labels } };
+  });
+
+  registerLensAction("retail", "shipping-track", async (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const trackingNumber = String(params.trackingNumber || "").trim();
+    const carrier = String(params.carrier || "").trim().toLowerCase();
+    if (!trackingNumber) return { ok: false, error: "trackingNumber required" };
+    if (!process.env.CONCORD_SHIPPING_PROVIDER_URL) {
+      return { ok: false, error: "Shipping carrier not configured. Set CONCORD_SHIPPING_PROVIDER_URL to track shipments." };
+    }
+    try {
+      const resp = await shippingProviderFetch(
+        `/v1/tracking?tracking_number=${encodeURIComponent(trackingNumber)}${carrier ? `&carrier=${encodeURIComponent(carrier)}` : ""}`,
+      );
+      const status = String(resp.status || resp.tracking_status || "unknown");
+      const events = Array.isArray(resp.events) ? resp.events : (Array.isArray(resp.tracking_events) ? resp.tracking_events : []);
+      // Persist latest status onto any matching label.
+      const labels = ensureRetailBucket(s, "shippingLabels", userId);
+      const label = labels.find((l) => l.trackingNumber === trackingNumber);
+      if (label) { label.trackingStatus = status; label.trackingCheckedAt = nowIsoRet(); }
+      saveRetailState();
+      return { ok: true, result: { trackingNumber, carrier: carrier || resp.carrier || null, status, events } };
+    } catch (e) {
+      return { ok: false, error: `tracking lookup failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── [M] Marketing campaigns ──────────────────────────────────────
+  //
+  // Email/discount campaigns targeted at a customer segment, with
+  // conversion tracking. recordConversion attributes an order back to
+  // a campaign to compute revenue + ROI.
+
+  function segmentMembers(s, userId, segment) {
+    const customers = ensureRetailBucket(s, "customers", userId);
+    const now = Date.now();
+    const day = 86400000;
+    switch (segment) {
+      case "all": return customers;
+      case "marketing": return customers.filter((c) => c.acceptsMarketing);
+      case "vip": return customers.filter((c) => c.totalSpent >= 1000 || c.orderCount >= 5);
+      case "new": return customers.filter((c) => c.orderCount <= 1);
+      case "repeat": return customers.filter((c) => c.orderCount >= 2 && c.orderCount < 5);
+      case "atRisk": return customers.filter((c) => c.lastOrderAt && (now - new Date(c.lastOrderAt).getTime()) > 90 * day && c.orderCount > 0);
+      case "dormant": return customers.filter((c) => !c.lastOrderAt || (now - new Date(c.lastOrderAt).getTime()) > 180 * day);
+      default: return customers;
+    }
+  }
+
+  registerLensAction("retail", "campaigns-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const campaigns = ensureRetailBucket(s, "campaigns", userId);
+    return { ok: true, result: { campaigns } };
+  });
+
+  registerLensAction("retail", "campaigns-create", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const channel = ["email", "sms", "discount"].includes(params.channel) ? params.channel : "email";
+    const segment = ["all", "marketing", "vip", "new", "repeat", "atRisk", "dormant"].includes(params.segment)
+      ? params.segment : "marketing";
+    const subject = String(params.subject || "").slice(0, 160);
+    const body = String(params.body || "").slice(0, 4000);
+    const discountCode = params.discountCode ? String(params.discountCode).trim().toUpperCase() : null;
+    if (channel === "discount" && !discountCode) {
+      return { ok: false, error: "discount campaigns require a discountCode" };
+    }
+    const campaign = {
+      id: nextRetailId("camp"), name, channel, segment, subject, body, discountCode,
+      status: "draft",
+      audienceSize: 0, sentCount: 0,
+      conversions: 0, revenue: 0,
+      createdAt: nowIsoRet(), sentAt: null,
+    };
+    ensureRetailBucket(s, "campaigns", userId).push(campaign);
+    saveRetailState();
+    return { ok: true, result: { campaign } };
+  });
+
+  registerLensAction("retail", "campaigns-send", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const campaign = ensureRetailBucket(s, "campaigns", userId).find((c) => c.id === id);
+    if (!campaign) return { ok: false, error: "campaign not found" };
+    if (campaign.status === "sent") return { ok: false, error: "campaign already sent" };
+    const members = segmentMembers(s, userId, campaign.segment);
+    const recipients = campaign.channel === "sms"
+      ? members.filter((m) => m.phone)
+      : members.filter((m) => m.email);
+    campaign.audienceSize = members.length;
+    campaign.sentCount = recipients.length;
+    campaign.status = "sent";
+    campaign.sentAt = nowIsoRet();
+    saveRetailState();
+    return {
+      ok: true,
+      result: { campaign, recipients: recipients.map((r) => ({ name: r.name, email: r.email, phone: r.phone })) },
+    };
+  });
+
+  // Attribute an order's revenue to a campaign (conversion tracking).
+  registerLensAction("retail", "campaigns-record-conversion", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const orderId = String(params.orderId || "");
+    const campaign = ensureRetailBucket(s, "campaigns", userId).find((c) => c.id === id);
+    if (!campaign) return { ok: false, error: "campaign not found" };
+    if (campaign.status !== "sent") return { ok: false, error: "campaign not sent yet" };
+    const order = (s.orders.get(userId) || []).find((o) => o.id === orderId);
+    if (!order) return { ok: false, error: "order not found" };
+    if (!Array.isArray(campaign.attributedOrderIds)) campaign.attributedOrderIds = [];
+    if (campaign.attributedOrderIds.includes(orderId)) {
+      return { ok: false, error: "order already attributed to this campaign" };
+    }
+    campaign.attributedOrderIds.push(orderId);
+    campaign.conversions++;
+    campaign.revenue = Math.round((campaign.revenue + order.total) * 100) / 100;
+    saveRetailState();
+    return { ok: true, result: { campaign } };
+  });
+
+  registerLensAction("retail", "campaigns-performance", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = params.id ? String(params.id) : null;
+    const all = ensureRetailBucket(s, "campaigns", userId);
+    const list = id ? all.filter((c) => c.id === id) : all.filter((c) => c.status === "sent");
+    const rows = list.map((c) => {
+      const conversionRate = c.sentCount > 0 ? Math.round((c.conversions / c.sentCount) * 10000) / 100 : 0;
+      const revenuePerRecipient = c.sentCount > 0 ? Math.round((c.revenue / c.sentCount) * 100) / 100 : 0;
+      return {
+        id: c.id, name: c.name, channel: c.channel, segment: c.segment,
+        sentCount: c.sentCount, conversions: c.conversions,
+        revenue: c.revenue, conversionRate, revenuePerRecipient,
+      };
+    });
+    const totalRevenue = rows.reduce((sum, r) => sum + r.revenue, 0);
+    const totalConversions = rows.reduce((sum, r) => sum + r.conversions, 0);
+    const totalSent = rows.reduce((sum, r) => sum + r.sentCount, 0);
+    return {
+      ok: true,
+      result: {
+        campaigns: rows,
+        totals: {
+          campaignCount: rows.length,
+          totalSent, totalConversions,
+          totalRevenue: Math.round(totalRevenue * 100) / 100,
+          avgConversionRate: totalSent > 0 ? Math.round((totalConversions / totalSent) * 10000) / 100 : 0,
+        },
+      },
+    };
+  });
+
+  // ── [S] Multi-channel listing — sync inventory to marketplaces ───
+
+  const SALES_CHANNELS = ["amazon", "ebay", "etsy", "walmart", "tiktok_shop"];
+
+  registerLensAction("retail", "channels-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const channels = ensureRetailBucket(s, "channels", userId);
+    return { ok: true, result: { channels, available: SALES_CHANNELS } };
+  });
+
+  registerLensAction("retail", "channels-connect", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const channel = String(params.channel || "").trim().toLowerCase();
+    if (!SALES_CHANNELS.includes(channel)) {
+      return { ok: false, error: `unsupported channel; one of: ${SALES_CHANNELS.join(", ")}` };
+    }
+    const channels = ensureRetailBucket(s, "channels", userId);
+    if (channels.some((c) => c.channel === channel)) return { ok: false, error: "channel already connected" };
+    const conn = {
+      id: nextRetailId("chan"), channel,
+      storeName: String(params.storeName || "").slice(0, 80),
+      listedSkus: [], status: "connected",
+      lastSyncedAt: null, connectedAt: nowIsoRet(),
+    };
+    channels.push(conn);
+    saveRetailState();
+    return { ok: true, result: { channel: conn } };
+  });
+
+  registerLensAction("retail", "channels-disconnect", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const channels = ensureRetailBucket(s, "channels", userId);
+    const idx = channels.findIndex((c) => c.id === id);
+    if (idx < 0) return { ok: false, error: "channel not found" };
+    channels.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, disconnected: true } };
+  });
+
+  // List specific products onto a connected channel.
+  registerLensAction("retail", "channels-list-products", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const skus = Array.isArray(params.skus) ? params.skus.map(String) : [];
+    const channel = ensureRetailBucket(s, "channels", userId).find((c) => c.id === id);
+    if (!channel) return { ok: false, error: "channel not found" };
+    if (skus.length === 0) return { ok: false, error: "at least one sku required" };
+    const productMap = s.products.get(userId);
+    const valid = skus.filter((sk) => productMap && productMap.has(sk));
+    if (valid.length === 0) return { ok: false, error: "no valid products to list" };
+    for (const sk of valid) if (!channel.listedSkus.includes(sk)) channel.listedSkus.push(sk);
+    saveRetailState();
+    return { ok: true, result: { channel } };
+  });
+
+  // Push current stock levels to every connected channel.
+  registerLensAction("retail", "channels-sync-inventory", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = params.id ? String(params.id) : null;
+    const channels = ensureRetailBucket(s, "channels", userId);
+    const targets = id ? channels.filter((c) => c.id === id) : channels;
+    if (targets.length === 0) return { ok: false, error: "no connected channels" };
+    const productMap = s.products.get(userId);
+    const syncedAt = nowIsoRet();
+    const report = [];
+    for (const ch of targets) {
+      const updates = ch.listedSkus.map((sk) => {
+        const product = productMap ? productMap.get(sk) : null;
+        return { sku: sk, stock: product ? product.stock : 0, found: Boolean(product) };
+      });
+      ch.lastSyncedAt = syncedAt;
+      ch.lastSyncCount = updates.length;
+      report.push({ channelId: ch.id, channel: ch.channel, syncedSkus: updates.length, updates });
+    }
+    saveRetailState();
+    return { ok: true, result: { syncedAt, channels: report } };
+  });
+
+  // ── [S] Product reviews + ratings ────────────────────────────────
+
+  registerLensAction("retail", "reviews-list", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = params.sku ? String(params.sku) : null;
+    let reviews = ensureRetailBucket(s, "reviews", userId);
+    if (sku) reviews = reviews.filter((r) => r.sku === sku);
+    const sorted = reviews.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return { ok: true, result: { reviews: sorted } };
+  });
+
+  registerLensAction("retail", "reviews-submit", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sku = String(params.sku || "").trim();
+    if (!sku) return { ok: false, error: "sku required" };
+    const productMap = s.products.get(userId);
+    if (!productMap || !productMap.has(sku)) return { ok: false, error: `product not found: ${sku}` };
+    const rating = Math.round(Number(params.rating));
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) return { ok: false, error: "rating must be 1-5" };
+    const authorName = String(params.authorName || "").trim();
+    if (!authorName) return { ok: false, error: "authorName required" };
+    const body = String(params.body || "").trim().slice(0, 2000);
+    // Verified-purchase flag — true if this buyer email appears on an order with the sku.
+    const buyerEmail = String(params.buyerEmail || "").trim().toLowerCase();
+    let verified = false;
+    if (buyerEmail) {
+      const orders = s.orders.get(userId) || [];
+      verified = orders.some((o) => (o.buyerEmail || "").toLowerCase() === buyerEmail && o.lines.some((l) => l.sku === sku));
+    }
+    const review = {
+      id: nextRetailId("rev"), sku,
+      productName: productMap.get(sku).name,
+      rating, title: String(params.title || "").slice(0, 120), body,
+      authorName, buyerEmail: buyerEmail || null,
+      verified,
+      status: "published",
+      createdAt: nowIsoRet(),
+    };
+    ensureRetailBucket(s, "reviews", userId).push(review);
+    saveRetailState();
+    return { ok: true, result: { review } };
+  });
+
+  registerLensAction("retail", "reviews-moderate", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const status = ["published", "hidden"].includes(params.status) ? params.status : null;
+    if (!status) return { ok: false, error: "status must be published or hidden" };
+    const review = ensureRetailBucket(s, "reviews", userId).find((r) => r.id === id);
+    if (!review) return { ok: false, error: "review not found" };
+    review.status = status;
+    saveRetailState();
+    return { ok: true, result: { review } };
+  });
+
+  registerLensAction("retail", "reviews-delete", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "reviews", userId);
+    const idx = list.findIndex((r) => r.id === id);
+    if (idx < 0) return { ok: false, error: "review not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("retail", "reviews-summary", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const reviews = ensureRetailBucket(s, "reviews", userId).filter((r) => r.status === "published");
+    const total = reviews.length;
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let sum = 0;
+    for (const r of reviews) { distribution[r.rating]++; sum += r.rating; }
+    const bySku = new Map();
+    for (const r of reviews) {
+      const e = bySku.get(r.sku) || { sku: r.sku, productName: r.productName, count: 0, sum: 0 };
+      e.count++; e.sum += r.rating;
+      bySku.set(r.sku, e);
+    }
+    const topRated = Array.from(bySku.values())
+      .map((e) => ({ sku: e.sku, productName: e.productName, reviewCount: e.count, avgRating: Math.round((e.sum / e.count) * 10) / 10 }))
+      .sort((a, b) => b.avgRating - a.avgRating || b.reviewCount - a.reviewCount)
+      .slice(0, 10);
+    return {
+      ok: true,
+      result: {
+        totalReviews: total,
+        avgRating: total > 0 ? Math.round((sum / total) * 10) / 10 : 0,
+        verifiedCount: reviews.filter((r) => r.verified).length,
+        distribution,
+        topRated,
+      },
+    };
+  });
+
+  // ── [S] Staff accounts + permissions ─────────────────────────────
+
+  const STAFF_ROLES = {
+    owner: ["products", "orders", "customers", "discounts", "analytics", "staff", "fulfillment", "campaigns"],
+    manager: ["products", "orders", "customers", "discounts", "analytics", "fulfillment", "campaigns"],
+    fulfillment: ["orders", "fulfillment"],
+    cashier: ["orders", "products"],
+    marketing: ["customers", "discounts", "campaigns", "analytics"],
+  };
+
+  registerLensAction("retail", "staff-list", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const staff = ensureRetailBucket(s, "staff", userId);
+    return { ok: true, result: { staff, roles: Object.keys(STAFF_ROLES) } };
+  });
+
+  registerLensAction("retail", "staff-invite", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const name = String(params.name || "").trim();
+    const email = String(params.email || "").trim().toLowerCase();
+    const role = String(params.role || "").trim().toLowerCase();
+    if (!name) return { ok: false, error: "name required" };
+    if (!email) return { ok: false, error: "email required" };
+    if (!STAFF_ROLES[role]) return { ok: false, error: `role must be one of: ${Object.keys(STAFF_ROLES).join(", ")}` };
+    const staff = ensureRetailBucket(s, "staff", userId);
+    if (staff.some((m) => m.email === email)) return { ok: false, error: "a staff member with that email already exists" };
+    const member = {
+      id: nextRetailId("staff"), name, email, role,
+      permissions: STAFF_ROLES[role].slice(),
+      status: "invited",
+      invitedAt: nowIsoRet(), activatedAt: null,
+    };
+    staff.push(member);
+    saveRetailState();
+    return { ok: true, result: { member } };
+  });
+
+  registerLensAction("retail", "staff-update-role", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const role = String(params.role || "").trim().toLowerCase();
+    if (!STAFF_ROLES[role]) return { ok: false, error: `role must be one of: ${Object.keys(STAFF_ROLES).join(", ")}` };
+    const member = ensureRetailBucket(s, "staff", userId).find((m) => m.id === id);
+    if (!member) return { ok: false, error: "staff member not found" };
+    member.role = role;
+    // Custom permission override, else default to the role's set.
+    if (Array.isArray(params.permissions)) {
+      const all = STAFF_ROLES.owner;
+      member.permissions = params.permissions.map(String).filter((p) => all.includes(p));
+    } else {
+      member.permissions = STAFF_ROLES[role].slice();
+    }
+    saveRetailState();
+    return { ok: true, result: { member } };
+  });
+
+  registerLensAction("retail", "staff-activate", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const member = ensureRetailBucket(s, "staff", userId).find((m) => m.id === id);
+    if (!member) return { ok: false, error: "staff member not found" };
+    member.status = member.status === "active" ? "suspended" : "active";
+    if (member.status === "active" && !member.activatedAt) member.activatedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { member } };
+  });
+
+  registerLensAction("retail", "staff-remove", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "staff", userId);
+    const idx = list.findIndex((m) => m.id === id);
+    if (idx < 0) return { ok: false, error: "staff member not found" };
+    list.splice(idx, 1);
+    saveRetailState();
+    return { ok: true, result: { id, removed: true } };
+  });
+
+  // Permission check helper macro — answers "can role X do Y".
+  registerLensAction("retail", "staff-check-permission", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const permission = String(params.permission || "").trim();
+    if (!permission) return { ok: false, error: "permission required" };
+    const member = ensureRetailBucket(s, "staff", userId).find((m) => m.id === id);
+    if (!member) return { ok: false, error: "staff member not found" };
+    const allowed = member.status === "active" && member.permissions.includes(permission);
+    return { ok: true, result: { allowed, role: member.role, status: member.status } };
+  });
 };

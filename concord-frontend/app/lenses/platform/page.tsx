@@ -17,7 +17,7 @@ import {
   Activity, Brain, FlaskConical, Layers, Radio,
   BarChart3, Zap, Shield, Database,
   Heart, Clock, CheckCircle, AlertTriangle,
-  ChevronDown, ChevronRight, Eye, Server, Gauge, Play, Loader2,
+  ChevronDown, ChevronRight, Eye, Server, Gauge, Play, Loader2, Rocket,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -27,16 +27,18 @@ import PipelineMonitor from '@/components/platform/PipelineMonitor';
 import NerveCenter from '@/components/platform/NerveCenter';
 import EmpiricalGatesPanel from '@/components/platform/EmpiricalGatesPanel';
 import ScopeControls from '@/components/platform/ScopeControls';
+import PlatformConsole from '@/components/platform/PlatformConsole';
 import { usePlatformEvents } from '@/components/platform/usePlatformEvents';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
-type Tab = 'overview' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events';
+type Tab = 'overview' | 'console' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events';
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; desc: string }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3, desc: 'System-wide dashboard' },
+  { id: 'console', label: 'Console', icon: Rocket, desc: 'Deploy, metrics, config, domains, alerts, cost, audit' },
   { id: 'pipeline', label: 'Pipeline', icon: Activity, desc: 'Autogen pipeline monitor' },
   { id: 'nerve', label: 'Nerve Center', icon: Brain, desc: 'Beacon, strategy, hypothesis' },
   { id: 'empirical', label: 'Empirical', icon: FlaskConical, desc: 'Math, units, constants' },
@@ -330,6 +332,7 @@ export default function PlatformPage() {
   useLensCommand(
     [
       { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'tab-console', keys: 'c', description: 'Console', category: 'navigation', action: () => setActiveTab('console') },
       { id: 'tab-pipeline', keys: 'p', description: 'Pipeline', category: 'navigation', action: () => setActiveTab('pipeline') },
       { id: 'tab-nerve', keys: 'n', description: 'Nerve', category: 'navigation', action: () => setActiveTab('nerve') },
       { id: 'tab-empirical', keys: 'e', description: 'Empirical', category: 'navigation', action: () => setActiveTab('empirical') },
@@ -426,6 +429,7 @@ export default function PlatformPage() {
       {/* Tab Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         {activeTab === 'overview' && <OverviewDashboard />}
+        {activeTab === 'console' && <PlatformConsole />}
         {activeTab === 'pipeline' && <PipelineMonitor />}
         {activeTab === 'nerve' && <NerveCenter />}
         {activeTab === 'empirical' && <EmpiricalGatesPanel />}

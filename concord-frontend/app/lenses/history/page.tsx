@@ -26,6 +26,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { WikipediaExplorer } from '@/components/history/WikipediaExplorer';
 import { TimelineSourceTools } from '@/components/history/TimelineSourceTools';
+import { TimelineBuilder } from '@/components/history/TimelineBuilder';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
@@ -647,6 +649,11 @@ export default function HistoryLensPage() {
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TimelineSourceTools />
+      </section>
+
+      <section className="mt-6">
+        <LensFeedButton domain="history" />
+        <TimelineBuilder />
       </section>
     </div>
           <RecentMineCard domain="history" limit={10} hideWhenEmpty className="mt-4" />

@@ -331,7 +331,7 @@ export default function registerAutomotiveActions(registerLensAction) {
     }
     return STATE.automotiveLens;
   }
-  function saveAuto() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveAuto() { if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidAu(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
   function uidAu(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function isoAu() { return new Date().toISOString(); }
@@ -897,5 +897,635 @@ export default function registerAutomotiveActions(registerLensAction) {
         scheduleCount: listAu(s.schedule, userId).length,
       },
     };
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Feature-parity backlog — OBD telemetry, TCO rollups, predictive
+  //  maintenance, photo attachments, multi-vehicle comparison,
+  //  shop locator + appointments, warranty/insurance renewals.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getAutoExtra() {
+    const s = getAutoState();
+    if (!s) return null;
+    if (!s.obd) s.obd = new Map();             // userId -> Array<ObdReading>
+    if (!s.attachments) s.attachments = new Map(); // userId -> Array<Attachment>
+    if (!s.shops) s.shops = new Map();         // userId -> Array<Shop>
+    if (!s.appointments) s.appointments = new Map(); // userId -> Array<Appointment>
+    if (!s.renewals) s.renewals = new Map();   // userId -> Array<Renewal>
+    if (!s.seqX) s.seqX = new Map();           // userId -> { obd, att, shop, appt, ren }
+    return s;
+  }
+  function ensureSeqX(s, userId) {
+    if (!s.seqX.has(userId)) s.seqX.set(userId, { obd: 1, att: 1, shop: 1, appt: 1, ren: 1 });
+    const seq = s.seqX.get(userId);
+    for (const k of ['obd', 'att', 'shop', 'appt', 'ren']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    return seq;
+  }
+
+  // ── OBD-II live telemetry import (Bluetooth dongle bridge) ────
+  // The frontend reads the OBD-II ELM327 dongle over Web Bluetooth and
+  // POSTs decoded PID readings here. No synthesis — every value is what
+  // the dongle reported.
+
+  registerLensAction("automotive", "obd-import", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    const vehicle = listAu(s.vehicles, userId).find(v => v.id === vehicleId);
+    if (!vehicle) return { ok: false, error: "vehicle not found" };
+    const readings = Array.isArray(params.readings) ? params.readings : [];
+    if (readings.length === 0) return { ok: false, error: "readings array required (decoded OBD-II PIDs from the dongle)" };
+    const seq = ensureSeqX(s, userId);
+    const KNOWN_PIDS = ['rpm', 'speed', 'coolantTemp', 'engineLoad', 'intakeTemp', 'throttlePos', 'fuelLevel', 'batteryVoltage', 'mafRate', 'fuelRate', 'distanceWithMil'];
+    const stored = [];
+    for (const r of readings) {
+      const metric = String(r.metric || r.pid || "").trim();
+      const value = Number(r.value);
+      if (!metric || !Number.isFinite(value)) continue;
+      const entry = {
+        id: uidAu('obd'),
+        number: `OBD-${String(seq.obd).padStart(6, '0')}`,
+        vehicleId,
+        metric,
+        value,
+        unit: String(r.unit || ''),
+        timestamp: r.timestamp ? String(r.timestamp) : isoAu(),
+        known: KNOWN_PIDS.includes(metric),
+        dongle: String(params.dongle || r.dongle || 'ELM327'),
+        createdAt: isoAu(),
+      };
+      seq.obd++;
+      stored.push(entry);
+      listAu(s.obd, userId).push(entry);
+    }
+    if (stored.length === 0) return { ok: false, error: "no valid readings (each needs { metric, value })" };
+    // Cap retained readings per vehicle at 2000 (rolling window).
+    const all = listAu(s.obd, userId).filter(o => o.vehicleId === vehicleId);
+    if (all.length > 2000) {
+      const overflow = all.slice(0, all.length - 2000).map(o => o.id);
+      const list = listAu(s.obd, userId);
+      for (let i = list.length - 1; i >= 0; i--) if (overflow.includes(list[i].id)) list.splice(i, 1);
+    }
+    saveAuto();
+    return { ok: true, result: { imported: stored.length, readings: stored } };
+  });
+
+  registerLensAction("automotive", "obd-list", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.obd, userId);
+    if (vehicleId) list = list.filter(o => o.vehicleId === vehicleId);
+    if (params.metric) list = list.filter(o => o.metric === String(params.metric));
+    list = list.slice().sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    // Latest snapshot: most recent value per metric.
+    const latest = {};
+    for (const o of list) if (!latest[o.metric]) latest[o.metric] = { value: o.value, unit: o.unit, timestamp: o.timestamp };
+    return { ok: true, result: { readings: list.slice(0, 500), count: list.length, latest } };
+  });
+
+  registerLensAction("automotive", "obd-delete", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const list = listAu(s.obd, userId);
+    if (params.vehicleId && params.all) {
+      const vid = String(params.vehicleId);
+      const before = list.length;
+      for (let i = list.length - 1; i >= 0; i--) if (list[i].vehicleId === vid) list.splice(i, 1);
+      saveAuto();
+      return { ok: true, result: { deleted: before - list.length } };
+    }
+    const i = list.findIndex(o => o.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "obd reading not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: 1 } };
+  });
+
+  // ── Cost-per-mile / total-cost-of-ownership rollups ───────────
+
+  registerLensAction("automotive", "cost-of-ownership", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    const vehicle = listAu(s.vehicles, userId).find(v => v.id === vehicleId);
+    if (!vehicle) return { ok: false, error: "vehicle not found" };
+    const purchasePrice = Math.max(0, Number(params.purchasePrice) || 0);
+    const salvageValue = Math.max(0, Number(params.salvageValue) || 0);
+    const expenses = listAu(s.expenses, userId).filter(e => e.vehicleId === vehicleId);
+    const fuel = listAu(s.fuel, userId).filter(f => f.vehicleId === vehicleId).sort((a, b) => a.odometer - b.odometer);
+    const service = listAu(s.service, userId).filter(x => x.vehicleId === vehicleId);
+    // miles tracked across logged odometer points
+    const odoPts = [...fuel.map(f => f.odometer), ...service.map(x => x.odometer)].filter(Number.isFinite);
+    const milesTracked = odoPts.length >= 2 ? Math.max(...odoPts) - Math.min(...odoPts) : 0;
+    // expense breakdown by category
+    const byCategory = {};
+    for (const e of expenses) byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+    const operatingTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
+    // depreciation: purchase - salvage (only counted if a purchase price was supplied)
+    const depreciation = purchasePrice > 0 ? Math.max(0, purchasePrice - salvageValue) : 0;
+    const totalCostOfOwnership = operatingTotal + depreciation;
+    // ownership duration in months
+    const createdMs = new Date(vehicle.createdAt).getTime();
+    const ownedMonths = Number.isFinite(createdMs)
+      ? Math.max(1, Math.round((Date.now() - createdMs) / (30 * 86_400_000)))
+      : 1;
+    const round2 = (n) => Math.round(n * 100) / 100;
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+    return {
+      ok: true,
+      result: {
+        vehicleId,
+        vehicleName: vehicle.name,
+        milesTracked,
+        ownedMonths,
+        purchasePrice,
+        salvageValue,
+        depreciation: round2(depreciation),
+        operatingCost: round2(operatingTotal),
+        totalCostOfOwnership: round2(totalCostOfOwnership),
+        costPerMile: milesTracked > 0 ? round3(totalCostOfOwnership / milesTracked) : null,
+        operatingCostPerMile: milesTracked > 0 ? round3(operatingTotal / milesTracked) : null,
+        costPerMonth: round2(totalCostOfOwnership / ownedMonths),
+        byCategory: Object.fromEntries(Object.entries(byCategory).map(([k, v]) => [k, round2(v)])),
+        note: purchasePrice === 0 ? "Supply purchasePrice for a full TCO including depreciation." : null,
+      },
+    };
+  });
+
+  // ── Predictive maintenance alerts ────────────────────────────
+  // Projects each scheduled service forward using the vehicle's recent
+  // mileage accumulation rate (computed from logged odometer points).
+
+  registerLensAction("automotive", "predictive-maintenance", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    const vehicles = listAu(s.vehicles, userId).filter(v => !vehicleId || v.id === vehicleId);
+    if (vehicleId && vehicles.length === 0) return { ok: false, error: "vehicle not found" };
+    const serviceLog = listAu(s.service, userId);
+    const fuelLog = listAu(s.fuel, userId);
+    const schedule = listAu(s.schedule, userId);
+    const now = Date.now();
+    const alerts = [];
+    for (const vehicle of vehicles) {
+      // miles/day from dated odometer points (fuel + service)
+      const pts = [...fuelLog.filter(f => f.vehicleId === vehicle.id).map(f => ({ date: f.date, odo: f.odometer })),
+                   ...serviceLog.filter(x => x.vehicleId === vehicle.id).map(x => ({ date: x.date, odo: x.odometer }))]
+        .filter(p => p.date && Number.isFinite(p.odo))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      let milesPerDay = null;
+      if (pts.length >= 2) {
+        const first = pts[0], last = pts[pts.length - 1];
+        const days = Math.max(1, (new Date(last.date).getTime() - new Date(first.date).getTime()) / 86_400_000);
+        const dist = last.odo - first.odo;
+        if (dist > 0) milesPerDay = Math.round((dist / days) * 100) / 100;
+      }
+      const sched = schedule.filter(item => item.vehicleId === vehicle.id);
+      for (const item of sched) {
+        if (!item.intervalMiles) continue;
+        const matching = serviceLog
+          .filter(sv => sv.vehicleId === vehicle.id && sv.serviceType.toLowerCase() === item.serviceType.toLowerCase())
+          .sort((a, b) => b.odometer - a.odometer);
+        const lastOdo = item.lastDoneOdometer ?? matching[0]?.odometer ?? 0;
+        const dueAt = lastOdo + item.intervalMiles;
+        const milesRemaining = dueAt - vehicle.odometer;
+        const daysUntilDue = milesPerDay && milesPerDay > 0 ? Math.round(milesRemaining / milesPerDay) : null;
+        const predictedDate = daysUntilDue !== null
+          ? new Date(now + daysUntilDue * 86_400_000).toISOString().slice(0, 10)
+          : null;
+        let risk = 'low';
+        if (milesRemaining < 0) risk = 'overdue';
+        else if (daysUntilDue !== null && daysUntilDue <= 14) risk = 'high';
+        else if (daysUntilDue !== null && daysUntilDue <= 45) risk = 'medium';
+        else if (milesRemaining <= 500) risk = 'medium';
+        alerts.push({
+          vehicleId: vehicle.id,
+          vehicleName: vehicle.name,
+          serviceType: item.serviceType,
+          dueAtOdometer: dueAt,
+          milesRemaining,
+          milesPerDay,
+          daysUntilDue,
+          predictedDate,
+          risk,
+          recommendation: risk === 'overdue'
+            ? `${item.serviceType} is ${Math.abs(milesRemaining).toLocaleString()} mi overdue — schedule now.`
+            : daysUntilDue !== null
+              ? `At ${milesPerDay} mi/day, ${item.serviceType} is due in about ${daysUntilDue} days.`
+              : `${item.serviceType} due in ${milesRemaining.toLocaleString()} mi — log fill-ups to enable a date forecast.`,
+        });
+      }
+    }
+    const rank = { overdue: 0, high: 1, medium: 2, low: 3 };
+    alerts.sort((a, b) => rank[a.risk] - rank[b.risk] || a.milesRemaining - b.milesRemaining);
+    return {
+      ok: true,
+      result: {
+        alerts,
+        overdueCount: alerts.filter(a => a.risk === 'overdue').length,
+        highRiskCount: alerts.filter(a => a.risk === 'high').length,
+        forecastable: alerts.filter(a => a.daysUntilDue !== null).length,
+      },
+    };
+  });
+
+  // ── Photo attachments for receipts + odometer readings ───────
+  // The frontend uploads images to the artifact store and passes the
+  // resulting URL/data-URI here; the macro stores the reference.
+
+  registerLensAction("automotive", "attachments-add", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
+    const url = String(params.url || params.dataUri || "").trim();
+    if (!url) return { ok: false, error: "url or dataUri required (upload the photo first)" };
+    const kind = ['receipt', 'odometer', 'damage', 'document', 'other'].includes(params.kind) ? params.kind : 'other';
+    const seq = ensureSeqX(s, userId);
+    const att = {
+      id: uidAu('att'),
+      number: `IMG-${String(seq.att).padStart(5, '0')}`,
+      vehicleId,
+      kind,
+      url,
+      caption: String(params.caption || ''),
+      linkedType: ['fuel', 'service', 'expense', 'document', 'none'].includes(params.linkedType) ? params.linkedType : 'none',
+      linkedId: String(params.linkedId || ''),
+      odometerReading: Number.isFinite(Number(params.odometerReading)) ? Number(params.odometerReading) : null,
+      date: String(params.date || dayAu()),
+      createdAt: isoAu(),
+    };
+    seq.att++;
+    listAu(s.attachments, userId).push(att);
+    if (att.odometerReading !== null) bumpOdometer(s, userId, vehicleId, att.odometerReading);
+    saveAuto();
+    return { ok: true, result: { attachment: att } };
+  });
+
+  registerLensAction("automotive", "attachments-list", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.attachments, userId);
+    if (vehicleId) list = list.filter(a => a.vehicleId === vehicleId);
+    if (params.kind) list = list.filter(a => a.kind === String(params.kind));
+    if (params.linkedId) list = list.filter(a => a.linkedId === String(params.linkedId));
+    return { ok: true, result: { attachments: list.slice().sort((a, b) => b.date.localeCompare(a.date)), count: list.length } };
+  });
+
+  registerLensAction("automotive", "attachments-delete", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.attachments, aidAu(ctx));
+    const i = list.findIndex(a => a.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "attachment not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Multi-vehicle comparison dashboard ───────────────────────
+
+  registerLensAction("automotive", "compare-vehicles", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const all = listAu(s.vehicles, userId);
+    const ids = Array.isArray(params.vehicleIds) && params.vehicleIds.length > 0
+      ? params.vehicleIds.map(String)
+      : all.map(v => v.id);
+    const vehicles = all.filter(v => ids.includes(v.id));
+    if (vehicles.length === 0) return { ok: false, error: "no vehicles to compare" };
+    const rows = vehicles.map(vehicle => {
+      const fuel = listAu(s.fuel, userId).filter(f => f.vehicleId === vehicle.id).sort((a, b) => a.odometer - b.odometer);
+      const service = listAu(s.service, userId).filter(x => x.vehicleId === vehicle.id);
+      const expenses = listAu(s.expenses, userId).filter(e => e.vehicleId === vehicle.id);
+      let lifetimeMpg = null;
+      if (fuel.length >= 2) {
+        const dist = fuel[fuel.length - 1].odometer - fuel[0].odometer;
+        const vol = fuel.slice(1).reduce((sum, f) => sum + f.volume, 0);
+        if (dist > 0 && vol > 0) lifetimeMpg = Math.round((dist / vol) * 100) / 100;
+      }
+      const totalSpend = expenses.reduce((sum, e) => sum + e.amount, 0);
+      const fuelSpend = expenses.filter(e => e.category === 'fuel').reduce((sum, e) => sum + e.amount, 0);
+      const odoPts = [...fuel.map(f => f.odometer), ...service.map(x => x.odometer)].filter(Number.isFinite);
+      const milesTracked = odoPts.length >= 2 ? Math.max(...odoPts) - Math.min(...odoPts) : 0;
+      return {
+        vehicleId: vehicle.id,
+        vehicleName: vehicle.name,
+        year: vehicle.year,
+        make: vehicle.make,
+        model: vehicle.model,
+        odometer: vehicle.odometer,
+        lifetimeMpg,
+        totalSpend: Math.round(totalSpend * 100) / 100,
+        fuelSpend: Math.round(fuelSpend * 100) / 100,
+        serviceCount: service.length,
+        fillCount: fuel.length,
+        milesTracked,
+        costPerMile: milesTracked > 0 ? Math.round((totalSpend / milesTracked) * 1000) / 1000 : null,
+      };
+    });
+    const numeric = (key) => rows.map(r => r[key]).filter((v) => typeof v === 'number');
+    const best = {};
+    const mpgVals = numeric('lifetimeMpg');
+    if (mpgVals.length) best.bestMpg = rows.filter(r => r.lifetimeMpg === Math.max(...mpgVals))[0]?.vehicleName;
+    const cpmVals = numeric('costPerMile');
+    if (cpmVals.length) best.lowestCostPerMile = rows.filter(r => r.costPerMile === Math.min(...cpmVals))[0]?.vehicleName;
+    const spendVals = numeric('totalSpend');
+    if (spendVals.length) best.highestSpend = rows.filter(r => r.totalSpend === Math.max(...spendVals))[0]?.vehicleName;
+    return {
+      ok: true,
+      result: {
+        rows,
+        vehicleCount: rows.length,
+        fleetTotalSpend: Math.round(rows.reduce((sum, r) => sum + r.totalSpend, 0) * 100) / 100,
+        fleetMilesTracked: rows.reduce((sum, r) => sum + r.milesTracked, 0),
+        highlights: best,
+      },
+    };
+  });
+
+  // ── Service-shop locator + appointment notes ─────────────────
+
+  registerLensAction("automotive", "shops-create", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "shop name required" };
+    const seq = ensureSeqX(s, userId);
+    const rating = Number(params.rating);
+    const shop = {
+      id: uidAu('shop'),
+      number: `SH-${String(seq.shop).padStart(3, '0')}`,
+      name,
+      address: String(params.address || ''),
+      phone: String(params.phone || ''),
+      laborRate: Number.isFinite(Number(params.laborRate)) ? Number(params.laborRate) : null,
+      specialties: Array.isArray(params.specialties) ? params.specialties.map(String) : [],
+      rating: Number.isFinite(rating) ? Math.max(0, Math.min(5, rating)) : null,
+      lat: Number.isFinite(Number(params.lat)) ? Number(params.lat) : null,
+      lon: Number.isFinite(Number(params.lon)) ? Number(params.lon) : null,
+      note: String(params.note || ''),
+      createdAt: isoAu(),
+    };
+    seq.shop++;
+    listAu(s.shops, userId).push(shop);
+    saveAuto();
+    return { ok: true, result: { shop } };
+  });
+
+  // Real geocoding via OpenStreetMap Nominatim (free, keyless) so the
+  // locator can place a saved shop on a map.
+  registerLensAction("automotive", "shops-geocode", async (_ctx, _a, params = {}) => {
+    const query = String(params.query || params.address || "").trim();
+    if (!query) return { ok: false, error: "query (address or place) required" };
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`;
+      const r = await fetch(url, { headers: { 'User-Agent': 'concord-cognitive-engine/automotive-lens' } });
+      if (!r.ok) throw new Error(`nominatim ${r.status}`);
+      const data = await r.json();
+      const matches = (Array.isArray(data) ? data : []).map(m => ({
+        displayName: m.display_name,
+        lat: Number(m.lat),
+        lon: Number(m.lon),
+        type: m.type,
+      }));
+      return { ok: true, result: { matches, count: matches.length, source: "osm-nominatim" } };
+    } catch (e) {
+      return { ok: false, error: `nominatim unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  registerLensAction("automotive", "shops-list", (ctx, _a, _p = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { shops: listAu(s.shops, aidAu(ctx)).slice().sort((a, b) => a.name.localeCompare(b.name)) } };
+  });
+
+  registerLensAction("automotive", "shops-delete", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const list = listAu(s.shops, userId);
+    const i = list.findIndex(sh => sh.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "shop not found" };
+    const shopId = list[i].id;
+    list.splice(i, 1);
+    // detach appointments
+    for (const appt of listAu(s.appointments, userId)) if (appt.shopId === shopId) appt.shopId = '';
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  registerLensAction("automotive", "appointments-create", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
+    const date = String(params.date || "").trim();
+    if (!date) return { ok: false, error: "date required (YYYY-MM-DD)" };
+    const shopId = String(params.shopId || "");
+    if (shopId && !listAu(s.shops, userId).find(sh => sh.id === shopId)) return { ok: false, error: "shop not found" };
+    const seq = ensureSeqX(s, userId);
+    const appt = {
+      id: uidAu('appt'),
+      number: `APT-${String(seq.appt).padStart(4, '0')}`,
+      vehicleId,
+      shopId,
+      date,
+      time: String(params.time || ''),
+      serviceType: String(params.serviceType || ''),
+      status: ['scheduled', 'confirmed', 'completed', 'cancelled'].includes(params.status) ? params.status : 'scheduled',
+      estimatedCost: Number.isFinite(Number(params.estimatedCost)) ? Number(params.estimatedCost) : null,
+      notes: String(params.notes || ''),
+      createdAt: isoAu(),
+    };
+    seq.appt++;
+    listAu(s.appointments, userId).push(appt);
+    saveAuto();
+    return { ok: true, result: { appointment: appt } };
+  });
+
+  registerLensAction("automotive", "appointments-list", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.appointments, userId);
+    if (vehicleId) list = list.filter(a => a.vehicleId === vehicleId);
+    if (params.status) list = list.filter(a => a.status === String(params.status));
+    const shops = listAu(s.shops, userId);
+    const enriched = list.slice().sort((a, b) => a.date.localeCompare(b.date)).map(a => ({
+      ...a,
+      shopName: shops.find(sh => sh.id === a.shopId)?.name || null,
+    }));
+    const today = dayAu();
+    return {
+      ok: true,
+      result: {
+        appointments: enriched,
+        upcomingCount: enriched.filter(a => a.date >= today && a.status !== 'cancelled' && a.status !== 'completed').length,
+      },
+    };
+  });
+
+  registerLensAction("automotive", "appointments-update", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.appointments, aidAu(ctx));
+    const appt = list.find(a => a.id === String(params.id || ""));
+    if (!appt) return { ok: false, error: "appointment not found" };
+    if (['scheduled', 'confirmed', 'completed', 'cancelled'].includes(params.status)) appt.status = params.status;
+    for (const k of ['date', 'time', 'serviceType', 'notes']) if (typeof params[k] === 'string') appt[k] = params[k];
+    if (Number.isFinite(Number(params.estimatedCost))) appt.estimatedCost = Number(params.estimatedCost);
+    saveAuto();
+    return { ok: true, result: { appointment: appt } };
+  });
+
+  registerLensAction("automotive", "appointments-delete", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.appointments, aidAu(ctx));
+    const i = list.findIndex(a => a.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "appointment not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  // ── Warranty + insurance renewal tracking ────────────────────
+
+  const RENEWAL_KINDS = ['warranty', 'insurance', 'registration', 'inspection', 'lease', 'extended_warranty', 'roadside', 'other'];
+
+  registerLensAction("automotive", "renewals-create", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = String(params.vehicleId || "");
+    if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
+    const kind = RENEWAL_KINDS.includes(params.kind) ? params.kind : 'other';
+    const renewalDate = String(params.renewalDate || params.expiryDate || "").trim();
+    if (!renewalDate) return { ok: false, error: "renewalDate required (YYYY-MM-DD)" };
+    const seq = ensureSeqX(s, userId);
+    const renewal = {
+      id: uidAu('ren'),
+      number: `RN-${String(seq.ren).padStart(4, '0')}`,
+      vehicleId,
+      kind,
+      title: String(params.title || kind),
+      provider: String(params.provider || ''),
+      policyNumber: String(params.policyNumber || ''),
+      renewalDate,
+      premium: Number.isFinite(Number(params.premium)) ? Number(params.premium) : null,
+      coverageLimitMiles: Number.isFinite(Number(params.coverageLimitMiles)) ? Number(params.coverageLimitMiles) : null,
+      reminderDays: Number.isFinite(Number(params.reminderDays)) ? Math.max(1, Number(params.reminderDays)) : 30,
+      autoRenew: params.autoRenew === true,
+      note: String(params.note || ''),
+      createdAt: isoAu(),
+    };
+    seq.ren++;
+    listAu(s.renewals, userId).push(renewal);
+    saveAuto();
+    return { ok: true, result: { renewal } };
+  });
+
+  function decorateRenewal(s, userId, r) {
+    const now = Date.now();
+    const renewMs = new Date(r.renewalDate).getTime();
+    const daysRemaining = Number.isFinite(renewMs) ? Math.round((renewMs - now) / 86_400_000) : null;
+    const vehicle = listAu(s.vehicles, userId).find(v => v.id === r.vehicleId);
+    let milesRemaining = null;
+    if (r.coverageLimitMiles !== null && vehicle) milesRemaining = r.coverageLimitMiles - vehicle.odometer;
+    let status = 'ok';
+    if (daysRemaining !== null && daysRemaining < 0) status = 'expired';
+    else if (milesRemaining !== null && milesRemaining < 0) status = 'expired';
+    else if (daysRemaining !== null && daysRemaining <= r.reminderDays) status = 'due_soon';
+    else if (milesRemaining !== null && milesRemaining <= 1000) status = 'due_soon';
+    return { ...r, daysRemaining, milesRemaining, status, vehicleName: vehicle?.name || null };
+  }
+
+  registerLensAction("automotive", "renewals-list", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
+    let list = listAu(s.renewals, userId);
+    if (vehicleId) list = list.filter(r => r.vehicleId === vehicleId);
+    if (params.kind) list = list.filter(r => r.kind === String(params.kind));
+    const decorated = list.map(r => decorateRenewal(s, userId, r))
+      .sort((a, b) => a.renewalDate.localeCompare(b.renewalDate));
+    return {
+      ok: true,
+      result: {
+        renewals: decorated,
+        expiredCount: decorated.filter(r => r.status === 'expired').length,
+        dueSoonCount: decorated.filter(r => r.status === 'due_soon').length,
+      },
+    };
+  });
+
+  registerLensAction("automotive", "renewals-upcoming", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const withinDays = Math.max(1, Math.min(365, Number(params.withinDays) || 60));
+    const decorated = listAu(s.renewals, userId)
+      .map(r => decorateRenewal(s, userId, r))
+      .filter(r => r.status !== 'ok' || (r.daysRemaining !== null && r.daysRemaining <= withinDays))
+      .sort((a, b) => {
+        const rank = { expired: 0, due_soon: 1, ok: 2 };
+        return rank[a.status] - rank[b.status] || a.renewalDate.localeCompare(b.renewalDate);
+      });
+    return { ok: true, result: { renewals: decorated, count: decorated.length, withinDays } };
+  });
+
+  registerLensAction("automotive", "renewals-update", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidAu(ctx);
+    const r = listAu(s.renewals, userId).find(x => x.id === String(params.id || ""));
+    if (!r) return { ok: false, error: "renewal not found" };
+    for (const k of ['title', 'provider', 'policyNumber', 'renewalDate', 'note']) if (typeof params[k] === 'string') r[k] = params[k];
+    if (Number.isFinite(Number(params.premium))) r.premium = Number(params.premium);
+    if (Number.isFinite(Number(params.coverageLimitMiles))) r.coverageLimitMiles = Number(params.coverageLimitMiles);
+    if (Number.isFinite(Number(params.reminderDays))) r.reminderDays = Math.max(1, Number(params.reminderDays));
+    if (typeof params.autoRenew === 'boolean') r.autoRenew = params.autoRenew;
+    if (RENEWAL_KINDS.includes(params.kind)) r.kind = params.kind;
+    saveAuto();
+    return { ok: true, result: { renewal: decorateRenewal(s, userId, r) } };
+  });
+
+  registerLensAction("automotive", "renewals-delete", (ctx, _a, params = {}) => {
+    const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listAu(s.renewals, aidAu(ctx));
+    const i = list.findIndex(r => r.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "renewal not found" };
+    list.splice(i, 1);
+    saveAuto();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  registerLensAction("automotive", "feed", async (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.automotiveLens) STATE.automotiveLens = {};
+    if (!(STATE.automotiveLens.feedSeen instanceof Set)) STATE.automotiveLens.feedSeen = new Set();
+    const seen = STATE.automotiveLens.feedSeen;
+    const make = String(params.make || "honda").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim() || "honda";
+    const model = String(params.model || "accord").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim() || "accord";
+    const year = String(Math.max(1990, Math.min(2027, Math.round(Number(params.year) || 2024))));
+    try {
+      const r = await fetch(`https://api.nhtsa.gov/recalls/recallsByVehicle?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&modelYear=${year}`);
+      if (!r.ok) return { ok: false, error: `nhtsa ${r.status}` };
+      const data = await r.json();
+      const results = (data.results || []).slice(0, 15);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const rc of results) {
+        const id = rc.NHTSACampaignNumber;
+        if (!id || seen.has(id)) { skipped++; continue; }
+        const title = `Recall ${id}: ${String(rc.Component || "").slice(0, 80)}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${rc.Component || "Recall"} - ${make} ${model} ${year}\nCampaign: ${id}\n\nSummary: ${String(rc.Summary || "").slice(0, 600)}\n\nRemedy: ${String(rc.Remedy || "").slice(0, 400)}`,
+          tags: ["automotive", "feed", "recall", "nhtsa"],
+          source: "nhtsa-recalls-feed",
+          meta: { campaign: id, make, model, year, component: rc.Component },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: `nhtsa-recalls (${make} ${model} ${year})`, dtuIds } };
+    } catch (e) { return { ok: false, error: `nhtsa unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
   });
 }

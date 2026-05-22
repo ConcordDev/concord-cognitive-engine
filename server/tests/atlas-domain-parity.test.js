@@ -163,5 +163,242 @@ describe("atlas — dashboard summary", () => {
     assert.equal(r.result.tripCount, 1);
     assert.equal(r.result.totalStops, 1);
     assert.equal(r.result.byCategory.cafe, 2);
+    assert.equal(r.result.offlineAreaCount, 0);
+    assert.equal(r.result.navActive, false);
+  });
+});
+
+// ── Google Maps parity backlog ───────────────────────────────────
+
+const OSRM_STUB = {
+  code: "Ok",
+  routes: [{
+    distance: 24000, duration: 1800,
+    geometry: { type: "LineString", coordinates: [[-122.42, 37.77], [-122.35, 37.72], [-122.28, 37.68], [-122.20, 37.62]] },
+    legs: [{
+      distance: 24000, duration: 1800,
+      steps: [
+        { distance: 12000, duration: 900, name: "Market St", maneuver: { type: "depart", modifier: "left" } },
+        { distance: 12000, duration: 900, name: "Mission St", maneuver: { type: "arrive", modifier: "right" } },
+      ],
+    }],
+  }],
+};
+
+describe("atlas — multi-modal directions", () => {
+  it("returns turn-by-turn steps for the chosen mode", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => OSRM_STUB });
+    const r = await call("directions-multimodal", ctxA, {
+      waypoints: [{ lat: 37.77, lng: -122.42 }, { lat: 37.62, lng: -122.20 }], mode: "cycling",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.mode, "cycling");
+    assert.equal(r.result.distanceKm, 24);
+    assert.equal(r.result.stepCount, 2);
+    assert.ok(r.result.steps[0].roadName === "Market St");
+  });
+
+  it("rejects fewer than 2 waypoints", async () => {
+    const r = await call("directions-multimodal", ctxA, { waypoints: [{ lat: 1, lng: 1 }] });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("atlas — live traffic ETA", () => {
+  it("derives a traffic-adjusted ETA from the time-of-day model", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => OSRM_STUB });
+    const r = await call("live-traffic-eta", ctxA, {
+      waypoints: [{ lat: 37.77, lng: -122.42 }, { lat: 37.62, lng: -122.20 }], mode: "driving",
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.trafficSeconds >= r.result.freeFlowSeconds);
+    assert.ok(["free-flow", "light", "moderate", "heavy"].includes(r.result.congestionLevel));
+    assert.ok(typeof r.result.etaIso === "string");
+    assert.equal(r.result.legs.length, 1);
+  });
+
+  it("walking is immune to vehicle congestion", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => OSRM_STUB });
+    const r = await call("live-traffic-eta", ctxA, {
+      waypoints: [{ lat: 37.77, lng: -122.42 }, { lat: 37.62, lng: -122.20 }], mode: "walking",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.congestionFactor, 1.0);
+    assert.equal(r.result.congestionLevel, "none");
+  });
+});
+
+describe("atlas — transit directions", () => {
+  it("builds walk + transit + walk legs from OSM stops", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      elements: [
+        { lat: 37.775, lon: -122.418, tags: { name: "Powell Station", railway: "station" } },
+        { lat: 37.621, lon: -122.205, tags: { name: "Daly Plaza", highway: "bus_stop" } },
+      ],
+    }) });
+    const r = await call("transit-directions", ctxA, {
+      start: { lat: 37.77, lng: -122.42 }, end: { lat: 37.62, lng: -122.20 },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.feasible, true);
+    assert.equal(r.result.legs.length, 3);
+    assert.equal(r.result.legs[1].type, "transit");
+    assert.ok(r.result.totalSeconds > 0);
+  });
+
+  it("rejects start/end without numeric lat/lng", async () => {
+    const r = await call("transit-directions", ctxA, { start: {}, end: {} });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("atlas — street imagery", () => {
+  it("returns coverage tile reference when no token configured", async () => {
+    delete process.env.MAPILLARY_TOKEN;
+    const r = await call("street-imagery", ctxA, { lat: 37.77, lng: -122.42 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hasToken, false);
+    assert.ok(r.result.coverageTileUrl.includes("mapillary"));
+  });
+
+  it("rejects non-numeric coordinates", async () => {
+    const r = await call("street-imagery", ctxA, { lat: "x", lng: "y" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("atlas — place details", () => {
+  it("merges OSM tags + Wikipedia summary", async () => {
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("overpass")) {
+        return { ok: true, json: async () => ({ elements: [{
+          type: "node", id: 42, lat: 37.77, lon: -122.42,
+          tags: { name: "Ferry Building", amenity: "marketplace", opening_hours: "Mo-Su 10:00-19:00", wikipedia: "en:San Francisco Ferry Building", website: "https://example.org" },
+        }] }) };
+      }
+      return { ok: true, json: async () => ({ extract: "A historic landmark.", thumbnail: { source: "https://img" }, content_urls: { desktop: { page: "https://en.wikipedia.org/wiki/X" } } }) };
+    };
+    const r = await call("place-details", ctxA, { osmType: "node", osmId: 42 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.details.name, "Ferry Building");
+    assert.equal(r.result.details.openingHours, "Mo-Su 10:00-19:00");
+    assert.equal(r.result.details.summary, "A historic landmark.");
+  });
+
+  it("rejects missing osmType/osmId", async () => {
+    const r = await call("place-details", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("atlas — offline map areas", () => {
+  it("creates an area with a computed tile manifest, lists, deletes", () => {
+    const r = call("offline-areas-create", ctxA, {
+      name: "Downtown SF", south: 37.77, west: -122.43, north: 37.80, east: -122.40, minZoom: 12, maxZoom: 14,
+    });
+    assert.equal(r.ok, true);
+    assert.match(r.result.area.number, /^OA-\d{4}$/);
+    assert.ok(r.result.area.tileCount > 0);
+    assert.ok(r.result.area.estimatedSizeMB >= 0);
+    assert.equal(r.result.area.status, "pending");
+    const list = call("offline-areas-list", ctxA).result.areas;
+    assert.equal(list.length, 1);
+    const upd = call("offline-areas-update-status", ctxA, { id: r.result.area.id, status: "ready", cachedTiles: 10 });
+    assert.equal(upd.result.area.status, "ready");
+    call("offline-areas-delete", ctxA, { id: r.result.area.id });
+    assert.equal(call("offline-areas-list", ctxA).result.areas.length, 0);
+  });
+
+  it("rejects an invalid bbox", () => {
+    const r = call("offline-areas-create", ctxA, { name: "Bad", south: 50, west: 0, north: 40, east: 10 });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("atlas — real-time navigation mode", () => {
+  it("starts a session, advances on-route, and re-routes off-route", async () => {
+    globalThis.fetch = async () => ({ ok: true, json: async () => OSRM_STUB });
+    const start = await call("nav-start", ctxA, {
+      waypoints: [{ lat: 37.77, lng: -122.42 }, { lat: 37.62, lng: -122.20 }], mode: "driving",
+    });
+    assert.equal(start.ok, true);
+    assert.equal(start.result.session.status, "active");
+    assert.ok(start.result.session.steps.length > 0);
+    // On-route position near the polyline.
+    const onRoute = await call("nav-update", ctxA, { lat: 37.72, lng: -122.35 });
+    assert.equal(onRoute.ok, true);
+    assert.equal(onRoute.result.rerouted, false);
+    // Far off-route triggers a reroute.
+    const offRoute = await call("nav-update", ctxA, { lat: 38.50, lng: -121.00 });
+    assert.equal(offRoute.ok, true);
+    assert.equal(offRoute.result.rerouted, true);
+    assert.equal(offRoute.result.session.rerouteCount, 1);
+    // Status + stop.
+    assert.ok(call("nav-status", ctxA).result.session);
+    assert.equal(call("nav-stop", ctxA).result.stopped, true);
+    assert.equal(call("nav-status", ctxA).result.session, null);
+  });
+
+  it("nav-update rejects when no active session", async () => {
+    const r = await call("nav-update", ctxB, { lat: 1, lng: 1 });
+    assert.equal(r.ok, false);
+  });
+
+  it("nav-status returns null with no session and nav-stop rejects with no session", () => {
+    assert.equal(call("nav-status", ctxB).result.session, null);
+    const stop = call("nav-stop", ctxB);
+    assert.equal(stop.ok, false);
+  });
+});
+
+describe("atlas — offline areas extra validation", () => {
+  it("offline-areas-update-status rejects an unknown status", () => {
+    const created = call("offline-areas-create", ctxA, {
+      name: "Zone", south: 1, west: 1, north: 2, east: 2,
+    }).result.area;
+    const bad = call("offline-areas-update-status", ctxA, { id: created.id, status: "frozen" });
+    assert.equal(bad.ok, false);
+  });
+
+  it("offline-areas-delete rejects an unknown id", () => {
+    const r = call("offline-areas-delete", ctxA, { id: "no-such-area" });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("atlas.route-stops (Ask Maps-style stop suggestion)", () => {
+  it("rejects start/end without numeric lat/lng", async () => {
+    const r = await call("route-stops", ctxA, { start: {}, end: {} });
+    assert.equal(r.ok, false);
+  });
+
+  it("routes via OSRM then finds amenities near the midpoint", async () => {
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("router.project-osrm.org")) {
+        return { ok: true, json: async () => ({
+          code: "Ok",
+          routes: [{
+            distance: 120000, duration: 5400,
+            geometry: { type: "LineString", coordinates: [[-122.4, 37.7], [-122.2, 37.6], [-122.0, 37.5]] },
+            legs: [{}],
+          }],
+        }) };
+      }
+      // Overpass
+      return { ok: true, json: async () => ({
+        elements: [
+          { lat: 37.61, lon: -122.21, tags: { name: "Midway Fuel", amenity: "fuel", brand: "Shell" } },
+          { lat: 37.65, lon: -122.25, tags: { amenity: "fuel" } },
+        ],
+      }) };
+    };
+    const r = await call("route-stops", ctxA, {
+      start: { lat: 37.7, lng: -122.4 }, end: { lat: 37.5, lng: -122.0 }, amenity: "fuel",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.amenity, "fuel");
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.stops[0].name, "Midway Fuel"); // nearest the midpoint first
+    assert.ok(r.result.midpoint.lat > 37.5 && r.result.midpoint.lat < 37.7);
   });
 });

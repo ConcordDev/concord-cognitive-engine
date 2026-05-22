@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -38,6 +39,8 @@ import {
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { PlantFinder } from '@/components/landscaping/PlantFinder';
 import { ProLandscape } from '@/components/landscaping/ProLandscape';
+import { GardenStudio } from '@/components/landscaping/GardenStudio';
+import { GardenBeds } from '@/components/landscaping/GardenBeds';
 
 type ModeTab =
   | 'jobs'
@@ -720,6 +723,14 @@ export default function LandscapingLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <GardenStudio />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <GardenBeds />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PlantFinder />
       </section>
 
@@ -731,6 +742,7 @@ export default function LandscapingLensPage() {
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
       <a href="#landscaping-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to landscaping content</a>
+          <section className="mt-4"><LensFeedButton domain="landscaping" label="Live plant species feed" /></section>
           <RecentMineCard domain="landscaping" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="landscaping" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="landscaping" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

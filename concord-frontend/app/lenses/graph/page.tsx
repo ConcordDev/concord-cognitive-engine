@@ -8,6 +8,8 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { GraphRepos } from '@/components/graph/GraphRepos';
+import { MindMapBuilder } from '@/components/graph/MindMapBuilder';
+import { GraphParityPanel } from '@/components/graph/GraphParityPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -2014,6 +2016,12 @@ export default function GraphLensPage() {
           return null;
         })()}
       </div>
+      <section className="mt-6">
+        <GraphParityPanel />
+      </section>
+      <section className="mt-6">
+        <MindMapBuilder />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <GraphRepos />
       </section>

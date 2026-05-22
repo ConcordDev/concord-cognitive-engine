@@ -21,6 +21,7 @@ export function ThreadPane({
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [rootId]);
 
   async function refresh() {

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
@@ -91,6 +92,7 @@ import RefundsPanel from '@/components/retail/RefundsPanel';
 import CollectionsPanel from '@/components/retail/CollectionsPanel';
 import InventoryTransfers from '@/components/retail/InventoryTransfers';
 import SalesAnalytics from '@/components/retail/SalesAnalytics';
+import CommerceSuite from '@/components/retail/CommerceSuite';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 
 /* ------------------------------------------------------------------ */
@@ -1884,6 +1886,7 @@ export default function RetailLensPage() {
     <div data-lens-theme="retail" className={ds.pageContainer}>
       <RivalShapePreview lensId="retail" defaultOpen={true} />
       <ShopifyWorkbenchSection />
+      <CommerceSuite />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -2047,6 +2050,7 @@ export default function RetailLensPage() {
           <RetailActionPanel />
         </section>
       </PipingProvider>
+          <section className="mt-4"><LensFeedButton domain="retail" label="Live product feed" /></section>
           <RecentMineCard domain="retail" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="retail" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="retail" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

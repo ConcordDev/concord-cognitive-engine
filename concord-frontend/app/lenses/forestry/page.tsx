@@ -10,6 +10,13 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FireIncidents } from '@/components/forestry/FireIncidents';
 import { ForestryActionPanel } from '@/components/forestry/ForestryActionPanel';
+import { StandManager } from '@/components/forestry/StandManager';
+import { GrowthProjectionPanel } from '@/components/forestry/GrowthProjectionPanel';
+import { StandPolygonPanel } from '@/components/forestry/StandPolygonPanel';
+import { CruisePanel } from '@/components/forestry/CruisePanel';
+import { PestPanel } from '@/components/forestry/PestPanel';
+import { ReplantingPanel } from '@/components/forestry/ReplantingPanel';
+import { CarbonCreditPanel } from '@/components/forestry/CarbonCreditPanel';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -356,6 +363,24 @@ export default function ForestryLensPage() {
           )}
         </div>
 
+        {(activeMode === 'Dashboard' || activeMode === 'Stands' || activeMode === 'Harvest') && (
+          <GrowthProjectionPanel />
+        )}
+
+        {(activeMode === 'Inventory' || activeMode === 'Stands') && (
+          <CruisePanel />
+        )}
+
+        {activeMode === 'Wildlife' && <PestPanel />}
+
+        {activeMode === 'Replanting' && <ReplantingPanel />}
+
+        {(activeMode === 'Dashboard' || activeMode === 'Harvest') && (
+          <CarbonCreditPanel />
+        )}
+
+        {activeMode === 'Map' && <StandPolygonPanel />}
+
         {activeMode === 'Map' && (
           <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
@@ -401,6 +426,9 @@ export default function ForestryLensPage() {
       {/* Bespoke InciWeb + NIFC active wildfires with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
         <FireIncidents />
+      </section>
+      <section className="mt-4 mx-4">
+        <StandManager />
       </section>
       {/* Phase 4 — REAL GBIF biodiversity occurrence search. */}
       <section className="mt-4 mx-4">

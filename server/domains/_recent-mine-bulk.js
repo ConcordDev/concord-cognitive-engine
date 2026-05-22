@@ -99,7 +99,7 @@ const DOMAIN_TYPE_MAP = Object.freeze({
   hvac:          { type: ["trade_hvac"] },
   landscaping:   { type: ["trade_landscape"] },
   mining:        { type: ["trade_mining"] },
-  trades:        { type: ["trade", "diy"] },
+  trades:        { type: ["trade", "diy", "trade_record"] },
   tools:         { type: ["trade_tool"] },
   maker:         { type: ["make_project"] },
   diy:           { type: ["diy"] },
@@ -132,7 +132,6 @@ const DOMAIN_TYPE_MAP = Object.freeze({
 
   // Finance lenses.
   finance:       { type: ["finance_record", "transaction"] },
-  trades:        { type: ["trade_record"] },
   markets:       { type: ["market_watch"] },
   market:        { type: ["market_watch"] },
   crypto:        { type: ["crypto_tx"] },

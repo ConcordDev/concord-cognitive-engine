@@ -50,7 +50,7 @@ export interface BookmarksListProps {
   showHeader?: boolean;
 }
 
-export function BookmarksList({ currentUserId, className, showHeader = true }: BookmarksListProps) {
+export function BookmarksList({ className, showHeader = true }: BookmarksListProps) {
   const { data, isLoading, refetch } = useQuery<BookmarksResponse | null>({
     queryKey: ['social-bookmarks'],
     queryFn: async () => {
@@ -60,7 +60,7 @@ export function BookmarksList({ currentUserId, className, showHeader = true }: B
     staleTime: 30_000,
   });
 
-  const bookmarks = data?.bookmarks ?? [];
+  const bookmarks = useMemo(() => data?.bookmarks ?? [], [data]);
 
   // Parallel post fetches via useQueries.
   const postQueries = useQueries({

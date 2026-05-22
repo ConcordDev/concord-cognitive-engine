@@ -45,7 +45,7 @@ export function ArtActionPanel() {
   const [colors, setColors] = useState('');
   const [seedColor, setSeedColor] = useState('');
   const [paletteCount, setPaletteCount] = useState('');
-  const [imageDataUrl, setImageDataUrl] = useState('');
+  const [imageDataUrl] = useState('');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);

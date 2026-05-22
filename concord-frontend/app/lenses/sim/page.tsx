@@ -8,6 +8,10 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SimRepos } from '@/components/sim/SimRepos';
+import { SystemDynamicsBuilder } from '@/components/sim/SystemDynamicsBuilder';
+import { AgentBasedRunner } from '@/components/sim/AgentBasedRunner';
+import { DiscreteEventRunner } from '@/components/sim/DiscreteEventRunner';
+import { SimToolkit } from '@/components/sim/SimToolkit';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -22,7 +26,7 @@ import {
   AlertTriangle, CheckCircle2,
   Layers, FileJson, FileSpreadsheet, Save, FolderOpen, X,
   Shuffle, Sigma, Boxes, DollarSign, Users,
-  Hash, ToggleLeft, ToggleRight, Info
+  Hash, ToggleLeft, ToggleRight, Info, Workflow
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useUIStore } from '@/store/ui';
@@ -34,11 +38,11 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
-import { FlaskConical as MobileTabFlask, SlidersHorizontal as MobileTabSliders, Activity as MobileTabActivity, BarChart3 as MobileTabBar3, GitCompare as MobileTabCompare, Cpu as MobileTabCpu } from 'lucide-react';
+import { FlaskConical as MobileTabFlask, SlidersHorizontal as MobileTabSliders, Activity as MobileTabActivity, BarChart3 as MobileTabBar3, GitCompare as MobileTabCompare, Cpu as MobileTabCpu, Workflow as MobileTabWorkflow } from 'lucide-react';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
-type SimTab = 'scenarios' | 'parameters' | 'runs' | 'results' | 'comparison' | 'models';
+type SimTab = 'scenarios' | 'parameters' | 'runs' | 'results' | 'comparison' | 'models' | 'studio';
 type ModelType = 'monte-carlo' | 'agent-based' | 'system-dynamics' | 'discrete-event' | 'financial';
 type VarType = 'continuous' | 'discrete' | 'boolean';
 type Distribution = 'uniform' | 'normal' | 'exponential' | 'poisson' | 'beta' | 'triangular';
@@ -148,6 +152,7 @@ const TAB_CONFIG: Array<{ key: SimTab; label: string; icon: React.ReactNode }> =
   { key: 'results', label: 'Results', icon: <BarChart3 className="w-4 h-4" /> },
   { key: 'comparison', label: 'Comparison', icon: <GitCompare className="w-4 h-4" /> },
   { key: 'models', label: 'Models', icon: <Library className="w-4 h-4" /> },
+  { key: 'studio', label: 'Studio', icon: <Workflow className="w-4 h-4" /> },
 ];
 
 const MODEL_TYPES: Array<{ value: ModelType; label: string; icon: React.ReactNode }> = [
@@ -1238,6 +1243,7 @@ export default function SimLensPage() {
               onLoadTemplate={handleLoadTemplate}
             />
           )}
+          {activeTab === 'studio' && <StudioTab />}
         </div>
 
         {/* ── Detail Panel (right sidebar) ────────────────────────────────── */}
@@ -1864,6 +1870,7 @@ export default function SimLensPage() {
               { id: 'results',    label: 'Result', icon: MobileTabBar3 },
               { id: 'comparison', label: 'Compare',icon: MobileTabCompare },
               { id: 'models',     label: 'Models', icon: MobileTabCpu },
+              { id: 'studio',     label: 'Studio', icon: MobileTabWorkflow },
             ]}
             active={activeTab}
             onSelect={(id) => setActiveTab(id as SimTab)}
@@ -2686,6 +2693,53 @@ function ModelsTab({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── STUDIO TAB ──────────────────────────────────────────────────────────────
+// AnyLogic / Vensim parity: the marquee simulation paradigms (system dynamics,
+// agent-based, discrete-event) plus the analysis toolkit (formula evaluator,
+// goal-seek, scenario diff, calibration) — every panel wired to a real sim
+// domain macro running real computation.
+
+type StudioMode = 'system-dynamics' | 'agent-based' | 'discrete-event' | 'toolkit';
+
+const STUDIO_MODES: Array<{ key: StudioMode; label: string; icon: React.ReactNode; blurb: string }> = [
+  { key: 'system-dynamics', label: 'System Dynamics', icon: <TrendingUp className="w-4 h-4" />, blurb: 'Visual stock-and-flow model builder with Euler integration and feedback-loop detection.' },
+  { key: 'agent-based', label: 'Agent-Based', icon: <Users className="w-4 h-4" />, blurb: 'SIR epidemic, Schelling segregation, and predator-prey agent runtimes on a spatial grid.' },
+  { key: 'discrete-event', label: 'Discrete-Event', icon: <Boxes className="w-4 h-4" />, blurb: 'Event-driven M/M/c queue simulation with wait, utilization, and stability metrics.' },
+  { key: 'toolkit', label: 'Analysis Toolkit', icon: <Sigma className="w-4 h-4" />, blurb: 'Formula evaluator, goal-seek optimization, scenario diff, and historical calibration.' },
+];
+
+function StudioTab() {
+  const [mode, setMode] = useState<StudioMode>('system-dynamics');
+  const active = STUDIO_MODES.find(m => m.key === mode);
+
+  return (
+    <div className="space-y-4">
+      <div className={cn(ds.panel)}>
+        <div className="flex flex-wrap gap-2">
+          {STUDIO_MODES.map(m => (
+            <button
+              key={m.key}
+              onClick={() => setMode(m.key)}
+              className={cn(
+                ds.btnSmall, 'flex items-center gap-1.5',
+                mode === m.key ? ds.btnPrimary : ds.btnSecondary,
+              )}
+            >
+              {m.icon} {m.label}
+            </button>
+          ))}
+        </div>
+        {active && <p className={cn(ds.textMuted, 'mt-3')}>{active.blurb}</p>}
+      </div>
+
+      {mode === 'system-dynamics' && <SystemDynamicsBuilder />}
+      {mode === 'agent-based' && <AgentBasedRunner />}
+      {mode === 'discrete-event' && <DiscreteEventRunner />}
+      {mode === 'toolkit' && <SimToolkit />}
     </div>
   );
 }

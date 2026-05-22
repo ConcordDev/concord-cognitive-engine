@@ -420,4 +420,629 @@ export default function registerAttentionActions(registerLensAction) {
     artifact.data.attentionBudget = result;
     return { ok: true, result };
   });
+
+  // ───────────────────────────────────────────────────────────────────
+  // Sunsama / Motion–class focus-tool substrate — per-user, STATE-backed.
+  //   focusSessions:  completed Pomodoro / deep-work sessions
+  //   pomodoro:       the single live timer per user
+  //   plannerDays:    timeboxed day plans keyed by date
+  //   distractions:   interruption log
+  //   focusMode:      do-not-disturb toggle + state
+  //   calendarBlocks: reserved focus blocks
+  // All data is real — derived only from what the user records.
+  // ───────────────────────────────────────────────────────────────────
+
+  function getFocusState() {
+    const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+    if (!STATE.attentionLens) STATE.attentionLens = {};
+    const s = STATE.attentionLens;
+    if (!(s.focusSessions instanceof Map)) s.focusSessions = new Map();   // userId -> Array<session>
+    if (!(s.pomodoro instanceof Map)) s.pomodoro = new Map();             // userId -> timer
+    if (!(s.plannerDays instanceof Map)) s.plannerDays = new Map();       // userId -> { date -> day }
+    if (!(s.distractions instanceof Map)) s.distractions = new Map();     // userId -> Array<distraction>
+    if (!(s.focusMode instanceof Map)) s.focusMode = new Map();           // userId -> mode
+    if (!(s.calendarBlocks instanceof Map)) s.calendarBlocks = new Map(); // userId -> Array<block>
+    return s;
+  }
+  function persistFocusState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const fId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const fNow = () => new Date().toISOString();
+  const fActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const fClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const fNum = (v, dflt = 0) => { const n = Number(v); return Number.isFinite(n) ? n : dflt; };
+  const fList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
+  const fDateKey = (d) => {
+    const dt = d ? new Date(d) : new Date();
+    return Number.isNaN(dt.getTime()) ? new Date().toISOString().slice(0, 10) : dt.toISOString().slice(0, 10);
+  };
+
+  // ── Feature: Focus-session timer (Pomodoro) with start/break/stats ──
+
+  /**
+   * pomodoroStart — begin a focus or break interval.
+   * params: { mode: 'focus'|'short-break'|'long-break', durationMinutes?, taskId?, taskName? }
+   */
+  registerLensAction("attention", "pomodoroStart", (ctx, artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const mode = ["focus", "short-break", "long-break"].includes(params?.mode) ? params.mode : "focus";
+      const defaults = { focus: 25, "short-break": 5, "long-break": 15 };
+      const durationMinutes = Math.max(1, Math.min(180, fNum(params?.durationMinutes, defaults[mode])));
+      const startedAt = Date.now();
+      const timer = {
+        id: fId("pom"),
+        mode,
+        durationMinutes,
+        startedAt,
+        endsAt: startedAt + durationMinutes * 60000,
+        taskId: params?.taskId ? fClean(params.taskId, 80) : null,
+        taskName: params?.taskName ? fClean(params.taskName, 160) : null,
+        status: "running",
+        interruptions: 0,
+      };
+      s.pomodoro.set(userId, timer);
+      persistFocusState();
+      return { ok: true, result: { timer } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * pomodoroStatus — current live timer with remaining time computed server-side.
+   */
+  registerLensAction("attention", "pomodoroStatus", (ctx, _artifact, _params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const timer = s.pomodoro.get(userId) || null;
+      if (!timer) return { ok: true, result: { timer: null, remainingSeconds: 0 } };
+      const remainingMs = Math.max(0, timer.endsAt - Date.now());
+      const elapsedMs = Math.min(timer.durationMinutes * 60000, Date.now() - timer.startedAt);
+      return {
+        ok: true,
+        result: {
+          timer,
+          remainingSeconds: Math.round(remainingMs / 1000),
+          elapsedSeconds: Math.round(elapsedMs / 1000),
+          expired: remainingMs <= 0 && timer.status === "running",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * pomodoroInterrupt — record an interruption against the live timer.
+   */
+  registerLensAction("attention", "pomodoroInterrupt", (ctx, _artifact, _params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const timer = s.pomodoro.get(userId);
+      if (!timer) return { ok: false, error: "no_active_timer" };
+      timer.interruptions += 1;
+      persistFocusState();
+      return { ok: true, result: { timer } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * pomodoroComplete — finish/abandon a timer; logs a focus-session if it was a focus interval.
+   * params: { abandoned?: boolean, energy?: 'low'|'medium'|'high', mood?, notes? }
+   */
+  registerLensAction("attention", "pomodoroComplete", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const timer = s.pomodoro.get(userId);
+      if (!timer) return { ok: false, error: "no_active_timer" };
+      const endedAt = Date.now();
+      const actualMinutes = Math.round(((endedAt - timer.startedAt) / 60000) * 100) / 100;
+      const abandoned = params?.abandoned === true;
+      let session = null;
+      if (timer.mode === "focus" && actualMinutes > 0) {
+        session = {
+          id: fId("fs"),
+          taskId: timer.taskId,
+          taskName: timer.taskName,
+          startedAt: new Date(timer.startedAt).toISOString(),
+          endedAt: new Date(endedAt).toISOString(),
+          plannedMinutes: timer.durationMinutes,
+          actualMinutes,
+          interruptions: timer.interruptions,
+          completed: !abandoned && actualMinutes >= timer.durationMinutes * 0.9,
+          deepWork: !abandoned && timer.interruptions === 0 && actualMinutes >= 20,
+          energy: ["low", "medium", "high"].includes(params?.energy) ? params.energy : null,
+          mood: params?.mood ? fClean(params.mood, 40) : null,
+          notes: params?.notes ? fClean(params.notes, 400) : null,
+        };
+        fList(s.focusSessions, userId).unshift(session);
+        if (s.focusSessions.get(userId).length > 1000) s.focusSessions.get(userId).length = 1000;
+      }
+      s.pomodoro.delete(userId);
+      persistFocusState();
+      return { ok: true, result: { session, abandoned, actualMinutes } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * pomodoroStats — aggregate Pomodoro performance for the user.
+   */
+  registerLensAction("attention", "pomodoroStats", (ctx, _artifact, _params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const sessions = s.focusSessions.get(userId) || [];
+      const todayKey = fDateKey();
+      const today = sessions.filter((x) => fDateKey(x.startedAt) === todayKey);
+      const totalMinutes = sessions.reduce((a, x) => a + x.actualMinutes, 0);
+      const completed = sessions.filter((x) => x.completed).length;
+      const deepWork = sessions.filter((x) => x.deepWork).length;
+      const interruptions = sessions.reduce((a, x) => a + x.interruptions, 0);
+      return {
+        ok: true,
+        result: {
+          totalSessions: sessions.length,
+          completedSessions: completed,
+          deepWorkSessions: deepWork,
+          totalFocusMinutes: Math.round(totalMinutes * 100) / 100,
+          totalFocusHours: Math.round((totalMinutes / 60) * 100) / 100,
+          totalInterruptions: interruptions,
+          completionRate: sessions.length ? Math.round((completed / sessions.length) * 1000) / 10 : 0,
+          today: {
+            sessions: today.length,
+            minutes: Math.round(today.reduce((a, x) => a + x.actualMinutes, 0) * 100) / 100,
+            deepWork: today.filter((x) => x.deepWork).length,
+          },
+          recentSessions: sessions.slice(0, 12),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Feature: Daily attention planner — timeboxed day ──
+
+  /**
+   * plannerGet — fetch (or initialise) the timeboxed plan for a given date.
+   * params: { date? }
+   */
+  registerLensAction("attention", "plannerGet", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const date = fDateKey(params?.date);
+      if (!s.plannerDays.has(userId)) s.plannerDays.set(userId, {});
+      const days = s.plannerDays.get(userId);
+      if (!days[date]) days[date] = { date, dayStartMinute: 540, dayEndMinute: 1080, tasks: [] };
+      const day = days[date];
+      const plannedMinutes = day.tasks.reduce((a, t) => a + (t.durationMinutes || 0), 0);
+      const capacityMinutes = day.dayEndMinute - day.dayStartMinute;
+      return {
+        ok: true,
+        result: {
+          day,
+          plannedMinutes,
+          capacityMinutes,
+          remainingMinutes: capacityMinutes - plannedMinutes,
+          overbooked: plannedMinutes > capacityMinutes,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * plannerAddTask — add a task into the day plan at a start minute.
+   * params: { date?, name, startMinute?, durationMinutes?, priority?, color? }
+   */
+  registerLensAction("attention", "plannerAddTask", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const name = fClean(params?.name, 160);
+      if (!name) return { ok: false, error: "name_required" };
+      const date = fDateKey(params?.date);
+      if (!s.plannerDays.has(userId)) s.plannerDays.set(userId, {});
+      const days = s.plannerDays.get(userId);
+      if (!days[date]) days[date] = { date, dayStartMinute: 540, dayEndMinute: 1080, tasks: [] };
+      const day = days[date];
+      const task = {
+        id: fId("pt"),
+        name,
+        startMinute: Math.max(0, Math.min(1439, fNum(params?.startMinute, day.dayStartMinute))),
+        durationMinutes: Math.max(5, Math.min(720, fNum(params?.durationMinutes, 60))),
+        priority: Math.max(0, Math.min(1, fNum(params?.priority, 0.5))),
+        color: params?.color ? fClean(params.color, 24) : "#6366f1",
+        done: false,
+        createdAt: fNow(),
+      };
+      day.tasks.push(task);
+      day.tasks.sort((a, b) => a.startMinute - b.startMinute);
+      persistFocusState();
+      return { ok: true, result: { task, day } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * plannerMoveTask — reschedule (drag) a task to a new start minute / duration / done state.
+   * params: { date?, taskId, startMinute?, durationMinutes?, done? }
+   */
+  registerLensAction("attention", "plannerMoveTask", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const date = fDateKey(params?.date);
+      const days = s.plannerDays.get(userId) || {};
+      const day = days[date];
+      if (!day) return { ok: false, error: "day_not_found" };
+      const task = day.tasks.find((t) => t.id === params?.taskId);
+      if (!task) return { ok: false, error: "task_not_found" };
+      if (params?.startMinute !== undefined) task.startMinute = Math.max(0, Math.min(1439, fNum(params.startMinute, task.startMinute)));
+      if (params?.durationMinutes !== undefined) task.durationMinutes = Math.max(5, Math.min(720, fNum(params.durationMinutes, task.durationMinutes)));
+      if (params?.done !== undefined) task.done = params.done === true;
+      day.tasks.sort((a, b) => a.startMinute - b.startMinute);
+      persistFocusState();
+      return { ok: true, result: { task, day } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * plannerRemoveTask — drop a task from the day plan.
+   * params: { date?, taskId }
+   */
+  registerLensAction("attention", "plannerRemoveTask", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const date = fDateKey(params?.date);
+      const days = s.plannerDays.get(userId) || {};
+      const day = days[date];
+      if (!day) return { ok: false, error: "day_not_found" };
+      const before = day.tasks.length;
+      day.tasks = day.tasks.filter((t) => t.id !== params?.taskId);
+      if (day.tasks.length === before) return { ok: false, error: "task_not_found" };
+      persistFocusState();
+      return { ok: true, result: { day, removed: true } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Feature: Distraction log / interruption tracking ──
+
+  /**
+   * distractionLog — record an interruption event.
+   * params: { source, kind?, durationMinutes?, note? }
+   */
+  registerLensAction("attention", "distractionLog", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const source = fClean(params?.source, 120);
+      if (!source) return { ok: false, error: "source_required" };
+      const kinds = ["notification", "person", "self", "meeting", "other"];
+      const entry = {
+        id: fId("dx"),
+        source,
+        kind: kinds.includes(params?.kind) ? params.kind : "other",
+        durationMinutes: Math.max(0, Math.min(480, fNum(params?.durationMinutes, 0))),
+        note: params?.note ? fClean(params.note, 300) : null,
+        loggedAt: fNow(),
+      };
+      fList(s.distractions, userId).unshift(entry);
+      if (s.distractions.get(userId).length > 2000) s.distractions.get(userId).length = 2000;
+      persistFocusState();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * distractionSummary — counts by source/kind plus a today figure.
+   */
+  registerLensAction("attention", "distractionSummary", (ctx, _artifact, _params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const all = s.distractions.get(userId) || [];
+      const todayKey = fDateKey();
+      const today = all.filter((d) => fDateKey(d.loggedAt) === todayKey);
+      const bySource = {};
+      const byKind = {};
+      let lostMinutes = 0;
+      for (const d of all) {
+        bySource[d.source] = (bySource[d.source] || 0) + 1;
+        byKind[d.kind] = (byKind[d.kind] || 0) + 1;
+        lostMinutes += d.durationMinutes;
+      }
+      const topSources = Object.entries(bySource)
+        .map(([source, count]) => ({ source, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8);
+      return {
+        ok: true,
+        result: {
+          total: all.length,
+          todayCount: today.length,
+          lostMinutes: Math.round(lostMinutes * 100) / 100,
+          byKind,
+          topSources,
+          recent: all.slice(0, 20),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Feature: Focus analytics — deep-work hours per day/week trends ──
+
+  /**
+   * focusAnalytics — daily + weekly deep-work trends derived from logged sessions.
+   * params: { days? } window length, default 14
+   */
+  registerLensAction("attention", "focusAnalytics", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const sessions = s.focusSessions.get(userId) || [];
+      const distractions = s.distractions.get(userId) || [];
+      const windowDays = Math.max(7, Math.min(90, fNum(params?.days, 14)));
+      const daily = [];
+      const dayMs = 86400000;
+      const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+      for (let i = windowDays - 1; i >= 0; i--) {
+        const d = new Date(startOfToday.getTime() - i * dayMs);
+        const key = d.toISOString().slice(0, 10);
+        const dayS = sessions.filter((x) => fDateKey(x.startedAt) === key);
+        const dayD = distractions.filter((x) => fDateKey(x.loggedAt) === key);
+        const focusMinutes = dayS.reduce((a, x) => a + x.actualMinutes, 0);
+        const deepMinutes = dayS.filter((x) => x.deepWork).reduce((a, x) => a + x.actualMinutes, 0);
+        daily.push({
+          date: key,
+          label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          focusHours: Math.round((focusMinutes / 60) * 100) / 100,
+          deepWorkHours: Math.round((deepMinutes / 60) * 100) / 100,
+          sessions: dayS.length,
+          interruptions: dayD.length,
+        });
+      }
+      // weekly aggregation
+      const weekly = [];
+      for (let i = 0; i < daily.length; i += 7) {
+        const chunk = daily.slice(i, i + 7);
+        if (!chunk.length) continue;
+        weekly.push({
+          weekStart: chunk[0].date,
+          label: `Wk ${chunk[0].label}`,
+          focusHours: Math.round(chunk.reduce((a, x) => a + x.focusHours, 0) * 100) / 100,
+          deepWorkHours: Math.round(chunk.reduce((a, x) => a + x.deepWorkHours, 0) * 100) / 100,
+          sessions: chunk.reduce((a, x) => a + x.sessions, 0),
+        });
+      }
+      const totalFocus = daily.reduce((a, x) => a + x.focusHours, 0);
+      const totalDeep = daily.reduce((a, x) => a + x.deepWorkHours, 0);
+      const activeDays = daily.filter((x) => x.sessions > 0).length;
+      // simple linear trend on deep-work hours (slope sign)
+      const n = daily.length;
+      const meanX = (n - 1) / 2;
+      const meanY = totalDeep / n;
+      let num = 0, den = 0;
+      daily.forEach((d, idx) => { num += (idx - meanX) * (d.deepWorkHours - meanY); den += (idx - meanX) ** 2; });
+      const slope = den ? num / den : 0;
+      return {
+        ok: true,
+        result: {
+          windowDays,
+          daily,
+          weekly,
+          totals: {
+            focusHours: Math.round(totalFocus * 100) / 100,
+            deepWorkHours: Math.round(totalDeep * 100) / 100,
+            avgFocusHoursPerActiveDay: activeDays ? Math.round((totalFocus / activeDays) * 100) / 100 : 0,
+            activeDays,
+          },
+          deepWorkTrend: slope > 0.02 ? "improving" : slope < -0.02 ? "declining" : "steady",
+          trendSlope: Math.round(slope * 1000) / 1000,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Feature: Do-not-disturb / focus-mode toggle ──
+
+  /**
+   * focusModeGet — current focus-mode (DND) state.
+   */
+  registerLensAction("attention", "focusModeGet", (ctx, _artifact, _params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const mode = s.focusMode.get(userId) || { enabled: false, label: null, mutedChannels: [], enabledAt: null };
+      let activeMinutes = 0;
+      if (mode.enabled && mode.enabledAt) {
+        activeMinutes = Math.round(((Date.now() - new Date(mode.enabledAt).getTime()) / 60000) * 10) / 10;
+      }
+      return { ok: true, result: { mode, activeMinutes } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * focusModeSet — toggle do-not-disturb and choose which notification channels to mute.
+   * params: { enabled, label?, mutedChannels?: string[] }
+   */
+  registerLensAction("attention", "focusModeSet", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const enabled = params?.enabled === true;
+      const allChannels = ["chat", "world", "marketplace", "system", "email"];
+      const mutedChannels = Array.isArray(params?.mutedChannels)
+        ? params.mutedChannels.map((c) => fClean(c, 24)).filter((c) => allChannels.includes(c))
+        : (enabled ? allChannels.slice() : []);
+      const mode = {
+        enabled,
+        label: params?.label ? fClean(params.label, 80) : (enabled ? "Deep Work" : null),
+        mutedChannels,
+        enabledAt: enabled ? fNow() : null,
+      };
+      s.focusMode.set(userId, mode);
+      persistFocusState();
+      return { ok: true, result: { mode, availableChannels: allChannels } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Feature: Calendar integration — reserve focus blocks ──
+
+  /**
+   * calendarReserve — reserve a focus block on the calendar.
+   * params: { date?, startMinute, durationMinutes, title?, taskId? }
+   */
+  registerLensAction("attention", "calendarReserve", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const date = fDateKey(params?.date);
+      const startMinute = Math.max(0, Math.min(1439, fNum(params?.startMinute, 540)));
+      const durationMinutes = Math.max(15, Math.min(480, fNum(params?.durationMinutes, 90)));
+      const endMinute = Math.min(1440, startMinute + durationMinutes);
+      const blocks = fList(s.calendarBlocks, userId);
+      // conflict detection on same date
+      const conflict = blocks.find((b) =>
+        b.date === date && startMinute < (b.startMinute + b.durationMinutes) && endMinute > b.startMinute);
+      if (conflict) return { ok: false, error: "time_conflict", result: { conflict } };
+      const block = {
+        id: fId("cb"),
+        date,
+        startMinute,
+        durationMinutes,
+        endMinute,
+        title: params?.title ? fClean(params.title, 120) : "Focus Block",
+        taskId: params?.taskId ? fClean(params.taskId, 80) : null,
+        createdAt: fNow(),
+      };
+      blocks.push(block);
+      blocks.sort((a, b) => (a.date.localeCompare(b.date)) || (a.startMinute - b.startMinute));
+      persistFocusState();
+      return { ok: true, result: { block } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * calendarBlocks — list reserved focus blocks, optionally filtered by date.
+   * params: { date? }
+   */
+  registerLensAction("attention", "calendarBlocks", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      let blocks = s.calendarBlocks.get(userId) || [];
+      if (params?.date) {
+        const date = fDateKey(params.date);
+        blocks = blocks.filter((b) => b.date === date);
+      }
+      const totalReservedMinutes = blocks.reduce((a, b) => a + b.durationMinutes, 0);
+      return {
+        ok: true,
+        result: {
+          blocks,
+          count: blocks.length,
+          totalReservedMinutes,
+          totalReservedHours: Math.round((totalReservedMinutes / 60) * 100) / 100,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * calendarRelease — release a reserved focus block.
+   * params: { blockId }
+   */
+  registerLensAction("attention", "calendarRelease", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const blocks = s.calendarBlocks.get(userId) || [];
+      const before = blocks.length;
+      const next = blocks.filter((b) => b.id !== params?.blockId);
+      if (next.length === before) return { ok: false, error: "block_not_found" };
+      s.calendarBlocks.set(userId, next);
+      persistFocusState();
+      return { ok: true, result: { released: true, remaining: next.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── Feature: Energy/mood tagging per session — peak-hour discovery ──
+
+  /**
+   * energyTag — attach an energy/mood reading to a logged focus session.
+   * params: { sessionId, energy: 'low'|'medium'|'high', mood?, notes? }
+   */
+  registerLensAction("attention", "energyTag", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const sessions = s.focusSessions.get(userId) || [];
+      const session = sessions.find((x) => x.id === params?.sessionId);
+      if (!session) return { ok: false, error: "session_not_found" };
+      if (!["low", "medium", "high"].includes(params?.energy)) return { ok: false, error: "invalid_energy" };
+      session.energy = params.energy;
+      if (params?.mood !== undefined) session.mood = params.mood ? fClean(params.mood, 40) : null;
+      if (params?.notes !== undefined) session.notes = params.notes ? fClean(params.notes, 400) : null;
+      persistFocusState();
+      return { ok: true, result: { session } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * peakHours — compute peak-performance hours-of-day from energy-tagged sessions.
+   */
+  registerLensAction("attention", "peakHours", (ctx, _artifact, _params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const sessions = s.focusSessions.get(userId) || [];
+      const energyWeight = { low: 0.33, medium: 0.66, high: 1 };
+      const hourly = [];
+      for (let h = 0; h < 24; h++) hourly.push({ hour: h, sessions: 0, deepWork: 0, focusMinutes: 0, energySum: 0, energyN: 0 });
+      for (const x of sessions) {
+        const h = new Date(x.startedAt).getHours();
+        if (Number.isNaN(h)) continue;
+        const slot = hourly[h];
+        slot.sessions += 1;
+        slot.focusMinutes += x.actualMinutes;
+        if (x.deepWork) slot.deepWork += 1;
+        if (x.energy && energyWeight[x.energy] !== undefined) {
+          slot.energySum += energyWeight[x.energy];
+          slot.energyN += 1;
+        }
+      }
+      const scored = hourly.map((slot) => {
+        const avgEnergy = slot.energyN ? slot.energySum / slot.energyN : 0;
+        const deepRatio = slot.sessions ? slot.deepWork / slot.sessions : 0;
+        // performance index combines energy, deep-work ratio, and volume
+        const performanceIndex = Math.round(
+          (avgEnergy * 0.5 + deepRatio * 0.35 + Math.min(1, slot.sessions / 5) * 0.15) * 1000) / 1000;
+        return {
+          hour: slot.hour,
+          label: `${String(slot.hour).padStart(2, "0")}:00`,
+          sessions: slot.sessions,
+          deepWork: slot.deepWork,
+          focusMinutes: Math.round(slot.focusMinutes * 100) / 100,
+          avgEnergy: Math.round(avgEnergy * 1000) / 1000,
+          performanceIndex,
+        };
+      });
+      const ranked = [...scored].filter((x) => x.sessions > 0).sort((a, b) => b.performanceIndex - a.performanceIndex);
+      const moodBreakdown = {};
+      for (const x of sessions) if (x.mood) moodBreakdown[x.mood] = (moodBreakdown[x.mood] || 0) + 1;
+      return {
+        ok: true,
+        result: {
+          hourly: scored,
+          peakHours: ranked.slice(0, 3),
+          lowHours: ranked.slice(-3).reverse(),
+          taggedSessions: sessions.filter((x) => x.energy).length,
+          moodBreakdown,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
 }

@@ -485,4 +485,571 @@ export default function registerPhotographyActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Lightroom-parity backlog: RAW develop, histogram + tone curve,
+  // local masks, cull filter, smart collections, face tags, batch
+  // preset sync, lens correction + geometry. All STATE-backed,
+  // per-user, pure-compute (no native RAW decoder needed). ──────────
+
+  // Ensure the extra Maps exist on first touch.
+  function getPhotoStateExt() {
+    const s = getPhotoState();
+    if (!s) return null;
+    for (const k of ["toneCurves", "smartCollections"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  // ── Item 1: RAW develop pipeline ────────────────────────────────────
+  // True non-destructive tone-mapping math: a RAW file is modelled as a
+  // linear-light buffer; we compute the develop transform (white
+  // balance multipliers, tone curve, exposure) as a deterministic LUT
+  // the client applies. No pixels are mutated server-side — the photo
+  // keeps a `raw` flag + a `rawDevelop` settings object.
+  const KELVIN_REF = 6500;
+  function whiteBalanceMultipliers(tempK, tint) {
+    // Approximate channel gains from colour temperature. Warmer (lower
+    // K) lifts red, cooler lifts blue; tint shifts green↔magenta.
+    const t = phclamp(phnum(tempK, KELVIN_REF), 2000, 50000);
+    const ratio = KELVIN_REF / t;
+    const rGain = Math.pow(ratio, 0.55);
+    const bGain = Math.pow(1 / ratio, 0.55);
+    const g = phclamp(phnum(tint, 0), -150, 150);
+    const gGain = 1 - g / 600;
+    const norm = (rGain + gGain + bGain) / 3;
+    return {
+      r: Math.round((rGain / norm) * 1000) / 1000,
+      g: Math.round((gGain / norm) * 1000) / 1000,
+      b: Math.round((bGain / norm) * 1000) / 1000,
+    };
+  }
+  // Build a 256-entry tone LUT from a filmic-ish curve + exposure.
+  function buildToneLUT(exposureStops, contrast, highlights, shadows) {
+    const lut = new Array(256);
+    const evMul = Math.pow(2, phclamp(phnum(exposureStops, 0), -5, 5));
+    const c = phclamp(phnum(contrast, 0), -100, 100) / 100;
+    const hi = phclamp(phnum(highlights, 0), -100, 100) / 100;
+    const sh = phclamp(phnum(shadows, 0), -100, 100) / 100;
+    for (let i = 0; i < 256; i++) {
+      let v = (i / 255) * evMul;
+      // S-curve contrast around mid-grey.
+      v = v + c * (v - 0.5) * (1 - Math.abs(2 * v - 1));
+      // Highlight + shadow region weighting.
+      const hw = phclamp((v - 0.5) * 2, 0, 1);
+      const sw = phclamp((0.5 - v) * 2, 0, 1);
+      v = v + hi * hw * 0.25 - sh * sw * 0.25 * -1;
+      lut[i] = phclamp(Math.round(v * 255), 0, 255);
+    }
+    return lut;
+  }
+  registerLensAction("photography", "raw-develop", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.id);
+    if (!photo) return { ok: false, error: "photo not found" };
+    const isRaw = /\.(raw|dng|cr2|cr3|nef|arw|orf|raf|rw2)$/i.test(photo.filename || "");
+    const adj = normalizeAdjustments(params.adjustments);
+    const tempK = adj.temperature != null ? adj.temperature : KELVIN_REF;
+    const wb = whiteBalanceMultipliers(tempK, adj.tint);
+    const lut = buildToneLUT(adj.exposure, adj.contrast, adj.highlights, adj.shadows);
+    photo.raw = isRaw;
+    photo.rawDevelop = {
+      whiteBalance: wb,
+      temperature: tempK,
+      tint: adj.tint != null ? adj.tint : 0,
+      exposure: adj.exposure != null ? adj.exposure : 0,
+      developedAt: phnow(),
+    };
+    photo.develop = { ...photo.develop, ...adj };
+    savePhotoState();
+    return {
+      ok: true,
+      result: {
+        photoId: photo.id, isRaw,
+        whiteBalance: wb,
+        toneLUT: lut,
+        rawDevelop: photo.rawDevelop,
+      },
+    };
+  });
+  registerLensAction("photography", "raw-decode-meta", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.id);
+    if (!photo) return { ok: false, error: "photo not found" };
+    const ext = (photo.filename || "").split(".").pop().toLowerCase();
+    const RAW_FORMATS = {
+      raw: "Generic RAW", dng: "Adobe DNG", cr2: "Canon RAW", cr3: "Canon RAW v3",
+      nef: "Nikon RAW", arw: "Sony RAW", orf: "Olympus RAW", raf: "Fujifilm RAW", rw2: "Panasonic RAW",
+    };
+    const isRaw = !!RAW_FORMATS[ext];
+    return {
+      ok: true,
+      result: {
+        photoId: photo.id,
+        format: RAW_FORMATS[ext] || "Non-RAW (JPEG/processed)",
+        isRaw,
+        bitDepth: isRaw ? 14 : 8,
+        nondestructive: true,
+        recoverableHighlights: isRaw ? "≈1.5 stops" : "minimal",
+        recoverableShadows: isRaw ? "≈3 stops" : "≈1 stop",
+        hasRawDevelop: !!photo.rawDevelop,
+      },
+    };
+  });
+
+  // ── Item 2: Histogram + tone curve editor ───────────────────────────
+  // Histogram is computed client-side from a sampled pixel buffer the
+  // UI sends (256-bin RGB+luma counts). The macro validates, normalises
+  // and derives clipping warnings. Tone curves are named, per-user,
+  // reusable point sets (Lightroom point-curve idiom).
+  registerLensAction("photography", "histogram-compute", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const samples = Array.isArray(params.samples) ? params.samples : null;
+    if (!samples || samples.length === 0) return { ok: false, error: "samples array required (pixel luma values 0-255)" };
+    const luma = new Array(256).fill(0);
+    const red = new Array(256).fill(0);
+    const green = new Array(256).fill(0);
+    const blue = new Array(256).fill(0);
+    let total = 0;
+    for (const px of samples) {
+      if (Array.isArray(px) && px.length >= 3) {
+        const r = phclamp(Math.round(phnum(px[0])), 0, 255);
+        const g = phclamp(Math.round(phnum(px[1])), 0, 255);
+        const b = phclamp(Math.round(phnum(px[2])), 0, 255);
+        red[r]++; green[g]++; blue[b]++;
+        luma[phclamp(Math.round(0.299 * r + 0.587 * g + 0.114 * b), 0, 255)]++;
+      } else {
+        const v = phclamp(Math.round(phnum(px)), 0, 255);
+        luma[v]++; red[v]++; green[v]++; blue[v]++;
+      }
+      total++;
+    }
+    if (total === 0) return { ok: false, error: "no valid samples" };
+    const clipShadows = luma[0] / total;
+    const clipHighlights = luma[255] / total;
+    let sum = 0, meanW = 0;
+    for (let i = 0; i < 256; i++) { sum += luma[i]; meanW += i * luma[i]; }
+    const mean = Math.round(meanW / sum);
+    return {
+      ok: true,
+      result: {
+        luma, red, green, blue, totalSamples: total,
+        meanLuma: mean,
+        clippedShadowsPct: Math.round(clipShadows * 1000) / 10,
+        clippedHighlightsPct: Math.round(clipHighlights * 1000) / 10,
+        exposureHint: mean < 85 ? "underexposed" : mean > 170 ? "overexposed" : "balanced",
+      },
+    };
+  });
+  // Tone curve = ordered list of {x,y} control points, 0..255.
+  function sanitizeCurvePoints(raw) {
+    if (!Array.isArray(raw)) return [{ x: 0, y: 0 }, { x: 255, y: 255 }];
+    const pts = raw
+      .map((p) => ({ x: phclamp(Math.round(phnum(p && p.x)), 0, 255), y: phclamp(Math.round(phnum(p && p.y)), 0, 255) }))
+      .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    pts.sort((a, b) => a.x - b.x);
+    if (pts.length < 2) return [{ x: 0, y: 0 }, { x: 255, y: 255 }];
+    return pts.slice(0, 16);
+  }
+  // Build a 256-entry LUT by linear interpolation between curve points.
+  function curveToLUT(points) {
+    const lut = new Array(256);
+    for (let i = 0; i < 256; i++) {
+      let lo = points[0], hi = points[points.length - 1];
+      for (let j = 0; j < points.length - 1; j++) {
+        if (i >= points[j].x && i <= points[j + 1].x) { lo = points[j]; hi = points[j + 1]; break; }
+      }
+      const span = hi.x - lo.x;
+      const t = span === 0 ? 0 : (i - lo.x) / span;
+      lut[i] = phclamp(Math.round(lo.y + t * (hi.y - lo.y)), 0, 255);
+    }
+    return lut;
+  }
+  registerLensAction("photography", "tone-curve-save", (ctx, _a, params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = phclean(params.name, 80);
+    if (!name) return { ok: false, error: "curve name required" };
+    const curve = {
+      id: phid("crv"), name,
+      channel: ["rgb", "red", "green", "blue"].includes(String(params.channel).toLowerCase())
+        ? String(params.channel).toLowerCase() : "rgb",
+      points: sanitizeCurvePoints(params.points),
+      createdAt: phnow(),
+    };
+    phlistB(s.toneCurves, phaid(ctx)).push(curve);
+    savePhotoState();
+    return { ok: true, result: { curve, lut: curveToLUT(curve.points) } };
+  });
+  registerLensAction("photography", "tone-curve-list", (ctx, _a, _params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const curves = (s.toneCurves.get(phaid(ctx)) || []).map((c) => ({ ...c, lut: curveToLUT(c.points) }));
+    return { ok: true, result: { curves, count: curves.length } };
+  });
+  registerLensAction("photography", "tone-curve-apply", (ctx, _a, params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const photo = findPhoto(s, userId, params.photoId);
+    if (!photo) return { ok: false, error: "photo not found" };
+    let points;
+    if (Array.isArray(params.points)) {
+      points = sanitizeCurvePoints(params.points);
+    } else {
+      const curve = (s.toneCurves.get(userId) || []).find((c) => c.id === params.curveId);
+      if (!curve) return { ok: false, error: "tone curve not found" };
+      points = curve.points;
+    }
+    photo.toneCurve = points;
+    savePhotoState();
+    return { ok: true, result: { photoId: photo.id, points, lut: curveToLUT(points) } };
+  });
+  registerLensAction("photography", "tone-curve-delete", (ctx, _a, params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.toneCurves.get(phaid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "tone curve not found" };
+    arr.splice(i, 1);
+    savePhotoState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Item 3: Local adjustments / masking ─────────────────────────────
+  // Brush / linear-gradient / radial / subject masks. Each mask carries
+  // a geometry spec + its own adjustment set. Stored on the photo.
+  const MASK_KINDS = ["brush", "linear-gradient", "radial-gradient", "subject", "sky", "background"];
+  function sanitizeMaskGeometry(kind, raw) {
+    const g = raw && typeof raw === "object" ? raw : {};
+    const num01 = (v, d = 0) => phclamp(phnum(v, d), 0, 1);
+    if (kind === "radial-gradient") {
+      return { cx: num01(g.cx, 0.5), cy: num01(g.cy, 0.5), rx: num01(g.rx, 0.25), ry: num01(g.ry, 0.25), feather: num01(g.feather, 0.5), invert: g.invert === true };
+    }
+    if (kind === "linear-gradient") {
+      return { x1: num01(g.x1, 0.5), y1: num01(g.y1, 0), x2: num01(g.x2, 0.5), y2: num01(g.y2, 1), feather: num01(g.feather, 0.5) };
+    }
+    if (kind === "brush") {
+      const strokes = Array.isArray(g.strokes) ? g.strokes.slice(0, 200).map((st) => ({
+        x: num01(st && st.x), y: num01(st && st.y), size: num01(st && st.size, 0.05),
+      })) : [];
+      return { strokes, flow: num01(g.flow, 1) };
+    }
+    // subject / sky / background — AI-select masks carry just a label.
+    return { autoSelect: kind };
+  }
+  registerLensAction("photography", "mask-create", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.photoId);
+    if (!photo) return { ok: false, error: "photo not found" };
+    const kind = MASK_KINDS.includes(String(params.kind).toLowerCase())
+      ? String(params.kind).toLowerCase() : null;
+    if (!kind) return { ok: false, error: `kind must be one of ${MASK_KINDS.join(", ")}` };
+    if (!Array.isArray(photo.masks)) photo.masks = [];
+    const mask = {
+      id: phid("msk"), kind,
+      name: phclean(params.name, 80) || kind,
+      geometry: sanitizeMaskGeometry(kind, params.geometry),
+      adjustments: normalizeAdjustments(params.adjustments),
+      opacity: phclamp(phnum(params.opacity, 1), 0, 1),
+      createdAt: phnow(),
+    };
+    photo.masks.push(mask);
+    savePhotoState();
+    return { ok: true, result: { mask, maskCount: photo.masks.length } };
+  });
+  registerLensAction("photography", "mask-list", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.photoId);
+    if (!photo) return { ok: false, error: "photo not found" };
+    return { ok: true, result: { masks: photo.masks || [], count: (photo.masks || []).length } };
+  });
+  registerLensAction("photography", "mask-update", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.photoId);
+    if (!photo) return { ok: false, error: "photo not found" };
+    const mask = (photo.masks || []).find((m) => m.id === params.maskId);
+    if (!mask) return { ok: false, error: "mask not found" };
+    if (params.name != null) mask.name = phclean(params.name, 80) || mask.name;
+    if (params.geometry != null) mask.geometry = sanitizeMaskGeometry(mask.kind, params.geometry);
+    if (params.adjustments != null) mask.adjustments = { ...mask.adjustments, ...normalizeAdjustments(params.adjustments) };
+    if (params.opacity != null) mask.opacity = phclamp(phnum(params.opacity, mask.opacity), 0, 1);
+    savePhotoState();
+    return { ok: true, result: { mask } };
+  });
+  registerLensAction("photography", "mask-delete", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.photoId);
+    if (!photo) return { ok: false, error: "photo not found" };
+    const arr = photo.masks || [];
+    const i = arr.findIndex((m) => m.id === params.maskId);
+    if (i < 0) return { ok: false, error: "mask not found" };
+    arr.splice(i, 1);
+    savePhotoState();
+    return { ok: true, result: { deleted: params.maskId, maskCount: arr.length } };
+  });
+
+  // ── Item 4: Star rating + color label filtering ─────────────────────
+  // Full Lightroom cull filter — combine rating comparator, flag, and
+  // colour-label set into one query.
+  registerLensAction("photography", "cull-filter", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let photos = [...(s.photos.get(phaid(ctx)) || [])];
+    const rating = params.rating != null ? phclamp(Math.round(phnum(params.rating)), 0, 5) : null;
+    const cmp = ["gte", "lte", "eq"].includes(String(params.ratingCompare).toLowerCase())
+      ? String(params.ratingCompare).toLowerCase() : "gte";
+    if (rating != null) {
+      photos = photos.filter((p) =>
+        cmp === "eq" ? p.rating === rating : cmp === "lte" ? p.rating <= rating : p.rating >= rating);
+    }
+    if (params.flag) {
+      const flags = (Array.isArray(params.flag) ? params.flag : [params.flag]).map((f) => String(f).toLowerCase());
+      photos = photos.filter((p) => flags.includes(p.flag));
+    }
+    if (params.colorLabels) {
+      const labels = (Array.isArray(params.colorLabels) ? params.colorLabels : [params.colorLabels])
+        .map((c) => String(c).toLowerCase());
+      photos = photos.filter((p) => p.colorLabel && labels.includes(p.colorLabel));
+    }
+    const sortBy = String(params.sortBy || "rating").toLowerCase();
+    if (sortBy === "rating") photos.sort((a, b) => b.rating - a.rating);
+    else photos.sort((a, b) => b.importedAt.localeCompare(a.importedAt));
+    return {
+      ok: true,
+      result: {
+        photos, count: photos.length,
+        appliedFilter: { rating, ratingCompare: cmp, flag: params.flag || null, colorLabels: params.colorLabels || null, sortBy },
+      },
+    };
+  });
+
+  // ── Item 5: Keyword/face tags + smart collections ───────────────────
+  // Face tags are per-photo named regions. Smart collections are saved
+  // metadata queries that re-evaluate against the whole catalog.
+  registerLensAction("photography", "face-tag-add", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.photoId);
+    if (!photo) return { ok: false, error: "photo not found" };
+    const personName = phclean(params.personName, 80);
+    if (!personName) return { ok: false, error: "personName required" };
+    if (!Array.isArray(photo.faceTags)) photo.faceTags = [];
+    const num01 = (v, d) => phclamp(phnum(v, d), 0, 1);
+    const region = params.region && typeof params.region === "object"
+      ? { x: num01(params.region.x, 0.4), y: num01(params.region.y, 0.3), w: num01(params.region.w, 0.2), h: num01(params.region.h, 0.2) }
+      : { x: 0.4, y: 0.3, w: 0.2, h: 0.2 };
+    if (params.remove === true) {
+      photo.faceTags = photo.faceTags.filter((f) => f.personName.toLowerCase() !== personName.toLowerCase());
+    } else {
+      const tag = { id: phid("face"), personName, region };
+      photo.faceTags.push(tag);
+      // Also surface the person as a searchable keyword.
+      const kw = personName.toLowerCase();
+      if (!photo.keywords.includes(kw)) photo.keywords.push(kw);
+    }
+    savePhotoState();
+    return { ok: true, result: { faceTags: photo.faceTags } };
+  });
+  registerLensAction("photography", "face-tag-list", (ctx, _a, _params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const counts = new Map();
+    for (const p of s.photos.get(phaid(ctx)) || []) {
+      for (const f of p.faceTags || []) {
+        counts.set(f.personName, (counts.get(f.personName) || 0) + 1);
+      }
+    }
+    const people = [...counts.entries()]
+      .map(([personName, count]) => ({ personName, count }))
+      .sort((a, b) => b.count - a.count);
+    return { ok: true, result: { people, count: people.length } };
+  });
+  // Smart collection rule evaluator — supports rating/flag/colour/
+  // keyword/camera/lens/person criteria.
+  function evalSmartRules(photo, rules) {
+    for (const rule of rules) {
+      const field = String(rule.field || "").toLowerCase();
+      const op = String(rule.op || "eq").toLowerCase();
+      const val = rule.value;
+      let pv;
+      if (field === "rating") pv = photo.rating;
+      else if (field === "flag") pv = photo.flag;
+      else if (field === "colorlabel") pv = photo.colorLabel;
+      else if (field === "camera") pv = (photo.camera || "").toLowerCase();
+      else if (field === "lens") pv = (photo.lens || "").toLowerCase();
+      else if (field === "keyword") pv = photo.keywords;
+      else if (field === "person") pv = (photo.faceTags || []).map((f) => f.personName.toLowerCase());
+      else if (field === "edited") pv = Object.keys(photo.develop || {}).length > 0;
+      else return false;
+      const target = typeof val === "string" ? val.toLowerCase() : val;
+      let pass;
+      if (op === "contains" && Array.isArray(pv)) pass = pv.includes(target);
+      else if (op === "gte") pass = phnum(pv) >= phnum(target);
+      else if (op === "lte") pass = phnum(pv) <= phnum(target);
+      else if (op === "neq") pass = pv !== target;
+      else pass = Array.isArray(pv) ? pv.includes(target) : pv === target;
+      if (!pass) return false;
+    }
+    return true;
+  }
+  registerLensAction("photography", "smart-collection-create", (ctx, _a, params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = phclean(params.name, 100);
+    if (!name) return { ok: false, error: "collection name required" };
+    const rawRules = Array.isArray(params.rules) ? params.rules : [];
+    if (rawRules.length === 0) return { ok: false, error: "at least one rule required" };
+    const rules = rawRules.slice(0, 12).map((r) => ({
+      field: phclean(r && r.field, 30).toLowerCase(),
+      op: phclean(r && r.op, 12).toLowerCase() || "eq",
+      value: typeof (r && r.value) === "string" ? phclean(r.value, 80) : (r && r.value),
+    }));
+    const coll = { id: phid("smc"), name, rules, createdAt: phnow() };
+    phlistB(s.smartCollections, phaid(ctx)).push(coll);
+    savePhotoState();
+    return { ok: true, result: { collection: coll } };
+  });
+  registerLensAction("photography", "smart-collection-list", (ctx, _a, _params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const photos = s.photos.get(userId) || [];
+    const collections = (s.smartCollections.get(userId) || []).map((c) => ({
+      ...c, matchCount: photos.filter((p) => evalSmartRules(p, c.rules)).length,
+    }));
+    return { ok: true, result: { collections, count: collections.length } };
+  });
+  registerLensAction("photography", "smart-collection-eval", (ctx, _a, params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const coll = (s.smartCollections.get(userId) || []).find((c) => c.id === params.id);
+    if (!coll) return { ok: false, error: "smart collection not found" };
+    const photos = (s.photos.get(userId) || []).filter((p) => evalSmartRules(p, coll.rules));
+    return { ok: true, result: { collection: { id: coll.id, name: coll.name }, photos, count: photos.length } };
+  });
+  registerLensAction("photography", "smart-collection-delete", (ctx, _a, params = {}) => {
+    const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.smartCollections.get(phaid(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "smart collection not found" };
+    arr.splice(i, 1);
+    savePhotoState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Item 6: Preset sync + apply-to-batch ────────────────────────────
+  // Copy develop settings (and optionally tone curve / lens correction)
+  // across many photos in one call. Also a direct copy-from-photo path.
+  registerLensAction("photography", "preset-apply-batch", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const preset = (s.presets.get(userId) || []).find((p) => p.id === params.presetId);
+    if (!preset) return { ok: false, error: "preset not found" };
+    const ids = Array.isArray(params.photoIds) ? params.photoIds : [];
+    if (ids.length === 0) return { ok: false, error: "photoIds array required" };
+    let applied = 0; const missed = [];
+    for (const id of ids) {
+      const photo = findPhoto(s, userId, id);
+      if (!photo) { missed.push(id); continue; }
+      photo.develop = { ...photo.develop, ...preset.adjustments };
+      photo.appliedPreset = preset.name;
+      applied++;
+    }
+    savePhotoState();
+    return { ok: true, result: { applied, missed, presetName: preset.name } };
+  });
+  registerLensAction("photography", "develop-copy-paste", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const source = findPhoto(s, userId, params.sourceId);
+    if (!source) return { ok: false, error: "source photo not found" };
+    const ids = Array.isArray(params.targetIds) ? params.targetIds : [];
+    if (ids.length === 0) return { ok: false, error: "targetIds array required" };
+    const includeCurve = params.includeToneCurve === true;
+    const includeLens = params.includeLensCorrection === true;
+    let applied = 0; const missed = [];
+    for (const id of ids) {
+      const photo = findPhoto(s, userId, id);
+      if (!photo || photo.id === source.id) { if (!photo) missed.push(id); continue; }
+      photo.develop = { ...source.develop };
+      photo.appliedPreset = source.appliedPreset || null;
+      if (includeCurve && source.toneCurve) photo.toneCurve = [...source.toneCurve];
+      if (includeLens && source.lensCorrection) photo.lensCorrection = { ...source.lensCorrection };
+      applied++;
+    }
+    savePhotoState();
+    return { ok: true, result: { applied, missed, sourceId: source.id, copiedToneCurve: includeCurve, copiedLensCorrection: includeLens } };
+  });
+
+  // ── Item 7: Lens correction / geometry ──────────────────────────────
+  // Distortion / vignette / chromatic-aberration removal + perspective
+  // (Upright) and crop/rotate geometry. Stored as a settings object the
+  // client applies; values clamped to real ranges.
+  registerLensAction("photography", "lens-correction-set", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.id);
+    if (!photo) return { ok: false, error: "photo not found" };
+    photo.lensCorrection = {
+      enabled: params.enabled !== false,
+      distortion: phclamp(phnum(params.distortion, 0), -100, 100),
+      vignette: phclamp(phnum(params.vignette, 0), -100, 100),
+      vignetteMidpoint: phclamp(phnum(params.vignetteMidpoint, 50), 0, 100),
+      chromaticAberration: phclamp(phnum(params.chromaticAberration, 0), 0, 100),
+      defringePurple: phclamp(phnum(params.defringePurple, 0), 0, 20),
+      defringeGreen: phclamp(phnum(params.defringeGreen, 0), 0, 20),
+      profile: phclean(params.profile, 80) || (photo.lens || "auto"),
+      updatedAt: phnow(),
+    };
+    savePhotoState();
+    return { ok: true, result: { photoId: photo.id, lensCorrection: photo.lensCorrection } };
+  });
+  registerLensAction("photography", "geometry-set", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const photo = findPhoto(s, phaid(ctx), params.id);
+    if (!photo) return { ok: false, error: "photo not found" };
+    const num01 = (v, d) => phclamp(phnum(v, d), 0, 1);
+    const c = params.crop && typeof params.crop === "object" ? params.crop : {};
+    photo.geometry = {
+      rotation: phclamp(phnum(params.rotation, 0), -45, 45),
+      straighten: phclamp(phnum(params.straighten, 0), -10, 10),
+      verticalPerspective: phclamp(phnum(params.verticalPerspective, 0), -100, 100),
+      horizontalPerspective: phclamp(phnum(params.horizontalPerspective, 0), -100, 100),
+      aspectRatio: phclean(params.aspectRatio, 12) || "original",
+      crop: {
+        x: num01(c.x, 0), y: num01(c.y, 0),
+        w: num01(c.w, 1), h: num01(c.h, 1),
+      },
+      flipHorizontal: params.flipHorizontal === true,
+      flipVertical: params.flipVertical === true,
+      updatedAt: phnow(),
+    };
+    savePhotoState();
+    return { ok: true, result: { photoId: photo.id, geometry: photo.geometry } };
+  });
+
+  // feed — ingest real photography artworks from the Art Institute of
+  // Chicago open API as visible DTUs. Free, no key.
+  registerLensAction("photography", "feed", async (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const page = (new Date().getDate() % 10) + 1;
+    try {
+      const r = await fetch(`https://api.artic.edu/api/v1/artworks/search?q=photograph&query[term][is_public_domain]=true&fields=id,title,artist_title,date_display,medium_display,image_id&limit=${limit}&page=${page}`);
+      if (!r.ok) return { ok: false, error: `artic ${r.status}` };
+      const data = await r.json();
+      const works = (Array.isArray(data?.data) ? data.data : []).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const w of works) {
+        const id = `artic_${w.id}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `Photograph: ${w.title || "Untitled"}`;
+        const imageUrl = w.image_id ? `https://www.artic.edu/iiif/2/${w.image_id}/full/843,/0/default.jpg` : null;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nArtist: ${w.artist_title || "Unknown"}\nDate: ${w.date_display || "?"}\nMedium: ${w.medium_display || "?"}\nCollection: Art Institute of Chicago`,
+          tags: ["photography", "feed", "artwork", "artic"],
+          source: "artic-feed",
+          meta: { artworkId: w.id, title: w.title, artist: w.artist_title, imageUrl },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      savePhotoState();
+      return { ok: true, result: { ingested, skipped, source: "artic-photography", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `artic unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

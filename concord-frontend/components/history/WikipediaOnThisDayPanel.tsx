@@ -171,6 +171,7 @@ export function WikipediaOnThisDayPanel({ className }: { className?: string }) {
                     {entry.pages.map((p, pIdx) => (
                       <li key={pIdx} className="flex items-start gap-2 text-[11px]">
                         {p.thumbnail && (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={p.thumbnail} alt="" className="w-10 h-10 object-cover rounded border border-zinc-800 shrink-0" loading="lazy" />
                         )}
                         <div className="flex-1 min-w-0">

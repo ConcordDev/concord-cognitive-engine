@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FormalVerificationRepos } from '@/components/invariant/FormalVerificationRepos';
+import { FormalVerificationWorkbench } from '@/components/invariant/FormalVerificationWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -317,6 +318,16 @@ export default function InvariantLensPage() {
             <span>{testResult.message}</span>
           </div>
         )}
+      </div>
+
+      {/* Formal Verification Workbench — continuous monitoring, counterexamples,
+          invariant library, temporal logic, violation history, quantified ∀∃ */}
+      <div className="panel p-4">
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <Gauge className="w-4 h-4 text-neon-cyan" />
+          Formal Verification Workbench
+        </h2>
+        <FormalVerificationWorkbench />
       </div>
 
       {/* Filter & search bar */}

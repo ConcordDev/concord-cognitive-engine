@@ -11,6 +11,7 @@ export function PropertyNotes({ listingId }: { listingId?: string }) {
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [listingId]);
 
   async function refresh() {

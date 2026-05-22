@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, UserRound, Package, BellRing, Check, Trash2 } from 'lucide-react';
+import { Loader2, Plus, UserRound, Package, BellRing, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

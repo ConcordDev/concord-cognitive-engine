@@ -9,6 +9,13 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MetalearningFeed } from '@/components/metalearning/MetalearningFeed';
+import { SpacedRepetitionPanel } from '@/components/metalearning/SpacedRepetitionPanel';
+import { LearningPlanPanel } from '@/components/metalearning/LearningPlanPanel';
+import { TechniqueLibraryPanel } from '@/components/metalearning/TechniqueLibraryPanel';
+import { ProgressAnalyticsPanel } from '@/components/metalearning/ProgressAnalyticsPanel';
+import { GoalTrackerPanel } from '@/components/metalearning/GoalTrackerPanel';
+import { StrategyExperimentPanel } from '@/components/metalearning/StrategyExperimentPanel';
+import { StudyJournalPanel } from '@/components/metalearning/StudyJournalPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -19,7 +26,7 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   GraduationCap, Plus, TrendingUp, Award,
   ArrowRight, BarChart3, Zap, BookOpen, Layers, ChevronDown,
-  Brain, Target, AlertCircle, Lightbulb, CircleDot, Puzzle, Sparkles, Waypoints,
+  Brain, Target, Lightbulb, Puzzle, Sparkles, Waypoints,
   Play, Loader2,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -436,9 +443,9 @@ export default function MetalearningLensPage() {
               {statusInfo.adaptations || 0}
             </p>
             <p className="text-xs text-gray-400 mt-1">adaptations this cycle</p>
-            <div className="mt-2 flex items-center gap-1 text-xs text-neon-green">
-              <TrendingUp className="w-3 h-3" />
-              <span>+12% from previous</span>
+            <div className="mt-2 flex items-center gap-1 text-xs text-neon-cyan">
+              <Brain className="w-3 h-3" />
+              <span>{strategyList.length} strategies tracked</span>
             </div>
           </div>
 
@@ -458,67 +465,18 @@ export default function MetalearningLensPage() {
           </div>
         </div>
 
-        {/* Knowledge Gap Analysis */}
-        <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertCircle className="w-4 h-4 text-neon-purple" />
-            <h3 className="text-sm font-semibold">Knowledge Gap Analysis</h3>
-          </div>
-          <div className="space-y-3">
-            {[
-              { domain: 'Temporal Reasoning', coverage: 78, priority: 'high', gaps: 3 },
-              { domain: 'Causal Inference', coverage: 85, priority: 'medium', gaps: 2 },
-              { domain: 'Spatial Grounding', coverage: 62, priority: 'high', gaps: 5 },
-              { domain: 'Abstract Composition', coverage: 91, priority: 'low', gaps: 1 },
-              { domain: 'Multi-Modal Fusion', coverage: 55, priority: 'critical', gaps: 7 },
-              { domain: 'Ethical Reasoning', coverage: 96, priority: 'low', gaps: 0 },
-            ].map((gap) => (
-              <div key={gap.domain} className="flex items-center gap-4">
-                <CircleDot className={`w-3.5 h-3.5 flex-shrink-0 ${
-                  gap.priority === 'critical' ? 'text-neon-pink' :
-                  gap.priority === 'high' ? 'text-yellow-500' :
-                  gap.priority === 'medium' ? 'text-neon-cyan' : 'text-neon-green'
-                }`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium">{gap.domain}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        gap.priority === 'critical' ? 'bg-neon-pink/15 text-neon-pink' :
-                        gap.priority === 'high' ? 'bg-yellow-500/15 text-yellow-500' :
-                        gap.priority === 'medium' ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-neon-green/15 text-neon-green'
-                      }`}>
-                        {gap.priority}
-                      </span>
-                      <span className="text-[10px] text-gray-500">{gap.gaps} gaps</span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-lattice-void rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        gap.coverage >= 90 ? 'bg-neon-green' :
-                        gap.coverage >= 75 ? 'bg-neon-cyan' :
-                        gap.coverage >= 60 ? 'bg-yellow-500' : 'bg-neon-pink'
-                      }`}
-                      style={{ width: `${gap.coverage}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-gray-500 mt-0.5">{gap.coverage}% coverage</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Summary */}
-          <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-gray-400">Recommended Focus</span>
-            <span className="text-xs font-semibold text-neon-pink flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Multi-Modal Fusion (55% coverage)
-            </span>
-          </div>
-        </div>
       </div>
+
+      {/* Learning-science practice substrate — daily practice tools */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="panel p-4"><SpacedRepetitionPanel /></div>
+        <div className="panel p-4"><ProgressAnalyticsPanel /></div>
+        <div className="panel p-4"><LearningPlanPanel /></div>
+        <div className="panel p-4"><GoalTrackerPanel /></div>
+        <div className="panel p-4"><StrategyExperimentPanel /></div>
+        <div className="panel p-4"><StudyJournalPanel /></div>
+      </div>
+      <div className="panel p-4"><TechniqueLibraryPanel /></div>
 
       {/* Backend Action Panel */}
       <div className="panel p-4 space-y-3">

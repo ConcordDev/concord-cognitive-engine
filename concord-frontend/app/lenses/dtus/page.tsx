@@ -19,6 +19,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TrendingDtus } from '@/components/dtus/TrendingDtus';
+import { KnowledgeWorkbench } from '@/components/dtus/KnowledgeWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -634,6 +635,12 @@ export default function DTUBrowserPage() {
           )}
         </div>
       </div>
+
+      {/* Knowledge Workbench — citation graph, faceted search, lineage
+          tree drill-down, bulk operations, side-by-side compare/merge,
+          smart collections, and the inline 4-layer editor. Operates over
+          the currently-loaded DTU corpus. */}
+      <KnowledgeWorkbench dtus={dtus} onSelectDtu={(id) => setSelectedDtuId(id)} />
 
       {/* DTU operations — surfaces the substrate-class macro domains
           that act on or emit DTUs (promotion queue, dream cycle,

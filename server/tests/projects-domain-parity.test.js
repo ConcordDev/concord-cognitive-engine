@@ -385,3 +385,188 @@ describe("projects — risk register, goals, timeline", () => {
     assert.equal(tl.result.tasks[0].start, "2026-06-01");
   });
 });
+
+// ════════════════════════════════════════════════════════════════════
+//  2026 PARITY BACKLOG — Linear / Asana feature gaps
+// ════════════════════════════════════════════════════════════════════
+
+describe("projects — real-time multiplayer sync", () => {
+  it("presence-ping records a collaborator and presence-list returns them", () => {
+    const pid = newProject();
+    const ping = call("presence-ping", ctxA, { projectId: pid, collaborator: "Ada", cursorX: 40, cursorY: 60, viewing: "board" });
+    assert.equal(ping.ok, true);
+    assert.equal(ping.result.collaborator, "Ada");
+    const list = call("presence-list", ctxA, { projectId: pid });
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.collaborators[0].collaborator, "Ada");
+    assert.equal(list.result.collaborators[0].cursorX, 40);
+  });
+
+  it("presence-ping rejects an unknown project", () => {
+    assert.equal(call("presence-ping", ctxA, { projectId: "nope" }).ok, false);
+  });
+
+  it("sync-since returns only tasks updated after a timestamp", () => {
+    const pid = newProject();
+    const t = call("task-create", ctxA, { projectId: pid, title: "Synced" }).result.task;
+    const all = call("sync-since", ctxA, { projectId: pid });
+    assert.equal(all.result.count, 1);
+    // A timestamp in the future excludes everything.
+    const future = new Date(Date.now() + 60_000).toISOString();
+    assert.equal(call("sync-since", ctxA, { projectId: pid, since: future }).result.count, 0);
+    // Backdate the task's updatedAt, then a since before that returns it.
+    const state = globalThis._concordSTATE.projectsLens.tasks.get("user_a");
+    state.find((x) => x.id === t.id).updatedAt = "2026-05-21T00:00:00.000Z";
+    assert.equal(call("sync-since", ctxA, { projectId: pid, since: "2026-05-20T00:00:00.000Z" }).result.count, 1);
+    assert.equal(call("sync-since", ctxA, { projectId: pid, since: "2026-05-22T00:00:00.000Z" }).result.count, 0);
+  });
+});
+
+describe("projects — binary file attachments", () => {
+  it("uploads a base64 binary file and downloads it back", () => {
+    const pid = newProject();
+    const t = call("task-create", ctxA, { projectId: pid, title: "Has file" }).result.task;
+    const payload = Buffer.from("hello concord").toString("base64");
+    const up = call("attachment-upload", ctxA, {
+      taskId: t.id, fileName: "notes.txt", mimeType: "text/plain", data: payload,
+    });
+    assert.equal(up.ok, true);
+    assert.equal(up.result.attachment.kind, "binary");
+    assert.equal(up.result.attachment.fileName, "notes.txt");
+    assert.ok(up.result.attachment.bytes > 0);
+    assert.equal(up.result.attachment.data, undefined);
+    const dl = call("attachment-download", ctxA, { id: up.result.attachment.id });
+    assert.equal(dl.ok, true);
+    assert.equal(Buffer.from(dl.result.data, "base64").toString(), "hello concord");
+  });
+
+  it("rejects a non-base64 payload and a download of a non-binary attachment", () => {
+    const pid = newProject();
+    const t = call("task-create", ctxA, { projectId: pid, title: "X" }).result.task;
+    assert.equal(call("attachment-upload", ctxA, { taskId: t.id, fileName: "f", data: "@@@" }).ok, false);
+    const link = call("attachment-add", ctxA, { taskId: t.id, url: "https://example.com/x" }).result.attachment;
+    assert.equal(call("attachment-download", ctxA, { id: link.id }).ok, false);
+  });
+});
+
+describe("projects — GitHub / Slack / CI integrations", () => {
+  it("connects an integration and links an artifact to a task", () => {
+    const pid = newProject();
+    const itg = call("integration-connect", ctxA, { projectId: pid, kind: "github", target: "acme/app" }).result.integration;
+    assert.equal(itg.kind, "github");
+    const t = call("task-create", ctxA, { projectId: pid, title: "PR work" }).result.task;
+    const linked = call("integration-link", ctxA, {
+      taskId: t.id, integrationId: itg.id, url: "https://github.com/acme/app/pull/7", label: "PR #7",
+    });
+    assert.equal(linked.ok, true);
+    assert.equal(call("integration-list", ctxA, { projectId: pid }).result.integrations[0].linkCount, 1);
+  });
+
+  it("a passing CI link auto-advances an in-review task to done", () => {
+    const pid = newProject();
+    const itg = call("integration-connect", ctxA, { projectId: pid, kind: "ci", target: "build" }).result.integration;
+    const t = call("task-create", ctxA, { projectId: pid, title: "Ship", status: "in_review" }).result.task;
+    const linked = call("integration-link", ctxA, {
+      taskId: t.id, integrationId: itg.id, url: "https://ci.example.com/run/1", ciStatus: "passed",
+    });
+    assert.equal(linked.result.autoAdvanced, true);
+    assert.equal(call("task-detail", ctxA, { id: t.id }).result.task.status, "done");
+  });
+
+  it("toggles and deletes an integration", () => {
+    const pid = newProject();
+    const itg = call("integration-connect", ctxA, { projectId: pid, kind: "slack", target: "#dev" }).result.integration;
+    call("integration-toggle", ctxA, { id: itg.id, enabled: false });
+    assert.equal(call("integration-list", ctxA, { projectId: pid }).result.integrations[0].enabled, false);
+    call("integration-delete", ctxA, { id: itg.id });
+    assert.equal(call("integration-list", ctxA, { projectId: pid }).result.count, 0);
+  });
+});
+
+describe("projects — notification inbox", () => {
+  it("collects notifications and marks them read", () => {
+    const pid = newProject();
+    call("triage-submit", ctxA, { projectId: pid, title: "Crash on save" });
+    const inbox = call("notifications-list", ctxA, {});
+    assert.ok(inbox.result.count >= 1);
+    assert.ok(inbox.result.unread >= 1);
+    const first = inbox.result.notifications[0];
+    call("notification-mark-read", ctxA, { id: first.id });
+    assert.equal(call("notifications-list", ctxA, { unreadOnly: true }).result.notifications.every((n) => n.read), true);
+  });
+
+  it("mark-all-read and clear empty the inbox state", () => {
+    const pid = newProject();
+    call("triage-submit", ctxA, { projectId: pid, title: "Issue A" });
+    call("triage-submit", ctxA, { projectId: pid, title: "Issue B" });
+    const marked = call("notification-mark-read", ctxA, { all: true });
+    assert.ok(marked.result.marked >= 2);
+    call("notification-clear", ctxA, {});
+    assert.equal(call("notifications-list", ctxA, {}).result.count, 0);
+  });
+});
+
+describe("projects — keyboard command bar", () => {
+  it("command-search resolves projects, tasks and create intents", () => {
+    const pid = newProject();
+    call("task-create", ctxA, { projectId: pid, title: "Refactor auth" });
+    const r = call("command-search", ctxA, { query: "Refactor", projectId: pid });
+    assert.ok(r.result.results.some((x) => x.kind === "task" && x.label === "Refactor auth"));
+    assert.ok(r.result.commands.some((c) => c.action === "task-create"));
+  });
+
+  it("command-search with an empty query lists projects", () => {
+    newProject();
+    const r = call("command-search", ctxA, { query: "" });
+    assert.ok(r.result.results.some((x) => x.kind === "project"));
+  });
+});
+
+describe("projects — triage / inbox workflow", () => {
+  it("submits to triage, queues it and accepts into the backlog", () => {
+    const pid = newProject();
+    const sub = call("triage-submit", ctxA, { projectId: pid, title: "Login fails", type: "bug" });
+    assert.equal(sub.result.task.isTriage, true);
+    const queue = call("triage-queue", ctxA, { projectId: pid });
+    assert.equal(queue.result.count, 1);
+    const accepted = call("triage-accept", ctxA, { id: sub.result.task.id, priority: "high", status: "todo" });
+    assert.equal(accepted.result.task.isTriage, false);
+    assert.equal(accepted.result.task.priority, "high");
+    assert.equal(call("triage-queue", ctxA, { projectId: pid }).result.count, 0);
+  });
+
+  it("declines a triaged issue and removes it entirely", () => {
+    const pid = newProject();
+    const sub = call("triage-submit", ctxA, { projectId: pid, title: "Spam report" });
+    const dec = call("triage-decline", ctxA, { id: sub.result.task.id });
+    assert.equal(dec.ok, true);
+    assert.equal(call("triage-queue", ctxA, { projectId: pid }).result.count, 0);
+    assert.equal(call("task-list", ctxA, { projectId: pid }).result.count, 0);
+  });
+});
+
+describe("projects — SLA / due-date escalation", () => {
+  it("sets a policy and escalates a breached task", () => {
+    const pid = newProject();
+    const policy = call("sla-policy-set", ctxA, {
+      projectId: pid, priority: "low", responseDays: 0, escalateTo: "urgent",
+    });
+    assert.equal(policy.result.policy.responseDays, 0);
+    const t = call("task-create", ctxA, { projectId: pid, title: "Stale ticket", priority: "low" }).result.task;
+    // Backdate the task so the 0-day SLA has already lapsed.
+    const state = globalThis._concordSTATE.projectsLens.tasks.get("user_a");
+    state.find((x) => x.id === t.id).createdAt = "2020-01-01T00:00:00.000Z";
+    const sweep = call("sla-escalate", ctxA, { projectId: pid });
+    assert.equal(sweep.result.breachedCount, 1);
+    assert.equal(sweep.result.escalated, 1);
+    assert.equal(call("task-detail", ctxA, { id: t.id }).result.task.priority, "urgent");
+  });
+
+  it("lists and deletes SLA policies", () => {
+    const pid = newProject();
+    const policy = call("sla-policy-set", ctxA, { projectId: pid, priority: "high", responseDays: 2 }).result.policy;
+    assert.equal(call("sla-policy-list", ctxA, { projectId: pid }).result.count, 1);
+    call("sla-policy-delete", ctxA, { id: policy.id });
+    assert.equal(call("sla-policy-list", ctxA, { projectId: pid }).result.count, 0);
+  });
+});

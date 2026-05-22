@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  X, Loader2, BookOpen, TrendingUp, Landmark, Calculator, Receipt, Plus, Save, Trash2, Check, AlertTriangle, FileText, Link as LinkIcon,
+  X, Loader2, BookOpen, TrendingUp, Landmark, Calculator, Receipt, Plus, Save, Trash2, Check, AlertTriangle, FileText, Link as LinkIcon, Sparkles,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { AdvancedAccountingPanel } from './AdvancedAccountingPanel';
 
 export interface Account {
   id: string;
@@ -30,14 +31,15 @@ interface Props {
   onClose: () => void;
 }
 
-type WorkbenchTab = 'coa' | 'journal' | 'ledger' | 'balance' | 'aging';
+type WorkbenchTab = 'coa' | 'journal' | 'ledger' | 'balance' | 'aging' | 'advanced';
 
 const TAB_LIST: { id: WorkbenchTab; label: string; icon: typeof BookOpen }[] = [
-  { id: 'coa',     label: 'Chart of Accounts',  icon: BookOpen },
-  { id: 'journal', label: 'Post entry',         icon: Calculator },
-  { id: 'ledger',  label: 'Ledger',             icon: FileText },
-  { id: 'balance', label: 'Balance sheet',      icon: Landmark },
-  { id: 'aging',   label: 'AR aging',           icon: Receipt },
+  { id: 'coa',      label: 'Chart of Accounts',  icon: BookOpen },
+  { id: 'journal',  label: 'Post entry',         icon: Calculator },
+  { id: 'ledger',   label: 'Ledger',             icon: FileText },
+  { id: 'balance',  label: 'Balance sheet',      icon: Landmark },
+  { id: 'aging',    label: 'AR aging',           icon: Receipt },
+  { id: 'advanced', label: 'Advanced',           icon: Sparkles },
 ];
 
 const CATEGORY_LABEL: Record<Account['category'], string> = {
@@ -96,6 +98,7 @@ export function AccountingWorkbench({ open, onClose }: Props) {
         {tab === 'ledger' && <LedgerTab />}
         {tab === 'balance' && <BalanceSheetTab />}
         {tab === 'aging' && <AgingTab />}
+        {tab === 'advanced' && <AdvancedAccountingPanel />}
       </div>
     </div>
   );

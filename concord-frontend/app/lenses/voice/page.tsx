@@ -10,6 +10,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoiceRepos } from '@/components/voice/VoiceRepos';
 import { VoiceActionPanel } from '@/components/voice/VoiceActionPanel';
+import { VoiceTranscripts } from '@/components/voice/VoiceTranscripts';
+import { VoiceOtterSuite } from '@/components/voice/VoiceOtterSuite';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1113,6 +1115,14 @@ export default function VoiceLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <VoiceRepos />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <VoiceTranscripts />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <VoiceOtterSuite />
       </section>
 
       <PipingProvider>

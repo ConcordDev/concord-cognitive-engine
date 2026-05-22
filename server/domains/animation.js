@@ -532,4 +532,586 @@ export default function registerAnimationActions(registerLensAction) {
       },
     };
   });
+
+  // ════════════════════════════════════════════════════════════════════
+  // FlipaClip / Pencil2D 2026 feature-parity backlog
+  // ════════════════════════════════════════════════════════════════════
+
+  // ── Canvas-size / frame-rate presets + onscreen grid & guides ───────
+  const AN_CANVAS_PRESETS = [
+    { id: "yt-1080", label: "YouTube 1080p", width: 1920, height: 1080, fps: 24 },
+    { id: "yt-720", label: "YouTube 720p", width: 1280, height: 720, fps: 24 },
+    { id: "ig-square", label: "Instagram Square", width: 1080, height: 1080, fps: 30 },
+    { id: "ig-story", label: "Story / Reel 9:16", width: 1080, height: 1920, fps: 30 },
+    { id: "tiktok", label: "TikTok 9:16", width: 1080, height: 1920, fps: 30 },
+    { id: "pixel-128", label: "Pixel Art 128", width: 128, height: 128, fps: 12 },
+    { id: "anim-16-9", label: "Animation 16:9", width: 960, height: 540, fps: 12 },
+    { id: "film-2k", label: "Film 2K", width: 2048, height: 1152, fps: 24 },
+  ];
+  const AN_FPS_PRESETS = [8, 12, 15, 24, 25, 30, 48, 60];
+
+  registerLensAction("animation", "canvas-presets", (_ctx, _a, _params = {}) => {
+    return { ok: true, result: { presets: AN_CANVAS_PRESETS, fpsPresets: AN_FPS_PRESETS } };
+  });
+
+  registerLensAction("animation", "set-canvas-guides", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    anim.guides = {
+      grid: !!params.grid,
+      gridSize: Math.round(anClamp(params.gridSize, 4, 400, 32)),
+      thirds: !!params.thirds,
+      safeArea: !!params.safeArea,
+      symmetry: ["none", "vertical", "horizontal", "both"].includes(String(params.symmetry))
+        ? String(params.symmetry) : "none",
+    };
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { guides: anim.guides } };
+  });
+
+  // ── Pressure-sensitive brush dynamics + custom brush library ────────
+  function blankBrushLib(s, userId) {
+    const lib = anListB(s.brushes ||= new Map(), userId);
+    return lib;
+  }
+  registerLensAction("animation", "brush-save", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = anClean(params.name, 60);
+    if (!name) return { ok: false, error: "brush name required" };
+    const lib = blankBrushLib(s, anAid(ctx));
+    if (lib.length >= 40) return { ok: false, error: "brush library limit (40) reached" };
+    const brush = {
+      id: anId("brush"),
+      name,
+      tool: AN_TOOLS.includes(String(params.tool)) ? String(params.tool) : "ink",
+      size: anClamp(params.size, 0.5, 300, 6),
+      opacity: anClamp(params.opacity, 0.01, 1, 1),
+      // Pressure dynamics — how stylus pressure maps onto size/opacity.
+      pressureSize: anClamp(params.pressureSize, 0, 1, 0.6),
+      pressureOpacity: anClamp(params.pressureOpacity, 0, 1, 0.3),
+      smoothing: anClamp(params.smoothing, 0, 1, 0.4),
+      spacing: anClamp(params.spacing, 0.05, 2, 0.2),
+      taper: anClamp(params.taper, 0, 1, 0.3),
+      color: anHex(params.color) || "#222222",
+      createdAt: anNow(),
+    };
+    lib.push(brush);
+    saveAnimState();
+    return { ok: true, result: { brush } };
+  });
+
+  registerLensAction("animation", "brush-list", (ctx, _a, _params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const lib = blankBrushLib(s, anAid(ctx));
+    return { ok: true, result: { brushes: lib, count: lib.length } };
+  });
+
+  registerLensAction("animation", "brush-delete", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const lib = blankBrushLib(s, anAid(ctx));
+    const i = lib.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "brush not found" };
+    lib.splice(i, 1);
+    saveAnimState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Pressure-aware stroke commit (samples carry per-point pressure) ──
+  // A pressure-sampled stroke is [x, y, pressure] triples; this expands
+  // them into per-segment width modulation against a brush's dynamics.
+  registerLensAction("animation", "stroke-commit-pressure", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    const layer = frameLayer(frame, params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.strokes.length >= AN_MAX_STROKES) return { ok: false, error: "layer stroke limit reached" };
+    const raw = params.stroke || {};
+    const tool = AN_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";
+    const color = anHex(raw.color) || "#222222";
+    const baseSize = anClamp(raw.size, 0.5, 300, 6);
+    const baseOpacity = anClamp(raw.opacity, 0.01, 1, 1);
+    const pressureSize = anClamp(raw.pressureSize, 0, 1, 0.6);
+    const samples = Array.isArray(raw.points) ? raw.points : [];
+    const points = [];
+    const widths = [];
+    for (const p of samples.slice(0, AN_MAX_POINTS)) {
+      if (Array.isArray(p) && p.length >= 2) {
+        const x = Math.round(anClamp(p[0], -2, anim.width + 2, 0));
+        const y = Math.round(anClamp(p[1], -2, anim.height + 2, 0));
+        const pr = p.length >= 3 ? anClamp(p[2], 0, 1, 0.5) : 0.5;
+        points.push([x, y]);
+        // pressure modulates width: at pr=0 width shrinks toward (1-pressureSize)*base.
+        const w = baseSize * (1 - pressureSize + pressureSize * pr);
+        widths.push(Math.round(w * 100) / 100);
+      }
+    }
+    if (!points.length) return { ok: false, error: "invalid stroke" };
+    const stroke = {
+      id: anId("stk"), tool, color, size: baseSize, opacity: baseOpacity,
+      points, widths, pressureSize,
+    };
+    layer.strokes.push(stroke);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { strokeId: stroke.id, layerId: layer.id, strokeCount: layer.strokes.length, widthSamples: widths.length } };
+  });
+
+  // ── Path / shape tweening between keyframes ─────────────────────────
+  // Given a shape (a closed/open point path) on two keyframe times, emit
+  // interpolated point paths per in-between frame, eased.
+  registerLensAction("animation", "tween-shapes", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const from = Array.isArray(params.fromPath) ? params.fromPath : [];
+    const to = Array.isArray(params.toPath) ? params.toPath : [];
+    if (from.length < 2 || to.length < 2) {
+      return { ok: false, error: "fromPath and toPath each need at least 2 points" };
+    }
+    if (from.length !== to.length) {
+      return { ok: false, error: "fromPath and toPath must have the same point count" };
+    }
+    const easing = AN_EASINGS[String(params.easing)] ? String(params.easing) : "ease-in-out";
+    const fn = AN_EASINGS[easing];
+    const steps = Math.round(anClamp(params.steps, 1, 240, 12));
+    const clampPt = (p) => [
+      anClamp(Array.isArray(p) ? p[0] : 0, -2, anim.width + 2, 0),
+      anClamp(Array.isArray(p) ? p[1] : 0, -2, anim.height + 2, 0),
+    ];
+    const fromC = from.map(clampPt);
+    const toC = to.map(clampPt);
+    const tween = [];
+    for (let step = 0; step <= steps; step++) {
+      const lin = step / steps;
+      const e = fn(lin);
+      const path = fromC.map((p, i) => [
+        Math.round((p[0] + (toC[i][0] - p[0]) * e) * 100) / 100,
+        Math.round((p[1] + (toC[i][1] - p[1]) * e) * 100) / 100,
+      ]);
+      tween.push({ step, t: Math.round(lin * 1000) / 1000, eased: Math.round(e * 1000) / 1000, path });
+    }
+    return {
+      ok: true,
+      result: { easing, steps, pointCount: from.length, frames: tween, easings: Object.keys(AN_EASINGS) },
+    };
+  });
+
+  // Commit a tween directly into the project as new frames (one per step).
+  registerLensAction("animation", "tween-to-frames", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const from = Array.isArray(params.fromPath) ? params.fromPath : [];
+    const to = Array.isArray(params.toPath) ? params.toPath : [];
+    if (from.length < 2 || to.length < 2 || from.length !== to.length) {
+      return { ok: false, error: "fromPath and toPath need matching length ≥ 2" };
+    }
+    const easing = AN_EASINGS[String(params.easing)] ? String(params.easing) : "ease-in-out";
+    const fn = AN_EASINGS[easing];
+    const steps = Math.round(anClamp(params.steps, 1, 120, 8));
+    if (anim.frames.length + steps + 1 > AN_MAX_FRAMES) {
+      return { ok: false, error: `tween would exceed frame limit (${AN_MAX_FRAMES})` };
+    }
+    const color = anHex(params.color) || "#222222";
+    const size = anClamp(params.size, 0.5, 300, 6);
+    const startIdx = anim.frames.findIndex((f) => f.id === params.afterFrameId);
+    const insertAt = startIdx >= 0 ? startIdx + 1 : anim.frames.length;
+    const created = [];
+    for (let step = 0; step <= steps; step++) {
+      const e = fn(step / steps);
+      const path = from.map((p, i) => [
+        Math.round(p[0] + (to[i][0] - p[0]) * e),
+        Math.round(p[1] + (to[i][1] - p[1]) * e),
+      ]);
+      const frame = blankFrame();
+      frame.layers[0].strokes.push({ id: anId("stk"), tool: "ink", color, size, opacity: 1, points: path });
+      anim.frames.splice(insertAt + step, 0, frame);
+      created.push(frame.id);
+    }
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { createdFrames: created, count: created.length, easing } };
+  });
+
+  // ── Rigging / bone armature for cut-out animation ───────────────────
+  // A rig is a tree of bones; each frame can hold a pose (bone angles).
+  function getRig(anim) {
+    if (!anim.rig || typeof anim.rig !== "object") anim.rig = { bones: [], poses: {} };
+    if (!Array.isArray(anim.rig.bones)) anim.rig.bones = [];
+    if (!anim.rig.poses || typeof anim.rig.poses !== "object") anim.rig.poses = {};
+    return anim.rig;
+  }
+  const AN_MAX_BONES = 60;
+
+  registerLensAction("animation", "rig-bone-add", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const rig = getRig(anim);
+    if (rig.bones.length >= AN_MAX_BONES) return { ok: false, error: `bone limit (${AN_MAX_BONES}) reached` };
+    const parentId = params.parentId ? String(params.parentId) : null;
+    if (parentId && !rig.bones.some((b) => b.id === parentId)) {
+      return { ok: false, error: "parent bone not found" };
+    }
+    const bone = {
+      id: anId("bone"),
+      name: anClean(params.name, 50) || `Bone ${rig.bones.length + 1}`,
+      parentId,
+      x: Math.round(anClamp(params.x, -2, anim.width + 2, anim.width / 2)),
+      y: Math.round(anClamp(params.y, -2, anim.height + 2, anim.height / 2)),
+      length: Math.round(anClamp(params.length, 4, 2000, 60)),
+      angle: anClamp(params.angle, -360, 360, 0),
+      layerId: params.layerId ? String(params.layerId) : null,
+    };
+    rig.bones.push(bone);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { bone, boneCount: rig.bones.length } };
+  });
+
+  registerLensAction("animation", "rig-bone-update", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const rig = getRig(anim);
+    const bone = rig.bones.find((b) => b.id === params.boneId);
+    if (!bone) return { ok: false, error: "bone not found" };
+    if (params.name != null) bone.name = anClean(params.name, 50) || bone.name;
+    if (params.x != null) bone.x = Math.round(anClamp(params.x, -2, anim.width + 2, bone.x));
+    if (params.y != null) bone.y = Math.round(anClamp(params.y, -2, anim.height + 2, bone.y));
+    if (params.length != null) bone.length = Math.round(anClamp(params.length, 4, 2000, bone.length));
+    if (params.angle != null) bone.angle = anClamp(params.angle, -360, 360, bone.angle);
+    if (params.layerId !== undefined) bone.layerId = params.layerId ? String(params.layerId) : null;
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { bone } };
+  });
+
+  registerLensAction("animation", "rig-bone-delete", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const rig = getRig(anim);
+    const target = params.boneId ? String(params.boneId) : null;
+    if (!target || !rig.bones.some((b) => b.id === target)) return { ok: false, error: "bone not found" };
+    // Remove the bone and any descendants.
+    const removed = new Set([target]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const b of rig.bones) {
+        if (b.parentId && removed.has(b.parentId) && !removed.has(b.id)) { removed.add(b.id); grew = true; }
+      }
+    }
+    rig.bones = rig.bones.filter((b) => !removed.has(b.id));
+    for (const fid of Object.keys(rig.poses)) {
+      for (const bid of removed) delete rig.poses[fid]?.[bid];
+    }
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { deleted: [...removed], boneCount: rig.bones.length } };
+  });
+
+  registerLensAction("animation", "rig-pose-set", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    const rig = getRig(anim);
+    const bone = rig.bones.find((b) => b.id === params.boneId);
+    if (!bone) return { ok: false, error: "bone not found" };
+    if (!rig.poses[frame.id]) rig.poses[frame.id] = {};
+    rig.poses[frame.id][bone.id] = {
+      angle: anClamp(params.angle, -360, 360, bone.angle),
+      x: params.x != null ? Math.round(anClamp(params.x, -2, anim.width + 2, bone.x)) : undefined,
+      y: params.y != null ? Math.round(anClamp(params.y, -2, anim.height + 2, bone.y)) : undefined,
+    };
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { frameId: frame.id, boneId: bone.id, pose: rig.poses[frame.id][bone.id] } };
+  });
+
+  registerLensAction("animation", "rig-get", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const rig = getRig(anim);
+    return { ok: true, result: { bones: rig.bones, poses: rig.poses, boneCount: rig.bones.length } };
+  });
+
+  // Forward-kinematics: resolve absolute bone tip positions for a frame.
+  registerLensAction("animation", "rig-resolve-pose", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    const rig = getRig(anim);
+    const pose = rig.poses[frame.id] || {};
+    const byId = new Map(rig.bones.map((b) => [b.id, b]));
+    const resolved = new Map();
+    const resolve = (bone) => {
+      if (resolved.has(bone.id)) return resolved.get(bone.id);
+      const p = pose[bone.id] || {};
+      const angle = (p.angle != null ? p.angle : bone.angle) * Math.PI / 180;
+      let originX, originY;
+      if (bone.parentId && byId.has(bone.parentId)) {
+        const parent = resolve(byId.get(bone.parentId));
+        originX = p.x != null ? p.x : parent.tipX;
+        originY = p.y != null ? p.y : parent.tipY;
+      } else {
+        originX = p.x != null ? p.x : bone.x;
+        originY = p.y != null ? p.y : bone.y;
+      }
+      const tipX = Math.round((originX + Math.cos(angle) * bone.length) * 100) / 100;
+      const tipY = Math.round((originY + Math.sin(angle) * bone.length) * 100) / 100;
+      const r = { id: bone.id, name: bone.name, originX: Math.round(originX * 100) / 100, originY: Math.round(originY * 100) / 100, tipX, tipY };
+      resolved.set(bone.id, r);
+      return r;
+    };
+    const segments = rig.bones.map(resolve);
+    return { ok: true, result: { frameId: frame.id, segments, boneCount: segments.length } };
+  });
+
+  // ── Audio waveform display + sync scrubbing ─────────────────────────
+  // Client decodes audio (Web Audio API) and posts peak samples; the
+  // backend stores them so they can be drawn against the frame timeline.
+  registerLensAction("animation", "audio-waveform-set", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const track = (anim.audio || []).find((t) => t.id === params.trackId);
+    if (!track) return { ok: false, error: "audio track not found" };
+    const peaks = Array.isArray(params.peaks) ? params.peaks : [];
+    if (!peaks.length) return { ok: false, error: "peaks array required" };
+    track.durationSec = Math.max(0, anNum(params.durationSec));
+    track.waveform = peaks.slice(0, 2000).map((p) => Math.round(anClamp(p, 0, 1, 0) * 1000) / 1000);
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { trackId: track.id, peakCount: track.waveform.length, durationSec: track.durationSec } };
+  });
+
+  // Compute which animation frames each audio track spans — for scrub sync.
+  registerLensAction("animation", "audio-sync-map", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.id);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const fps = anim.fps;
+    const totalFrames = anim.frames.reduce((n, f) => n + f.exposure, 0);
+    const tracks = (anim.audio || []).map((t) => {
+      const startFrame = Math.round((t.startSec || 0) * fps);
+      const dur = anNum(t.durationSec);
+      const endFrame = dur > 0 ? startFrame + Math.round(dur * fps) : null;
+      return {
+        id: t.id, name: t.name, startSec: t.startSec || 0, durationSec: dur,
+        startFrame, endFrame, waveformPoints: (t.waveform || []).length,
+        waveform: t.waveform || [],
+      };
+    });
+    return { ok: true, result: { fps, totalFrames, durationSec: Math.round((totalFrames / fps) * 100) / 100, tracks } };
+  });
+
+  // ── Video export (MP4 / GIF / WebM) ─────────────────────────────────
+  // The browser does the actual encoding (WebCodecs / gif.js). The
+  // backend builds a deterministic per-frame render manifest the client
+  // walks, and tracks export jobs so completed exports are discoverable.
+  registerLensAction("animation", "export-manifest", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.id);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const format = ["mp4", "gif", "webm", "png-sequence"].includes(String(params.format))
+      ? String(params.format) : "mp4";
+    const scale = anClamp(params.scale, 0.1, 2, 1);
+    const outW = Math.round(anim.width * scale);
+    const outH = Math.round(anim.height * scale);
+    // Walk the exposure-expanded sequence — one render entry per output frame.
+    const sequence = [];
+    anim.frames.forEach((f, idx) => {
+      for (let i = 0; i < f.exposure; i++) {
+        sequence.push({ outFrame: sequence.length, sourceFrameId: f.id, sourceIndex: idx });
+      }
+    });
+    return {
+      ok: true,
+      result: {
+        format, fps: anim.fps, width: outW, height: outH, scale,
+        background: anim.background,
+        frameCount: sequence.length,
+        durationSec: Math.round((sequence.length / anim.fps) * 100) / 100,
+        sequence,
+        audio: (anim.audio || []).map((t) => ({ id: t.id, url: t.url, startSec: t.startSec || 0 })),
+      },
+    };
+  });
+
+  function getExports(s, userId) {
+    return anListB(s.exports ||= new Map(), userId);
+  }
+  registerLensAction("animation", "export-record", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const format = ["mp4", "gif", "webm", "png-sequence"].includes(String(params.format))
+      ? String(params.format) : "mp4";
+    const list = getExports(s, anAid(ctx));
+    if (list.length >= 50) list.shift();
+    const job = {
+      id: anId("exp"),
+      animId: anim.id,
+      animTitle: anim.title,
+      format,
+      width: Math.round(anClamp(params.width, 16, 6000, anim.width)),
+      height: Math.round(anClamp(params.height, 16, 6000, anim.height)),
+      fps: anim.fps,
+      frameCount: Math.max(0, Math.round(anNum(params.frameCount))),
+      fileSizeBytes: Math.max(0, Math.round(anNum(params.fileSizeBytes))),
+      durationSec: Math.max(0, anNum(params.durationSec)),
+      status: "complete",
+      createdAt: anNow(),
+    };
+    list.push(job);
+    saveAnimState();
+    return { ok: true, result: { export: job } };
+  });
+
+  registerLensAction("animation", "export-list", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let list = getExports(s, anAid(ctx));
+    if (params.animId) list = list.filter((e) => e.animId === params.animId);
+    return { ok: true, result: { exports: [...list].reverse(), count: list.length } };
+  });
+
+  // ── Project templates ───────────────────────────────────────────────
+  // Templates are structural starting points — they seed canvas size,
+  // fps, frame count and per-frame layer scaffolding, never sample art.
+  const AN_TEMPLATES = [
+    {
+      id: "blank-12", label: "Blank · 12 fps", description: "A clean 16:9 canvas at 12 fps with one frame.",
+      width: 960, height: 540, fps: 12, frames: 1, layers: ["Layer 1"],
+    },
+    {
+      id: "walk-cycle", label: "Walk Cycle (8-frame)", description: "Eight-frame loop scaffold with separate body and limb layers.",
+      width: 960, height: 540, fps: 12, frames: 8, layers: ["Background", "Body", "Limbs"],
+    },
+    {
+      id: "lip-sync", label: "Lip-Sync Scene", description: "Dialogue-ready scene with character, mouth and background layers.",
+      width: 1280, height: 720, fps: 24, frames: 4, layers: ["Background", "Character", "Mouth"],
+    },
+    {
+      id: "title-card", label: "Title Card", description: "Square title sequence with text and effects layers.",
+      width: 1080, height: 1080, fps: 30, frames: 6, layers: ["Background", "Text", "Effects"],
+    },
+    {
+      id: "pixel-sprite", label: "Pixel Sprite Sheet", description: "Tiny pixel-art canvas with a 6-frame action loop.",
+      width: 128, height: 128, fps: 12, frames: 6, layers: ["Sprite"],
+    },
+    {
+      id: "storyboard", label: "Storyboard Sequence", description: "Twelve framed panels for blocking out a sequence.",
+      width: 1280, height: 720, fps: 24, frames: 12, layers: ["Panel", "Notes"],
+    },
+  ];
+
+  registerLensAction("animation", "template-list", (_ctx, _a, _params = {}) => {
+    return { ok: true, result: { templates: AN_TEMPLATES, count: AN_TEMPLATES.length } };
+  });
+
+  registerLensAction("animation", "anim-from-template", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const tpl = AN_TEMPLATES.find((t) => t.id === String(params.templateId));
+    if (!tpl) return { ok: false, error: "template not found" };
+    const frameCount = Math.min(AN_MAX_FRAMES, Math.max(1, tpl.frames));
+    const frames = [];
+    for (let i = 0; i < frameCount; i++) {
+      const layers = tpl.layers.map((name) => blankLayer(name));
+      frames.push({ id: anId("frm"), exposure: 1, layers, strokes: [] });
+    }
+    const anim = {
+      id: anId("anm"),
+      title: anClean(params.title, 120) || tpl.label,
+      width: tpl.width, height: tpl.height, fps: tpl.fps,
+      background: anHex(params.background) || "#ffffff",
+      frames,
+      thumbnail: null,
+      templateId: tpl.id,
+      createdAt: anNow(), updatedAt: anNow(),
+    };
+    anListB(s.projects, anAid(ctx)).push(anim);
+    saveAnimState();
+    return { ok: true, result: { animation: anim, templateId: tpl.id } };
+  });
+
+  // ── Shareable export link ───────────────────────────────────────────
+  function getShares(s) {
+    return s.shares ||= new Map();
+  }
+  registerLensAction("animation", "share-create", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const shares = getShares(s);
+    // One live share per animation — reuse if it already exists.
+    let existing = null;
+    for (const sh of shares.values()) {
+      if (sh.animId === anim.id && sh.ownerId === anAid(ctx)) { existing = sh; break; }
+    }
+    const token = existing ? existing.token : anId("shr");
+    const share = {
+      token,
+      animId: anim.id,
+      ownerId: anAid(ctx),
+      title: anim.title,
+      allowDownload: params.allowDownload !== false,
+      views: existing ? existing.views : 0,
+      createdAt: existing ? existing.createdAt : anNow(),
+      url: `/share/animation/${token}`,
+    };
+    shares.set(token, share);
+    anim.shareToken = token;
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { share } };
+  });
+
+  registerLensAction("animation", "share-get", (_ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const shares = getShares(s);
+    const share = shares.get(String(params.token));
+    if (!share) return { ok: false, error: "share link not found" };
+    share.views = (share.views || 0) + 1;
+    const owner = s.projects.get(share.ownerId) || [];
+    const anim = owner.find((a) => a.id === share.animId);
+    if (!anim) return { ok: false, error: "shared animation no longer exists" };
+    saveAnimState();
+    return {
+      ok: true,
+      result: {
+        share: { token: share.token, title: share.title, views: share.views, allowDownload: share.allowDownload },
+        animation: {
+          id: anim.id, title: anim.title, width: anim.width, height: anim.height,
+          fps: anim.fps, background: anim.background, thumbnail: anim.thumbnail,
+          frames: share.allowDownload ? anim.frames : undefined,
+          frameCount: anim.frames.length,
+        },
+      },
+    };
+  });
+
+  registerLensAction("animation", "share-revoke", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const shares = getShares(s);
+    const share = shares.get(String(params.token));
+    if (!share || share.ownerId !== anAid(ctx)) return { ok: false, error: "share link not found" };
+    shares.delete(share.token);
+    const owner = s.projects.get(share.ownerId) || [];
+    const anim = owner.find((a) => a.id === share.animId);
+    if (anim && anim.shareToken === share.token) delete anim.shareToken;
+    saveAnimState();
+    return { ok: true, result: { revoked: share.token } };
+  });
 }

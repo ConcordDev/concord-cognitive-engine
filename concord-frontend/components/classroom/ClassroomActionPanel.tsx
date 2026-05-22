@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element -- remote book-cover thumbnails; next/image needs per-domain config */
 
 /**
  * ClassroomActionPanel — librarian/teacher book bench.

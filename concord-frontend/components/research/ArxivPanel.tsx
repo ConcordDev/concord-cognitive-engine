@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Loader2, BookText, RefreshCw, AlertTriangle, ExternalLink, Search, FileText } from 'lucide-react';
+import { BookText, RefreshCw, AlertTriangle, ExternalLink, Search, FileText } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

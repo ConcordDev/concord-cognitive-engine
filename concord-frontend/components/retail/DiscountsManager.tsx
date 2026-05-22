@@ -11,7 +11,6 @@ interface Discount {
   expiresAt: string | null; active: boolean;
 }
 
-const KIND_LABEL = { percentage: '%', fixed_amount: '$', free_shipping: 'free shipping' };
 const KIND_ICON = { percentage: Percent, fixed_amount: DollarSign, free_shipping: Truck };
 
 export function DiscountsManager() {

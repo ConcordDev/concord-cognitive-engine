@@ -163,3 +163,113 @@ describe("music.discovery", () => {
     assert.equal(d.result.playlists, 1);
   });
 });
+
+describe("music.lyrics", () => {
+  it("stores synced lyrics sorted by time and reads them back", () => {
+    const t = newTrack();
+    const r = call("track-lyrics-set", ctxA, { id: t.id, lyrics: [
+      { timeSec: 12, line: "second line" },
+      { timeSec: 4, line: "first line" },
+    ] });
+    assert.equal(r.result.synced, true);
+    assert.equal(r.result.lineCount, 2);
+    const got = call("track-lyrics-get", ctxA, { id: t.id });
+    assert.equal(got.result.lyrics[0].line, "first line");
+    assert.equal(got.result.synced, true);
+  });
+
+  it("plain-text lyrics split to unsynced lines", () => {
+    const t = newTrack();
+    call("track-lyrics-set", ctxA, { id: t.id, lyrics: "line a\nline b\nline c" });
+    const got = call("track-lyrics-get", ctxA, { id: t.id });
+    assert.equal(got.result.lyrics.length, 3);
+    assert.equal(got.result.synced, false);
+  });
+});
+
+describe("music.radio + smart-shuffle", () => {
+  it("radio-start builds a queue weighted to the seed genre", () => {
+    newTrack(ctxA, { title: "Pop A", genre: "pop" });
+    newTrack(ctxA, { title: "Pop B", genre: "pop" });
+    newTrack(ctxA, { title: "Jazz", genre: "jazz" });
+    const r = call("radio-start", ctxA, { seedGenre: "pop", limit: 10 });
+    assert.equal(r.ok, true);
+    assert.match(r.result.station.label, /pop Radio/);
+    assert.equal(call("queue-list", ctxA, {}).result.count, 3);
+    assert.equal(r.result.tracks[0].genre, "pop");
+  });
+
+  it("radio-start rejects empty seed", () => {
+    newTrack();
+    assert.equal(call("radio-start", ctxA, {}).ok, false);
+  });
+
+  it("smart-shuffle fills the queue and returns a DJ line + breakdown", () => {
+    const a = newTrack(ctxA, { title: "Liked" });
+    newTrack(ctxA, { title: "Fresh" });
+    call("track-like", ctxA, { id: a.id });
+    const r = call("smart-shuffle", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.count >= 2);
+    assert.ok(typeof r.result.dj === "string" && r.result.dj.length > 0);
+    assert.equal(call("queue-list", ctxA, {}).result.count, r.result.count);
+  });
+});
+
+describe("music.sleep-timer", () => {
+  it("set / get / cancel lifecycle", () => {
+    assert.equal(call("sleep-timer-get", ctxA, {}).result.active, false);
+    call("sleep-timer-set", ctxA, { minutes: 45 });
+    const g = call("sleep-timer-get", ctxA, {});
+    assert.equal(g.result.active, true);
+    assert.ok(g.result.remainingMin <= 45 && g.result.remainingMin >= 44);
+    call("sleep-timer-cancel", ctxA, {});
+    assert.equal(call("sleep-timer-get", ctxA, {}).result.active, false);
+  });
+});
+
+describe("music.blend + recommend + genre-hub", () => {
+  it("blend round-robin merges liked + played into a playlist", () => {
+    const a = newTrack(ctxA, { title: "A" });
+    const b = newTrack(ctxA, { title: "B" });
+    call("track-like", ctxA, { id: a.id });
+    call("play-track", ctxA, { id: b.id });
+    const r = call("blend", ctxA, { name: "Mix" });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.trackCount >= 2);
+    assert.ok(call("playlist-list", ctxA, {}).result.playlists.some((p) => p.name === "Mix"));
+  });
+
+  it("recommend ranks same-genre tracks higher when seeded", () => {
+    const seed = newTrack(ctxA, { title: "Seed", genre: "rock" });
+    newTrack(ctxA, { title: "Same", genre: "rock" });
+    newTrack(ctxA, { title: "Other", genre: "pop" });
+    const r = call("recommend", ctxA, { seedTrackId: seed.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.tracks[0].genre, "rock");
+    assert.match(r.result.basis, /^seed:/);
+  });
+
+  it("genre-hub groups library by genre", () => {
+    newTrack(ctxA, { genre: "pop" });
+    newTrack(ctxA, { genre: "pop" });
+    newTrack(ctxA, { genre: "jazz" });
+    const r = call("genre-hub", ctxA, {});
+    assert.equal(r.result.count, 2);
+    assert.equal(r.result.genres[0].genre, "pop");
+    assert.equal(r.result.genres[0].trackCount, 2);
+  });
+});
+
+describe("music.audio-settings", () => {
+  it("returns defaults then persists overrides with clamping", () => {
+    const d = call("audio-settings-get", ctxA, {});
+    assert.equal(d.result.settings.quality, "high");
+    assert.equal(d.result.settings.gapless, true);
+    const set = call("audio-settings-set", ctxA, { crossfadeSec: 99, quality: "lossless", gapless: false });
+    assert.equal(set.result.settings.crossfadeSec, 12); // clamped
+    assert.equal(set.result.settings.quality, "lossless");
+    assert.equal(set.result.settings.gapless, false);
+    assert.equal(call("audio-settings-get", ctxA, {}).result.settings.quality, "lossless");
+  });
+});

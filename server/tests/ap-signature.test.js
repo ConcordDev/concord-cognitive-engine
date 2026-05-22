@@ -163,7 +163,7 @@ test("makeInMemoryKeyCache get/set roundtrip + TTL behaviour", async () => {
   assert.strictEqual(await cache.get("k"), null);
   await cache.set("k", "PEM", "https://actor");
   assert.strictEqual(await cache.get("k"), "PEM");
-  await new Promise(r => setTimeout(r, 80));
+  await new Promise(r => { setTimeout(r, 80); });
   assert.strictEqual(await cache.get("k"), null);
 });
 

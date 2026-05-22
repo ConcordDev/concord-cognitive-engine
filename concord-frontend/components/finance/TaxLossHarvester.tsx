@@ -28,6 +28,7 @@ export function TaxLossHarvester() {
   const [loading, setLoading] = useState(true);
   const [minLoss, setMinLoss] = useState('100');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, []);
 
   async function refresh() {

@@ -19,6 +19,7 @@ import { PipingProvider } from '@/components/panel-polish';
 import OEEDashboard from '@/components/manufacturing/OEEDashboard';
 import WorkOrderBoard from '@/components/manufacturing/WorkOrderBoard';
 import QualitySPC from '@/components/manufacturing/QualitySPC';
+import ShopFloorSuite from '@/components/manufacturing/ShopFloorSuite';
 import { motion } from 'framer-motion';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -83,7 +84,8 @@ type ModeTab =
   | 'safety'
   | 'oeeBoard'
   | 'woBoard'
-  | 'spc';
+  | 'spc'
+  | 'shopFloor';
 type ArtifactType = 'WorkOrder' | 'BOM' | 'QCInspection' | 'Schedule' | 'Machine' | 'SafetyItem';
 
 type WOStatus = 'planned' | 'released' | 'in_progress' | 'qc' | 'complete';
@@ -138,6 +140,7 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof ClipboardList }[] = 
   { id: 'oeeBoard', label: 'OEE Board', icon: BarChart3 },
   { id: 'woBoard', label: 'WO Board', icon: ClipboardList },
   { id: 'spc', label: 'SPC', icon: ShieldCheck },
+  { id: 'shopFloor', label: 'Shop Floor', icon: Factory },
 ];
 
 const ARTIFACT_FOR_TAB: Record<ModeTab, ArtifactType> = {
@@ -151,6 +154,7 @@ const ARTIFACT_FOR_TAB: Record<ModeTab, ArtifactType> = {
   oeeBoard: 'Machine',
   woBoard: 'WorkOrder',
   spc: 'QCInspection',
+  shopFloor: 'WorkOrder',
 };
 
 // ---------------------------------------------------------------------------
@@ -669,6 +673,7 @@ export default function ManufacturingLensPage() {
     oeeBoard: [],
     woBoard: [],
     spc: [],
+    shopFloor: [],
   };
 
   // Dashboard metrics — computed from real API data
@@ -2329,6 +2334,8 @@ export default function ManufacturingLensPage() {
         return <div className="p-4"><WorkOrderBoard /></div>;
       case 'spc':
         return <div className="p-4"><QualitySPC /></div>;
+      case 'shopFloor':
+        return <div className="p-4"><ShopFloorSuite /></div>;
       default:
         return null;
     }

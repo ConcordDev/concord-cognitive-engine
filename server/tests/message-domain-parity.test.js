@@ -408,3 +408,263 @@ describe("message — inbox-summary", () => {
     assert.equal(r.result.channelCount, channels.length);
   });
 });
+
+describe("message — pinned messages", () => {
+  function seedMsg(ctx = ctxA) {
+    const ch = call("channels-create", ctx, { name: "pins-ch" }).result.channel;
+    const msg = call("messages-send", ctx, { channelId: ch.id, body: "pin me" }).result.message;
+    return { ch, msg };
+  }
+  it("pin / list / unpin lifecycle", () => {
+    const { ch, msg } = seedMsg();
+    const pinned = call("pin-message", ctxA, { channelId: ch.id, messageId: msg.id });
+    assert.equal(pinned.ok, true);
+    assert.equal(pinned.result.pinCount, 1);
+    assert.equal(call("pins-list", ctxA, { channelId: ch.id }).result.count, 1);
+    assert.equal(call("pin-message", ctxA, { channelId: ch.id, messageId: msg.id }).ok, false); // dup
+    const unp = call("unpin-message", ctxA, { channelId: ch.id, messageId: msg.id });
+    assert.equal(unp.ok, true);
+    assert.equal(call("pins-list", ctxA, { channelId: ch.id }).result.count, 0);
+  });
+  it("rejects pinning an unknown message", () => {
+    const ch = call("channels-create", ctxA, { name: "empty-ch" }).result.channel;
+    assert.equal(call("pin-message", ctxA, { channelId: ch.id, messageId: "nope" }).ok, false);
+  });
+});
+
+describe("message — channel bookmarks", () => {
+  it("add / list / remove", () => {
+    const ch = call("channels-create", ctxA, { name: "bm-ch" }).result.channel;
+    const bm = call("bookmark-add", ctxA, { channelId: ch.id, title: "Spec doc", url: "https://x.test/spec" });
+    assert.equal(bm.ok, true);
+    assert.equal(call("bookmark-list", ctxA, { channelId: ch.id }).result.count, 1);
+    assert.equal(call("bookmark-remove", ctxA, { channelId: ch.id, id: bm.result.bookmark.id }).ok, true);
+    assert.equal(call("bookmark-list", ctxA, { channelId: ch.id }).result.count, 0);
+  });
+  it("requires a title", () => {
+    const ch = call("channels-create", ctxA, { name: "bm-ch2" }).result.channel;
+    assert.equal(call("bookmark-add", ctxA, { channelId: ch.id }).ok, false);
+  });
+});
+
+describe("message — status & presence", () => {
+  it("set / get / clear with per-user scope", () => {
+    assert.equal(call("status-get", ctxA, {}).result.status.presence, "active");
+    const set = call("status-set", ctxA, { emoji: "🌴", text: "On vacation", presence: "away", durationMin: 60 });
+    assert.equal(set.result.status.text, "On vacation");
+    assert.ok(set.result.status.expiresAt);
+    assert.equal(call("status-get", ctxA, {}).result.status.emoji, "🌴");
+    assert.equal(call("status-get", ctxB, {}).result.status.text, ""); // other user unaffected
+    call("status-clear", ctxA, {});
+    assert.equal(call("status-get", ctxA, {}).result.status.text, "");
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+//  2026 Slack-parity backlog — huddles, file sharing, typing /
+//  live delivery, slash commands, notification prefs, directory.
+// ═════════════════════════════════════════════════════════════════
+
+function firstChannel(ctx = ctxA) {
+  return call("channels-list", ctx).result.channels[0];
+}
+
+describe("message — huddles", () => {
+  it("start / join / leave / end lifecycle", () => {
+    const ch = firstChannel();
+    const start = call("huddle-start", ctxA, { channelId: ch.id, mode: "audio", topic: "standup" });
+    assert.equal(start.ok, true);
+    assert.equal(start.result.huddle.status, "live");
+    const hid = start.result.huddle.id;
+    const join = call("huddle-join", ctxA, { huddleId: hid, handle: "bob" });
+    assert.equal(join.ok, true);
+    assert.equal(join.result.huddle.participants.length, 2);
+    const leave = call("huddle-leave", ctxA, { huddleId: hid, handle: "bob" });
+    assert.equal(leave.ok, true);
+    const end = call("huddle-end", ctxA, { huddleId: hid });
+    assert.equal(end.ok, true);
+    assert.equal(end.result.huddle.status, "ended");
+    assert.ok(end.result.huddle.durationMs >= 0);
+  });
+
+  it("rejects a second live huddle on the same channel", () => {
+    const ch = firstChannel();
+    call("huddle-start", ctxA, { channelId: ch.id });
+    const dup = call("huddle-start", ctxA, { channelId: ch.id });
+    assert.equal(dup.ok, false);
+  });
+
+  it("huddle-list filters liveOnly", () => {
+    const ch = firstChannel();
+    const h = call("huddle-start", ctxA, { channelId: ch.id }).result.huddle;
+    call("huddle-end", ctxA, { huddleId: h.id });
+    const live = call("huddle-list", ctxA, { liveOnly: true });
+    assert.equal(live.result.huddles.length, 0);
+    const all = call("huddle-list", ctxA, {});
+    assert.equal(all.result.huddles.length, 1);
+  });
+
+  it("INVARIANT: huddles scoped per-user", () => {
+    const ch = firstChannel();
+    call("huddle-start", ctxA, { channelId: ch.id });
+    assert.equal(call("huddle-list", ctxB, {}).result.huddles.length, 0);
+  });
+});
+
+describe("message — file sharing", () => {
+  it("upload / list / delete with kind detection", () => {
+    const ch = firstChannel();
+    const up = call("file-upload", ctxA, { channelId: ch.id, name: "diagram.png", sizeBytes: 2048, dataUrl: "data:image/png;base64,AAA" });
+    assert.equal(up.ok, true);
+    assert.equal(up.result.file.fileKind, "image");
+    const list = call("file-list", ctxA, { channelId: ch.id });
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.totalBytes, 2048);
+    const del = call("file-delete", ctxA, { channelId: ch.id, id: up.result.file.id });
+    assert.equal(del.ok, true);
+    assert.equal(call("file-list", ctxA, { channelId: ch.id }).result.count, 0);
+  });
+
+  it("rejects upload without dataUrl or url", () => {
+    const ch = firstChannel();
+    const r = call("file-upload", ctxA, { channelId: ch.id, name: "x.txt", sizeBytes: 10 });
+    assert.equal(r.ok, false);
+  });
+
+  it("file-list filters by fileKind", () => {
+    const ch = firstChannel();
+    call("file-upload", ctxA, { channelId: ch.id, name: "a.png", sizeBytes: 1, dataUrl: "data:," });
+    call("file-upload", ctxA, { channelId: ch.id, name: "b.pdf", sizeBytes: 1, dataUrl: "data:," });
+    const docs = call("file-list", ctxA, { channelId: ch.id, fileKind: "document" });
+    assert.equal(docs.result.count, 1);
+    assert.equal(docs.result.files[0].name, "b.pdf");
+  });
+});
+
+describe("message — typing indicators + live delivery", () => {
+  it("typing-start surfaces in channel-live-state", () => {
+    const ch = firstChannel();
+    call("typing-start", ctxA, { channelId: ch.id, handle: "alice" });
+    const live = call("channel-live-state", ctxA, { channelId: ch.id });
+    assert.equal(live.ok, true);
+    assert.ok(live.result.typing.includes("alice"));
+  });
+
+  it("typing-stop clears the entry", () => {
+    const ch = firstChannel();
+    call("typing-start", ctxA, { channelId: ch.id, handle: "alice" });
+    call("typing-stop", ctxA, { channelId: ch.id, handle: "alice" });
+    const live = call("channel-live-state", ctxA, { channelId: ch.id });
+    assert.equal(live.result.typing.length, 0);
+  });
+
+  it("channel-live-state returns messages newer than sinceTs", () => {
+    const ch = firstChannel();
+    const before = new Date(Date.now() - 1000).toISOString();
+    call("messages-send", ctxA, { channelId: ch.id, body: "fresh delivery" });
+    const live = call("channel-live-state", ctxA, { channelId: ch.id, sinceTs: before });
+    assert.ok(live.result.newMessageCount >= 1);
+    assert.ok(live.result.newMessages.some(m => m.body === "fresh delivery"));
+  });
+});
+
+describe("message — slash commands + integrations", () => {
+  it("command-list returns builtins", () => {
+    const r = call("command-list", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.builtinCount >= 5);
+    assert.ok(r.result.commands.some(c => c.name === "/poll"));
+  });
+
+  it("register / run / remove a custom command", () => {
+    const reg = call("command-register", ctxA, { name: "deploy", description: "Trigger a deploy", appName: "CI", responseTemplate: "Deploying {args}" });
+    assert.equal(reg.ok, true);
+    assert.equal(reg.result.command.name, "/deploy");
+    const ch = firstChannel();
+    const run = call("command-run", ctxA, { channelId: ch.id, text: "/deploy staging" });
+    assert.equal(run.ok, true);
+    assert.equal(run.result.appMessage.body, "Deploying staging");
+    const log = call("app-messages-list", ctxA, { channelId: ch.id });
+    assert.equal(log.result.count, 1);
+    const rm = call("command-remove", ctxA, { id: reg.result.command.id });
+    assert.equal(rm.ok, true);
+  });
+
+  it("rejects a command name that collides with a builtin", () => {
+    const r = call("command-register", ctxA, { name: "/poll", description: "dup" });
+    assert.equal(r.ok, false);
+  });
+
+  it("/topic builtin updates the channel topic", () => {
+    const ch = firstChannel();
+    const run = call("command-run", ctxA, { channelId: ch.id, text: "/topic Sprint planning" });
+    assert.equal(run.ok, true);
+    const updated = call("channels-list", ctxA).result.channels.find(c => c.id === ch.id);
+    assert.equal(updated.topic, "Sprint planning");
+  });
+});
+
+describe("message — notification preferences", () => {
+  it("get returns defaults then set persists", () => {
+    const get = call("notif-prefs-get", ctxA, {});
+    assert.equal(get.ok, true);
+    assert.equal(get.result.prefs.globalLevel, "all");
+    const set = call("notif-prefs-set", ctxA, { globalLevel: "mentions", keywords: ["urgent", "URGENT", "deploy"] });
+    assert.equal(set.ok, true);
+    assert.equal(set.result.prefs.globalLevel, "mentions");
+    assert.equal(set.result.prefs.keywords.length, 2); // dedup case-insensitive
+  });
+
+  it("rejects an invalid dndStart time", () => {
+    const r = call("notif-prefs-set", ctxA, { dndStart: "25:99" });
+    assert.equal(r.ok, false);
+  });
+
+  it("per-channel mute level via notif-channel-set", () => {
+    const ch = firstChannel();
+    const r = call("notif-channel-set", ctxA, { channelId: ch.id, level: "muted" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.perChannel[ch.id], "muted");
+  });
+
+  it("notif-check honours keyword + mute interaction", () => {
+    const ch = firstChannel();
+    call("notif-prefs-set", ctxA, { keywords: ["urgent"] });
+    call("notif-channel-set", ctxA, { channelId: ch.id, level: "muted" });
+    const hit = call("notif-check", ctxA, { channelId: ch.id, text: "this is urgent", isMention: false });
+    assert.equal(hit.result.willNotify, true);
+    assert.equal(hit.result.reason, "keyword");
+    const miss = call("notif-check", ctxA, { channelId: ch.id, text: "just chatting", isMention: false });
+    assert.equal(miss.result.willNotify, false);
+  });
+});
+
+describe("message — workspace directory + profiles", () => {
+  it("profile-set / profile-get round-trip", () => {
+    const set = call("profile-set", ctxA, { memberId: "alice", displayName: "Alice A", title: "PM", timezone: "PST" });
+    assert.equal(set.ok, true);
+    assert.equal(set.result.profile.displayName, "Alice A");
+    const get = call("profile-get", ctxA, { memberId: "alice" });
+    assert.equal(get.result.found, true);
+    assert.equal(get.result.profile.title, "PM");
+  });
+
+  it("profile-get returns found:false for unknown member", () => {
+    const r = call("profile-get", ctxA, { memberId: "nobody" });
+    assert.equal(r.result.found, false);
+  });
+
+  it("directory-list searches by name and title", () => {
+    call("profile-set", ctxA, { memberId: "alice", displayName: "Alice", title: "Engineer" });
+    call("profile-set", ctxA, { memberId: "bob", displayName: "Bob", title: "Designer" });
+    assert.equal(call("directory-list", ctxA, {}).result.count, 2);
+    const eng = call("directory-list", ctxA, { query: "engineer" });
+    assert.equal(eng.result.members.length, 1);
+    assert.equal(eng.result.members[0].memberId, "alice");
+  });
+
+  it("INVARIANT: directory scoped per-user", () => {
+    call("profile-set", ctxA, { memberId: "alice", displayName: "Alice" });
+    assert.equal(call("directory-list", ctxB, {}).result.count, 0);
+  });
+});

@@ -1671,6 +1671,628 @@ Use only facts present in the input — never invent. If a section has no data, 
     return { ok: true, result: { summary, text } };
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  //  Feature-parity backlog — results release, telehealth, device
+  //  ingestion, insurance/claims, CDS alerts, FHIR export, proxy.
+  // ═══════════════════════════════════════════════════════════════
+
+  function ensureBacklogBuckets(s) {
+    if (!s.telehealth)     s.telehealth     = new Map(); // userId -> [visit]
+    if (!s.deviceReadings) s.deviceReadings = new Map(); // userId -> [reading]
+    if (!s.coverage)       s.coverage       = new Map(); // userId -> [policy]
+    if (!s.claims)         s.claims         = new Map(); // userId -> [claim]
+    if (!s.proxyGrants)    s.proxyGrants    = new Map(); // userId -> [grant]
+    return s;
+  }
+
+  // ── Patient portal results release + provider commentary ───────
+  // labs-record already computes a `flag`. The clinician releases a
+  // result to the patient portal here, optionally with plain-language
+  // commentary. Until released the patient should not see it.
+
+  registerLensAction("healthcare", "labs-release", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const lab = bucketH(s.labs, aidH(ctx)).find(l => l.id === String(params.id || ""));
+    if (!lab) return { ok: false, error: "lab not found" };
+    const commentary = String(params.commentary || "").trim();
+    lab.released = true;
+    lab.releasedAt = isoH();
+    lab.providerCommentary = commentary;
+    lab.releasedBy = String(params.releasedBy || "");
+    saveStateIfAvailable();
+    return { ok: true, result: { lab } };
+  });
+
+  // Patient-portal view: only released labs, with abnormal grouping.
+  registerLensAction("healthcare", "labs-portal-view", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const released = bucketH(s.labs, aidH(ctx))
+      .filter(l => l.patientId === patientId && l.released === true)
+      .slice()
+      .sort((a, b) => String(b.collectedAt).localeCompare(String(a.collectedAt)));
+    const abnormal = released.filter(l => l.flag && l.flag !== "normal" && l.flag !== "unflagged");
+    return {
+      ok: true,
+      result: {
+        labs: released,
+        abnormal,
+        abnormalCount: abnormal.length,
+        normalCount: released.length - abnormal.length,
+        hasCritical: abnormal.some(l => l.flag === "critical_high" || l.flag === "critical_low"),
+      },
+    };
+  });
+
+  // ── Telehealth video visit integration ─────────────────────────
+  // Creates a video room. Real provider would wire a WebRTC/SFU
+  // provider key (Daily, Twilio Video). With a key set we mint a real
+  // room; without one we return a join token bound to the visit id so
+  // the platform's own WebRTC signalling can host it.
+
+  registerLensAction("healthcare", "telehealth-create", async (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    if (!bucketH(s.patients, userId).some(p => p.id === patientId)) return { ok: false, error: "patient not found" };
+    const scheduledAt = String(params.scheduledAt || isoH());
+    const visit = {
+      id: uidH("tele"),
+      patientId,
+      appointmentId: String(params.appointmentId || ""),
+      provider: String(params.provider || ""),
+      scheduledAt,
+      status: "scheduled",
+      roomProvider: "concord-webrtc",
+      roomUrl: null,
+      joinToken: uidH("jt"),
+      createdAt: isoH(),
+    };
+    if (process.env.DAILY_API_KEY) {
+      try {
+        const r = await fetch("https://api.daily.co/v1/rooms", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.DAILY_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            privacy: "private",
+            properties: { exp: Math.floor(Date.now() / 1000) + 7200 },
+          }),
+        });
+        const data = await r.json();
+        if (r.ok && data?.url) {
+          visit.roomProvider = "daily";
+          visit.roomUrl = data.url;
+          visit.roomName = data.name || null;
+        }
+      } catch (_e) { /* fall back to concord-webrtc room */ }
+    }
+    bucketH(s.telehealth, userId).push(visit);
+    saveStateIfAvailable();
+    return { ok: true, result: { visit } };
+  });
+
+  registerLensAction("healthcare", "telehealth-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const patientId = String(params.patientId || "");
+    let list = bucketH(s.telehealth, aidH(ctx));
+    if (patientId) list = list.filter(v => v.patientId === patientId);
+    return { ok: true, result: { visits: list.slice().sort((a, b) => String(b.scheduledAt).localeCompare(String(a.scheduledAt))) } };
+  });
+
+  registerLensAction("healthcare", "telehealth-update-status", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const visit = bucketH(s.telehealth, aidH(ctx)).find(v => v.id === String(params.id || ""));
+    if (!visit) return { ok: false, error: "visit not found" };
+    if (!["scheduled", "in_progress", "completed", "cancelled", "no_show"].includes(params.status)) {
+      return { ok: false, error: "status must be scheduled | in_progress | completed | cancelled | no_show" };
+    }
+    visit.status = params.status;
+    if (params.status === "in_progress" && !visit.startedAt) visit.startedAt = isoH();
+    if (params.status === "completed") visit.endedAt = isoH();
+    saveStateIfAvailable();
+    return { ok: true, result: { visit } };
+  });
+
+  // ── Wearable / home-device data ingestion ──────────────────────
+  // HR, glucose, BP, steps, weight, spo2 from home devices. Each
+  // reading is timestamped; abnormal readings are flagged with the
+  // same logic family as in-clinic vitals.
+
+  const DEVICE_METRICS = {
+    heart_rate:    { unit: "bpm",   low: 50,  high: 100 },
+    glucose:       { unit: "mg/dL", low: 70,  high: 140 },
+    systolic:      { unit: "mmHg",  low: 90,  high: 130 },
+    diastolic:     { unit: "mmHg",  low: 60,  high: 85 },
+    spo2:          { unit: "%",     low: 94,  high: 100 },
+    steps:         { unit: "steps", low: 0,   high: 100000 },
+    weight:        { unit: "lb",    low: 50,  high: 600 },
+    body_temp:     { unit: "F",     low: 96,  high: 100.4 },
+  };
+
+  registerLensAction("healthcare", "device-ingest", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const metric = String(params.metric || "").trim().toLowerCase();
+    const value = Number(params.value);
+    if (!patientId || !metric || !Number.isFinite(value)) {
+      return { ok: false, error: "patientId + metric + numeric value required" };
+    }
+    const spec = DEVICE_METRICS[metric] || null;
+    let flag = "normal";
+    if (spec) {
+      if (value < spec.low) flag = "low";
+      else if (value > spec.high) flag = "high";
+    } else flag = "unflagged";
+    const reading = {
+      id: uidH("dev"),
+      patientId,
+      metric,
+      value,
+      unit: String(params.unit || spec?.unit || ""),
+      flag,
+      device: String(params.device || "home_device"),
+      recordedAt: String(params.recordedAt || isoH()),
+      ingestedAt: isoH(),
+    };
+    bucketH(s.deviceReadings, userId).push(reading);
+    saveStateIfAvailable();
+    return { ok: true, result: { reading, knownMetrics: Object.keys(DEVICE_METRICS) } };
+  });
+
+  registerLensAction("healthcare", "device-readings", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const metric = String(params.metric || "").trim().toLowerCase();
+    let list = bucketH(s.deviceReadings, aidH(ctx)).filter(r => r.patientId === patientId);
+    if (metric) list = list.filter(r => r.metric === metric);
+    list = list.slice().sort((a, b) => String(b.recordedAt).localeCompare(String(a.recordedAt)));
+    // Per-metric trend summary.
+    const byMetric = {};
+    for (const r of list) {
+      if (!byMetric[r.metric]) byMetric[r.metric] = [];
+      byMetric[r.metric].push(r);
+    }
+    const summary = Object.entries(byMetric).map(([m, rows]) => {
+      const chrono = rows.slice().sort((a, b) => String(a.recordedAt).localeCompare(String(b.recordedAt)));
+      const latest = chrono[chrono.length - 1];
+      let trend = "stable";
+      if (chrono.length >= 2) {
+        const prev = chrono[chrono.length - 2];
+        if (latest.value > prev.value * 1.05) trend = "up";
+        else if (latest.value < prev.value * 0.95) trend = "down";
+      }
+      return { metric: m, count: rows.length, latest: latest.value, unit: latest.unit, latestFlag: latest.flag, trend };
+    });
+    return { ok: true, result: { readings: list, summary } };
+  });
+
+  // ── Insurance eligibility + claims/billing workflow ────────────
+
+  registerLensAction("healthcare", "coverage-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const patientId = String(params.patientId || "");
+    if (!patientId) return { ok: false, error: "patientId required" };
+    const list = bucketH(s.coverage, aidH(ctx)).filter(c => c.patientId === patientId);
+    return { ok: true, result: { policies: list } };
+  });
+
+  registerLensAction("healthcare", "coverage-add", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const payer = String(params.payer || "").trim();
+    const memberId = String(params.memberId || "").trim();
+    if (!patientId || !payer || !memberId) return { ok: false, error: "patientId + payer + memberId required" };
+    const policy = {
+      id: uidH("cov"),
+      patientId,
+      payer,
+      memberId,
+      groupNumber: String(params.groupNumber || ""),
+      planName: String(params.planName || ""),
+      planType: ["PPO", "HMO", "EPO", "POS", "HDHP", "Medicare", "Medicaid", "other"].includes(params.planType) ? params.planType : "other",
+      copayUsd: Number.isFinite(Number(params.copayUsd)) ? Number(params.copayUsd) : null,
+      deductibleUsd: Number.isFinite(Number(params.deductibleUsd)) ? Number(params.deductibleUsd) : null,
+      deductibleMetUsd: 0,
+      effectiveDate: String(params.effectiveDate || ""),
+      eligibilityStatus: "unverified",
+      verifiedAt: null,
+      createdAt: isoH(),
+    };
+    bucketH(s.coverage, userId).push(policy);
+    saveStateIfAvailable();
+    return { ok: true, result: { policy } };
+  });
+
+  // Eligibility check — verifies the policy is active. A real X12 270/271
+  // payer transaction needs an EDI clearinghouse key; without one the
+  // check confirms structural completeness and stamps the policy.
+  registerLensAction("healthcare", "coverage-verify", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const policy = bucketH(s.coverage, aidH(ctx)).find(c => c.id === String(params.id || ""));
+    if (!policy) return { ok: false, error: "policy not found" };
+    const complete = !!(policy.payer && policy.memberId);
+    policy.eligibilityStatus = complete ? "active" : "incomplete";
+    policy.verifiedAt = isoH();
+    const remainingDeductible = policy.deductibleUsd != null
+      ? Math.max(0, policy.deductibleUsd - (policy.deductibleMetUsd || 0))
+      : null;
+    saveStateIfAvailable();
+    return {
+      ok: true,
+      result: {
+        policy,
+        eligibilityStatus: policy.eligibilityStatus,
+        remainingDeductible,
+        note: process.env.EDI_CLEARINGHOUSE_KEY
+          ? "Set up an X12 270/271 transaction for real-time payer verification."
+          : "Structural verification only. Set EDI_CLEARINGHOUSE_KEY for real payer eligibility (X12 270/271).",
+      },
+    };
+  });
+
+  // CPT line items each have a billed charge. The claim total sums
+  // them; once a payer "adjudicates" we record allowed/paid/patient.
+  registerLensAction("healthcare", "claim-create", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    if (!bucketH(s.patients, userId).some(p => p.id === patientId)) return { ok: false, error: "patient not found" };
+    const rawLines = Array.isArray(params.lines) ? params.lines : [];
+    const lines = rawLines.map(l => ({
+      cpt: String(l.cpt || ""),
+      description: String(l.description || ""),
+      units: Math.max(1, Number(l.units) || 1),
+      chargeUsd: Math.max(0, Math.round((Number(l.chargeUsd) || 0) * 100) / 100),
+    })).filter(l => l.cpt);
+    if (lines.length === 0) return { ok: false, error: "at least one CPT line item with a cpt code required" };
+    const totalChargeUsd = Math.round(lines.reduce((sum, l) => sum + l.chargeUsd * l.units, 0) * 100) / 100;
+    const claim = {
+      id: uidH("clm"),
+      claimNumber: `CLM-${Date.now().toString(36).toUpperCase()}`,
+      patientId,
+      encounterId: String(params.encounterId || ""),
+      coverageId: String(params.coverageId || ""),
+      diagnosisCodes: Array.isArray(params.diagnosisCodes) ? params.diagnosisCodes.map(String) : [],
+      lines,
+      totalChargeUsd,
+      allowedUsd: null,
+      paidUsd: null,
+      patientResponsibilityUsd: null,
+      status: "draft",
+      denialReason: "",
+      submittedAt: null,
+      adjudicatedAt: null,
+      createdAt: isoH(),
+    };
+    bucketH(s.claims, userId).push(claim);
+    saveStateIfAvailable();
+    return { ok: true, result: { claim } };
+  });
+
+  registerLensAction("healthcare", "claim-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const patientId = String(params.patientId || "");
+    const status = ["draft", "submitted", "paid", "partial", "denied", "all"].includes(params.status) ? params.status : "all";
+    let list = bucketH(s.claims, aidH(ctx));
+    if (patientId) list = list.filter(c => c.patientId === patientId);
+    if (status !== "all") list = list.filter(c => c.status === status);
+    list = list.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    const outstanding = Math.round(list
+      .filter(c => ["draft", "submitted", "denied"].includes(c.status))
+      .reduce((sum, c) => sum + (c.totalChargeUsd || 0), 0) * 100) / 100;
+    return { ok: true, result: { claims: list, count: list.length, outstandingUsd: outstanding } };
+  });
+
+  // Workflow: draft -> submitted, then adjudicate (paid/partial/denied).
+  registerLensAction("healthcare", "claim-submit", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const claim = bucketH(s.claims, aidH(ctx)).find(c => c.id === String(params.id || ""));
+    if (!claim) return { ok: false, error: "claim not found" };
+    if (claim.status !== "draft") return { ok: false, error: `claim is already ${claim.status}` };
+    claim.status = "submitted";
+    claim.submittedAt = isoH();
+    saveStateIfAvailable();
+    return { ok: true, result: { claim } };
+  });
+
+  registerLensAction("healthcare", "claim-adjudicate", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const claim = bucketH(s.claims, aidH(ctx)).find(c => c.id === String(params.id || ""));
+    if (!claim) return { ok: false, error: "claim not found" };
+    if (claim.status !== "submitted") return { ok: false, error: "only submitted claims can be adjudicated" };
+    const allowedUsd = Math.max(0, Math.round((Number(params.allowedUsd) || 0) * 100) / 100);
+    const paidUsd = Math.max(0, Math.round((Number(params.paidUsd) || 0) * 100) / 100);
+    if (paidUsd > allowedUsd) return { ok: false, error: "paidUsd cannot exceed allowedUsd" };
+    claim.allowedUsd = allowedUsd;
+    claim.paidUsd = paidUsd;
+    claim.patientResponsibilityUsd = Math.round((allowedUsd - paidUsd) * 100) / 100;
+    claim.denialReason = String(params.denialReason || "");
+    claim.adjudicatedAt = isoH();
+    if (paidUsd <= 0) claim.status = "denied";
+    else if (paidUsd >= allowedUsd) claim.status = "paid";
+    else claim.status = "partial";
+    saveStateIfAvailable();
+    return { ok: true, result: { claim } };
+  });
+
+  // ── Clinical decision support at order entry (beyond interactions) ──
+  // Fires Best-Practice-Advisory alerts when an order is placed:
+  // duplicate orders, renal dosing on imaging contrast, missing
+  // baseline labs, age-inappropriate, and allergy cross-check.
+
+  registerLensAction("healthcare", "cds-order-check", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const patient = bucketH(s.patients, userId).find(p => p.id === patientId);
+    if (!patient) return { ok: false, error: "patient not found" };
+    const orderKind = ["lab", "imaging", "medication", "referral", "procedure"].includes(params.orderKind) ? params.orderKind : "lab";
+    const orderName = String(params.orderName || "").trim();
+    if (!orderName) return { ok: false, error: "orderName required" };
+    const lower = orderName.toLowerCase();
+    const age = ageFromDob(patient.dob);
+    const orders = bucketH(s.orders, userId).filter(o => o.patientId === patientId);
+    const labs = bucketH(s.labs, userId).filter(l => l.patientId === patientId);
+    const allergies = bucketH(s.allergies, userId).filter(a => a.patientId === patientId);
+    const alerts = [];
+
+    // Duplicate-order advisory — same name, still open, last 7 days.
+    const dup = orders.find(o =>
+      String(o.name || "").toLowerCase() === lower &&
+      ["placed", "active", "in-progress"].includes(o.status) &&
+      daysSince(o.orderedAt) <= 7
+    );
+    if (dup) {
+      alerts.push({ severity: "moderate", code: "DUPLICATE_ORDER", message: `A "${orderName}" order was already placed in the last 7 days.` });
+    }
+    // Imaging contrast + renal function.
+    if (orderKind === "imaging" && /contrast|with iv contrast|ct\b|angiogra|mri with/.test(lower)) {
+      const cr = labs.filter(l => /creatinine/.test(l.test || "")).slice().sort((a, b) => String(b.collectedAt).localeCompare(String(a.collectedAt)))[0];
+      if (!cr) {
+        alerts.push({ severity: "moderate", code: "MISSING_BASELINE", message: "No baseline creatinine on file — recommended before iodinated contrast." });
+      } else if (Number(cr.value) > 1.5) {
+        alerts.push({ severity: "major", code: "RENAL_RISK", message: `Last creatinine ${cr.value} ${cr.unit || ""} is elevated — contrast-induced nephropathy risk.` });
+      }
+    }
+    // Drug allergy cross-check at medication order entry.
+    if (orderKind === "medication") {
+      for (const alg of allergies) {
+        const allergen = String(alg.allergen || alg.name || "").trim().toLowerCase();
+        if (allergen.length >= 3 && lower.includes(allergen)) {
+          alerts.push({ severity: "major", code: "ALLERGY", message: `Patient has a documented allergy to ${alg.allergen}.` });
+        }
+      }
+      // High-risk meds in the elderly (Beers-style).
+      if (age != null && age >= 65 && /(diazepam|lorazepam|alprazolam|diphenhydramine|amitriptyline|cyclobenzaprine)/.test(lower)) {
+        alerts.push({ severity: "moderate", code: "BEERS", message: "Potentially inappropriate medication for patients age 65+ (Beers criteria)." });
+      }
+    }
+    // Anticoagulant monitoring advisory.
+    if (orderKind === "medication" && /(warfarin|coumadin)/.test(lower)) {
+      const inr = labs.filter(l => /inr|pt\b/.test(l.test || ""));
+      if (inr.length === 0) {
+        alerts.push({ severity: "moderate", code: "MONITOR", message: "Warfarin ordered — schedule baseline INR/PT and follow-up monitoring." });
+      }
+    }
+    return {
+      ok: true,
+      result: {
+        orderName,
+        orderKind,
+        alerts,
+        alertCount: alerts.length,
+        hasMajor: alerts.some(a => a.severity === "major"),
+        clean: alerts.length === 0,
+      },
+    };
+  });
+
+  // ── FHIR R4 export (immunization / health-record sharing) ──────
+  // Produces a real FHIR R4 Bundle (type: collection) so the record
+  // can be imported into any FHIR-conformant system.
+
+  registerLensAction("healthcare", "fhir-export", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    const patient = bucketH(s.patients, userId).find(p => p.id === patientId);
+    if (!patient) return { ok: false, error: "patient not found" };
+    const filter = (m) => bucketH(m, userId).filter(x => x.patientId === patientId);
+    const sexMap = { M: "male", F: "female", X: "other", U: "unknown" };
+    const entries = [];
+    entries.push({
+      resource: {
+        resourceType: "Patient",
+        id: patient.id,
+        identifier: [{ system: "urn:concord:mrn", value: patient.mrn }],
+        name: [{ family: patient.lastName, given: [patient.firstName] }],
+        gender: sexMap[patient.sex] || "unknown",
+        birthDate: patient.dob || undefined,
+        telecom: [
+          patient.phone ? { system: "phone", value: patient.phone } : null,
+          patient.email ? { system: "email", value: patient.email } : null,
+        ].filter(Boolean),
+      },
+    });
+    for (const prob of filter(s.problems)) {
+      entries.push({
+        resource: {
+          resourceType: "Condition",
+          id: prob.id,
+          clinicalStatus: { coding: [{ code: prob.status === "resolved" ? "resolved" : "active" }] },
+          code: {
+            text: prob.name,
+            coding: prob.icd10 ? [{ system: "http://hl7.org/fhir/sid/icd-10-cm", code: prob.icd10 }] : [],
+          },
+          subject: { reference: `Patient/${patient.id}` },
+          onsetDateTime: prob.onsetDate || undefined,
+        },
+      });
+    }
+    for (const alg of filter(s.allergies)) {
+      entries.push({
+        resource: {
+          resourceType: "AllergyIntolerance",
+          id: alg.id,
+          category: [alg.kind === "drug" ? "medication" : alg.kind],
+          criticality: ["severe", "life_threatening"].includes(alg.severity) ? "high" : "low",
+          code: { text: alg.allergen },
+          patient: { reference: `Patient/${patient.id}` },
+          reaction: alg.reaction ? [{ manifestation: [{ text: alg.reaction }] }] : undefined,
+        },
+      });
+    }
+    for (const imm of filter(s.immunizations)) {
+      entries.push({
+        resource: {
+          resourceType: "Immunization",
+          id: imm.id,
+          status: "completed",
+          vaccineCode: {
+            text: imm.vaccine,
+            coding: imm.cvx ? [{ system: "http://hl7.org/fhir/sid/cvx", code: imm.cvx }] : [],
+          },
+          patient: { reference: `Patient/${patient.id}` },
+          occurrenceDateTime: imm.administeredAt || undefined,
+          lotNumber: imm.lotNumber || undefined,
+        },
+      });
+    }
+    for (const lab of filter(s.labs)) {
+      entries.push({
+        resource: {
+          resourceType: "Observation",
+          id: lab.id,
+          status: lab.released ? "final" : "preliminary",
+          category: [{ coding: [{ code: "laboratory" }] }],
+          code: { text: lab.test },
+          subject: { reference: `Patient/${patient.id}` },
+          effectiveDateTime: lab.collectedAt || undefined,
+          valueQuantity: { value: lab.value, unit: lab.unit || undefined },
+          interpretation: lab.flag && lab.flag !== "normal"
+            ? [{ text: lab.flag }]
+            : undefined,
+          referenceRange: (lab.refLow != null || lab.refHigh != null)
+            ? [{ low: lab.refLow != null ? { value: lab.refLow } : undefined, high: lab.refHigh != null ? { value: lab.refHigh } : undefined }]
+            : undefined,
+        },
+      });
+    }
+    for (const v of filter(s.vitals)) {
+      entries.push({
+        resource: {
+          resourceType: "Observation",
+          id: v.id,
+          status: "final",
+          category: [{ coding: [{ code: "vital-signs" }] }],
+          code: { text: "Vital signs panel" },
+          subject: { reference: `Patient/${patient.id}` },
+          effectiveDateTime: v.recordedAt || undefined,
+          component: [
+            v.systolic != null ? { code: { text: "Systolic BP" }, valueQuantity: { value: v.systolic, unit: "mmHg" } } : null,
+            v.diastolic != null ? { code: { text: "Diastolic BP" }, valueQuantity: { value: v.diastolic, unit: "mmHg" } } : null,
+            v.heartRate != null ? { code: { text: "Heart rate" }, valueQuantity: { value: v.heartRate, unit: "bpm" } } : null,
+            v.spo2 != null ? { code: { text: "SpO2" }, valueQuantity: { value: v.spo2, unit: "%" } } : null,
+            v.tempF != null ? { code: { text: "Body temperature" }, valueQuantity: { value: v.tempF, unit: "F" } } : null,
+          ].filter(Boolean),
+        },
+      });
+    }
+    const onlyImm = params.scope === "immunizations";
+    const bundle = {
+      resourceType: "Bundle",
+      type: "collection",
+      timestamp: isoH(),
+      entry: onlyImm
+        ? entries.filter(e => ["Patient", "Immunization"].includes(e.resource.resourceType))
+        : entries,
+    };
+    return {
+      ok: true,
+      result: {
+        fhirVersion: "4.0.1",
+        bundle,
+        resourceCount: bundle.entry.length,
+        scope: onlyImm ? "immunizations" : "full-record",
+      },
+    };
+  });
+
+  // ── Family / proxy access to another patient's chart ───────────
+  // The chart owner grants a named proxy scoped read (and optionally
+  // write) access to a specific patient. Grants are revocable.
+
+  registerLensAction("healthcare", "proxy-grant", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const userId = aidH(ctx);
+    const patientId = String(params.patientId || "");
+    if (!bucketH(s.patients, userId).some(p => p.id === patientId)) return { ok: false, error: "patient not found" };
+    const proxyName = String(params.proxyName || "").trim();
+    if (!proxyName) return { ok: false, error: "proxyName required" };
+    const grant = {
+      id: uidH("proxy"),
+      patientId,
+      proxyName,
+      proxyEmail: String(params.proxyEmail || ""),
+      relationship: ["parent", "child", "spouse", "guardian", "caregiver", "sibling", "other"].includes(params.relationship) ? params.relationship : "other",
+      accessLevel: ["view", "view_and_message", "full"].includes(params.accessLevel) ? params.accessLevel : "view",
+      status: "active",
+      grantedAt: isoH(),
+      revokedAt: null,
+      expiresOn: String(params.expiresOn || ""),
+    };
+    bucketH(s.proxyGrants, userId).push(grant);
+    saveStateIfAvailable();
+    return { ok: true, result: { grant } };
+  });
+
+  registerLensAction("healthcare", "proxy-list", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const patientId = String(params.patientId || "");
+    let list = bucketH(s.proxyGrants, aidH(ctx));
+    if (patientId) list = list.filter(g => g.patientId === patientId);
+    return {
+      ok: true,
+      result: {
+        grants: list.slice().sort((a, b) => String(b.grantedAt).localeCompare(String(a.grantedAt))),
+        activeCount: list.filter(g => g.status === "active").length,
+      },
+    };
+  });
+
+  registerLensAction("healthcare", "proxy-revoke", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureBacklogBuckets(s);
+    const grant = bucketH(s.proxyGrants, aidH(ctx)).find(g => g.id === String(params.id || ""));
+    if (!grant) return { ok: false, error: "grant not found" };
+    if (grant.status === "revoked") return { ok: false, error: "grant already revoked" };
+    grant.status = "revoked";
+    grant.revokedAt = isoH();
+    saveStateIfAvailable();
+    return { ok: true, result: { grant } };
+  });
+
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("healthcare", "dashboard-summary", (ctx, _a, _p = {}) => {

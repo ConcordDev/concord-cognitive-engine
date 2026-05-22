@@ -6,22 +6,26 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Music, Disc3, Play, BarChart3, Loader2 } from 'lucide-react';
+import { Music, Disc3, Play, BarChart3, Radio, Loader2, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { MusicLibraryPanel } from './MusicLibraryPanel';
 import { MusicPlayerPanel } from './MusicPlayerPanel';
 import { MusicStatsPanel } from './MusicStatsPanel';
+import { MusicRadioPanel } from './MusicRadioPanel';
+import { MusicParityPanel } from './MusicParityPanel';
 
 interface Dash {
   tracks: number; liked: number; playlists: number; following: number;
   totalPlays: number; listenedHours: number; queued: number;
 }
-type TabId = 'library' | 'player' | 'stats';
+type TabId = 'library' | 'player' | 'radio' | 'stats' | 'pro';
 const TABS: { id: TabId; label: string; icon: typeof Disc3 }[] = [
   { id: 'library', label: 'Library', icon: Disc3 },
   { id: 'player', label: 'Now Playing', icon: Play },
+  { id: 'radio', label: 'Radio & DJ', icon: Radio },
   { id: 'stats', label: 'Stats & Discover', icon: BarChart3 },
+  { id: 'pro', label: 'Pro Suite', icon: Sparkles },
 ];
 
 export function MusicStreamingSection() {
@@ -75,7 +79,9 @@ export function MusicStreamingSection() {
       <div className="p-4">
         {tab === 'library' && <MusicLibraryPanel onChange={refreshDash} />}
         {tab === 'player' && <MusicPlayerPanel onChange={refreshDash} />}
+        {tab === 'radio' && <MusicRadioPanel onChange={refreshDash} />}
         {tab === 'stats' && <MusicStatsPanel onChange={refreshDash} />}
+        {tab === 'pro' && <MusicParityPanel onChange={refreshDash} />}
       </div>
     </div>
   );

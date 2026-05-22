@@ -30,6 +30,8 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { DilemmaPanel } from '@/components/philosophy/DilemmaPanel';
+import { PhilosophyChannels } from '@/components/philosophy/PhilosophyChannels';
+import { PhilosophyCuration } from '@/components/philosophy/PhilosophyCuration';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -566,6 +568,14 @@ export default function PhilosophyLensPage() {
       {/* Are.na + IEP-shape dilemma workbench: argument / experiment / dialectic / ethics + actions */}
       <section className="mt-6">
         <DilemmaPanel />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PhilosophyChannels />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <PhilosophyCuration />
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

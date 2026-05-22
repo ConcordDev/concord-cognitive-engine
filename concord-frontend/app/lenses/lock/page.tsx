@@ -46,6 +46,7 @@ import { SovereigntyDashboard } from '@/components/sovereignty/SovereigntyDashbo
 import { SovereigntySetup } from '@/components/sovereignty/SovereigntySetup';
 import { SovereigntyPrompt } from '@/components/sovereignty/SovereigntyPrompt';
 import { LockDashboard } from '@/components/sovereignty/LockDashboard';
+import { LockProfiler } from '@/components/lock/LockProfiler';
 
 interface LockEventData {
   event: string;
@@ -502,103 +503,71 @@ export default function LockLensPage() {
           </div>
         </div>
 
-        {/* Anti-Takeover & Invariant Status Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Anti-Takeover Status */}
-          <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldAlert className="w-4 h-4 text-neon-purple" />
-              <h3 className="text-sm font-semibold">Anti-Takeover Status</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Hostile Override Detection</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-neon-green/15 text-neon-green">
-                  Active
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Council Quorum Lock</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-neon-green/15 text-neon-green">
-                  Engaged
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">External Mutation Shield</span>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded ${
-                    isLocked ? 'bg-neon-green/15 text-neon-green' : 'bg-neon-pink/15 text-neon-pink'
-                  }`}
-                >
-                  {isLocked ? 'Enforced' : 'Vulnerable'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Identity Anchor Hash</span>
-                <span className="text-xs font-mono text-neon-cyan truncate max-w-[120px]">
-                  0x7a3f...e91d
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Invariant Enforcement Dashboard */}
-          <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
-            <div className="flex items-center gap-2 mb-3">
-              <Ban className="w-4 h-4 text-neon-cyan" />
-              <h3 className="text-sm font-semibold">Invariant Enforcement</h3>
-            </div>
-            <div className="space-y-3">
-              {[
-                { name: 'NO_TELEMETRY', icon: Eye, enforced: true },
-                { name: 'NO_ADS', icon: Ban, enforced: true },
-                { name: 'NO_RESALE', icon: Lock, enforced: true },
-                { name: 'NO_DARK_PATTERNS', icon: AlertTriangle, enforced: true },
-              ].map((rule) => (
-                <div key={rule.name} className="flex items-center gap-2">
-                  <rule.icon className="w-3 h-3 text-gray-500" />
-                  <span className="text-xs font-mono flex-1">{rule.name}</span>
-                  <span
-                    className={`w-2 h-2 rounded-full ${rule.enforced ? 'bg-neon-green animate-pulse' : 'bg-neon-pink'}`}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
-              <span className="text-xs text-gray-400">Enforcement Rate</span>
-              <div className="flex items-center gap-2">
-                <div className="w-16 h-1.5 bg-lattice-void rounded-full overflow-hidden">
-                  <div className="h-full bg-neon-green rounded-full" style={{ width: '100%' }} />
-                </div>
-                <span className="text-xs font-mono text-neon-green">100%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sovereignty Activity Feed */}
-        <div className="mt-4 bg-lattice-deep rounded-lg p-4 border border-white/5">
+        {/* Invariant Enforcement — derived from the real 70-lock invariants */}
+        <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
           <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-4 h-4 text-neon-green" />
-            <h3 className="text-sm font-semibold">Recent Sovereignty Events</h3>
+            <Ban className="w-4 h-4 text-neon-cyan" />
+            <h3 className="text-sm font-semibold">Invariant Enforcement</h3>
+            <span className="text-xs text-gray-500">
+              {invariantSummary.enforced}/{invariants.length} enforced
+            </span>
           </div>
-          <div className="space-y-2">
-            {[
-              { time: '2m ago', event: 'Ownership percentage verified', status: 'ok' },
-              { time: '8m ago', event: 'Anti-takeover scan completed', status: 'ok' },
-              { time: '15m ago', event: 'Council quorum revalidated', status: 'ok' },
-              { time: '1h ago', event: 'External mutation attempt blocked', status: 'warn' },
-            ].map((item, idx) => (
-              <div key={idx} className="flex items-center gap-3 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+            {invariants.map((rule) => (
+              <div key={rule.id} className="flex items-center gap-2">
+                <Lock className="w-3 h-3 text-gray-500" />
+                <span className="text-xs font-mono flex-1 truncate">{rule.name}</span>
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${item.status === 'ok' ? 'bg-neon-green' : 'bg-yellow-500'}`}
+                  className={`w-2 h-2 rounded-full ${
+                    rule.status === 'enforced'
+                      ? 'bg-neon-green animate-pulse'
+                      : rule.status === 'warning'
+                        ? 'bg-yellow-500'
+                        : 'bg-neon-pink'
+                  }`}
                 />
-                <span className="text-gray-500 w-12">{item.time}</span>
-                <span className="text-gray-300">{item.event}</span>
               </div>
             ))}
           </div>
+          <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+            <span className="text-xs text-gray-400">Enforcement Rate</span>
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-1.5 bg-lattice-void rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-neon-green rounded-full"
+                  style={{
+                    width: `${
+                      invariants.length > 0
+                        ? Math.round((invariantSummary.enforced / invariants.length) * 100)
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+              <span className="text-xs font-mono text-neon-green">
+                {invariants.length > 0
+                  ? Math.round((invariantSummary.enforced / invariants.length) * 100)
+                  : 0}
+                %
+              </span>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Concurrency Lock Profiler — real macro-driven trace analysis */}
+      <div className="panel p-4">
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-neon-cyan" />
+          Concurrency Lock Profiler
+        </h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Record a lock trace and analyze it the way a JFR / lock profiler does —
+          live hold timeline, contention hotspots, lock-ordering pre-deadlock
+          detection, wait-for graph, blame attribution, and Amdahl/USL
+          throughput modeling.
+        </p>
+        <LockProfiler />
       </div>
 
       {/* Lock Dashboard -- visual invariant overview */}

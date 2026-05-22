@@ -155,4 +155,551 @@ export default function registerManufacturingActions(registerLensAction) {
       },
     };
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Parity backlog (vs Tulip / Plex MES) — full shop-floor execution layer.
+  // Persistent per-user data lives in globalThis._concordSTATE.manufacturingLens,
+  // extended with extra Maps below. All handlers wrap work in try/catch.
+  // ───────────────────────────────────────────────────────────────────────
+
+  function getExtState() {
+    const s = getMfgState();
+    if (!s) return null;
+    if (!s.workInstructions) s.workInstructions = new Map();   // userId -> Array<instructionSet>
+    if (!s.iotReadings) s.iotReadings = new Map();             // `${userId}::${machineId}` -> Array<reading>
+    if (!s.scheduleJobs) s.scheduleJobs = new Map();           // userId -> Array<job>
+    if (!s.lots) s.lots = new Map();                           // userId -> Array<lot>
+    if (!s.andonAlerts) s.andonAlerts = new Map();             // userId -> Array<alert>
+    if (!s.ncrs) s.ncrs = new Map();                           // userId -> Array<ncr/capa>
+    if (!s.maintenancePlans) s.maintenancePlans = new Map();   // userId -> Array<plan>
+    if (!s.inventory) s.inventory = new Map();                 // userId -> Array<inventoryItem>
+    return s;
+  }
+  function uid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  function getList(map, key) { if (!map.has(key)) map.set(key, []); return map.get(key); }
+  function nid(prefix) { return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`; }
+
+  // ─── Feature 1: Digital work instructions ──────────────────────────────
+  registerLensAction("manufacturing", "work-instruction-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      const steps = Array.isArray(params.steps) ? params.steps : [];
+      if (steps.length === 0) return { ok: false, error: "at least one step required" };
+      const set = {
+        id: nid("wi"),
+        title,
+        workOrderId: params.workOrderId || null,
+        product: params.product || null,
+        revision: params.revision || "A",
+        createdAt: new Date().toISOString(),
+        steps: steps.map((st, i) => ({
+          index: i + 1,
+          instruction: String(st.instruction || st.text || `Step ${i + 1}`),
+          imageUrl: st.imageUrl || null,
+          estimatedSeconds: Number(st.estimatedSeconds) || 0,
+          requiredTool: st.requiredTool || null,
+          checkpoint: Boolean(st.checkpoint),
+          completed: false,
+        })),
+      };
+      getList(s.workInstructions, uid(ctx)).push(set);
+      return { ok: true, result: { instructionSet: set } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "work-instructions-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let sets = getList(s.workInstructions, uid(ctx));
+      if (params.workOrderId) sets = sets.filter((x) => x.workOrderId === params.workOrderId);
+      return { ok: true, result: { instructionSets: sets, count: sets.length } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "work-instruction-step-complete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const sets = getList(s.workInstructions, uid(ctx));
+      const set = sets.find((x) => x.id === params.instructionSetId);
+      if (!set) return { ok: false, error: "instruction set not found" };
+      const step = set.steps.find((st) => st.index === Number(params.stepIndex));
+      if (!step) return { ok: false, error: "step not found" };
+      step.completed = Boolean(params.completed ?? true);
+      step.completedAt = step.completed ? new Date().toISOString() : null;
+      const done = set.steps.filter((st) => st.completed).length;
+      return { ok: true, result: { instructionSet: set, progress: { done, total: set.steps.length, pct: Math.round((done / set.steps.length) * 100) } } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Feature 2: Machine / IoT data integration ─────────────────────────
+  registerLensAction("manufacturing", "iot-reading-ingest", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const machineId = String(params.machineId || "").trim();
+      if (!machineId) return { ok: false, error: "machineId required" };
+      const reading = {
+        at: params.at || new Date().toISOString(),
+        machineState: params.machineState || "running",
+        cycleCount: Number(params.cycleCount) || 0,
+        spindleLoad: params.spindleLoad != null ? Number(params.spindleLoad) : null,
+        temperature: params.temperature != null ? Number(params.temperature) : null,
+        downtimeReason: params.downtimeReason || null,
+      };
+      const list = getList(s.iotReadings, `${uid(ctx)}::${machineId}`);
+      list.push(reading);
+      if (list.length > 500) list.splice(0, list.length - 500);
+      return { ok: true, result: { machineId, reading, totalReadings: list.length } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "iot-machine-state", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const machineId = String(params.machineId || "").trim();
+      if (!machineId) return { ok: false, error: "machineId required" };
+      const list = getList(s.iotReadings, `${uid(ctx)}::${machineId}`);
+      if (list.length === 0) {
+        return { ok: true, result: { machineId, source: "empty", readings: [], notes: "No IoT readings. Ingest via manufacturing.iot-reading-ingest (OPC-UA / MQTT Sparkplug B bridge)." } };
+      }
+      const latest = list[list.length - 1];
+      const downtimeReasons = {};
+      let runCount = 0;
+      for (const r of list) {
+        if (r.machineState === "running") runCount++;
+        if (r.downtimeReason) downtimeReasons[r.downtimeReason] = (downtimeReasons[r.downtimeReason] || 0) + 1;
+      }
+      const cycleSpan = list.length > 1 ? (list[list.length - 1].cycleCount - list[0].cycleCount) : 0;
+      return {
+        ok: true,
+        result: {
+          machineId,
+          currentState: latest.machineState,
+          latestCycleCount: latest.cycleCount,
+          cyclesInWindow: cycleSpan,
+          uptimePct: Math.round((runCount / list.length) * 100),
+          downtimeReasons: Object.entries(downtimeReasons).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count),
+          latest,
+          readings: list.slice(-60),
+          source: "wired-feed",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Feature 3: Production scheduling Gantt (finite-capacity) ───────────
+  registerLensAction("manufacturing", "schedule-job-add", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const name = String(params.name || params.product || "").trim();
+      if (!name) return { ok: false, error: "name/product required" };
+      const durationHours = Number(params.durationHours);
+      if (!(durationHours > 0)) return { ok: false, error: "durationHours must be > 0" };
+      const job = {
+        id: nid("job"),
+        name,
+        resource: params.resource || "Line A",
+        workOrderId: params.workOrderId || null,
+        durationHours,
+        priority: Number(params.priority) || 3,
+        dueDate: params.dueDate || null,
+        startAt: params.startAt || null,
+      };
+      getList(s.scheduleJobs, uid(ctx)).push(job);
+      return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "schedule-gantt", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const jobs = getList(s.scheduleJobs, uid(ctx));
+      const shiftHoursPerDay = Number(params.shiftHoursPerDay) || 8;
+      const horizonStart = params.horizonStart ? new Date(params.horizonStart) : new Date();
+      // Finite-capacity forward scheduling: per resource, place jobs back-to-back
+      // ordered by priority then due date. No two jobs on a resource overlap.
+      const byResource = {};
+      const sorted = [...jobs].sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return (a.dueDate || "9999").localeCompare(b.dueDate || "9999");
+      });
+      const placed = [];
+      const cursor = {}; // resource -> ms cursor
+      for (const j of sorted) {
+        const res = j.resource;
+        if (cursor[res] == null) cursor[res] = horizonStart.getTime();
+        const start = j.startAt ? new Date(j.startAt).getTime() : cursor[res];
+        const end = start + j.durationHours * 3600 * 1000;
+        cursor[res] = end;
+        const lateMs = j.dueDate ? end - new Date(j.dueDate).getTime() : 0;
+        const slot = {
+          ...j,
+          startAt: new Date(start).toISOString(),
+          endAt: new Date(end).toISOString(),
+          late: lateMs > 0,
+          lateHours: lateMs > 0 ? Math.round(lateMs / 3600000 * 10) / 10 : 0,
+        };
+        placed.push(slot);
+        (byResource[res] = byResource[res] || []).push(slot);
+      }
+      const resources = Object.keys(byResource);
+      const capacity = resources.map((res) => {
+        const loadHours = byResource[res].reduce((t, j) => t + j.durationHours, 0);
+        return { resource: res, loadHours, jobCount: byResource[res].length, dailyCapacityHours: shiftHoursPerDay };
+      });
+      return {
+        ok: true,
+        result: {
+          jobs: placed,
+          byResource,
+          resources,
+          capacity,
+          lateJobs: placed.filter((j) => j.late).length,
+          source: placed.length === 0 ? "empty" : "computed",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "schedule-job-reschedule", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const jobs = getList(s.scheduleJobs, uid(ctx));
+      const job = jobs.find((j) => j.id === params.jobId);
+      if (!job) return { ok: false, error: "job not found" };
+      if (params.resource) job.resource = params.resource;
+      if (params.startAt) job.startAt = params.startAt;
+      if (params.priority != null) job.priority = Number(params.priority);
+      return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Feature 4: Material traceability (lot/serial genealogy) ───────────
+  registerLensAction("manufacturing", "lot-register", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const lotNumber = String(params.lotNumber || "").trim();
+      if (!lotNumber) return { ok: false, error: "lotNumber required" };
+      const material = String(params.material || "").trim();
+      if (!material) return { ok: false, error: "material required" };
+      const lots = getList(s.lots, uid(ctx));
+      if (lots.some((l) => l.lotNumber === lotNumber)) return { ok: false, error: "lot already registered" };
+      const lot = {
+        id: nid("lot"),
+        lotNumber,
+        material,
+        kind: params.kind || "raw_material", // raw_material | wip | finished_good
+        quantity: Number(params.quantity) || 0,
+        supplier: params.supplier || null,
+        workOrderId: params.workOrderId || null,
+        parentLots: Array.isArray(params.parentLots) ? params.parentLots.map(String) : [],
+        createdAt: new Date().toISOString(),
+      };
+      lots.push(lot);
+      return { ok: true, result: { lot } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "lot-genealogy", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const lots = getList(s.lots, uid(ctx));
+      const target = String(params.lotNumber || "").trim();
+      if (!target) return { ok: false, error: "lotNumber required" };
+      const root = lots.find((l) => l.lotNumber === target);
+      if (!root) return { ok: false, error: "lot not found" };
+      const byNumber = new Map(lots.map((l) => [l.lotNumber, l]));
+      // Upstream: ancestors (where this lot came from).
+      function buildUp(lot, seen) {
+        if (!lot || seen.has(lot.lotNumber)) return null;
+        seen.add(lot.lotNumber);
+        return {
+          lotNumber: lot.lotNumber, material: lot.material, kind: lot.kind, supplier: lot.supplier,
+          children: lot.parentLots.map((p) => buildUp(byNumber.get(p), seen)).filter(Boolean),
+        };
+      }
+      // Downstream: descendants (lots that consumed this lot).
+      function buildDown(lotNumber, seen) {
+        if (seen.has(lotNumber)) return [];
+        seen.add(lotNumber);
+        return lots.filter((l) => l.parentLots.includes(lotNumber)).map((c) => ({
+          lotNumber: c.lotNumber, material: c.material, kind: c.kind, workOrderId: c.workOrderId,
+          children: buildDown(c.lotNumber, seen),
+        }));
+      }
+      return {
+        ok: true,
+        result: {
+          lot: root,
+          upstream: buildUp(root, new Set()),
+          downstream: buildDown(target, new Set()),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "lots-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let lots = getList(s.lots, uid(ctx));
+      if (params.kind) lots = lots.filter((l) => l.kind === params.kind);
+      return { ok: true, result: { lots, count: lots.length } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Feature 5: Andon / downtime alerting ──────────────────────────────
+  registerLensAction("manufacturing", "andon-raise", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const reason = String(params.reason || "").trim();
+      if (!reason) return { ok: false, error: "reason required" };
+      const alert = {
+        id: nid("andon"),
+        station: params.station || params.machineId || "Unknown station",
+        machineId: params.machineId || null,
+        reason,
+        category: params.category || "downtime", // downtime | quality | material | safety
+        severity: params.severity || "medium", // low | medium | high | critical
+        status: "open",
+        raisedAt: new Date().toISOString(),
+        raisedBy: params.raisedBy || uid(ctx),
+        acknowledgedAt: null,
+        resolvedAt: null,
+        responseSeconds: null,
+      };
+      getList(s.andonAlerts, uid(ctx)).unshift(alert);
+      return { ok: true, result: { alert } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "andon-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const alerts = getList(s.andonAlerts, uid(ctx));
+      const alert = alerts.find((x) => x.id === params.alertId);
+      if (!alert) return { ok: false, error: "alert not found" };
+      const action = params.action;
+      if (action === "acknowledge") {
+        alert.status = "acknowledged";
+        alert.acknowledgedAt = new Date().toISOString();
+      } else if (action === "resolve") {
+        alert.status = "resolved";
+        alert.resolvedAt = new Date().toISOString();
+        alert.responseSeconds = Math.round((Date.parse(alert.resolvedAt) - Date.parse(alert.raisedAt)) / 1000);
+      } else {
+        return { ok: false, error: "action must be acknowledge|resolve" };
+      }
+      return { ok: true, result: { alert } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "andon-board", (ctx, _a, _params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const alerts = getList(s.andonAlerts, uid(ctx));
+      const open = alerts.filter((a) => a.status !== "resolved");
+      const resolved = alerts.filter((a) => a.status === "resolved");
+      const responses = resolved.map((a) => a.responseSeconds).filter((n) => n != null);
+      const avgResponseSeconds = responses.length ? Math.round(responses.reduce((t, n) => t + n, 0) / responses.length) : 0;
+      return {
+        ok: true,
+        result: {
+          alerts,
+          openCount: open.length,
+          criticalOpen: open.filter((a) => a.severity === "critical").length,
+          avgResponseSeconds,
+          source: alerts.length === 0 ? "empty" : "wired-feed",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Feature 6: Quality non-conformance / CAPA workflow ────────────────
+  registerLensAction("manufacturing", "ncr-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      const ncr = {
+        id: nid("ncr"),
+        number: `NCR-${(getList(s.ncrs, uid(ctx)).length + 1).toString().padStart(4, "0")}`,
+        title,
+        product: params.product || null,
+        workOrderId: params.workOrderId || null,
+        lotNumber: params.lotNumber || null,
+        defectType: params.defectType || "unspecified",
+        severity: params.severity || "minor", // minor | major | critical
+        quantityAffected: Number(params.quantityAffected) || 0,
+        disposition: params.disposition || null, // use_as_is | rework | scrap | return_to_supplier
+        rootCause: null,
+        correctiveAction: null,
+        preventiveAction: null,
+        stage: "open", // open | investigation | capa | verification | closed
+        createdAt: new Date().toISOString(),
+        closedAt: null,
+      };
+      getList(s.ncrs, uid(ctx)).unshift(ncr);
+      return { ok: true, result: { ncr } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "ncr-advance", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const ncrs = getList(s.ncrs, uid(ctx));
+      const ncr = ncrs.find((x) => x.id === params.ncrId);
+      if (!ncr) return { ok: false, error: "ncr not found" };
+      const STAGES = ["open", "investigation", "capa", "verification", "closed"];
+      if (params.rootCause != null) ncr.rootCause = String(params.rootCause);
+      if (params.correctiveAction != null) ncr.correctiveAction = String(params.correctiveAction);
+      if (params.preventiveAction != null) ncr.preventiveAction = String(params.preventiveAction);
+      if (params.disposition != null) ncr.disposition = String(params.disposition);
+      if (params.stage) {
+        if (!STAGES.includes(params.stage)) return { ok: false, error: "invalid stage" };
+        ncr.stage = params.stage;
+        if (params.stage === "closed") ncr.closedAt = new Date().toISOString();
+      } else {
+        const idx = STAGES.indexOf(ncr.stage);
+        if (idx < STAGES.length - 1) ncr.stage = STAGES[idx + 1];
+        if (ncr.stage === "closed") ncr.closedAt = new Date().toISOString();
+      }
+      return { ok: true, result: { ncr } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "ncr-list", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let ncrs = getList(s.ncrs, uid(ctx));
+      if (params.stage) ncrs = ncrs.filter((n) => n.stage === params.stage);
+      const open = ncrs.filter((n) => n.stage !== "closed").length;
+      return { ok: true, result: { ncrs, count: ncrs.length, openCount: open, source: ncrs.length === 0 ? "empty" : "wired-feed" } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Feature 7: Maintenance management (preventive) ────────────────────
+  registerLensAction("manufacturing", "maintenance-plan-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const machineId = String(params.machineId || "").trim();
+      if (!machineId) return { ok: false, error: "machineId required" };
+      const task = String(params.task || "").trim();
+      if (!task) return { ok: false, error: "task required" };
+      const intervalDays = Number(params.intervalDays);
+      if (!(intervalDays > 0)) return { ok: false, error: "intervalDays must be > 0" };
+      const lastDone = params.lastPerformed ? new Date(params.lastPerformed) : new Date();
+      const plan = {
+        id: nid("pm"),
+        machineId,
+        machineName: params.machineName || machineId,
+        task,
+        intervalDays,
+        lastPerformed: lastDone.toISOString(),
+        nextDue: new Date(lastDone.getTime() + intervalDays * 86400000).toISOString(),
+        assignedTo: params.assignedTo || null,
+      };
+      getList(s.maintenancePlans, uid(ctx)).push(plan);
+      return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "maintenance-complete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const plans = getList(s.maintenancePlans, uid(ctx));
+      const plan = plans.find((p) => p.id === params.planId);
+      if (!plan) return { ok: false, error: "plan not found" };
+      const now = new Date();
+      plan.lastPerformed = now.toISOString();
+      plan.nextDue = new Date(now.getTime() + plan.intervalDays * 86400000).toISOString();
+      return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "maintenance-schedule", (ctx, _a, _params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const plans = getList(s.maintenancePlans, uid(ctx));
+      const now = Date.now();
+      const annotated = plans.map((p) => {
+        const due = Date.parse(p.nextDue);
+        const daysUntil = Math.round((due - now) / 86400000);
+        return { ...p, daysUntilDue: daysUntil, state: daysUntil < 0 ? "overdue" : daysUntil <= 7 ? "due_soon" : "scheduled" };
+      }).sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+      return {
+        ok: true,
+        result: {
+          plans: annotated,
+          overdueCount: annotated.filter((p) => p.state === "overdue").length,
+          dueSoonCount: annotated.filter((p) => p.state === "due_soon").length,
+          source: plans.length === 0 ? "empty" : "wired-feed",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Feature 8: Inventory / WIP tracking tied to work orders ───────────
+  registerLensAction("manufacturing", "inventory-upsert", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const sku = String(params.sku || "").trim();
+      if (!sku) return { ok: false, error: "sku required" };
+      const items = getList(s.inventory, uid(ctx));
+      let item = items.find((x) => x.sku === sku);
+      if (!item) {
+        item = { id: nid("inv"), sku, name: params.name || sku, location: params.location || "Stockroom", kind: params.kind || "raw_material", onHand: 0, allocated: 0, reorderPoint: 0, unitCost: 0, workOrderId: null };
+        items.push(item);
+      }
+      if (params.name != null) item.name = String(params.name);
+      if (params.location != null) item.location = String(params.location);
+      if (params.kind != null) item.kind = String(params.kind);
+      if (params.onHand != null) item.onHand = Number(params.onHand);
+      if (params.reorderPoint != null) item.reorderPoint = Number(params.reorderPoint);
+      if (params.unitCost != null) item.unitCost = Number(params.unitCost);
+      if (params.workOrderId != null) item.workOrderId = params.workOrderId || null;
+      return { ok: true, result: { item } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "inventory-allocate", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const items = getList(s.inventory, uid(ctx));
+      const item = items.find((x) => x.sku === params.sku);
+      if (!item) return { ok: false, error: "sku not found" };
+      const qty = Number(params.quantity);
+      if (!(qty > 0)) return { ok: false, error: "quantity must be > 0" };
+      const available = item.onHand - item.allocated;
+      if (qty > available) return { ok: false, error: `insufficient stock: ${available} available` };
+      item.allocated += qty;
+      item.workOrderId = params.workOrderId || item.workOrderId;
+      return { ok: true, result: { item, allocated: qty } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "inventory-status", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let items = getList(s.inventory, uid(ctx));
+      if (params.kind) items = items.filter((x) => x.kind === params.kind);
+      if (params.workOrderId) items = items.filter((x) => x.workOrderId === params.workOrderId);
+      const enriched = items.map((x) => ({
+        ...x,
+        available: x.onHand - x.allocated,
+        belowReorder: (x.onHand - x.allocated) <= x.reorderPoint,
+        value: Math.round(x.onHand * x.unitCost * 100) / 100,
+      }));
+      return {
+        ok: true,
+        result: {
+          items: enriched,
+          totalValue: Math.round(enriched.reduce((t, x) => t + x.value, 0) * 100) / 100,
+          belowReorderCount: enriched.filter((x) => x.belowReorder).length,
+          wipCount: enriched.filter((x) => x.kind === "wip").length,
+          source: items.length === 0 ? "empty" : "wired-feed",
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
 };

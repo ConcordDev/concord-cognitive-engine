@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Loader2, FlaskConical, RefreshCw, AlertTriangle, ExternalLink, Search, FileText } from 'lucide-react';
+import { FlaskConical, RefreshCw, AlertTriangle, ExternalLink, Search, FileText } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

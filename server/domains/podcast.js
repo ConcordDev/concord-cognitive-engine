@@ -514,4 +514,465 @@ export default function registerPodcastActions(registerLensAction) {
       },
     };
   });
+
+  // ════════════════════════════════════════════════════════════════════
+  //  Feature-parity backlog — RSS ingestion, streaming player + chapters,
+  //  smart playback, transcripts, recommendations, cross-device sync,
+  //  smart download rules.
+  // ════════════════════════════════════════════════════════════════════
+
+  // ── Lightweight RSS/XML parsing helpers (no external dependency) ──────
+  function rssDecode(v) {
+    return String(v == null ? "" : v)
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/<[^>]+>/g, "")
+      .trim();
+  }
+  function rssField(xml, tag) {
+    const m = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i").exec(xml);
+    return m ? rssDecode(m[1]) : null;
+  }
+  function rssAttr(xml, tag, attr) {
+    const m = new RegExp(`<${tag}\\b[^>]*\\b${attr}=["']([^"']*)["']`, "i").exec(xml);
+    return m ? m[1] : null;
+  }
+  function rssDurationSec(raw) {
+    if (!raw) return 0;
+    const v = String(raw).trim();
+    if (/^\d+$/.test(v)) return parseInt(v, 10);
+    const parts = v.split(":").map((x) => parseInt(x, 10) || 0);
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    return 0;
+  }
+  // Parse <psc:chapter>/<podcast:chapter> markers embedded in the item.
+  function rssChapters(itemXml) {
+    const out = [];
+    const re = /<(?:psc:chapter|podcast:chapter)\b([^>]*)\/?>/gi;
+    let m;
+    while ((m = re.exec(itemXml)) !== null) {
+      const attrs = m[1];
+      const startRaw = /\bstart(?:Time)?=["']([^"']*)["']/i.exec(attrs);
+      const titleRaw = /\btitle=["']([^"']*)["']/i.exec(attrs);
+      if (!startRaw) continue;
+      out.push({
+        startSec: rssDurationSec(startRaw[1]),
+        title: titleRaw ? rssDecode(titleRaw[1]) : `Chapter ${out.length + 1}`,
+      });
+    }
+    return out.sort((a, b) => a.startSec - b.startSec);
+  }
+
+  /**
+   * rss-refresh — fetch a subscribed show's RSS feed and ingest its
+   * episodes. Replaces the show's episode list with the parsed feed
+   * (deduped by enclosure URL / guid). Free, keyless: any podcast RSS URL.
+   * params: { showId } — uses the show's stored feedUrl.
+   */
+  registerLensAction("podcast", "rss-refresh", async (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const show = s.shows.get(String(params.showId));
+    if (!show) return { ok: false, error: "show not found" };
+    const feedUrl = pcclean(params.feedUrl, 500) || show.feedUrl;
+    if (!feedUrl || !/^https?:\/\//i.test(feedUrl)) {
+      return { ok: false, error: "show has no valid feedUrl" };
+    }
+    let xml;
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 9000);
+      const r = await fetch(feedUrl, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (!r.ok) throw new Error(`feed HTTP ${r.status}`);
+      xml = await r.text();
+    } catch (e) {
+      return { ok: false, error: `feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    // Channel-level metadata refresh
+    const channelXml = xml.split(/<item[\s>]/i)[0];
+    const chanDesc = rssField(channelXml, "description") || rssField(channelXml, "itunes:summary");
+    if (chanDesc && !show.description) show.description = chanDesc.slice(0, 1000);
+    const itemBlocks = xml.match(/<item\b[\s\S]*?<\/item>/gi) || [];
+    const parsed = [];
+    const seen = new Set();
+    for (const raw of itemBlocks) {
+      const title = rssField(raw, "title");
+      if (!title) continue;
+      const enclosure = rssAttr(raw, "enclosure", "url");
+      const guid = rssField(raw, "guid") || enclosure || title;
+      if (seen.has(guid)) continue;
+      seen.add(guid);
+      const durationSec = rssDurationSec(rssField(raw, "itunes:duration"));
+      const pub = rssField(raw, "pubDate");
+      let publishDate = pcclean(pcnow(), 10);
+      if (pub) { const d = new Date(pub); if (!Number.isNaN(d.getTime())) publishDate = d.toISOString().slice(0, 10); }
+      parsed.push({
+        id: pcid("ep"), showId: show.id, showTitle: show.title, title: title.slice(0, 200),
+        description: (rssField(raw, "description") || rssField(raw, "itunes:summary") || "").slice(0, 2000) || null,
+        durationSec,
+        publishDate,
+        episodeNumber: parseInt(rssField(raw, "itunes:episode"), 10) || null,
+        guid: String(guid).slice(0, 400),
+        audioUrl: enclosure || null,
+        chapters: rssChapters(raw),
+        createdAt: pcnow(),
+      });
+    }
+    if (parsed.length === 0) return { ok: false, error: "feed contained no parseable episodes" };
+    s.episodes.set(show.id, parsed);
+    show.feedUrl = feedUrl;
+    show.lastRefreshedAt = pcnow();
+    savePodState();
+    return {
+      ok: true,
+      result: { showId: show.id, ingested: parsed.length, lastRefreshedAt: show.lastRefreshedAt },
+    };
+  });
+
+  /**
+   * episode-stream — return the playable stream descriptor for an episode:
+   * its audio enclosure URL plus chapter markers and resume position.
+   */
+  registerLensAction("podcast", "episode-stream", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    const userId = pcaid(ctx);
+    const prog = (s.playback.get(userId) || []).find((p) => p.episodeId === ep.id);
+    if (!ep.audioUrl) return { ok: false, error: "episode has no audio enclosure — refresh the show's RSS feed" };
+    const prefs = s.prefs.get(userId) || {};
+    return {
+      ok: true,
+      result: {
+        episodeId: ep.id,
+        title: ep.title,
+        audioUrl: ep.audioUrl,
+        durationSec: ep.durationSec,
+        chapters: Array.isArray(ep.chapters) ? ep.chapters : [],
+        resumeSec: prog ? prog.positionSec : 0,
+        playbackSpeed: pcnum(prefs.playbackSpeed, 1) || 1,
+        trimSilence: prefs.trimSilence === true,
+        skipIntroSec: pcnum(prefs.skipIntroSec, 0),
+      },
+    };
+  });
+
+  /**
+   * playback-prefs-set — Apple-Podcasts-style smart playback settings:
+   * trim silence, skip intro seconds, sleep timer minutes. Per-user.
+   */
+  registerLensAction("podcast", "playback-prefs-set", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pcaid(ctx);
+    const prefs = s.prefs.get(userId) || {};
+    if (params.trimSilence !== undefined) prefs.trimSilence = params.trimSilence === true;
+    if (params.skipIntroSec !== undefined) prefs.skipIntroSec = pcclamp(Math.round(pcnum(params.skipIntroSec)), 0, 300);
+    if (params.sleepTimerMin !== undefined) {
+      const m = pcclamp(Math.round(pcnum(params.sleepTimerMin)), 0, 240);
+      prefs.sleepTimerMin = m;
+      prefs.sleepTimerEndsAt = m > 0 ? new Date(Date.now() + m * 60000).toISOString() : null;
+    }
+    s.prefs.set(userId, prefs);
+    savePodState();
+    return {
+      ok: true,
+      result: {
+        trimSilence: prefs.trimSilence === true,
+        skipIntroSec: pcnum(prefs.skipIntroSec, 0),
+        sleepTimerMin: pcnum(prefs.sleepTimerMin, 0),
+        sleepTimerEndsAt: prefs.sleepTimerEndsAt || null,
+        playbackSpeed: pcnum(prefs.playbackSpeed, 1) || 1,
+      },
+    };
+  });
+
+  registerLensAction("podcast", "playback-prefs-get", (ctx, _a, _params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const prefs = s.prefs.get(pcaid(ctx)) || {};
+    let sleepTimerRemainingSec = 0;
+    if (prefs.sleepTimerEndsAt) {
+      sleepTimerRemainingSec = Math.max(0, Math.round((new Date(prefs.sleepTimerEndsAt).getTime() - Date.now()) / 1000));
+    }
+    return {
+      ok: true,
+      result: {
+        trimSilence: prefs.trimSilence === true,
+        skipIntroSec: pcnum(prefs.skipIntroSec, 0),
+        sleepTimerMin: pcnum(prefs.sleepTimerMin, 0),
+        sleepTimerEndsAt: prefs.sleepTimerEndsAt || null,
+        sleepTimerRemainingSec,
+        playbackSpeed: pcnum(prefs.playbackSpeed, 1) || 1,
+      },
+    };
+  });
+
+  // ── Transcripts ─────────────────────────────────────────────────────
+  /**
+   * transcript-set — store a transcript for an episode. The transcript is
+   * real user-supplied / fetched text, split into timestamped segments
+   * for in-transcript search. params: { episodeId, text } or { episodeId,
+   * segments:[{startSec,text}] }.
+   */
+  registerLensAction("podcast", "transcript-set", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.transcripts instanceof Map)) s.transcripts = new Map();
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    let segments = [];
+    if (Array.isArray(params.segments) && params.segments.length) {
+      segments = params.segments
+        .map((seg) => ({
+          startSec: Math.max(0, Math.round(pcnum(seg.startSec))),
+          text: pcclean(seg.text, 500),
+        }))
+        .filter((seg) => seg.text)
+        .sort((a, b) => a.startSec - b.startSec);
+    } else {
+      const text = String(params.text == null ? "" : params.text).trim();
+      if (!text) return { ok: false, error: "transcript text or segments required" };
+      // Split plain text into sentence-ish segments; distribute timestamps
+      // proportionally across the episode duration.
+      const sentences = text.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+      const dur = ep.durationSec > 0 ? ep.durationSec : sentences.length * 12;
+      segments = sentences.map((sentence, i) => ({
+        startSec: Math.round((i / Math.max(1, sentences.length)) * dur),
+        text: sentence.slice(0, 500),
+      }));
+    }
+    if (segments.length === 0) return { ok: false, error: "transcript produced no segments" };
+    const transcript = {
+      episodeId: ep.id,
+      segments,
+      wordCount: segments.reduce((a, seg) => a + seg.text.split(/\s+/).length, 0),
+      updatedAt: pcnow(),
+      updatedBy: pcaid(ctx),
+    };
+    s.transcripts.set(ep.id, transcript);
+    savePodState();
+    return { ok: true, result: { episodeId: ep.id, segmentCount: segments.length, wordCount: transcript.wordCount } };
+  });
+
+  registerLensAction("podcast", "transcript-get", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.transcripts instanceof Map)) s.transcripts = new Map();
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    const transcript = s.transcripts.get(ep.id);
+    if (!transcript) return { ok: true, result: { episodeId: ep.id, hasTranscript: false, segments: [] } };
+    return { ok: true, result: { episodeId: ep.id, hasTranscript: true, ...transcript } };
+  });
+
+  /**
+   * transcript-search — search within an episode's transcript and return
+   * matching segments with their timestamps (for jump-to playback).
+   */
+  registerLensAction("podcast", "transcript-search", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.transcripts instanceof Map)) s.transcripts = new Map();
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    const query = pcclean(params.query, 120).toLowerCase();
+    if (!query) return { ok: false, error: "query required" };
+    const transcript = s.transcripts.get(ep.id);
+    if (!transcript) return { ok: true, result: { episodeId: ep.id, query, matches: [], count: 0 } };
+    const matches = transcript.segments
+      .filter((seg) => seg.text.toLowerCase().includes(query))
+      .map((seg) => ({ startSec: seg.startSec, text: seg.text }));
+    return { ok: true, result: { episodeId: ep.id, query, matches, count: matches.length } };
+  });
+
+  // ── Personalized recommendations ────────────────────────────────────
+  /**
+   * recommendations — suggest shows from real listening history. Scores
+   * by category affinity (categories of started/completed episodes) and
+   * excludes already-subscribed shows.
+   */
+  registerLensAction("podcast", "recommendations", (ctx, _a, _params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pcaid(ctx);
+    const subs = s.subscriptions.get(userId) || [];
+    const progress = s.playback.get(userId) || [];
+    // Build a category-affinity profile from listening history.
+    const affinity = new Map();
+    for (const p of progress) {
+      const ep = findEpisode(s, p.episodeId);
+      if (!ep) continue;
+      const show = s.shows.get(ep.showId);
+      if (!show) continue;
+      const weight = p.played ? 3 : 1;
+      affinity.set(show.category, (affinity.get(show.category) || 0) + weight);
+    }
+    // Also weight categories of subscribed shows.
+    for (const showId of subs) {
+      const show = s.shows.get(showId);
+      if (show) affinity.set(show.category, (affinity.get(show.category) || 0) + 2);
+    }
+    const candidates = [...s.shows.values()].filter((sh) => !subs.includes(sh.id));
+    const ranked = candidates
+      .map((sh) => {
+        const catScore = affinity.get(sh.category) || 0;
+        const rs = s.reviews.get(sh.id) || [];
+        const ratingScore = rs.length
+          ? (rs.reduce((a, r) => a + r.rating, 0) / rs.length) - 3
+          : 0;
+        const score = catScore * 2 + ratingScore;
+        let reason;
+        if (catScore > 0) reason = `Because you listen to ${sh.category} shows`;
+        else if (ratingScore > 0) reason = "Highly rated by listeners";
+        else reason = "New to the directory";
+        return { ...showView(s, userId, sh), score: Math.round(score * 10) / 10, reason };
+      })
+      .filter((sh) => affinity.size === 0 || sh.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+    return {
+      ok: true,
+      result: {
+        recommendations: ranked,
+        count: ranked.length,
+        basedOn: affinity.size > 0 ? "listening history" : "directory ratings",
+      },
+    };
+  });
+
+  // ── Cross-device playback sync ──────────────────────────────────────
+  /**
+   * sync-state — return the user's full resumable playback state so a
+   * fresh session/device can resume where the last one left off.
+   */
+  registerLensAction("podcast", "sync-state", (ctx, _a, _params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pcaid(ctx);
+    const progress = (s.playback.get(userId) || [])
+      .filter((p) => p.positionSec > 0)
+      .map((p) => {
+        const ep = findEpisode(s, p.episodeId);
+        return {
+          episodeId: p.episodeId,
+          episodeTitle: ep ? ep.title : null,
+          showTitle: ep ? ep.showTitle : null,
+          positionSec: p.positionSec,
+          played: p.played,
+          updatedAt: p.updatedAt || null,
+        };
+      });
+    const mostRecent = progress
+      .filter((p) => !p.played)
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0] || null;
+    const prefs = s.prefs.get(userId) || {};
+    return {
+      ok: true,
+      result: {
+        positions: progress,
+        queue: s.queue.get(userId) || [],
+        nowResuming: mostRecent,
+        playbackSpeed: pcnum(prefs.playbackSpeed, 1) || 1,
+        syncedAt: pcnow(),
+      },
+    };
+  });
+
+  /**
+   * sync-push — accept a playback position reported by a device and merge
+   * it (last-write-wins by timestamp). Lets any device push progress that
+   * other devices then resume.
+   */
+  registerLensAction("podcast", "sync-push", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    const userId = pcaid(ctx);
+    const positionSec = pcclamp(Math.round(pcnum(params.positionSec)), 0, Math.max(0, ep.durationSec || 1e9));
+    const reportedAt = pcclean(params.reportedAt, 40) || pcnow();
+    const list = pclistB(s.playback, userId);
+    let prog = list.find((p) => p.episodeId === ep.id);
+    if (!prog) { prog = { episodeId: ep.id, positionSec: 0, played: false }; list.push(prog); }
+    // Last-write-wins: only apply if this report is newer than what we have.
+    const merged = !prog.updatedAt || reportedAt >= prog.updatedAt;
+    if (merged) {
+      prog.positionSec = positionSec;
+      if (ep.durationSec > 0 && positionSec >= ep.durationSec * 0.95) prog.played = true;
+      prog.updatedAt = reportedAt;
+      prog.lastDevice = pcclean(params.device, 60) || "unknown";
+    }
+    savePodState();
+    return {
+      ok: true,
+      result: { episodeId: ep.id, positionSec: prog.positionSec, merged, played: prog.played },
+    };
+  });
+
+  // ── Smart download rules ────────────────────────────────────────────
+  /**
+   * download-rule-set — enable/disable auto-download of new episodes for
+   * a subscribed show, with a cap on how many recent episodes to keep.
+   */
+  registerLensAction("podcast", "download-rule-set", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.downloadRules instanceof Map)) s.downloadRules = new Map();
+    const show = s.shows.get(String(params.showId));
+    if (!show) return { ok: false, error: "show not found" };
+    const userId = pcaid(ctx);
+    const rules = s.downloadRules.get(userId) || {};
+    rules[show.id] = {
+      showId: show.id,
+      autoDownload: params.autoDownload !== false,
+      keepRecent: pcclamp(Math.round(pcnum(params.keepRecent, 3)), 1, 25),
+      updatedAt: pcnow(),
+    };
+    s.downloadRules.set(userId, rules);
+    savePodState();
+    return { ok: true, result: { rule: rules[show.id] } };
+  });
+
+  registerLensAction("podcast", "download-rule-list", (ctx, _a, _params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.downloadRules instanceof Map)) s.downloadRules = new Map();
+    const rules = Object.values(s.downloadRules.get(pcaid(ctx)) || {})
+      .map((r) => {
+        const show = s.shows.get(r.showId);
+        return { ...r, showTitle: show ? show.title : null };
+      })
+      .filter((r) => r.showTitle);
+    return { ok: true, result: { rules, count: rules.length } };
+  });
+
+  /**
+   * download-rule-run — apply all of a user's smart download rules:
+   * auto-download the newest episodes of rule-enabled shows and prune
+   * downloads beyond the keepRecent cap. Returns what changed.
+   */
+  registerLensAction("podcast", "download-rule-run", (ctx, _a, _params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.downloadRules instanceof Map)) s.downloadRules = new Map();
+    const userId = pcaid(ctx);
+    const rules = Object.values(s.downloadRules.get(userId) || {});
+    const dls = pclistB(s.downloads, userId);
+    const added = [];
+    const pruned = [];
+    for (const rule of rules) {
+      if (!rule.autoDownload) continue;
+      const eps = (s.episodes.get(rule.showId) || [])
+        .slice()
+        .sort((a, b) => String(b.publishDate).localeCompare(String(a.publishDate)));
+      const keep = eps.slice(0, rule.keepRecent);
+      for (const ep of keep) {
+        if (!dls.includes(ep.id)) { dls.push(ep.id); added.push(ep.id); }
+      }
+      // Prune older downloads of this show beyond the cap.
+      const keepIds = new Set(keep.map((e) => e.id));
+      for (const ep of eps.slice(rule.keepRecent)) {
+        const i = dls.indexOf(ep.id);
+        if (i >= 0 && !keepIds.has(ep.id)) { dls.splice(i, 1); pruned.push(ep.id); }
+      }
+    }
+    savePodState();
+    return {
+      ok: true,
+      result: { rulesApplied: rules.filter((r) => r.autoDownload).length, added: added.length, pruned: pruned.length, totalDownloads: dls.length },
+    };
+  });
 }

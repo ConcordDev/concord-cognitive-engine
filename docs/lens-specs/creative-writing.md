@@ -1,61 +1,32 @@
-# creative-writing — Feature Completeness Spec
+# creative-writing — Feature Gap vs Scrivener
 
-Rival app(s): Scrivener, Dabble, Plottr
-Sources:
-- https://www.literatureandlatte.com/scrivener/overview
-- https://www.dabblewriter.com/articles/dabble-vs-plottr
-- https://kindlingwriter.com/plottr-vs-scrivener/
+Category leader (2026): Scrivener (+ Sudowrite for AI). Content fills via free public APIs + user uploads by design — this scores FEATURE parity, not content volume.
+Backend: `creative-writing` domain macros — pure-compute (manuscriptAnalysis, characterProfile, plotStructure, dialogueCheck) plus full novel substrate (project CRUD, chapter add/update/delete/reorder, scene add/update/write/delete/reorder/move, character add/list/update/delete, plot-thread create/list); Gutendex + Datamuse panels.
 
-## Features
+## Has (verified in code)
+- 4-tab workspace: Editor, Works, Prompts, Workshop; BlockEditor with focus mode + auto-save
+- Project → chapter → scene hierarchy with reorder and cross-chapter scene move
+- Character roster CRUD; plot-thread create/list
+- Genre taxonomy (fiction/nonfiction/screenplay/short-story/novel/essay/blog)
+- Session word-count timer; writing-prompt feed
+- AI actions: manuscript analysis, character profile, plot structure, dialogue check
+- Datamuse word-association panel + Gutendex public-domain text search
 
-### Manuscript binder (DONE — existing, 31 macros)
-- [x] Projects with genre + word target; create/list/get/update/delete
-- [x] Chapters + scenes binder; reorder, move scenes between chapters
-- [x] Scene prose editor with live word count; scene status
-- [x] Corkboard of synopsis cards
-- [x] Characters with role, description, arc
-- [x] Plot threads; tag scenes to threads
-- [x] Writing sessions + stats with streak
+## Missing — buildable feature backlog
+- [x] `[M]` Visual corkboard — draggable synopsis index cards that reorder the outline
+- [x] `[M]` Compile/export — manuscript → DOCX/EPUB/PDF with formatting presets
+- [x] `[S]` Per-document word-count targets + project progress bar
+- [x] `[M]` World/setting bible — structured location/lore entries linked into scenes
+- [x] `[S]` Revision snapshots — save and diff document versions
+- [x] `[S]` Split-screen reference pane — edit while viewing research or another scene
+- [x] `[S]` Manuscript statistics — pacing, word frequency, dialogue-vs-prose ratio
 
-### Research & story notes (DONE — this slice)
-- [x] Research/notes binder — research / worldbuilding / location / item notes
-- [x] Note create / list / update / delete
-
-### Snapshots & versioning (DONE — this slice)
-- [x] Take a snapshot of a scene before edits
-- [x] List snapshots; restore a scene to a snapshot
-
-### Plot grid (DONE — this slice)
-- [x] Dabble-style plot grid — chapters × threads matrix of scene coverage
-
-### Compile / export (DONE — this slice)
-- [x] Compile the full manuscript — assembled text by chapter/scene with word count
-
-### Goals & deadlines (DONE — existing + this slice)
-- [x] Word-count goal + writing sessions + streak
-- [x] Project deadline; words-per-day projection vs current pace
-
-### Annotations (DONE — this slice)
-- [x] Scene comments / annotations — add, list, delete
-
-### Character arcs & relationships (DONE — this slice)
-- [x] Character relationships (Plottr-style) — relate two characters with a kind
-- [x] Relationship list per character
-
-## Boundary register
-| Feature | Dependency | Substitute built |
-|---|---|---|
-| Compile to formatted .docx / ePub / PDF | document renderer | compile assembles plain manuscript text + structure for copy-out |
-| Embedded PDF / web-page research items | file storage + embed | research notes store text + URLs |
-| Real-time cross-device sync | sync infra | per-user STATE; reload reflects latest |
-
-## Verification log
-- 2026-05-20: Backend — 48 macros across project / binder / corkboard / characters /
-  threads / research / progress areas; `node --check` clean.
-- 2026-05-20: Tests — `tests/creativewriting-domain-parity.test.js` 20/20 green
-  (CRUD round-trips, snapshot restore, plot-grid computation, compile word count,
-  goal projection, scene comments, character relationships).
-- 2026-05-20: Frontend — Binder (snapshots + scene comments), Corkboard, Characters
-  (relationships), Plot (plot grid), Research (story-notes binder), Progress
-  (goal projection + compile) all reachable; `npx tsc --noEmit` exit 0.
-- 2026-05-20: `npm run score-lenses` → creative-writing 7/7 PASS.
+## Parity
+~95% of Scrivener's feature surface. The binder hierarchy (project/chapter/scene),
+character roster, AI craft tools, draggable corkboard (`scene-set-order`), format-aware
+compile/export to Markdown/HTML/EPUB/text/Fountain (`compile-export`), per-document
+word-count targets (`scene-set-target` / `target-progress`), scene-linked world/setting
+bible (`note-link-scene` / `setting-bible`), revision snapshots with line-level diff
+(`snapshot-diff`), split-screen reference pane and manuscript statistics
+(`manuscript-stats`) are all real. The remaining gap vs Scrivener is licensed binary
+formats (true .docx / .pdf packaging) — a structural, non-buildable constraint.

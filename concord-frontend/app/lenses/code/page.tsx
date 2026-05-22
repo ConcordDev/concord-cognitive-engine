@@ -14,6 +14,7 @@ import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { CodeWorkbenchSection } from '@/components/code/CodeWorkbenchSection';
+import { CodeAdvancedPanel } from '@/components/code/CodeAdvancedPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -1159,7 +1160,7 @@ export default function CodeLensPage() {
         aiChatScrollRef.current?.scrollTo({ top: aiChatScrollRef.current.scrollHeight, behavior: 'smooth' });
       });
     }
-  }, [aiChatDraft, aiChatPending, aiChatHistory, activeTab, aiChatIncludeFile]);
+  }, [aiChatDraft, aiChatPending, aiChatHistory, activeTab, aiChatIncludeFile, isAuthenticated]);
 
   const cancelAiChat = useCallback(() => {
     aiChatAbortRef.current?.abort();
@@ -1311,6 +1312,9 @@ export default function CodeLensPage() {
       <RivalShapePreview lensId="code" defaultOpen={true} />
       <div className="px-4 mt-3">
         <CodeWorkbenchSection />
+      </div>
+      <div className="px-4 mt-3">
+        <CodeAdvancedPanel />
       </div>
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>
       {/* Header */}
@@ -1784,8 +1788,19 @@ export default function CodeLensPage() {
                   </div>
                 )}
                 {(activity === 'debug' || activity === 'extensions') && (
-                  <div className="p-4 text-xs text-gray-400">
-                    <p className="text-gray-500 italic">Coming next sprint.</p>
+                  <div className="p-4 text-xs text-gray-400 space-y-2">
+                    <p className="text-gray-300 font-semibold">
+                      {activity === 'debug' ? 'Step debugger' : 'Extensions'}
+                    </p>
+                    <p className="text-gray-500">
+                      {activity === 'debug'
+                        ? 'Set breakpoints, watch expressions and inspect the call stack.'
+                        : 'Browse and install editor extensions: formatters, linters, language packs.'}
+                    </p>
+                    <p className="text-gray-500">
+                      Open the <span className="text-cyan-400">Advanced IDE</span> panel above the editor —
+                      it surfaces the debugger, extensions, remote git, codebase chat, split view and Live Share.
+                    </p>
                   </div>
                 )}
               </div>

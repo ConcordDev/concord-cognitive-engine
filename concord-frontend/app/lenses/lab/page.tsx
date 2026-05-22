@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ArxivLabFeed } from '@/components/lab/ArxivLabFeed';
+import { ELNWorkbench } from '@/components/lab/ELNWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -240,6 +241,17 @@ export default function LabLensPage() {
       </div>
 
       <RealtimeDataPanel data={realtimeInsights} />
+
+      {/* Electronic Lab Notebook + LIMS — Benchling-shaped workbench:
+          notebook, reagent inventory, protocol library, plate designer,
+          instrument-run import, construct registry, Levey-Jennings QC. */}
+      <section className="space-y-2">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Microscope className="w-4 h-4 text-neon-cyan" />
+          Electronic Lab Notebook &amp; LIMS
+        </h2>
+        <ELNWorkbench />
+      </section>
 
       {/* Adjacent Reality Explorer */}
       <RealityExplorerSection

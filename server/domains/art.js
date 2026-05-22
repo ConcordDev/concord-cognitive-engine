@@ -564,15 +564,16 @@ export default function registerArtActions(registerLensAction) {
   ];
   const ART_PROMPT_CATEGORIES = [...new Set(ART_PROMPTS.map((p) => p.category))];
 
-  // ── Color theory helpers ────────────────────────────────────────────
-  function hexToRgb(hex) {
+  // ── Color theory helpers (array form — distinct from the {r,g,b}-object
+  //    hexToRgb/rgbToHsl defined earlier; these return tuples) ──────────
+  function hexToRgbArr(hex) {
     return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
   }
   function rgbToHex(r, g, b) {
     const c = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
     return `#${c(r)}${c(g)}${c(b)}`;
   }
-  function rgbToHsl(r, g, b) {
+  function rgbToHslArr(r, g, b) {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
     let h = 0, sat = 0;
@@ -923,7 +924,7 @@ export default function registerArtActions(registerLensAction) {
     const lightScale = atClamp(params.lightScale, 0, 3, 1);
     for (const el of layer.strokes) {
       if (!el.color) continue;
-      const [h, sat, l] = rgbToHsl(...hexToRgb(el.color));
+      const [h, sat, l] = rgbToHslArr(...hexToRgbArr(el.color));
       el.color = hslToHex(h + hueShift, Math.max(0, Math.min(1, sat * satScale)), Math.max(0, Math.min(1, l * lightScale)));
     }
     art.updatedAt = atNow();
@@ -1127,7 +1128,7 @@ export default function registerArtActions(registerLensAction) {
     if (!base) return { ok: false, error: "baseColor must be a #rrggbb hex" };
     const scheme = ["complementary", "analogous", "triadic", "tetradic", "split-complementary", "monochromatic"]
       .includes(String(params.scheme)) ? String(params.scheme) : "analogous";
-    const [h, sat, l] = rgbToHsl(...hexToRgb(base));
+    const [h, sat, l] = rgbToHslArr(...hexToRgbArr(base));
     let colors;
     if (scheme === "complementary") colors = [base, hslToHex(h + 180, sat, l)];
     else if (scheme === "triadic") colors = [base, hslToHex(h + 120, sat, l), hslToHex(h + 240, sat, l)];
@@ -1143,8 +1144,8 @@ export default function registerArtActions(registerLensAction) {
     const a = atHex(params.colorA), b = atHex(params.colorB);
     if (!a || !b) return { ok: false, error: "colorA and colorB must be #rrggbb hex" };
     const ratio = atClamp(params.ratio, 0, 1, 0.5);
-    const [ar, ag, ab] = hexToRgb(a);
-    const [br, bg, bb] = hexToRgb(b);
+    const [ar, ag, ab] = hexToRgbArr(a);
+    const [br, bg, bb] = hexToRgbArr(b);
     const mixed = rgbToHex(
       ar + (br - ar) * ratio, ag + (bg - ag) * ratio, ab + (bb - ab) * ratio,
     );
@@ -1214,6 +1215,541 @@ export default function registerArtActions(registerLensAction) {
     }
     const dayIdx = Math.floor(Date.now() / 86400000) % ART_PROMPTS.length;
     return { ok: true, result: { prompt: ART_PROMPTS[dayIdx], categories: ART_PROMPT_CATEGORIES } };
+  });
+
+  // ─── Procreate / Krita parity backlog ───────────────────────────────
+  // Raster filters, pressure dynamics, free-angle rotation, selection
+  // refinement (lasso / magic-wand / feather), symmetry & perspective
+  // guides, timelapse recording and a gradient / pattern fill engine.
+  // All operate on the persisted vector element model so they replay
+  // deterministically on the client canvas.
+
+  const ART_FILTER_KINDS = ["gaussian-blur", "sharpen", "liquify"];
+  const ART_GUIDE_KINDS = ["off", "vertical", "horizontal", "quadrant", "radial", "perspective-1pt", "perspective-2pt"];
+  const ART_GRADIENT_KINDS = ["linear", "radial"];
+  const ART_PATTERN_KINDS = ["dots", "grid", "diagonal", "checker", "crosshatch"];
+  const ART_MAX_TIMELAPSE_FRAMES = 2000;
+
+  // ── 1. Raster filters — Gaussian blur / sharpen / liquify ────────────
+  // Filters are recorded as a per-layer effect stack so the canvas can
+  // apply a CanvasFilter / pixel-shader pass when rasterising the layer.
+  registerLensAction("art", "layer-apply-filter", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const kind = ART_FILTER_KINDS.includes(String(params.kind)) ? String(params.kind) : null;
+    if (!kind) return { ok: false, error: `kind must be one of ${ART_FILTER_KINDS.join(", ")}` };
+    if (!Array.isArray(layer.filters)) layer.filters = [];
+    const filter = {
+      id: atId("flt"), kind,
+      // amount is the blur radius (px), sharpen strength, or liquify push
+      amount: atClamp(params.amount, 0.1, 200, kind === "gaussian-blur" ? 8 : kind === "sharpen" ? 1 : 24),
+      createdAt: atNow(),
+    };
+    if (kind === "liquify") {
+      // a liquify pass needs a center + direction the brush pushed
+      filter.cx = Math.round(atClamp(params.cx, 0, art.width, art.width / 2));
+      filter.cy = Math.round(atClamp(params.cy, 0, art.height, art.height / 2));
+      filter.dx = Math.round(atClamp(params.dx, -art.width, art.width, 0));
+      filter.dy = Math.round(atClamp(params.dy, -art.height, art.height, 0));
+      filter.radius = Math.round(atClamp(params.radius, 4, art.width, 80));
+    }
+    layer.filters.push(filter);
+    if (layer.filters.length > 32) layer.filters.shift();
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layerId: layer.id, filter, filterCount: layer.filters.length } };
+  });
+
+  registerLensAction("art", "layer-clear-filters", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    const before = Array.isArray(layer.filters) ? layer.filters.length : 0;
+    layer.filters = [];
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layerId: layer.id, cleared: before } };
+  });
+
+  // ── 2. Pressure-sensitive stylus dynamics ────────────────────────────
+  // Persist a per-artwork dynamics profile that maps stylus pressure to
+  // size & opacity, and accept commit of pressure-bearing strokes whose
+  // per-point [x,y,pressure] triplets are kept for variable-width replay.
+  registerLensAction("art", "dynamics-set", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    art.dynamics = {
+      pressureSize: !!params.pressureSize,
+      pressureOpacity: !!params.pressureOpacity,
+      // minimum fraction of size/opacity at zero pressure
+      sizeFloor: atClamp(params.sizeFloor, 0, 1, 0.2),
+      opacityFloor: atClamp(params.opacityFloor, 0, 1, 0.3),
+      // smoothing pulls jittery input toward the running average
+      smoothing: atClamp(params.smoothing, 0, 1, 0.4),
+      // velocity-to-size taper (faster stroke → thinner line)
+      velocityTaper: atClamp(params.velocityTaper, 0, 1, 0),
+    };
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { dynamics: art.dynamics } };
+  });
+
+  registerLensAction("art", "dynamics-get", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    return {
+      ok: true,
+      result: {
+        dynamics: art.dynamics || {
+          pressureSize: false, pressureOpacity: false,
+          sizeFloor: 0.2, opacityFloor: 0.3, smoothing: 0.4, velocityTaper: 0,
+        },
+      },
+    };
+  });
+
+  // Commit a stroke that carries per-point pressure. Points are
+  // [x, y, pressure] triplets (pressure 0..1). Stored as a pressure
+  // stroke so the client renders a variable-width ribbon.
+  registerLensAction("art", "stroke-commit-pressure", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    if (layer.strokes.length >= ART_MAX_STROKES_PER_LAYER) {
+      return { ok: false, error: "layer stroke limit reached" };
+    }
+    const raw = params.stroke || {};
+    const tool = ART_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";
+    const color = atHex(raw.color) || "#222222";
+    const size = atClamp(raw.size, 0.5, 400, 6);
+    const opacity = atClamp(raw.opacity, 0.01, 1, 1);
+    const cx = (v) => Math.round(atClamp(v, -art.width, art.width * 2, 0));
+    const cy = (v) => Math.round(atClamp(v, -art.height, art.height * 2, 0));
+    const pts = Array.isArray(raw.points) ? raw.points : [];
+    const points = [];
+    for (const p of pts.slice(0, ART_MAX_POINTS)) {
+      if (Array.isArray(p) && p.length >= 2) {
+        const pr = p.length >= 3 ? atClamp(p[2], 0, 1, 1) : 1;
+        points.push([cx(p[0]), cy(p[1]), Math.round(pr * 1000) / 1000]);
+      }
+    }
+    if (!points.length) return { ok: false, error: "invalid stroke" };
+    const stroke = {
+      id: atId("stk"), kind: "stroke", tool, color, size, opacity,
+      points, pressure: true,
+    };
+    layer.strokes.push(stroke);
+    layer.redo = [];
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { strokeId: stroke.id, strokeCount: layer.strokes.length, pointsKept: points.length } };
+  });
+
+  // ── 3. Free-angle (non-90°) layer rotation ───────────────────────────
+  registerLensAction("art", "layer-rotate", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    let deg = atNum(params.degrees);
+    deg = ((deg % 360) + 360) % 360;
+    const rad = (deg * Math.PI) / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    // rotate about an explicit pivot, defaulting to the canvas centre
+    const px = atClamp(params.pivotX, 0, art.width, art.width / 2);
+    const py = atClamp(params.pivotY, 0, art.height, art.height / 2);
+    const ids = Array.isArray(params.ids) && params.ids.length ? new Set(params.ids.map(String)) : null;
+    const fn = (x, y) => {
+      const ox = x - px, oy = y - py;
+      return [
+        Math.round(px + ox * cos - oy * sin),
+        Math.round(py + ox * sin + oy * cos),
+      ];
+    };
+    let rotated = 0;
+    for (const el of layer.strokes) {
+      if (ids && !ids.has(el.id)) continue;
+      transformElement(el, fn);
+      // carry the cumulative rotation on rect/text so the client renders
+      // a rotated bounding box rather than an axis-aligned one
+      if (el.kind === "rect" || el.kind === "ellipse" || el.kind === "text") {
+        el.rotation = (((el.rotation || 0) + deg) % 360);
+      }
+      rotated += 1;
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { layerId: layer.id, degrees: deg, rotated } };
+  });
+
+  // ── 4. Selection refinement — lasso, magic-wand, feathering ──────────
+  // A selection is a polygon (lasso) or a tolerance-based color match
+  // (magic-wand) with an optional feather radius. Persisted on the
+  // artwork so subsequent edits can scope to it.
+  function pointInPolygon(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], yi = poly[i][1];
+      const xj = poly[j][0], yj = poly[j][1];
+      const intersect = ((yi > y) !== (yj > y))
+        && (x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-9) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  registerLensAction("art", "selection-lasso", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    const raw = Array.isArray(params.polygon) ? params.polygon : [];
+    const polygon = [];
+    for (const p of raw.slice(0, 400)) {
+      if (Array.isArray(p) && p.length >= 2) {
+        polygon.push([
+          Math.round(atClamp(p[0], 0, art.width, 0)),
+          Math.round(atClamp(p[1], 0, art.height, 0)),
+        ]);
+      }
+    }
+    if (polygon.length < 3) return { ok: false, error: "lasso needs at least 3 points" };
+    const feather = atClamp(params.feather, 0, 200, 0);
+    // an element is selected if any of its representative points fall inside
+    const matched = [];
+    for (const el of layer.strokes) {
+      const reps = el.points
+        ? el.points
+        : (typeof el.x === "number" ? [[el.x, el.y]] : []);
+      if (reps.some((p) => pointInPolygon(p[0], p[1], polygon))) matched.push(el.id);
+    }
+    art.selection = { kind: "lasso", layerId: layer.id, polygon, feather, ids: matched, createdAt: atNow() };
+    saveArtState();
+    return { ok: true, result: { selection: art.selection, matched: matched.length } };
+  });
+
+  registerLensAction("art", "selection-magic-wand", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    const target = atHex(params.targetColor);
+    if (!target) return { ok: false, error: "targetColor must be a #rrggbb hex" };
+    // tolerance is a 0..100 perceptual distance in CIELAB ΔE
+    const tolerance = atClamp(params.tolerance, 0, 100, 24);
+    const feather = atClamp(params.feather, 0, 200, 0);
+    const [tr, tg, tb] = hexToRgbArr(target);
+    const targetLab = rgbToLab(tr, tg, tb);
+    const matched = [];
+    for (const el of layer.strokes) {
+      if (!el.color) continue;
+      const [r, g, b] = hexToRgbArr(el.color);
+      const d = deltaE(targetLab, rgbToLab(r, g, b));
+      if (d <= tolerance) matched.push(el.id);
+    }
+    art.selection = {
+      kind: "magic-wand", layerId: layer.id,
+      targetColor: target, tolerance, feather, ids: matched, createdAt: atNow(),
+    };
+    saveArtState();
+    return { ok: true, result: { selection: art.selection, matched: matched.length } };
+  });
+
+  registerLensAction("art", "selection-feather", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    if (!art.selection) return { ok: false, error: "no active selection" };
+    art.selection.feather = atClamp(params.feather, 0, 200, art.selection.feather || 0);
+    saveArtState();
+    return { ok: true, result: { selection: art.selection } };
+  });
+
+  registerLensAction("art", "selection-clear", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const had = !!art.selection;
+    art.selection = null;
+    saveArtState();
+    return { ok: true, result: { cleared: had } };
+  });
+
+  // ── 5. Symmetry / drawing guides & perspective assist ────────────────
+  registerLensAction("art", "guides-set", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const kind = ART_GUIDE_KINDS.includes(String(params.kind)) ? String(params.kind) : "off";
+    const cx = Math.round(atClamp(params.cx, 0, art.width, art.width / 2));
+    const cy = Math.round(atClamp(params.cy, 0, art.height, art.height / 2));
+    const guides = { kind, cx, cy };
+    if (kind === "radial") {
+      // number of mirrored sectors (mandala mode)
+      guides.sectors = Math.round(atClamp(params.sectors, 2, 24, 8));
+    }
+    if (kind === "perspective-1pt" || kind === "perspective-2pt") {
+      guides.vp1 = {
+        x: Math.round(atClamp(params.vp1x, -art.width, art.width * 2, art.width / 3)),
+        y: Math.round(atClamp(params.vp1y, -art.height, art.height * 2, art.height / 2)),
+      };
+      if (kind === "perspective-2pt") {
+        guides.vp2 = {
+          x: Math.round(atClamp(params.vp2x, -art.width, art.width * 2, (2 * art.width) / 3)),
+          y: Math.round(atClamp(params.vp2y, -art.height, art.height * 2, art.height / 2)),
+        };
+      }
+    }
+    art.guides = guides;
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { guides } };
+  });
+
+  registerLensAction("art", "guides-get", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    return { ok: true, result: { guides: art.guides || { kind: "off" }, kinds: ART_GUIDE_KINDS } };
+  });
+
+  // Mirror a committed stroke across the active symmetry guide so the
+  // client can both render live and persist the mirrored copies.
+  registerLensAction("art", "symmetry-mirror-stroke", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const guides = art.guides;
+    if (!guides || guides.kind === "off") return { ok: false, error: "no active symmetry guide" };
+    const src = layer.strokes.find((st) => st.id === params.strokeId);
+    if (!src) return { ok: false, error: "stroke not found" };
+    const cx = guides.cx, cy = guides.cy;
+    const mirrors = [];
+    const cloneWith = (fn) => {
+      const copy = {
+        ...src, id: atId("stk"),
+        points: src.points ? src.points.map((p) => {
+          const [nx, ny] = fn(p[0], p[1]);
+          return p.length >= 3 ? [nx, ny, p[2]] : [nx, ny];
+        }) : undefined,
+      };
+      if (typeof src.x === "number" && typeof src.y === "number") {
+        const [nx, ny] = fn(src.x, src.y);
+        copy.x = nx; copy.y = ny;
+      }
+      return copy;
+    };
+    if (guides.kind === "vertical") {
+      mirrors.push(cloneWith((x, y) => [2 * cx - x, y]));
+    } else if (guides.kind === "horizontal") {
+      mirrors.push(cloneWith((x, y) => [x, 2 * cy - y]));
+    } else if (guides.kind === "quadrant") {
+      mirrors.push(cloneWith((x, y) => [2 * cx - x, y]));
+      mirrors.push(cloneWith((x, y) => [x, 2 * cy - y]));
+      mirrors.push(cloneWith((x, y) => [2 * cx - x, 2 * cy - y]));
+    } else if (guides.kind === "radial") {
+      const sectors = guides.sectors || 8;
+      for (let i = 1; i < sectors; i++) {
+        const a = (i * 2 * Math.PI) / sectors;
+        const cos = Math.cos(a), sin = Math.sin(a);
+        mirrors.push(cloneWith((x, y) => {
+          const ox = x - cx, oy = y - cy;
+          return [Math.round(cx + ox * cos - oy * sin), Math.round(cy + ox * sin + oy * cos)];
+        }));
+      }
+    } else {
+      return { ok: false, error: "active guide is not a symmetry guide" };
+    }
+    let added = 0;
+    for (const m of mirrors) {
+      if (layer.strokes.length >= ART_MAX_STROKES_PER_LAYER) break;
+      layer.strokes.push(m); added += 1;
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { mirrored: added, strokeCount: layer.strokes.length } };
+  });
+
+  // ── 6. Timelapse recording of the drawing session ───────────────────
+  // A timelapse is an ordered list of compact frames (timestamp + a
+  // canvas data-URL or a stroke-count checkpoint) the client can scrub.
+  registerLensAction("art", "timelapse-start", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    art.timelapse = { recording: true, frames: [], startedAt: atNow() };
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { recording: true, startedAt: art.timelapse.startedAt } };
+  });
+
+  registerLensAction("art", "timelapse-frame", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    if (!art.timelapse || !art.timelapse.recording) {
+      return { ok: false, error: "timelapse is not recording" };
+    }
+    const snapshot = String(params.snapshot || "");
+    if (!snapshot.startsWith("data:image/") || snapshot.length > 500000) {
+      return { ok: false, error: "snapshot must be a data URL under 500KB" };
+    }
+    const strokeCount = art.layers.reduce((n, l) => n + l.strokes.length, 0);
+    art.timelapse.frames.push({ t: Date.now(), snapshot, strokeCount });
+    if (art.timelapse.frames.length > ART_MAX_TIMELAPSE_FRAMES) {
+      // keep it scrubbable — drop every other older frame
+      art.timelapse.frames = art.timelapse.frames.filter((_, i) => i % 2 === 0);
+    }
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { frameCount: art.timelapse.frames.length, strokeCount } };
+  });
+
+  registerLensAction("art", "timelapse-stop", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    if (!art.timelapse) return { ok: false, error: "no timelapse to stop" };
+    art.timelapse.recording = false;
+    art.timelapse.stoppedAt = atNow();
+    art.updatedAt = atNow();
+    saveArtState();
+    return {
+      ok: true,
+      result: {
+        recording: false,
+        frameCount: art.timelapse.frames.length,
+        durationMs: art.timelapse.frames.length > 1
+          ? art.timelapse.frames[art.timelapse.frames.length - 1].t - art.timelapse.frames[0].t
+          : 0,
+      },
+    };
+  });
+
+  registerLensAction("art", "timelapse-get", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const tl = art.timelapse;
+    if (!tl) return { ok: true, result: { recording: false, frameCount: 0, frames: [] } };
+    const includeFrames = params.includeFrames !== false;
+    return {
+      ok: true,
+      result: {
+        recording: !!tl.recording,
+        startedAt: tl.startedAt || null,
+        stoppedAt: tl.stoppedAt || null,
+        frameCount: tl.frames.length,
+        frames: includeFrames ? tl.frames : [],
+      },
+    };
+  });
+
+  registerLensAction("art", "timelapse-clear", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const had = art.timelapse ? art.timelapse.frames.length : 0;
+    art.timelapse = null;
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { cleared: had } };
+  });
+
+  // ── 7. Gradient tool + pattern fills ─────────────────────────────────
+  // A gradient or pattern is committed as a special element kind the
+  // client paints; persisted in the layer stroke list so it composites
+  // and undoes like any other element.
+  registerLensAction("art", "gradient-commit", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const gradKind = ART_GRADIENT_KINDS.includes(String(params.gradientKind))
+      ? String(params.gradientKind) : "linear";
+    const rawStops = Array.isArray(params.stops) ? params.stops : [];
+    const stops = [];
+    for (const st of rawStops.slice(0, 16)) {
+      const color = atHex(st && st.color);
+      if (!color) continue;
+      stops.push({ color, offset: atClamp(st.offset, 0, 1, 0) });
+    }
+    if (stops.length < 2) return { ok: false, error: "a gradient needs at least 2 valid color stops" };
+    stops.sort((a, b) => a.offset - b.offset);
+    const el = {
+      id: atId("stk"), kind: "gradient", gradientKind: gradKind,
+      stops, opacity: atClamp(params.opacity, 0.01, 1, 1),
+      x1: Math.round(atClamp(params.x1, 0, art.width, 0)),
+      y1: Math.round(atClamp(params.y1, 0, art.height, 0)),
+      x2: Math.round(atClamp(params.x2, 0, art.width, art.width)),
+      y2: Math.round(atClamp(params.y2, 0, art.height, art.height)),
+    };
+    layer.strokes.push(el);
+    layer.redo = [];
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { elementId: el.id, strokeCount: layer.strokes.length } };
+  });
+
+  registerLensAction("art", "pattern-fill-commit", (ctx, _a, params = {}) => {
+    const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = findArt(s, atAid(ctx), params.artworkId);
+    if (!art) return { ok: false, error: "artwork not found" };
+    const layer = art.layers.find((l) => l.id === params.layerId);
+    if (!layer) return { ok: false, error: "layer not found" };
+    if (layer.locked) return { ok: false, error: "layer is locked" };
+    const patternKind = ART_PATTERN_KINDS.includes(String(params.patternKind))
+      ? String(params.patternKind) : "dots";
+    const fg = atHex(params.foreground) || "#222222";
+    const bg = atHex(params.background);
+    const el = {
+      id: atId("stk"), kind: "pattern", patternKind,
+      foreground: fg, background: bg || null,
+      scale: atClamp(params.scale, 2, 200, 16),
+      opacity: atClamp(params.opacity, 0.01, 1, 1),
+      // optional bounding box; absent = fill whole layer
+      x: params.x != null ? Math.round(atClamp(params.x, 0, art.width, 0)) : null,
+      y: params.y != null ? Math.round(atClamp(params.y, 0, art.height, 0)) : null,
+      w: params.w != null ? Math.round(atClamp(params.w, 0, art.width, art.width)) : null,
+      h: params.h != null ? Math.round(atClamp(params.h, 0, art.height, art.height)) : null,
+    };
+    layer.strokes.push(el);
+    layer.redo = [];
+    art.updatedAt = atNow();
+    saveArtState();
+    return { ok: true, result: { elementId: el.id, strokeCount: layer.strokes.length, patternKinds: ART_PATTERN_KINDS } };
+  });
+
+  registerLensAction("art", "pattern-kinds", (_ctx, _a, _params = {}) => {
+    return {
+      ok: true,
+      result: {
+        patternKinds: ART_PATTERN_KINDS,
+        gradientKinds: ART_GRADIENT_KINDS,
+        filterKinds: ART_FILTER_KINDS,
+        guideKinds: ART_GUIDE_KINDS,
+      },
+    };
   });
 
   // ── Dashboard ───────────────────────────────────────────────────────

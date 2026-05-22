@@ -206,7 +206,10 @@ export function RecipeBoxSection() {
                 {recipes.map(r => (
                   <div key={r.id} className="rounded border border-white/10 bg-black/30 overflow-hidden group">
                     <div className="aspect-video bg-black/40">
-                      {r.photoUrl ? <img src={r.photoUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ChefHat className="w-8 h-8 text-gray-700" /></div>}
+                      {r.photoUrl
+                        // eslint-disable-next-line @next/next/no-img-element -- recipe photos come from arbitrary external cooking sites
+                        ? <img src={r.photoUrl} alt="" className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center"><ChefHat className="w-8 h-8 text-gray-700" /></div>}
                     </div>
                     <div className="p-2.5">
                       <div className="text-sm text-white font-medium truncate">{r.title}</div>

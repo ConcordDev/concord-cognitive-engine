@@ -430,4 +430,585 @@ export default function registerMetalearningActions(registerLensAction) {
       },
     };
   });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Learning-science practice substrate (per-user, STATE-backed)
+  // Spaced repetition, learning plans, technique library, progress
+  // analytics, goal tracking, strategy A/B experiments, study journal.
+  // ──────────────────────────────────────────────────────────────────────
+
+  function getMLState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.metalearningLens) STATE.metalearningLens = {};
+    const ml = STATE.metalearningLens;
+    if (!(ml.cards instanceof Map)) ml.cards = new Map();         // userId -> Array<reviewCard>
+    if (!(ml.plans instanceof Map)) ml.plans = new Map();         // userId -> Array<plan>
+    if (!(ml.goals instanceof Map)) ml.goals = new Map();         // userId -> Array<goal>
+    if (!(ml.experiments instanceof Map)) ml.experiments = new Map(); // userId -> Array<experiment>
+    if (!(ml.journal instanceof Map)) ml.journal = new Map();     // userId -> Array<entry>
+    return ml;
+  }
+  function saveML() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const mlId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const mlActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const mlClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
+  const mlNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const mlList = (m, userId) => { if (!m.has(userId)) m.set(userId, []); return m.get(userId); };
+  const DAY_MS = 86400000;
+
+  // ─── Spaced-repetition scheduler (SM-2 derived) ─────────────────────────
+
+  registerLensAction("metalearning", "srsAddCard", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const front = mlClean(params.front, 500);
+      if (!front) return { ok: false, error: "card front (prompt) required" };
+      const now = Date.now();
+      const card = {
+        id: mlId("card"),
+        front,
+        back: mlClean(params.back, 2000),
+        topic: mlClean(params.topic, 160) || "general",
+        ease: 2.5,
+        intervalDays: 0,
+        repetitions: 0,
+        lapses: 0,
+        dueAt: now,
+        createdAt: new Date(now).toISOString(),
+        lastReviewedAt: null,
+        history: [],
+      };
+      mlList(s.cards, mlActor(ctx)).push(card);
+      saveML();
+      return { ok: true, result: { card } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "srsReview", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cards = mlList(s.cards, mlActor(ctx));
+      const card = cards.find((c) => c.id === params.cardId);
+      if (!card) return { ok: false, error: "card not found" };
+      // grade 0-5 (SM-2): <3 is a lapse
+      const grade = Math.max(0, Math.min(5, Math.round(mlNum(params.grade, 3))));
+      const now = Date.now();
+      if (grade < 3) {
+        card.repetitions = 0;
+        card.intervalDays = 1;
+        card.lapses += 1;
+      } else {
+        if (card.repetitions === 0) card.intervalDays = 1;
+        else if (card.repetitions === 1) card.intervalDays = 6;
+        else card.intervalDays = Math.round(card.intervalDays * card.ease);
+        card.repetitions += 1;
+      }
+      // ease update (SM-2 formula), floored at 1.3
+      card.ease = Math.max(1.3, Math.round((card.ease + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))) * 1000) / 1000);
+      card.dueAt = now + card.intervalDays * DAY_MS;
+      card.lastReviewedAt = new Date(now).toISOString();
+      card.history.push({ at: new Date(now).toISOString(), grade, intervalDays: card.intervalDays, ease: card.ease });
+      if (card.history.length > 50) card.history = card.history.slice(-50);
+      saveML();
+      return { ok: true, result: { card, nextDueInDays: card.intervalDays } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "srsDue", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cards = mlList(s.cards, mlActor(ctx));
+      const now = Date.now();
+      const topic = params.topic ? mlClean(params.topic, 160) : null;
+      const scoped = topic ? cards.filter((c) => c.topic === topic) : cards;
+      const due = scoped.filter((c) => c.dueAt <= now)
+        .sort((a, b) => a.dueAt - b.dueAt)
+        .map((c) => ({ ...c, history: undefined, overdueDays: Math.round((now - c.dueAt) / DAY_MS) }));
+      const upcoming = scoped.filter((c) => c.dueAt > now)
+        .map((c) => ({ id: c.id, front: c.front, topic: c.topic, dueInDays: Math.ceil((c.dueAt - now) / DAY_MS) }))
+        .sort((a, b) => a.dueInDays - b.dueInDays);
+      return {
+        ok: true,
+        result: {
+          dueNow: due,
+          dueCount: due.length,
+          upcoming: upcoming.slice(0, 30),
+          totalCards: scoped.length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "srsDeleteCard", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const m = s.cards; const userId = mlActor(ctx);
+      const arr = mlList(m, userId);
+      const idx = arr.findIndex((c) => c.id === params.cardId);
+      if (idx < 0) return { ok: false, error: "card not found" };
+      arr.splice(idx, 1);
+      saveML();
+      return { ok: true, result: { deleted: params.cardId, remaining: arr.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── Learning-plan builder ──────────────────────────────────────────────
+
+  registerLensAction("metalearning", "planCreate", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const title = mlClean(params.title, 200);
+      if (!title) return { ok: false, error: "plan title required" };
+      const rawTopics = Array.isArray(params.topics) ? params.topics : [];
+      const topics = rawTopics.map((t, i) => {
+        const name = typeof t === "string" ? t : mlClean(t?.name, 200);
+        return {
+          id: mlId("step"),
+          order: i + 1,
+          name: name || `Topic ${i + 1}`,
+          estimatedHours: Math.max(0, mlNum(typeof t === "object" ? t?.estimatedHours : 0, 4)),
+          milestone: typeof t === "object" ? mlClean(t?.milestone, 200) : "",
+          done: false,
+        };
+      }).filter((t) => t.name);
+      const plan = {
+        id: mlId("plan"),
+        title,
+        goal: mlClean(params.goal, 500),
+        topics,
+        createdAt: new Date().toISOString(),
+      };
+      mlList(s.plans, mlActor(ctx)).push(plan);
+      saveML();
+      return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "planList", (ctx, _a, _params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const plans = mlList(s.plans, mlActor(ctx)).map((p) => {
+        const total = p.topics.length;
+        const done = p.topics.filter((t) => t.done).length;
+        const totalHours = p.topics.reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
+        const remainingHours = p.topics.filter((t) => !t.done).reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
+        return {
+          ...p,
+          progress: total > 0 ? Math.round((done / total) * 1000) / 1000 : 0,
+          stepsDone: done,
+          stepsTotal: total,
+          totalHours,
+          remainingHours,
+        };
+      });
+      return { ok: true, result: { plans, count: plans.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "planToggleStep", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const plan = mlList(s.plans, mlActor(ctx)).find((p) => p.id === params.planId);
+      if (!plan) return { ok: false, error: "plan not found" };
+      const step = plan.topics.find((t) => t.id === params.stepId);
+      if (!step) return { ok: false, error: "step not found" };
+      step.done = params.done != null ? !!params.done : !step.done;
+      saveML();
+      const done = plan.topics.filter((t) => t.done).length;
+      return { ok: true, result: { step, progress: plan.topics.length ? Math.round((done / plan.topics.length) * 1000) / 1000 : 0 } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── Technique library (learning-science methods) ───────────────────────
+
+  const TECHNIQUES = [
+    {
+      id: "retrieval_practice",
+      name: "Retrieval Practice",
+      summary: "Actively recall information from memory instead of re-reading it.",
+      whenToUse: "Consolidating facts, concepts, and procedures into durable memory.",
+      steps: [
+        "Close the source material.",
+        "Write or say everything you can remember about the topic.",
+        "Check against the source and note gaps.",
+        "Re-test the gaps after a delay.",
+      ],
+      evidence: "One of the most robust effects in cognitive science (the testing effect).",
+      strength: 0.95,
+    },
+    {
+      id: "spaced_repetition",
+      name: "Spaced Repetition",
+      summary: "Review material at expanding intervals timed near the point of forgetting.",
+      whenToUse: "Long-term retention of large bodies of discrete knowledge.",
+      steps: [
+        "Break material into atomic question/answer cards.",
+        "Review on a schedule that lengthens after each success.",
+        "Reset the interval when you fail a card.",
+      ],
+      evidence: "The spacing effect — distributed practice beats massed practice.",
+      strength: 0.92,
+    },
+    {
+      id: "interleaving",
+      name: "Interleaving",
+      summary: "Mix related but distinct topics or problem types within a session.",
+      whenToUse: "Building discrimination skill across similar concepts or problem categories.",
+      steps: [
+        "Pick 3-4 related problem types.",
+        "Shuffle them rather than blocking by type.",
+        "Force yourself to identify which approach each problem needs.",
+      ],
+      evidence: "Improves transfer and discrimination at a cost to short-term fluency.",
+      strength: 0.85,
+    },
+    {
+      id: "elaboration",
+      name: "Elaborative Interrogation",
+      summary: "Explain how and why facts are true, connecting them to what you know.",
+      whenToUse: "Deepening understanding and integrating new material with prior knowledge.",
+      steps: [
+        "For each new fact ask 'why is this true?'",
+        "Generate an explanation in your own words.",
+        "Link it to a concrete example or analogy.",
+      ],
+      evidence: "Elaboration builds richer, more retrievable memory traces.",
+      strength: 0.8,
+    },
+    {
+      id: "dual_coding",
+      name: "Dual Coding",
+      summary: "Combine verbal explanations with visual representations.",
+      whenToUse: "Complex systems, processes, or spatial/relational information.",
+      steps: [
+        "Read or hear the verbal explanation.",
+        "Draw a diagram, graph, or sketch capturing the same idea.",
+        "Re-explain the concept using only your visual.",
+      ],
+      evidence: "Two complementary memory channels strengthen recall.",
+      strength: 0.78,
+    },
+    {
+      id: "self_explanation",
+      name: "Self-Explanation",
+      summary: "Narrate your reasoning steps aloud while working through material.",
+      whenToUse: "Procedural skills, worked examples, and problem-solving.",
+      steps: [
+        "Work a problem one step at a time.",
+        "Explain why each step follows from the previous.",
+        "Flag steps you cannot justify and study those.",
+      ],
+      evidence: "Surfaces gaps and builds a connected mental model.",
+      strength: 0.82,
+    },
+    {
+      id: "feynman",
+      name: "Feynman Technique",
+      summary: "Teach the concept in plain language as if to a beginner.",
+      whenToUse: "Checking whether understanding is genuine rather than superficial.",
+      steps: [
+        "Write the concept name at the top of a page.",
+        "Explain it simply, no jargon.",
+        "Identify where the explanation breaks down and restudy.",
+        "Simplify and use analogies.",
+      ],
+      evidence: "Plain-language teaching exposes hidden gaps in understanding.",
+      strength: 0.83,
+    },
+  ];
+
+  registerLensAction("metalearning", "techniqueLibrary", (_ctx, _a, params = {}) => {
+    try {
+      const q = params.query ? mlClean(params.query, 120).toLowerCase() : null;
+      let list = TECHNIQUES;
+      if (q) {
+        list = TECHNIQUES.filter((t) =>
+          t.name.toLowerCase().includes(q) ||
+          t.summary.toLowerCase().includes(q) ||
+          t.whenToUse.toLowerCase().includes(q));
+      }
+      if (params.id) {
+        const one = TECHNIQUES.find((t) => t.id === params.id);
+        return one ? { ok: true, result: { technique: one } } : { ok: false, error: "technique not found" };
+      }
+      return { ok: true, result: { techniques: list, count: list.length, total: TECHNIQUES.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── Progress analytics — retention curves, time-to-mastery ──────────────
+
+  registerLensAction("metalearning", "progressAnalytics", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cards = mlList(s.cards, mlActor(ctx));
+      const journal = mlList(s.journal, mlActor(ctx));
+      const topic = params.topic ? mlClean(params.topic, 160) : null;
+      const scoped = topic ? cards.filter((c) => c.topic === topic) : cards;
+
+      // Retention curve: bucket reviews by interval, success = grade >= 3.
+      const buckets = {};
+      let totalReviews = 0;
+      let totalSuccess = 0;
+      for (const c of scoped) {
+        for (const h of (c.history || [])) {
+          totalReviews += 1;
+          const ok = h.grade >= 3;
+          if (ok) totalSuccess += 1;
+          const bk = h.intervalDays <= 1 ? "1d"
+            : h.intervalDays <= 7 ? "1w"
+              : h.intervalDays <= 30 ? "1m"
+                : h.intervalDays <= 90 ? "3m" : "3m+";
+          if (!buckets[bk]) buckets[bk] = { total: 0, success: 0 };
+          buckets[bk].total += 1;
+          if (ok) buckets[bk].success += 1;
+        }
+      }
+      const order = ["1d", "1w", "1m", "3m", "3m+"];
+      const retentionCurve = order
+        .filter((k) => buckets[k])
+        .map((k) => ({
+          interval: k,
+          reviews: buckets[k].total,
+          retention: Math.round((buckets[k].success / buckets[k].total) * 1000) / 1000,
+        }));
+
+      // Per-topic time-to-mastery: a card is "mastered" once repetitions >= 3
+      // with current ease >= 2.3. Estimate calendar days from create→last review.
+      const topicAgg = {};
+      for (const c of scoped) {
+        const t = c.topic || "general";
+        if (!topicAgg[t]) topicAgg[t] = { cards: 0, mastered: 0, daysSum: 0, daysN: 0, avgEase: 0 };
+        topicAgg[t].cards += 1;
+        topicAgg[t].avgEase += c.ease;
+        const mastered = c.repetitions >= 3 && c.ease >= 2.3;
+        if (mastered && c.lastReviewedAt) {
+          topicAgg[t].mastered += 1;
+          const days = (new Date(c.lastReviewedAt).getTime() - new Date(c.createdAt).getTime()) / DAY_MS;
+          if (days >= 0) { topicAgg[t].daysSum += days; topicAgg[t].daysN += 1; }
+        }
+      }
+      const timeToMastery = Object.entries(topicAgg).map(([t, a]) => ({
+        topic: t,
+        cards: a.cards,
+        mastered: a.mastered,
+        masteryRate: a.cards ? Math.round((a.mastered / a.cards) * 1000) / 1000 : 0,
+        avgDaysToMastery: a.daysN ? Math.round((a.daysSum / a.daysN) * 10) / 10 : null,
+        avgEase: a.cards ? Math.round((a.avgEase / a.cards) * 1000) / 1000 : 0,
+      })).sort((a, b) => b.masteryRate - a.masteryRate);
+
+      return {
+        ok: true,
+        result: {
+          totalReviews,
+          overallRetention: totalReviews ? Math.round((totalSuccess / totalReviews) * 1000) / 1000 : 0,
+          retentionCurve,
+          timeToMastery,
+          studySessions: journal.length,
+          cardsTracked: scoped.length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── Goal setting & tracking ────────────────────────────────────────────
+
+  registerLensAction("metalearning", "goalCreate", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const title = mlClean(params.title, 200);
+      if (!title) return { ok: false, error: "goal title required" };
+      const goal = {
+        id: mlId("goal"),
+        title,
+        metric: mlClean(params.metric, 120) || "completion",
+        targetValue: mlNum(params.targetValue, 100),
+        currentValue: mlNum(params.currentValue, 0),
+        deadline: params.deadline ? mlClean(params.deadline, 40) : null,
+        status: "active",
+        checkIns: [],
+        createdAt: new Date().toISOString(),
+      };
+      mlList(s.goals, mlActor(ctx)).push(goal);
+      saveML();
+      return { ok: true, result: { goal } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "goalCheckIn", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const goal = mlList(s.goals, mlActor(ctx)).find((g) => g.id === params.goalId);
+      if (!goal) return { ok: false, error: "goal not found" };
+      goal.currentValue = mlNum(params.value, goal.currentValue);
+      goal.checkIns.push({
+        at: new Date().toISOString(),
+        value: goal.currentValue,
+        note: mlClean(params.note, 500),
+      });
+      if (goal.checkIns.length > 100) goal.checkIns = goal.checkIns.slice(-100);
+      if (goal.targetValue > 0 && goal.currentValue >= goal.targetValue) goal.status = "achieved";
+      else if (params.status && ["active", "paused", "abandoned", "achieved"].includes(params.status)) goal.status = params.status;
+      saveML();
+      return {
+        ok: true,
+        result: { goal, progress: goal.targetValue > 0 ? Math.round((goal.currentValue / goal.targetValue) * 1000) / 1000 : 0 },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "goalList", (ctx, _a, _params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const goals = mlList(s.goals, mlActor(ctx)).map((g) => ({
+        ...g,
+        progress: g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 1000) / 1000 : 0,
+        checkInCount: g.checkIns.length,
+      }));
+      const active = goals.filter((g) => g.status === "active").length;
+      const achieved = goals.filter((g) => g.status === "achieved").length;
+      return { ok: true, result: { goals, count: goals.length, active, achieved } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── Strategy A/B experiment ────────────────────────────────────────────
+
+  registerLensAction("metalearning", "experimentCreate", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const title = mlClean(params.title, 200);
+      const a = mlClean(params.strategyA, 160);
+      const b = mlClean(params.strategyB, 160);
+      if (!title || !a || !b) return { ok: false, error: "title, strategyA and strategyB required" };
+      const exp = {
+        id: mlId("exp"),
+        title,
+        hypothesis: mlClean(params.hypothesis, 500),
+        strategyA: { name: a, trials: [] },
+        strategyB: { name: b, trials: [] },
+        status: "running",
+        createdAt: new Date().toISOString(),
+      };
+      mlList(s.experiments, mlActor(ctx)).push(exp);
+      saveML();
+      return { ok: true, result: { experiment: exp } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "experimentRecordTrial", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const exp = mlList(s.experiments, mlActor(ctx)).find((e) => e.id === params.experimentId);
+      if (!exp) return { ok: false, error: "experiment not found" };
+      const arm = params.arm === "B" ? "strategyB" : params.arm === "A" ? "strategyA" : null;
+      if (!arm) return { ok: false, error: "arm must be 'A' or 'B'" };
+      const score = mlNum(params.score, NaN);
+      if (!Number.isFinite(score)) return { ok: false, error: "numeric score required" };
+      exp[arm].trials.push({
+        at: new Date().toISOString(),
+        score,
+        note: mlClean(params.note, 300),
+      });
+      saveML();
+      return { ok: true, result: { arm, trialCount: exp[arm].trials.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "experimentList", (ctx, _a, _params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const stats = (arm) => {
+        const scores = arm.trials.map((t) => t.score);
+        const n = scores.length;
+        const mean = n ? scores.reduce((a, b) => a + b, 0) / n : 0;
+        const variance = n > 1 ? scores.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1) : 0;
+        return { name: arm.name, n, mean: Math.round(mean * 1000) / 1000, stdDev: Math.round(Math.sqrt(variance) * 1000) / 1000 };
+      };
+      const experiments = mlList(s.experiments, mlActor(ctx)).map((e) => {
+        const a = stats(e.strategyA);
+        const b = stats(e.strategyB);
+        let winner = null;
+        let effectSize = 0;
+        let confidence = "insufficient-data";
+        if (a.n >= 2 && b.n >= 2) {
+          const diff = a.mean - b.mean;
+          // pooled SD for a Cohen's-d style effect size
+          const pooled = Math.sqrt((a.stdDev ** 2 + b.stdDev ** 2) / 2) || 1e-9;
+          effectSize = Math.round((diff / pooled) * 1000) / 1000;
+          winner = diff > 0 ? "A" : diff < 0 ? "B" : "tie";
+          const abs = Math.abs(effectSize);
+          confidence = abs >= 0.8 ? "large" : abs >= 0.5 ? "medium" : abs >= 0.2 ? "small" : "negligible";
+        }
+        return { ...e, summary: { armA: a, armB: b, winner, effectSize, confidence } };
+      });
+      return { ok: true, result: { experiments, count: experiments.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── Reflection / study-log journaling ──────────────────────────────────
+
+  registerLensAction("metalearning", "journalAdd", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const reflection = mlClean(params.reflection, 4000);
+      if (!reflection) return { ok: false, error: "reflection text required" };
+      const entry = {
+        id: mlId("log"),
+        topic: mlClean(params.topic, 160) || "general",
+        technique: mlClean(params.technique, 160) || "",
+        minutesStudied: Math.max(0, Math.round(mlNum(params.minutesStudied, 0))),
+        effectiveness: Math.max(1, Math.min(5, Math.round(mlNum(params.effectiveness, 3)))),
+        reflection,
+        createdAt: new Date().toISOString(),
+      };
+      mlList(s.journal, mlActor(ctx)).push(entry);
+      saveML();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "journalList", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      let entries = mlList(s.journal, mlActor(ctx)).slice();
+      if (params.topic) {
+        const t = mlClean(params.topic, 160);
+        entries = entries.filter((e) => e.topic === t);
+      }
+      entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const totalMinutes = entries.reduce((sum, e) => sum + (e.minutesStudied || 0), 0);
+
+      // Effectiveness by technique — links study log to technique outcomes.
+      const byTechnique = {};
+      for (const e of entries) {
+        const tk = e.technique || "(unspecified)";
+        if (!byTechnique[tk]) byTechnique[tk] = { sessions: 0, effSum: 0, minutes: 0 };
+        byTechnique[tk].sessions += 1;
+        byTechnique[tk].effSum += e.effectiveness;
+        byTechnique[tk].minutes += e.minutesStudied || 0;
+      }
+      const techniqueEffectiveness = Object.entries(byTechnique)
+        .map(([technique, a]) => ({
+          technique,
+          sessions: a.sessions,
+          avgEffectiveness: Math.round((a.effSum / a.sessions) * 100) / 100,
+          totalMinutes: a.minutes,
+        }))
+        .sort((a, b) => b.avgEffectiveness - a.avgEffectiveness);
+
+      return {
+        ok: true,
+        result: {
+          entries: entries.slice(0, mlNum(params.limit, 100)),
+          count: entries.length,
+          totalMinutes,
+          techniqueEffectiveness,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
 }

@@ -716,3 +716,278 @@ describe("crypto — market-overview", () => {
     assert.match(r.error, /coingecko unreachable/);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  2026 backlog — on-chain sync, price streaming, allocation +
+//  rebalancing, CSV import, push alert delivery.
+// ═════════════════════════════════════════════════════════════════
+
+describe("crypto — onchain-sync (read-only public RPC)", () => {
+  it("rejects a malformed EVM address", async () => {
+    const r = await call("onchain-sync", ctxCr, { address: "not-an-address", chain: "ethereum" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /valid 0x EVM address/);
+  });
+
+  it("rejects an unsupported chain", async () => {
+    const r = await call("onchain-sync", ctxCr, { address: "0x" + "a".repeat(40), chain: "dogechain" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /unsupported chain/);
+  });
+
+  it("imports an eth_getBalance result as a zero-cost observation lot", async () => {
+    // 1.5 ETH = 1500000000000000000 wei = 0x14d1120d7b160000
+    globalThis.fetch = async (url, opts) => {
+      assert.match(url, /publicnode\.com/);
+      const body = JSON.parse(opts.body);
+      assert.equal(body.method, "eth_getBalance");
+      return { ok: true, json: async () => ({ jsonrpc: "2.0", id: 1, result: "0x14d1120d7b160000" }) };
+    };
+    const addr = "0xab5801a7d398351b8be11c439e05c5b3259aec9b";
+    const r = await call("onchain-sync", ctxCr, { address: addr, chain: "ethereum" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.balance, 1.5);
+    assert.equal(r.result.lot.qty, 1.5);
+    assert.equal(r.result.lot.costBasisUsd, 0);
+    assert.equal(r.result.lot.onchain, true);
+    // Sync metadata is queryable
+    const syncs = call("onchain-syncs-list", ctxCr);
+    assert.equal(syncs.result.syncs.length, 1);
+    assert.equal(syncs.result.syncs[0].address, addr);
+  });
+
+  it("re-sync replaces the prior synced lot rather than summing", async () => {
+    const addr = "0xab5801a7d398351b8be11c439e05c5b3259aec9b";
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ result: "0x14d1120d7b160000" }) }); // 1.5
+    await call("onchain-sync", ctxCr, { address: addr, chain: "ethereum" });
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ result: "0x1bc16d674ec80000" }) }); // 2.0
+    await call("onchain-sync", ctxCr, { address: addr, chain: "ethereum" });
+    stubPriceFetch({ ethereum: 3000 });
+    const holdings = await call("holdings-list", ctxCr);
+    const eth = holdings.result.holdings.find(h => h.symbol === "ethereum");
+    assert.equal(eth.qty, 2); // replaced, not 3.5
+  });
+
+  it("surfaces an RPC failure verbatim", async () => {
+    globalThis.fetch = async () => { throw new Error("connection refused"); };
+    const r = await call("onchain-sync", ctxCr, { address: "0x" + "b".repeat(40), chain: "ethereum" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /RPC unreachable/);
+  });
+});
+
+describe("crypto — price-stream (live P&L ticker)", () => {
+  it("returns an empty tick set when no holdings and no extra symbols", async () => {
+    const r = await call("price-stream", ctxCr);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.ticks, []);
+    assert.equal(r.result.totalValueUsd, 0);
+  });
+
+  it("computes live total value + unrealized P&L for held symbols", async () => {
+    stubPriceFetch({ bitcoin: 70000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 60000 });
+    const r = await call("price-stream", ctxCr);
+    assert.equal(r.ok, true);
+    const btc = r.result.ticks.find(t => t.symbol === "bitcoin");
+    assert.equal(btc.priceUsd, 70000);
+    assert.equal(btc.valueUsd, 70000);
+    assert.equal(btc.unrealizedPnlUsd, 10000);
+    assert.equal(r.result.totalValueUsd, 70000);
+    assert.equal(r.result.unrealizedPnlUsd, 10000);
+  });
+
+  it("tracks extra (watchlist) symbols with zero qty", async () => {
+    stubPriceFetch({ bitcoin: 70000, solana: 150 });
+    const r = await call("price-stream", ctxCr, { symbols: ["solana"] });
+    assert.equal(r.ok, true);
+    const sol = r.result.ticks.find(t => t.symbol === "solana");
+    assert.equal(sol.priceUsd, 150);
+    assert.equal(sol.qty, 0);
+    // No holdings → the position is worth $0 (truthful zero, not a guess).
+    assert.equal(sol.valueUsd, 0);
+    assert.equal(sol.unrealizedPnlUsd, 0);
+  });
+});
+
+describe("crypto — allocation-breakdown + rebalancing", () => {
+  it("returns empty breakdown with no holdings", async () => {
+    const r = await call("allocation-breakdown", ctxCr);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.breakdown, []);
+    assert.deepEqual(r.result.rebalance, []);
+  });
+
+  it("computes equal-weight target + rebalancing suggestions", async () => {
+    stubPriceFetch({ bitcoin: 90000, ethereum: 10000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 90000 });
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 1, costBasisUsd: 10000 });
+    // value: BTC 90k (90%), ETH 10k (10%); equal-weight target 50/50
+    const r = await call("allocation-breakdown", ctxCr);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.targetMode, "equal-weight");
+    const btc = r.result.breakdown.find(b => b.symbol === "bitcoin");
+    assert.equal(btc.currentPct, 90);
+    assert.equal(btc.targetPct, 50);
+    assert.equal(btc.driftPct, 40);
+    // BTC over-weight → sell suggestion of 40k
+    const sell = r.result.rebalance.find(x => x.symbol === "bitcoin");
+    assert.equal(sell.action, "sell");
+    assert.equal(sell.deltaUsd, 40000);
+    // ETH under-weight → buy
+    const buy = r.result.rebalance.find(x => x.symbol === "ethereum");
+    assert.equal(buy.action, "buy");
+  });
+
+  it("honours a custom target allocation and normalises it", async () => {
+    stubPriceFetch({ bitcoin: 50000, ethereum: 50000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 50000 });
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 1, costBasisUsd: 50000 });
+    // Targets sum to 200 → normalised to 100; bitcoin 80%, ethereum 20%
+    const r = await call("allocation-breakdown", ctxCr, { targets: { bitcoin: 160, ethereum: 40 } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.targetMode, "custom");
+    const btc = r.result.breakdown.find(b => b.symbol === "bitcoin");
+    assert.equal(btc.targetPct, 80);
+  });
+});
+
+describe("crypto — import-csv (cost-basis import)", () => {
+  it("rejects empty CSV", () => {
+    const r = call("import-csv", ctxCr, { csv: "" });
+    assert.equal(r.ok, false);
+  });
+
+  it("rejects a CSV missing required columns", () => {
+    const r = call("import-csv", ctxCr, { csv: "foo,bar\n1,2" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /type, symbol, and qty/);
+  });
+
+  it("imports buy rows as lots and sell rows as FIFO closes", () => {
+    const csv = [
+      "Date,Type,Symbol,Quantity,Total,Fee",
+      "2024-01-10,Buy,BTC,1,40000,10",
+      "2024-06-15,Buy,BTC,0.5,30000,5",
+      "2025-02-01,Sell,BTC,1,60000,20",
+    ].join("\n");
+    const r = call("import-csv", ctxCr, { csv });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.buyCount, 2);
+    assert.equal(r.result.sellCount, 1);
+    assert.equal(r.result.errorCount, 0);
+    // FIFO sell of 1 BTC closes the first lot (cost 40010) → realized 60000-40010 = 19990
+    const txns = call("transactions-list", ctxCr, { kind: "sell" });
+    assert.equal(txns.result.transactions[0].realizedPnlUsd, 19990);
+  });
+
+  it("derives total from price when total column is absent", () => {
+    const csv = "type,symbol,qty,price\nbuy,eth,2,1500";
+    const r = call("import-csv", ctxCr, { csv });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.buyCount, 1);
+    assert.equal(r.result.imported[0].totalUsd, 3000);
+  });
+
+  it("collects per-row errors without aborting the import", () => {
+    // Row 2 imports cleanly; row 3 has an empty symbol; row 4 an unknown type.
+    const csv = "type,symbol,qty,price\nbuy,btc,1,40000\nbuy,,5,100\nbogus,eth,2,3000";
+    const r = call("import-csv", ctxCr, { csv });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.buyCount, 1);
+    assert.equal(r.result.errorCount, 2);
+  });
+});
+
+describe("crypto — push alert delivery", () => {
+  it("delivers triggered alerts and persists notifications", async () => {
+    call("price-alerts-create", ctxCr, { tokenId: "bitcoin", symbol: "BTC", direction: "above", threshold: 60000 });
+    // CoinGecko mock: price above the threshold
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ bitcoin: { usd: 70000 } }) });
+    const r = await call("alert-deliver", ctxCr);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.delivered.length, 1);
+    assert.match(r.result.delivered[0].message, /BTC is above/);
+    // Notification persisted + queryable
+    const list = call("alert-deliveries-list", ctxCr);
+    assert.equal(list.result.deliveries.length, 1);
+    assert.equal(list.result.unreadCount, 1);
+  });
+
+  it("does not re-deliver an already-delivered alert", async () => {
+    call("price-alerts-create", ctxCr, { tokenId: "bitcoin", symbol: "BTC", direction: "above", threshold: 60000 });
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ bitcoin: { usd: 70000 } }) });
+    await call("alert-deliver", ctxCr);
+    const r2 = await call("alert-deliver", ctxCr);
+    assert.equal(r2.result.delivered.length, 0);
+    assert.equal(r2.result.checked, 0);
+  });
+
+  it("marks deliveries read", async () => {
+    call("price-alerts-create", ctxCr, { tokenId: "bitcoin", symbol: "BTC", direction: "below", threshold: 80000 });
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ bitcoin: { usd: 70000 } }) });
+    await call("alert-deliver", ctxCr);
+    const mark = call("alert-deliveries-mark-read", ctxCr);
+    assert.equal(mark.ok, true);
+    assert.equal(mark.result.unreadCount, 0);
+    const unread = call("alert-deliveries-list", ctxCr, { unreadOnly: true });
+    assert.equal(unread.result.deliveries.length, 0);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+//  Workbench-surfaced backlog macros — empty-state contracts +
+//  cross-chain filtering. These pin the shapes the PortfolioWorkbench
+//  UI consumes so a backend rename can't silently break the surface.
+// ═════════════════════════════════════════════════════════════════
+
+describe("crypto — workbench backlog surface", () => {
+  it("staking-positions-list returns an empty array before any stake", () => {
+    const r = call("staking-positions-list", ctxCr);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.positions, []);
+  });
+
+  it("staking-positions-list reflects an opened position", () => {
+    call("staking-stake", ctxCr, { symbol: "solana", ticker: "SOL", qty: 25, validator: "v.sol", aprPct: 7 });
+    const r = call("staking-positions-list", ctxCr);
+    assert.equal(r.result.positions.length, 1);
+    assert.equal(r.result.positions[0].ticker, "SOL");
+    assert.equal(r.result.positions[0].aprPct, 7);
+    assert.equal(r.result.positions[0].active, true);
+  });
+
+  it("onchain-syncs-list is empty before any sync", () => {
+    const r = call("onchain-syncs-list", ctxCr);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.syncs, []);
+  });
+
+  it("holdings-list surfaces the chains array for cross-chain filtering", async () => {
+    stubPriceFetch({ bitcoin: 65000, ethereum: 3000 });
+    call("holdings-add", ctxCr, { symbol: "bitcoin", ticker: "BTC", qty: 1, costBasisUsd: 50000, chain: "bitcoin" });
+    call("holdings-add", ctxCr, { symbol: "ethereum", ticker: "ETH", qty: 2, costBasisUsd: 4000, chain: "arbitrum" });
+    const r = await call("holdings-list", ctxCr);
+    assert.equal(r.ok, true);
+    const btc = r.result.holdings.find(h => h.symbol === "bitcoin");
+    const eth = r.result.holdings.find(h => h.symbol === "ethereum");
+    assert.deepEqual(btc.chains, ["bitcoin"]);
+    assert.deepEqual(eth.chains, ["arbitrum"]);
+  });
+
+  it("alert-deliveries-list returns a zero unread count with no deliveries", () => {
+    const r = call("alert-deliveries-list", ctxCr);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.deliveries, []);
+    assert.equal(r.result.unreadCount, 0);
+  });
+
+  it("price-stream + allocation-breakdown both no-op cleanly with an empty portfolio", async () => {
+    const ps = await call("price-stream", ctxCr);
+    assert.equal(ps.ok, true);
+    assert.equal(ps.result.totalValueUsd, 0);
+    const ab = await call("allocation-breakdown", ctxCr);
+    assert.equal(ab.ok, true);
+    assert.deepEqual(ab.result.breakdown, []);
+  });
+});

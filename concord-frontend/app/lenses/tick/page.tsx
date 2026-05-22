@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TickRate } from '@/components/tick/TickRate';
+import { MonitorPanel } from '@/components/tick/MonitorPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -602,6 +603,15 @@ export default function TickLensPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Heartbeat Monitor — Datadog / Better Uptime parity surface.
+          Real macros: heartbeatRegistry / heartbeatList / stream /
+          skipReport / alerts / latencyHistogram / heartbeatControl /
+          uptimeSLA — all fed by recordSample over genuine governor
+          tick history. */}
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <MonitorPanel />
+      </section>
 
       {/* Tabs */}
       <div className="flex gap-2">

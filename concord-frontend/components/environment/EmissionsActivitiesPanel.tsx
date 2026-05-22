@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Leaf, Plus, Trash2, Loader2, Factory, Zap, Plane } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -22,9 +22,7 @@ export function EmissionsActivitiesPanel() {
   const [filter, setFilter] = useState<'' | '1' | '2' | '3'>('');
   const [form, setForm] = useState({ factorKey: 'diesel_gallon', amount: '', date: new Date().toISOString().slice(0, 10), facility: '', category: '' });
 
-  useEffect(() => { refresh(); }, [filter]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const [a, f] = await Promise.all([
@@ -35,7 +33,9 @@ export function EmissionsActivitiesPanel() {
       setFactors((f.data?.result?.factors || []) as Factor[]);
     } catch (e) { console.error('[Activities] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [filter]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function log() {
     if (!form.amount) return;

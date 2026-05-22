@@ -21,9 +21,21 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
 import { CmaBrowser } from '@/components/gallery/CmaBrowser';
+import { SavedCollections } from '@/components/gallery/SavedCollections';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { GalleryActionPanel } from '@/components/gallery/GalleryActionPanel';
+import { DeepZoomViewer } from '@/components/gallery/DeepZoomViewer';
+import { VisualSearch } from '@/components/gallery/VisualSearch';
+import { CuratedExhibits } from '@/components/gallery/CuratedExhibits';
+import { ArtworkCompare } from '@/components/gallery/ArtworkCompare';
+import { ArtistPage } from '@/components/gallery/ArtistPage';
+import { VirtualRooms } from '@/components/gallery/VirtualRooms';
+import { Recommendations } from '@/components/gallery/Recommendations';
 import { PipingProvider } from '@/components/panel-polish';
-import { Loader2, Image as ImageIcon } from 'lucide-react';
+import {
+  Loader2, Image as ImageIcon, Sparkles, Palette, BookOpen,
+  Columns3, User, Home, Maximize2,
+} from 'lucide-react';
 
 interface Sigil {
   id: number;
@@ -105,6 +117,19 @@ function SigilSvg({ shape }: { shape: Shape }) {
   );
 }
 
+type GalleryTab = 'browse' | 'foryou' | 'visual' | 'zoom' | 'compare' | 'artist' | 'exhibits' | 'rooms';
+
+const TABS: { id: GalleryTab; label: string; icon: typeof ImageIcon }[] = [
+  { id: 'browse', label: 'Browse', icon: ImageIcon },
+  { id: 'foryou', label: 'For you', icon: Sparkles },
+  { id: 'visual', label: 'Visual search', icon: Palette },
+  { id: 'zoom', label: 'Deep zoom', icon: Maximize2 },
+  { id: 'compare', label: 'Compare', icon: Columns3 },
+  { id: 'artist', label: 'Artists', icon: User },
+  { id: 'exhibits', label: 'Exhibits', icon: BookOpen },
+  { id: 'rooms', label: 'Virtual rooms', icon: Home },
+];
+
 export default function GalleryPage() {
   useLensCommand([
     { id: 'gallery-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
@@ -112,6 +137,7 @@ export default function GalleryPage() {
 
   const [sigils, setSigils] = useState<Sigil[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<GalleryTab>('browse');
 
   useEffect(() => {
     let alive = true;
@@ -141,48 +167,95 @@ export default function GalleryPage() {
   return (
     <LensShell lensId="gallery">
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
-      {/* Phase 4 — REAL MET Museum Open Access (CC0). */}
-      <MetMuseumPanel domain="gallery" className="mb-6" />
-      <header className="mb-6 flex items-center gap-2">
+      <header className="mb-4 flex items-center gap-2">
         <ImageIcon className="w-5 h-5 text-amber-400" />
-        <h1 className="text-2xl font-bold text-zinc-100">Sigil Gallery</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          MEGA + HYPER tier DTUs render here as procedural sigils — each one a deterministic visualization of the compressed knowledge inside.
+        <h1 className="text-2xl font-bold text-zinc-100">Gallery</h1>
+        <DepthBadge lensId="gallery" size="sm" className="ml-1" />
+        <p className="ml-2 hidden sm:block text-sm text-zinc-400">
+          Live multi-museum browsing, deep-zoom, curated exhibits, visual search & virtual rooms.
         </p>
       </header>
-      {sigils.length === 0 ? (
-        <div className="text-center text-zinc-500 italic py-12 border border-zinc-800 rounded-xl">
-          No sigils yet. They appear automatically as your DTUs consolidate into MEGA tiers.
+
+      {/* Tab navigation across the full gallery feature surface */}
+      <nav className="mb-5 flex flex-wrap gap-1.5" aria-label="Gallery sections">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          const isActive = tab === t.id;
+          return (
+            <button
+              key={t.id} type="button" onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium border transition-colors ${
+                isActive
+                  ? 'border-amber-500/50 bg-amber-500/15 text-amber-200'
+                  : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+              }`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {tab === 'browse' && (
+        <div className="space-y-6">
+          {/* Phase 4 — REAL MET Museum Open Access (CC0). */}
+          <MetMuseumPanel domain="gallery" />
+
+          {/* Bespoke Cleveland Museum of Art browser with Save-as-DTU */}
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <CmaBrowser />
+          </section>
+
+          <section>
+            <LensFeedButton domain="gallery" />
+            <SavedCollections />
+          </section>
+
+          {/* CMA + Smithsonian + AIC search workbench */}
+          <PipingProvider>
+            <section><GalleryActionPanel /></section>
+          </PipingProvider>
+
+          {/* Compression-art sigil gallery — MEGA/HYPER DTUs as procedural sigils */}
+          <section>
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-zinc-200">
+              <ImageIcon className="w-4 h-4 text-purple-400" /> Sigil gallery
+              <span className="text-[11px] font-normal text-zinc-500">— your consolidated knowledge, rendered</span>
+            </h2>
+            {sigils.length === 0 ? (
+              <div className="text-center text-zinc-500 italic py-10 border border-zinc-800 rounded-xl">
+                No sigils yet. They appear automatically as your DTUs consolidate into MEGA tiers.
+              </div>
+            ) : (
+              <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {sigils.map(s => {
+                  const shape = deriveShape(s.shape_seed);
+                  return (
+                    <li key={s.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-xl p-3 hover:border-purple-700/50 transition-colors">
+                      <div className="aspect-square bg-zinc-950 rounded mb-2 flex items-center justify-center">
+                        <div className="w-full h-full p-2"><SigilSvg shape={shape} /></div>
+                      </div>
+                      <h3 className="text-xs font-medium text-zinc-100 truncate">{s.title || s.mega_dtu_id}</h3>
+                      <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">{s.tier} · {s.dominant_element || '—'}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
         </div>
-      ) : (
-        <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {sigils.map(s => {
-            const shape = deriveShape(s.shape_seed);
-            return (
-              <li key={s.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-xl p-3 hover:border-purple-700/50 transition-colors">
-                <div className="aspect-square bg-zinc-950 rounded mb-2 flex items-center justify-center">
-                  <div className="w-full h-full p-2"><SigilSvg shape={shape} /></div>
-                </div>
-                <h3 className="text-xs font-medium text-zinc-100 truncate">{s.title || s.mega_dtu_id}</h3>
-                <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">{s.tier} · {s.dominant_element || '—'}</p>
-              </li>
-            );
-          })}
-        </ul>
       )}
+
+      {tab === 'foryou' && <Recommendations />}
+      {tab === 'visual' && <VisualSearch />}
+      {tab === 'zoom' && <DeepZoomViewer />}
+      {tab === 'compare' && <ArtworkCompare />}
+      {tab === 'artist' && <ArtistPage />}
+      {tab === 'exhibits' && <CuratedExhibits />}
+      {tab === 'rooms' && <VirtualRooms />}
     </div>
-
-      {/* Bespoke Cleveland Museum of Art browser with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CmaBrowser />
-      </section>
-
-      {/* CMA + Smithsonian + AIC-shape gallery workbench: search / artwork / depts + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-          <GalleryActionPanel />
-        </section>
-      </PipingProvider>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
       <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>

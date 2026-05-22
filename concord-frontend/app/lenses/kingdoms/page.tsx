@@ -22,6 +22,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
 import { WarCampaignSession } from '@/components/kingdoms/WarCampaignSession';
+import { DynastyRealmManager } from '@/components/kingdoms/DynastyRealmManager';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PipingProvider } from '@/components/panel-polish';
@@ -149,6 +150,11 @@ export default function KingdomsPage() {
             <RealmActionPanel />
           </section>
         </PipingProvider>
+
+        {/* CK3-parity dynasty / council / diplomacy / war / economy / intrigue / law */}
+        <section className="mt-6">
+          <DynastyRealmManager />
+        </section>
       </div>
     </div>
 

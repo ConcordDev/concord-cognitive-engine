@@ -90,7 +90,7 @@ export function MentionAutocomplete({
   maxItems = 8,
 }: MentionAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const [caretPos, setCaretPos] = useState<number>(0);
+  const [, setCaretPos] = useState<number>(0);
   const [active, setActive] = useState<ActiveQuery | null>(null);
   const [highlightIdx, setHighlightIdx] = useState(0);
   const [debounced, setDebounced] = useState<string>('');

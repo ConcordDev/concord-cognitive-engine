@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ClipboardList, Loader2, Plus, Clock, User } from 'lucide-react';
+import { ClipboardList, Loader2, Clock, User } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -17,13 +17,6 @@ export interface WorkOrder {
   assignedTo?: string;
   machine?: string;
 }
-
-const STATUS_COLORS: Record<WorkOrder['status'], string> = {
-  queued: 'bg-gray-500/20 text-gray-300',
-  in_progress: 'bg-blue-500/20 text-blue-300',
-  on_hold: 'bg-yellow-500/20 text-yellow-300',
-  complete: 'bg-green-500/20 text-green-300',
-};
 
 export function WorkOrderBoard() {
   const [orders, setOrders] = useState<WorkOrder[]>([]);

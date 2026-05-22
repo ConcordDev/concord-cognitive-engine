@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -45,6 +46,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import AviationWorkbench from '@/components/aviation/AviationWorkbench';
+import EFBSuite from '@/components/aviation/EFBSuite';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2117,6 +2119,12 @@ export default function AviationLensPage() {
       </button>
       <AviationWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
+      {/* Electronic Flight Bag — moving map, route plotting, weather overlays,
+          ATC filing, approach plates, endorsements, synthetic-vision attitude */}
+      <section className="mx-auto mt-6 max-w-6xl">
+        <EFBSuite />
+      </section>
+
       {/* Bespoke FAA airport brief + METAR/TAF with Save-as-DTU */}
       <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <AirportBrief />
@@ -2152,6 +2160,7 @@ function ForeFlightWorkbenchSection() {
   ] as const;
   return (
     <section className="mt-6 space-y-3">
+      <section className="mt-6"><LensFeedButton domain="aviation" /></section>
       <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">ForeFlight/FlightAware-parity workbench</h2>
       <nav className="flex items-center gap-1 border-b border-cyan-900/30 pb-2 overflow-x-auto">
         {TABS.map(t => (

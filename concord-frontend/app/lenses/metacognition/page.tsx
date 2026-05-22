@@ -8,6 +8,11 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CogsciFeed } from '@/components/metacognition/CogsciFeed';
+import { DecisionJournal } from '@/components/metacognition/DecisionJournal';
+import { ReflectionPrompts } from '@/components/metacognition/ReflectionPrompts';
+import { BiasChecklist } from '@/components/metacognition/BiasChecklist';
+import { StrategyLibrary } from '@/components/metacognition/StrategyLibrary';
+import { AccuracyTracker } from '@/components/metacognition/AccuracyTracker';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -51,7 +56,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
-type TabId = 'dashboard' | 'introspection' | 'predictions' | 'learning';
+type TabId = 'dashboard' | 'introspection' | 'predictions' | 'learning' | 'journal' | 'practice';
 
 // --- Helpers ---
 
@@ -117,6 +122,8 @@ export default function MetacognitionLensPage() {
       { id: 'tab-introspection', keys: 'i', description: 'Introspection', category: 'navigation', action: () => setActiveTab('introspection') },
       { id: 'tab-predictions', keys: 'p', description: 'Predictions', category: 'navigation', action: () => setActiveTab('predictions') },
       { id: 'tab-learning', keys: 'l', description: 'Learning', category: 'navigation', action: () => setActiveTab('learning') },
+      { id: 'tab-journal', keys: 'j', description: 'Decision Journal', category: 'navigation', action: () => setActiveTab('journal') },
+      { id: 'tab-practice', keys: 'r', description: 'Practice', category: 'navigation', action: () => setActiveTab('practice') },
     ],
     { lensId: 'metacognition' }
   );
@@ -387,6 +394,8 @@ export default function MetacognitionLensPage() {
     { id: 'introspection', label: 'Introspection', icon: <Lightbulb className="w-4 h-4" /> },
     { id: 'predictions', label: 'Predictions', icon: <Crosshair className="w-4 h-4" /> },
     { id: 'learning', label: 'Learning', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'journal', label: 'Decision Journal', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'practice', label: 'Practice', icon: <Sparkles className="w-4 h-4" /> },
   ];
 
   // --- Render ---
@@ -1369,6 +1378,23 @@ export default function MetacognitionLensPage() {
           compact
         />
       )}
+        </div>
+      )}
+
+      {/* === TAB: Decision Journal === */}
+      {activeTab === 'journal' && (
+        <div className="space-y-6">
+          <DecisionJournal />
+        </div>
+      )}
+
+      {/* === TAB: Practice === */}
+      {activeTab === 'practice' && (
+        <div className="space-y-6">
+          <BiasChecklist />
+          <AccuracyTracker />
+          <ReflectionPrompts />
+          <StrategyLibrary />
         </div>
       )}
 

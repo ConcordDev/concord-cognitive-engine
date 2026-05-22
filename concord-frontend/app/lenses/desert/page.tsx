@@ -11,6 +11,12 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { DesertWeatherWatch } from '@/components/desert/DesertWeatherWatch';
+import { ExpeditionPlanner } from '@/components/desert/ExpeditionPlanner';
+import { HeatUvAlerts } from '@/components/desert/HeatUvAlerts';
+import { ResourceNodeMap } from '@/components/desert/ResourceNodeMap';
+import { SolarCalculator } from '@/components/desert/SolarCalculator';
+import { TerrainOverlay } from '@/components/desert/TerrainOverlay';
+import { SurvivalKit } from '@/components/desert/SurvivalKit';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -40,6 +46,12 @@ const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: fals
 
 type ModeTab =
   | 'Dashboard'
+  | 'Route Planner'
+  | 'Heat & UV'
+  | 'Resource Map'
+  | 'Solar'
+  | 'Terrain'
+  | 'Survival Kit'
   | 'Expeditions'
   | 'Climate'
   | 'Resources'
@@ -91,6 +103,12 @@ type ArtifactDataUnion = ExpeditionData | ClimateData | ResourceData | Record<st
 
 const MODE_TABS: { key: ModeTab; label: string; icon: typeof Sun }[] = [
   { key: 'Dashboard', label: 'Dashboard', icon: BarChart3 },
+  { key: 'Route Planner', label: 'Route Planner', icon: Compass },
+  { key: 'Heat & UV', label: 'Heat & UV', icon: Thermometer },
+  { key: 'Resource Map', label: 'Resource Map', icon: Droplets },
+  { key: 'Solar', label: 'Solar', icon: Zap },
+  { key: 'Terrain', label: 'Terrain', icon: Mountain },
+  { key: 'Survival Kit', label: 'Survival Kit', icon: AlertTriangle },
   { key: 'Expeditions', label: 'Expeditions', icon: Compass },
   { key: 'Climate', label: 'Climate', icon: Thermometer },
   { key: 'Resources', label: 'Resources', icon: Droplets },
@@ -100,9 +118,17 @@ const MODE_TABS: { key: ModeTab; label: string; icon: typeof Sun }[] = [
   { key: 'Map', label: 'Map', icon: Map },
 ];
 
+const FEATURE_TABS: ModeTab[] = ['Route Planner', 'Heat & UV', 'Resource Map', 'Solar', 'Terrain', 'Survival Kit'];
+
 function getTypeForTab(tab: ModeTab): string {
   const map: Record<ModeTab, string> = {
     Dashboard: 'Expedition',
+    'Route Planner': 'Expedition',
+    'Heat & UV': 'Climate',
+    'Resource Map': 'Resource',
+    Solar: 'Resource',
+    Terrain: 'Expedition',
+    'Survival Kit': 'Expedition',
     Expeditions: 'Expedition',
     Climate: 'Climate',
     Resources: 'Resource',
@@ -144,6 +170,7 @@ export default function DesertLensPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const currentType = getTypeForTab(activeMode);
+  const isFeatureTab = FEATURE_TABS.includes(activeMode);
   const { items, isLoading, isError, error, refetch, create, remove } =
     useLensData<ArtifactDataUnion>('desert', currentType, { search: searchQuery || undefined });
 
@@ -252,24 +279,33 @@ export default function DesertLensPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            ref={searchInputRef}
+      {!isFeatureTab && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <input
+              ref={searchInputRef}
               value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search ${currentType.toLowerCase()}s...`}
-            className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500"
-          />
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search ${currentType.toLowerCase()}s...`}
+              className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500"
+            />
+          </div>
+          <button
+            onClick={() => create({ title: `New ${currentType}`, data: {} })}
+            className="flex items-center gap-2 px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm"
+          >
+            <Plus className="w-4 h-4" /> New {currentType}
+          </button>
         </div>
-        <button
-          onClick={() => create({ title: `New ${currentType}`, data: {} })}
-          className="flex items-center gap-2 px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm"
-        >
-          <Plus className="w-4 h-4" /> New {currentType}
-        </button>
-      </div>
+      )}
+
+      {activeMode === 'Route Planner' && <ExpeditionPlanner />}
+      {activeMode === 'Heat & UV' && <HeatUvAlerts />}
+      {activeMode === 'Resource Map' && <ResourceNodeMap />}
+      {activeMode === 'Solar' && <SolarCalculator />}
+      {activeMode === 'Terrain' && <TerrainOverlay />}
+      {activeMode === 'Survival Kit' && <SurvivalKit />}
 
       {activeMode === 'Dashboard' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -302,6 +338,7 @@ export default function DesertLensPage() {
         </div>
       )}
 
+      {!isFeatureTab && (
       <div className="space-y-2">
         {items.map((item, index) => (
           <motion.div
@@ -351,6 +388,7 @@ export default function DesertLensPage() {
           </div>
         )}
       </div>
+      )}
 
       {activeMode === 'Map' && (
         <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">

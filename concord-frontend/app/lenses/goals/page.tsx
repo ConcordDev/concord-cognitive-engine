@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { ProductivityFeed } from '@/components/goals/ProductivityFeed';
+import { OKRWorkspace } from '@/components/goals/OKRWorkspace';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1228,6 +1229,9 @@ export default function GoalsLensPage() {
           return null;
         })()}
       </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <OKRWorkspace />
+      </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ProductivityFeed />
       </section>

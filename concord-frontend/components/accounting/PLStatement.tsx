@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2, PieChart as PieIcon } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -23,16 +23,16 @@ export function PLStatement() {
   const [start, setStart] = useState(today().slice(0, 4) + '-01-01');
   const [end, setEnd] = useState(today());
 
-  useEffect(() => { refresh(); }, [start, end]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'accounting', action: 'pl-compute', input: { start, end } });
       setPL((r.data?.result as PL) || null);
     } catch (e) { console.error('[PL] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [start, end]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   return (
     <div className="bg-[#0d1117] border border-emerald-500/15 rounded-lg overflow-hidden">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Repeat, Plus, Loader2, X } from 'lucide-react';
+import { Repeat, Plus, Loader2, X, CalendarPlus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +42,13 @@ export function RecurringPlansPanel() {
     } catch (e) { console.error('[Recurring] cancel', e); }
   }
 
+  async function generateVisit(id: string) {
+    try {
+      const r = await lensRun('trades', 'recurring-generate-visit', { id });
+      if (r.data?.ok) await refresh();
+    } catch (e) { console.error('[Recurring] generate visit', e); }
+  }
+
   const active = plans.filter(p => p.status === 'active');
   const monthlyRecurring = active.reduce((sum, p) => {
     const mult = p.cadence === 'weekly' ? 4.33 : p.cadence === 'monthly' ? 1 : p.cadence === 'quarterly' ? 1 / 3 : 1 / 12;
@@ -76,11 +83,16 @@ export function RecurringPlansPanel() {
                 <Repeat className="w-3.5 h-3.5 text-violet-400" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{p.serviceType}</div>
-                  <div className="text-[10px] text-gray-500">{p.customerId.slice(0, 12)} · {p.cadence} · {p.jobsCompleted} jobs done</div>
+                  <div className="text-[10px] text-gray-500">{p.customerId.slice(0, 12)} · {p.cadence} · {p.jobsCompleted} jobs done{p.nextServiceDate ? ` · next ${p.nextServiceDate}` : ''}</div>
                 </div>
                 <span className="font-mono text-sm tabular-nums text-violet-300">${p.priceEach.toFixed(0)}</span>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', p.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{p.status}</span>
-                {p.status === 'active' && <button onClick={() => cancel(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
+                {p.status === 'active' && (
+                  <button onClick={() => generateVisit(p.id)} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-[10px] text-violet-200 hover:bg-violet-500/20" title="Auto-generate the next due visit">
+                    <CalendarPlus className="w-3 h-3" /> Visit
+                  </button>
+                )}
+                {p.status === 'active' && <button onClick={() => cancel(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300" aria-label="Cancel plan"><X className="w-3 h-3" /></button>}
               </li>
             ))}
           </ul>

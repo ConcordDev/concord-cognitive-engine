@@ -351,4 +351,248 @@ describe("calendar — 2026 parity macros", () => {
     assert.equal(r.result.calendarCount, 2);
     assert.equal(r.result.openTasks, 1);
   });
+
+  it("appointment schedule create / list / delete", () => {
+    const sc = call("appointment-schedule-create", ctxCal, { title: "Office hours", durationMin: 30, startHour: 9, endHour: 12 });
+    assert.equal(sc.ok, true);
+    assert.equal(sc.result.schedule.durationMin, 30);
+    assert.equal(call("appointment-schedule-list", ctxCal).result.count, 1);
+    assert.equal(call("appointment-schedule-delete", ctxCal, { id: sc.result.schedule.id }).ok, true);
+    assert.equal(call("appointment-schedule-list", ctxCal).result.count, 0);
+  });
+
+  it("appointment-slots generates duration-stepped slots on available weekdays", () => {
+    const sc = call("appointment-schedule-create", ctxCal, { title: "OH", durationMin: 30, startHour: 9, endHour: 11, weekdays: [1, 2, 3, 4, 5] }).result.schedule;
+    // pick a far-future Monday
+    const slots = call("appointment-slots", ctxCal, { scheduleId: sc.id, date: "2099-01-05" }); // Mon
+    assert.equal(slots.ok, true);
+    assert.equal(slots.result.slots.length, 4); // 9:00 9:30 10:00 10:30
+    assert.ok(slots.result.slots.every(s => s.available));
+    const weekend = call("appointment-slots", ctxCal, { scheduleId: sc.id, date: "2099-01-03" }); // Sat
+    assert.equal(weekend.result.slots.length, 0);
+  });
+
+  it("appointment-book reserves a slot and blocks double-booking", () => {
+    const sc = call("appointment-schedule-create", ctxCal, { title: "OH", durationMin: 30, startHour: 9, endHour: 11 }).result.schedule;
+    const booked = call("appointment-book", ctxCal, { scheduleId: sc.id, slotStart: "2099-01-05T09:00:00", bookerName: "Dana" });
+    assert.equal(booked.ok, true);
+    assert.equal(call("appointment-book", ctxCal, { scheduleId: sc.id, slotStart: "2099-01-05T09:00:00", bookerName: "Other" }).ok, false);
+    const slots = call("appointment-slots", ctxCal, { scheduleId: sc.id, date: "2099-01-05" });
+    assert.equal(slots.result.slots.find(s => s.slotStart === "2099-01-05T09:00:00").available, false);
+    assert.equal(call("appointment-bookings", ctxCal, { scheduleId: sc.id }).result.bookings.length, 1);
+    assert.equal(call("appointment-cancel-booking", ctxCal, { scheduleId: sc.id, bookingId: booked.result.booking.id }).ok, true);
+    assert.equal(call("appointment-bookings", ctxCal, { scheduleId: sc.id }).result.bookings.length, 0);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+//  Backlog parity — external account sync, calendar sharing,
+//  firing reminders, working-location/OOO events, conference links,
+//  guest RSVP + invites.
+// ═════════════════════════════════════════════════════════════════
+
+const ctxBL = { actor: { userId: "bl_u" }, userId: "bl_u" };
+const ctxBL2 = { actor: { userId: "bl_u2" }, userId: "bl_u2" };
+
+describe("calendar — external account sync (item 1)", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("accounts-connect validates the ICS URL and stores the account", () => {
+    assert.equal(call("accounts-connect", ctxBL, { label: "Work", icsUrl: "ftp://bad" }).ok, false);
+    assert.equal(call("accounts-connect", ctxBL, { icsUrl: "https://x.com/c.ics" }).ok, false);
+    const r = call("accounts-connect", ctxBL, { provider: "google", label: "My Google", icsUrl: "https://calendar.google.com/feed.ics" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.account.provider, "google");
+    assert.equal(r.result.account.direction, "two-way");
+  });
+
+  it("accounts-list + accounts-disconnect round-trip", () => {
+    const a = call("accounts-connect", ctxBL, { label: "A", icsUrl: "https://x.com/a.ics" }).result.account;
+    assert.equal(call("accounts-list", ctxBL).result.accounts.length, 1);
+    assert.equal(call("accounts-disconnect", ctxBL, { id: a.id }).ok, true);
+    assert.equal(call("accounts-list", ctxBL).result.accounts.length, 0);
+  });
+
+  it("accounts-sync imports events from a live ICS feed into a dedicated calendar", async () => {
+    const feed = [
+      "BEGIN:VCALENDAR", "VERSION:2.0",
+      "BEGIN:VEVENT", "UID:ext-1@g", "DTSTART:20260601T090000Z", "DTEND:20260601T100000Z", "SUMMARY:External meeting", "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => feed });
+    const a = call("accounts-connect", ctxBL, { label: "Synced", icsUrl: "https://x.com/sync.ics" }).result.account;
+    const r = await call("accounts-sync", ctxBL, { id: a.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.imported, 1);
+    // a dedicated calendar was created
+    const cals = call("calendars-list", ctxBL).result.calendars;
+    assert.ok(cals.find(c => c.externalAccountId === a.id));
+    // re-sync updates rather than duplicates
+    const r2 = await call("accounts-sync", ctxBL, { id: a.id });
+    assert.equal(r2.result.imported, 0);
+    assert.equal(r2.result.updated, 1);
+  });
+});
+
+describe("calendar — sharing + permissions (item 2)", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("calendar-share grants a role, list reflects it, unshare removes it", () => {
+    const cal = call("calendars-list", ctxBL).result.calendars[0];
+    const sh = call("calendar-share", ctxBL, { calendarId: cal.id, sharedWith: "teammate@x.com", role: "editor" });
+    assert.equal(sh.ok, true);
+    assert.equal(sh.result.share.role, "editor");
+    assert.equal(call("calendar-shares-list", ctxBL).result.count, 1);
+    // re-share updates role in place
+    const upd = call("calendar-share", ctxBL, { calendarId: cal.id, sharedWith: "teammate@x.com", role: "viewer" });
+    assert.equal(upd.result.updated, true);
+    assert.equal(upd.result.share.role, "viewer");
+    assert.equal(call("calendar-unshare", ctxBL, { id: sh.result.share.id }).ok, true);
+    assert.equal(call("calendar-shares-list", ctxBL).result.count, 0);
+  });
+
+  it("share rejects unknown calendar and missing recipient", () => {
+    assert.equal(call("calendar-share", ctxBL, { calendarId: "nope", sharedWith: "a@b.c" }).ok, false);
+    const cal = call("calendars-list", ctxBL).result.calendars[0];
+    assert.equal(call("calendar-share", ctxBL, { calendarId: cal.id, sharedWith: "" }).ok, false);
+  });
+});
+
+describe("calendar — reminders that fire (item 3)", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("reminders-due fires a notification when the offset window is reached", () => {
+    call("calendars-list", ctxBL);
+    // event 20 min from now, 30-min reminder → fire window is already open
+    const soon = new Date(Date.now() + 20 * 60_000).toISOString();
+    call("events-create", ctxBL, { title: "Imminent", start: soon, reminders: [30] });
+    const r = call("reminders-due", ctxBL);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.firedNow, 1);
+    assert.equal(r.result.pending[0].eventTitle, "Imminent");
+    // idempotent — does not re-fire the same reminder
+    assert.equal(call("reminders-due", ctxBL).result.firedNow, 0);
+  });
+
+  it("reminders-acknowledge clears pending notifications", () => {
+    call("calendars-list", ctxBL);
+    call("events-create", ctxBL, { title: "Soon", start: new Date(Date.now() + 10 * 60_000).toISOString(), reminders: [60] });
+    const due = call("reminders-due", ctxBL);
+    const id = due.result.pending[0].id;
+    assert.equal(call("reminders-acknowledge", ctxBL, { id }).result.notification.acknowledged, true);
+    assert.equal(call("reminders-due", ctxBL).result.pendingCount, 0);
+  });
+
+  it("does not fire reminders for events outside the window", () => {
+    call("calendars-list", ctxBL);
+    call("events-create", ctxBL, { title: "Far future", start: new Date(Date.now() + 5 * 86_400_000).toISOString(), reminders: [10] });
+    assert.equal(call("reminders-due", ctxBL).result.firedNow, 0);
+  });
+});
+
+describe("calendar — working-location + OOO events (item 4)", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("status-event-create makes a typed working-location event", () => {
+    call("calendars-list", ctxBL);
+    const r = call("status-event-create", ctxBL, { kind: "working-location", detail: "Home office", start: "2099-02-01T09:00:00Z" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.event.eventCategory, "working-location");
+    assert.equal(r.result.event.title, "Working from Home office");
+    assert.equal(r.result.event.blocksAvailability, false);
+  });
+
+  it("out-of-office blocks availability; bad kind rejected", () => {
+    call("calendars-list", ctxBL);
+    assert.equal(call("status-event-create", ctxBL, { kind: "bogus", start: "2099-02-01T09:00:00Z" }).ok, false);
+    call("status-event-create", ctxBL, { kind: "working-location", detail: "Home", start: "2099-02-01T09:00:00Z" });
+    const ooo = call("status-event-create", ctxBL, { kind: "out-of-office", detail: "Vacation", start: "2099-02-02T00:00:00Z" });
+    assert.equal(ooo.result.event.blocksAvailability, true);
+    const list = call("status-events-list", ctxBL, { includeAll: true });
+    assert.equal(list.result.count, 2);
+  });
+});
+
+describe("calendar — conference link auto-gen (item 5)", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("conference-generate produces a joinable URL and attaches it to the event", () => {
+    call("calendars-list", ctxBL);
+    const ev = call("events-create", ctxBL, { title: "Sync", start: "2099-03-01T10:00:00Z" }).result.event;
+    const r = call("conference-generate", ctxBL, { eventId: ev.id, provider: "jitsi" });
+    assert.equal(r.ok, true);
+    assert.match(r.result.url, /^https:\/\/meet\.jit\.si\//);
+    assert.equal(r.result.attachedToEvent, true);
+    // confirm the event now carries the link
+    const list = call("events-list", ctxBL, { rangeStart: "2099-02-01T00:00:00Z", rangeEnd: "2099-04-01T00:00:00Z" });
+    assert.match(list.result.events[0].conferenceLink, /meet\.jit\.si/);
+  });
+
+  it("conference-clear removes the link", () => {
+    call("calendars-list", ctxBL);
+    const ev = call("events-create", ctxBL, { title: "X", start: "2099-03-02T10:00:00Z" }).result.event;
+    call("conference-generate", ctxBL, { eventId: ev.id });
+    const r = call("conference-clear", ctxBL, { eventId: ev.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.event.conferenceLink, "");
+  });
+});
+
+describe("calendar — guest RSVP + invites (item 6)", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("invites-send creates per-guest invites and mirrors attendees onto the event", () => {
+    call("calendars-list", ctxBL);
+    const ev = call("events-create", ctxBL, { title: "Launch party", start: "2099-04-01T18:00:00Z" }).result.event;
+    const r = call("invites-send", ctxBL, { eventId: ev.id, guests: ["a@x.com", "b@x.com"], message: "Please join" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.sent, 2);
+    assert.deepEqual(r.result.attendees.sort(), ["a@x.com", "b@x.com"]);
+    // resending the same guest does not duplicate
+    assert.equal(call("invites-send", ctxBL, { eventId: ev.id, guests: ["a@x.com"] }).result.sent, 0);
+  });
+
+  it("invite-rsvp records the guest response and counts update", () => {
+    call("calendars-list", ctxBL);
+    const ev = call("events-create", ctxBL, { title: "Demo", start: "2099-04-02T10:00:00Z" }).result.event;
+    const inv = call("invites-send", ctxBL, { eventId: ev.id, guests: ["c@x.com"] }).result.invites[0];
+    const r = call("invite-rsvp", ctxBL, { token: inv.token, rsvp: "accepted" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.invite.rsvp, "accepted");
+    assert.equal(call("invites-list", ctxBL, { eventId: ev.id }).result.rsvpCounts.accepted, 1);
+    assert.equal(call("invite-rsvp", ctxBL, { id: inv.id, rsvp: "bogus" }).ok, false);
+  });
+
+  it("invite-revoke removes an invite", () => {
+    call("calendars-list", ctxBL);
+    const ev = call("events-create", ctxBL, { title: "E", start: "2099-04-03T10:00:00Z" }).result.event;
+    const inv = call("invites-send", ctxBL, { eventId: ev.id, guests: ["d@x.com"] }).result.invites[0];
+    assert.equal(call("invite-revoke", ctxBL, { id: inv.id }).ok, true);
+    assert.equal(call("invites-list", ctxBL, { eventId: ev.id }).result.count, 0);
+  });
+
+  it("INVARIANT: invites are scoped per-user", () => {
+    call("calendars-list", ctxBL);
+    const ev = call("events-create", ctxBL, { title: "Private", start: "2099-05-01T10:00:00Z" }).result.event;
+    call("invites-send", ctxBL, { eventId: ev.id, guests: ["e@x.com"] });
+    assert.equal(call("invites-list", ctxBL2).result.count, 0);
+  });
 });

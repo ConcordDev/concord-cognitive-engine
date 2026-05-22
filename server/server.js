@@ -9826,7 +9826,7 @@ async function runMacro(domain, name, input, ctx) {
     art: new Set(["live_met_search"]),
     gallery: new Set(["live_met_search"]),
     // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
-    physics: new Set(["live_arxiv"]),
+    physics: new Set(["live_arxiv", "status", "constants", "models"]),
     quantum: new Set(["live_arxiv"]),
     robotics: new Set(["live_arxiv"]),
     // Phase 4 cont'd — bio + neuro also get PubMed; chem also gets PubChem.
@@ -9852,7 +9852,7 @@ async function runMacro(domain, name, input, ctx) {
     paper: new Set(["live_openlibrary", "live_crossref", "live_openalex"]),
     education: new Set(["live_openlibrary", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     // Phase 4 (third wave) — scholarly + language wires.
-    research: new Set(["live_crossref", "live_openalex"]),
+    research: new Set(["live_crossref", "live_openalex", "list", "get", "results", "report", "metrics", "conduct"]),
     linguistics: new Set(["live_datamuse", "live_dictionary", "live_wiki_search", "live_wiki_summary"]),
     "creative-writing": new Set(["live_datamuse"]),
     poetry: new Set(["live_datamuse", "live_poetrydb"]),
@@ -9862,8 +9862,8 @@ async function runMacro(domain, name, input, ctx) {
     space: new Set(["live_wiki_search", "live_wiki_summary", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
     // Phase 4 (fifth wave) — curated content APIs.
     astronomy: new Set(["live_apod", "live_iss", "live_neo", "live_spaceflight_news", "live_launches_upcoming", "live_iss_pass"]),
-    daily: new Set(["live_quote"]),
-    reflection: new Set(["live_quote"]),
+    daily: new Set(["live_quote", "list", "get"]),
+    reflection: new Set(["live_quote", "status", "list"]),
     pets: new Set(["live_catfact", "live_dog"]),
     // Phase 4 (sixth wave) — civic / postal / finance reference wires.
     finance: new Set(["live_worldbank", "live_fred_series"]),
@@ -9899,7 +9899,6 @@ async function runMacro(domain, name, input, ctx) {
     metacognition: new Set(["status", "predictions"]),
     metalearning: new Set(["strategies", "status"]),
     reasoning: new Set(["chains", "steps", "status"]),
-    reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
     // (The dx domain is registered later in this file with the
@@ -9982,17 +9981,14 @@ async function runMacro(domain, name, input, ctx) {
     srs: new Set(["status", "get"]),
     skill: new Set(["gaps"]),
     schema: new Set(["get", "list"]),
-    daily: new Set(["list", "get"]),
     digest: new Set(["get", "list"]),
     // Extended domains (three-gate audit)
-    research: new Set(["list", "get", "results", "report", "metrics", "conduct"]),
     quest: new Set(["list", "get", "active", "progress", "metrics"]),
     teaching: new Set(["list", "get", "profile", "metrics", "expertise"]),
     creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "create", "run"]),
     culture: new Set(["status", "traditions", "values", "stories", "metrics", "identity"]),
     trust: new Set(["get", "network", "metrics"]),
     federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox", "actor", "inbox"]),
-    physics: new Set(["status", "constants", "models"]),
     reproduction: new Set(["compatible-pairs", "status"]),
     lineage: new Set(["tree", "get"]),
     rights: new Set(["list", "get", "profile", "status", "metrics"]),
@@ -17172,17 +17168,9 @@ function selectProductionAction(lens, entity) {
  */
 function buildProductionPrompt({ lens, action, actionDesc, context, entity, schema, exemplar }) {
   let prompt = TASK_PROMPTS.professionalLensSpecialist({ lens, action, actionDesc, schema, exemplar });
-  // Allow caller to extend prompt below (existing logic). The registry
-  // function already includes schema + exemplar if supplied, so the
-  // legacy if-blocks are no-ops when those params are present. Kept here
-  // for callers that pass schema/exemplar after this point in the flow.
-  if (false && schema) {
-    prompt += `\n\nSCHEMA:\n${JSON.stringify(schema, null, 2)}`;
-  }
-
-  if (false && exemplar) {
-    prompt += `\n\nEXAMPLE OF HIGH-QUALITY OUTPUT:\n${JSON.stringify(exemplar, null, 2).slice(0, 2000)}`;
-  }
+  // The registry function professionalLensSpecialist already folds in
+  // schema + exemplar when supplied, so no separate prompt extension is
+  // needed here.
 
   if (context) {
     prompt += `\n\nDOMAIN CONTEXT FROM SUBSTRATE:\n${typeof context === "string" ? context.slice(0, 800) : JSON.stringify(context).slice(0, 800)}`;
@@ -21958,12 +21946,10 @@ Rules for tool use:
   // Surface compute-preflight provenance so the frontend can render the
   // "Concord computed this" badge. Only includes capability metadata, not
   // the full result payload (already in the prompt the brain saw).
-  const _computedSurface = (typeof _computeGroundTruth !== 'undefined' && _computeGroundTruth)
-    ? {
-        capabilities: _computeGroundTruth.capabilities || [],
-        engineCount: (_computeGroundTruth.results || []).length,
-      }
-    : null;
+  // _computeGroundTruth is scoped to the compute-preflight block above and
+  // is not in scope here, so this provenance surface is null until it is
+  // threaded through. Kept null to avoid an out-of-scope reference.
+  const _computedSurface = null;
 
   // Strategy: strip ``` fenced code blocks + `inline code` first so we
   // don't pick up identifiers in code samples. Then pattern-match the
@@ -29434,7 +29420,7 @@ app.use("/api/legal", createLegalLiabilityRouter({ db }));
 // this line hit a TDZ ReferenceError at server startup and crashed
 // the whole boot sequence. Hoisted the const above its first use.
 const ALL_LENS_DOMAINS = [
-  "accounting","admin","affect","agents","agriculture","all","alliance","analytics","animation",
+  "accounting","admin","affect","agents","agriculture","all","alliance","analytics","animation","answers",
   "anon","app-maker","ar","art","artistry","astronomy","atlas","attention","audit","automotive","aviation","billing",
   "bio","board","bridge","calendar","carpentry","chat","chem","code","collab","command-center","construction",
   "commonsense","consulting","cooking","council","creative","creative-writing","cri","crypto","custom","daily",
@@ -40369,6 +40355,7 @@ app.get("/api/entity/:entityId/profile", asyncHandler(async (req, res) => {
 app.get("/api/admin/endpoints", requireRole("admin", "sovereign"), async (req, res) => {
   try {
     const { buildRouteInventory } = await import("./lib/route-inventory.js");
+    const url = await import("node:url");
     const here = path.dirname(url.fileURLToPath(import.meta.url));
     const force = String(req.query.force || "") === "1";
     const inv = buildRouteInventory({
@@ -49706,7 +49693,7 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
 app.get("/api/social/mention-search", (req, res) => {
   try {
 
-    // eslint-disable-next-line no-restricted-syntax
+     
     const viewerId = req.user?.id || req.query.viewerId || "anon";
     const q = String(req.query.q || "");
     const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
@@ -70487,6 +70474,98 @@ register("forecast", "recent", async (_ctx, input = {}) => {
     return { ok: true, worldId, forecast: f };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Most recent persisted forecast for a world." });
+
+// Multi-day outlook — N daily windows with honestly-decaying confidence.
+register("forecast", "multiDay", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", days = 7 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.composeMultiDay(db, STATE, worldId, days);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Multi-day (2-14) world outlook with range-decaying confidence." });
+
+// Hourly breakdown within the 24h window — diurnal temperature curve.
+register("forecast", "hourly", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", hours = 24 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.composeHourly(db, STATE, worldId, hours);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Hourly breakdown (6-48h) following the standard diurnal model." });
+
+// Per-region forecast — reads real embodied signals at each district anchor.
+register("forecast", "regional", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.composeRegional(db, STATE, worldId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Per-district forecast from embodied signals at each region anchor." });
+
+// Forecast accuracy — past predictions vs. realized persisted forecasts.
+register("forecast", "accuracy", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", limit = 20 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.forecastAccuracy(db, worldId, limit);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Forecast accuracy — kind hit-rate + mean temp error vs. realized." });
+
+// Historical archive — persisted forecasts with extracted trend points.
+register("forecast", "archive", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", limit = 50 } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.forecastArchive(db, worldId, limit);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Historical forecast archive + ascending trend points for charting." });
+
+// Alert subscriptions — per-user, persisted.
+register("forecast", "subscribeAlert", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.createAlertSub(db, userId, input || {});
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Create a forecast alert subscription (severe_event|drift|weather|any)." });
+
+register("forecast", "listAlerts", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    const subs = lib.listAlertSubs(db, userId, input?.worldId || null);
+    return { ok: true, count: subs.length, subscriptions: subs };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List the caller's forecast alert subscriptions." });
+
+register("forecast", "unsubscribeAlert", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.deleteAlertSub(db, userId, input?.subscriptionId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Remove a forecast alert subscription by id." });
+
+register("forecast", "checkAlerts", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId || ctx?.userId;
+  if (!userId) return { ok: false, reason: "no_user" };
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return await lib.checkAlerts(db, STATE, userId, input?.worldId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose a fresh forecast and return which alert subscriptions trip." });
 
 // #18 Glyph spell as music.
 register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {

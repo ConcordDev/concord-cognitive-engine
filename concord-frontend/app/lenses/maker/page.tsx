@@ -23,6 +23,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { MakerShowcase } from '@/components/maker/MakerShowcase';
+import { ProjectBuilder } from '@/components/maker/ProjectBuilder';
+import { QuestGraphEditor } from '@/components/maker/QuestGraphEditor';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -30,18 +32,21 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AppWindow, Wand2, Sparkles, Loader2, Plus, CheckCircle2, ArrowUpRight,
+  Hammer, GitBranch,
   type LucideIcon,
 } from 'lucide-react';
 
-type TabKey = 'apps' | 'quests' | 'creative';
+type TabKey = 'builder' | 'designer' | 'apps' | 'quests' | 'creative';
 
 export default function MakerLensPage() {
   useLensNav('maker');
   const qc = useQueryClient();
-  const [activeTab, setActiveTab] = useState<TabKey>('apps');
+  const [activeTab, setActiveTab] = useState<TabKey>('builder');
 
   useLensCommand(
     [
+      { id: 'tab-builder', keys: 'b', description: 'Builder', category: 'navigation', action: () => setActiveTab('builder') },
+      { id: 'tab-designer', keys: 'd', description: 'Quest Designer', category: 'navigation', action: () => setActiveTab('designer') },
       { id: 'tab-apps', keys: 'a', description: 'Apps', category: 'navigation', action: () => setActiveTab('apps') },
       { id: 'tab-quests', keys: 'q', description: 'Quests', category: 'navigation', action: () => setActiveTab('quests') },
       { id: 'tab-creative', keys: 'c', description: 'Creative', category: 'navigation', action: () => setActiveTab('creative') },
@@ -126,6 +131,8 @@ export default function MakerLensPage() {
   });
 
   const tabs: { key: TabKey; label: string; icon: LucideIcon; count?: number }[] = [
+    { key: 'builder',  label: 'Builder',        icon: Hammer },
+    { key: 'designer', label: 'Quest Designer', icon: GitBranch },
     { key: 'apps',     label: 'Apps',     icon: AppWindow, count: apps.data?.apps?.length },
     { key: 'quests',   label: 'Quests',   icon: Wand2,     count: quests.data?.quests?.length },
     { key: 'creative', label: 'Creative', icon: Sparkles },
@@ -168,6 +175,26 @@ export default function MakerLensPage() {
 
       <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
         <AnimatePresence mode="wait">
+          {activeTab === 'builder' && (
+            <motion.section key="builder" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+              <h2 className="mb-3 text-base font-semibold text-pink-200">No-code app builder</h2>
+              <p className="mb-3 text-xs text-pink-700">
+                Drag components onto a canvas, model data, bind sources, wire workflows, snapshot versions, and deploy — no code.
+              </p>
+              <ProjectBuilder />
+            </motion.section>
+          )}
+
+          {activeTab === 'designer' && (
+            <motion.section key="designer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+              <h2 className="mb-3 text-base font-semibold text-pink-200">Quest designer</h2>
+              <p className="mb-3 text-xs text-pink-700">
+                Author branching quests as a node graph — steps, choices, rewards and endings — and validate the structure.
+              </p>
+              <QuestGraphEditor />
+            </motion.section>
+          )}
+
           {activeTab === 'apps' && (
             <motion.section key="apps" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
               {appMetrics.data && (

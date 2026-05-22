@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { GbifPanel } from '@/components/environment/GbifPanel';
@@ -70,6 +71,7 @@ import WorkOrdersPanel from '@/components/agriculture/WorkOrdersPanel';
 import GrainBinsPanel from '@/components/agriculture/GrainBinsPanel';
 import ZonesPanel from '@/components/agriculture/ZonesPanel';
 import TankMixesPanel from '@/components/agriculture/TankMixesPanel';
+import PrecisionAgPanel from '@/components/agriculture/PrecisionAgPanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -1471,6 +1473,7 @@ export default function AgricultureLensPage() {
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
       <RivalShapePreview lensId="agriculture" defaultOpen={true} />
       <DeereWorkbenchSection />
+      <PrecisionAgPanel />
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
           <Wheat className="w-8 h-8 text-green-400" />
@@ -1987,6 +1990,7 @@ export default function AgricultureLensPage() {
       <section className="mt-4 max-w-7xl mx-auto px-4">
         <GbifPanel domain="agriculture" />
       </section>
+          <section className="mt-4"><LensFeedButton domain="agriculture" label="Live crop-yield feed" /></section>
           <RecentMineCard domain="agriculture" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="agriculture" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="agriculture" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

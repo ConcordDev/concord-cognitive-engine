@@ -15,6 +15,8 @@ function call(name, ctx, params = {}) {
 }
 
 before(() => {
+  // The Esri-parity macros persist per-user data into globalThis._concordSTATE.
+  if (!globalThis._concordSTATE) globalThis._concordSTATE = {};
   registerMentalhealthActions(register);
   registerUrbanplanningActions(register);
 });
@@ -176,5 +178,171 @@ describe("urban-planning.hud-income-limits", () => {
     const r = await call("urban-planning.hud-income-limits", ctxA, { stateAbbr: "CA" });
     assert.equal(r.ok, false);
     assert.match(r.error, /invalid/);
+  });
+});
+
+// ─── Esri Urban parity macros — scenarios, parcels, massing, impacts ───
+
+describe("urban-planning.massingEnvelope (3D build-out envelope)", () => {
+  it("computes floors / footprint / yield from zone + lot", () => {
+    const r = call("urban-planning.massingEnvelope", ctxA, {
+      zoneType: "mixed", lotSizeSqFt: 20000, useMix: "mixed",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.zoneType, "mixed");
+    assert.ok(r.result.floors >= 1);
+    assert.ok(r.result.grossFloorAreaSqFt > 0);
+    assert.ok(r.result.dwellingUnits >= 0);
+    assert.ok(r.result.envelope && r.result.envelope.heightFt > 0);
+  });
+
+  it("residential lots yield no jobs", () => {
+    const r = call("urban-planning.massingEnvelope", ctxA, {
+      zoneType: "residential", lotSizeSqFt: 10000, useMix: "residential",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.jobs, 0);
+    assert.ok(r.result.dwellingUnits > 0);
+  });
+});
+
+describe("urban-planning.parcel CRUD", () => {
+  it("adds, lists, then removes a parcel scoped to the user", () => {
+    const add = call("urban-planning.parcel-add", ctxA, {
+      apn: "TEST-0001", address: "100 Main St", zoneType: "commercial",
+      lotSizeSqFt: 8000, lat: 37.77, lng: -122.41,
+    });
+    assert.equal(add.ok, true);
+    assert.equal(add.result.parcel.apn, "TEST-0001");
+    const id = add.result.parcel.id;
+
+    const list = call("urban-planning.parcel-list", ctxA, {});
+    assert.equal(list.ok, true);
+    assert.ok(list.result.parcels.some((p) => p.id === id));
+
+    const rm = call("urban-planning.parcel-remove", ctxA, { id });
+    assert.equal(rm.ok, true);
+    assert.equal(rm.result.removed, 1);
+  });
+
+  it("rejects a parcel with no APN", () => {
+    const r = call("urban-planning.parcel-add", ctxA, { lotSizeSqFt: 5000 });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("urban-planning.scenario lifecycle + comparison", () => {
+  it("creates scenarios, lists them with impacts, compares, removes", () => {
+    const a = call("urban-planning.scenario-create", ctxA, {
+      name: "Scenario A", zoneType: "residential", lotSizeSqFt: 15000,
+    });
+    const b = call("urban-planning.scenario-create", ctxA, {
+      name: "Scenario B", zoneType: "mixed", lotSizeSqFt: 15000,
+    });
+    assert.equal(a.ok, true);
+    assert.equal(b.ok, true);
+
+    const list = call("urban-planning.scenario-list", ctxA, {});
+    assert.equal(list.ok, true);
+    assert.ok(list.result.scenarios.length >= 2);
+    assert.ok(list.result.scenarios[0].impacts);
+
+    const cmp = call("urban-planning.scenario-compare", ctxA, {});
+    assert.equal(cmp.ok, true);
+    assert.ok(cmp.result.count >= 2);
+    assert.ok(Array.isArray(cmp.result.metrics));
+    assert.ok(cmp.result.best && cmp.result.totals);
+
+    for (const sc of list.result.scenarios) {
+      const rm = call("urban-planning.scenario-remove", ctxA, { id: sc.id });
+      assert.equal(rm.ok, true);
+    }
+  });
+
+  it("rejects a scenario with no name", () => {
+    assert.equal(call("urban-planning.scenario-create", ctxA, {}).ok, false);
+  });
+
+  it("compare with no scenarios returns an error", () => {
+    const r = call("urban-planning.scenario-compare", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("urban-planning.impactDashboard", () => {
+  it("projects population/jobs/housing/emissions + jobs-housing balance", () => {
+    const r = call("urban-planning.impactDashboard", ctxA, {
+      zoneType: "mixed", lotSizeSqFt: 40000, useMix: "mixed",
+      baselinePopulation: 1000, baselineJobs: 400,
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.projections.population >= 0);
+    assert.ok(r.result.projections.emissionsTonnesPerYear >= 0);
+    assert.ok(["balanced", "housing-rich", "jobs-rich", "n/a"]
+      .includes(r.result.jobsHousingBalance));
+    assert.notEqual(r.result.populationGrowthPct, null);
+  });
+});
+
+describe("urban-planning.transitCoverage (walk-shed catchments)", () => {
+  it("buffers stops + counts parcels inside any catchment", () => {
+    const r = call("urban-planning.transitCoverage", ctxA, {
+      stops: [
+        { id: "s1", name: "Central Rail", mode: "rail", lat: 37.7749, lng: -122.4194 },
+        { id: "s2", name: "Bus Hub", mode: "bus", lat: 37.7760, lng: -122.4180 },
+      ],
+      parcels: [
+        { id: "p1", lat: 37.7750, lng: -122.4195 },
+        { id: "p2", lat: 38.5, lng: -121.0 },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.stopCount, 2);
+    assert.equal(r.result.parcelsEvaluated, 2);
+    assert.equal(r.result.parcelsServed, 1);
+    assert.ok(r.result.catchments[0].radiusMeters > 0);
+  });
+
+  it("rejects an empty stops array", () => {
+    assert.equal(call("urban-planning.transitCoverage", ctxA, { stops: [] }).ok, false);
+  });
+});
+
+describe("urban-planning.comment workflow", () => {
+  it("adds, lists with tally, then resolves a stakeholder comment", () => {
+    const add = call("urban-planning.comment-add", ctxA, {
+      subjectId: "scn_demo", author: "Resident", stance: "oppose",
+      body: "Too much traffic for the corridor.",
+    });
+    assert.equal(add.ok, true);
+    assert.equal(add.result.comment.stance, "oppose");
+    const id = add.result.comment.id;
+
+    const list = call("urban-planning.comment-list", ctxA, { subjectId: "scn_demo" });
+    assert.equal(list.ok, true);
+    assert.ok(list.result.total >= 1);
+    assert.ok(list.result.tally.oppose >= 1);
+
+    const res = call("urban-planning.comment-resolve", ctxA, { id, status: "addressed" });
+    assert.equal(res.ok, true);
+    assert.equal(res.result.comment.status, "addressed");
+  });
+
+  it("rejects a comment with no subjectId or no body", () => {
+    assert.equal(call("urban-planning.comment-add", ctxA, { body: "x" }).ok, false);
+    assert.equal(call("urban-planning.comment-add", ctxA, { subjectId: "s" }).ok, false);
+  });
+});
+
+describe("urban-planning.exportPlan", () => {
+  it("emits a markdown report with section counts", () => {
+    call("urban-planning.scenario-create", ctxA, {
+      name: "Export Scenario", zoneType: "mixed", lotSizeSqFt: 12000,
+    });
+    const r = call("urban-planning.exportPlan", ctxA, { title: "City Plan 2026" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.format, "markdown");
+    assert.match(r.result.reportText, /# City Plan 2026/);
+    assert.ok(r.result.counts && typeof r.result.counts.scenarios === "number");
   });
 });

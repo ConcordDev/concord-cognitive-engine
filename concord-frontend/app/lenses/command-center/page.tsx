@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConcordVitals } from '@/components/command-center/ConcordVitals';
+import { OpsCockpit } from '@/components/command-center/OpsCockpit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -21,7 +22,7 @@ import {
   AlertTriangle, Moon, FileText, Pause, Play,
   Save, Trash2, XCircle, Loader2, Clock, ArrowUp,
   Zap, Send, MapPin, Focus, ShieldAlert, ChevronDown,
-  Lightbulb, GitBranch, Globe, Undo2, Compass, Radio,
+  Lightbulb, GitBranch, Globe, Undo2, Compass, Radio, Gauge,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -1726,6 +1727,7 @@ function OrganismPipelinePanel() {
 
 const TABS = [
   { id: 'vitals', label: 'Vitals', icon: Activity },
+  { id: 'ops', label: 'Ops Cockpit', icon: Gauge },
   { id: 'brains', label: 'Brains', icon: Brain },
   { id: 'cognitive', label: 'Cognitive', icon: Brain },
   { id: 'loaf', label: 'LOAF', icon: Shield },
@@ -1862,6 +1864,7 @@ export default function CommandCenterPage() {
   const renderPanel = () => {
     switch (activeTab) {
       case 'vitals': return <VitalsPanel />;
+      case 'ops': return <OpsCockpit />;
       case 'brains': return <BrainsPanel />;
       case 'cognitive': return <CognitiveEnginesPanel />;
       case 'loaf': return <LoafPanel />;

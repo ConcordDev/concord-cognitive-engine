@@ -8,13 +8,16 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pill, CalendarClock, DollarSign, HeartPulse, Loader2 } from 'lucide-react';
+import { Pill, CalendarClock, DollarSign, HeartPulse, Loader2, Bell, Search, Flame } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { RxMedicationsPanel } from './RxMedicationsPanel';
 import { RxRefillsPanel } from './RxRefillsPanel';
 import { RxPricePanel } from './RxPricePanel';
 import { RxHealthLogPanel } from './RxHealthLogPanel';
+import { RxRemindersPanel } from './RxRemindersPanel';
+import { RxPriceLookupPanel } from './RxPriceLookupPanel';
+import { RxAdherencePanel } from './RxAdherencePanel';
 
 interface Dash {
   medications: number;
@@ -23,11 +26,14 @@ interface Dash {
   refillsDue: number;
   openRefillRequests: number;
 }
-type TabId = 'meds' | 'refills' | 'prices' | 'health';
+type TabId = 'meds' | 'reminders' | 'refills' | 'prices' | 'lookup' | 'adherence' | 'health';
 const TABS: { id: TabId; label: string; icon: typeof Pill }[] = [
   { id: 'meds', label: 'Meds & Doses', icon: Pill },
+  { id: 'reminders', label: 'Reminders', icon: Bell },
   { id: 'refills', label: 'Refills', icon: CalendarClock },
   { id: 'prices', label: 'Price Compare', icon: DollarSign },
+  { id: 'lookup', label: 'Price & Pill Lookup', icon: Search },
+  { id: 'adherence', label: 'Adherence', icon: Flame },
   { id: 'health', label: 'Health Log', icon: HeartPulse },
 ];
 
@@ -82,8 +88,11 @@ export function PharmacyRxSection() {
 
       <div className="p-4">
         {tab === 'meds' && <RxMedicationsPanel onChange={refreshDash} />}
+        {tab === 'reminders' && <RxRemindersPanel onChange={refreshDash} />}
         {tab === 'refills' && <RxRefillsPanel onChange={refreshDash} />}
         {tab === 'prices' && <RxPricePanel />}
+        {tab === 'lookup' && <RxPriceLookupPanel />}
+        {tab === 'adherence' && <RxAdherencePanel />}
         {tab === 'health' && <RxHealthLogPanel />}
       </div>
     </div>

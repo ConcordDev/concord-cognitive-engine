@@ -9,6 +9,13 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ContractSearch } from '@/components/defense/ContractSearch';
 import { DefenseActionPanel } from '@/components/defense/DefenseActionPanel';
+import { CommonOperatingPicture } from '@/components/defense/CommonOperatingPicture';
+import { MissionPlanner } from '@/components/defense/MissionPlanner';
+import { AssetReadiness } from '@/components/defense/AssetReadiness';
+import { ThreatBoard } from '@/components/defense/ThreatBoard';
+import { PersonnelRoster } from '@/components/defense/PersonnelRoster';
+import { LogisticsBoard } from '@/components/defense/LogisticsBoard';
+import { CommsLog } from '@/components/defense/CommsLog';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -302,15 +309,38 @@ export default function DefenseLensPage() {
         </div>
       )}
 
-      {/* Dashboard */}
+      {/* Dashboard — C2 common operating picture + readiness rollups */}
       {activeMode === 'Dashboard' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Active Operations" value={stats.activeOps} total={stats.totalOps} color="green" />
-          <StatCard label="Ready Assets" value={stats.readyAssets} total={stats.totalAssets} color="cyan" />
-          <StatCard label="Deployed Personnel" value={stats.deployedPersonnel} total={stats.totalPersonnel} color="blue" />
-          <StatCard label="Actionable Intel" value={stats.activeIntel} total={intel.length} color="amber" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard label="Active Operations" value={stats.activeOps} total={stats.totalOps} color="green" />
+            <StatCard label="Ready Assets" value={stats.readyAssets} total={stats.totalAssets} color="cyan" />
+            <StatCard label="Deployed Personnel" value={stats.deployedPersonnel} total={stats.totalPersonnel} color="blue" />
+            <StatCard label="Actionable Intel" value={stats.activeIntel} total={intel.length} color="amber" />
+          </div>
+          <CommonOperatingPicture />
+          <ThreatBoard />
+          <AssetReadiness />
         </div>
       )}
+
+      {/* Operations — mission planner */}
+      {activeMode === 'Operations' && <MissionPlanner />}
+
+      {/* Assets — readiness rollup */}
+      {activeMode === 'Assets' && <AssetReadiness />}
+
+      {/* Personnel — roster */}
+      {activeMode === 'Personnel' && <PersonnelRoster />}
+
+      {/* Intel — threat tracking board */}
+      {activeMode === 'Intel' && <ThreatBoard />}
+
+      {/* Logistics — supply-chain tracking */}
+      {activeMode === 'Logistics' && <LogisticsBoard />}
+
+      {/* Communications — secure comms log */}
+      {activeMode === 'Communications' && <CommsLog />}
 
       {/* Items List */}
       <div className="space-y-2">

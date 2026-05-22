@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, FolderPlus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, FolderPlus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ProductivityTaskRow, type ProdTask } from './ProductivityTaskRow';
@@ -121,8 +121,13 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             <option value="">One-time</option>
             <option value="daily">Daily</option>
+            <option value="weekday">Every weekday</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+            <option value="every 3 days">Every 3 days</option>
+            <option value="every 7 days">Every 7 days</option>
+            <option value="every 14 days">Every 14 days</option>
           </select>
           <select value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">

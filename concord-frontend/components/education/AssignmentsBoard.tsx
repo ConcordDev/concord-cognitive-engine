@@ -3,14 +3,11 @@
 import { useEffect, useState } from 'react';
 import { ClipboardList, Plus, Loader2, Send, Users } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Assignment {
   id: string; courseId: string; title: string; description: string;
   dueAt: string | null; peerReviewCount: number; maxPoints: number;
 }
-interface Submission { id: string; assignmentId: string; text: string; submittedAt: string; status: string; peerReviews: Array<{ score: number; feedback: string }> }
-
 export function AssignmentsBoard({ courseId }: { courseId?: string }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +16,7 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
   const [submissionText, setSubmissionText] = useState('');
   const [form, setForm] = useState({ title: '', description: '', dueAt: '', peerReviewCount: '3', maxPoints: '100' });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [courseId]);
 
   async function refresh() {

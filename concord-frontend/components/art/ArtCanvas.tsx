@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ProStudioPanel } from './ProStudioPanel';
 
 interface El {
   id?: string; kind?: string; tool: string; color: string; size?: number; opacity: number;
@@ -106,7 +107,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const [fontSize, setFontSize] = useState(36);
   const [shapeFilled, setShapeFilled] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [panel, setPanel] = useState<'none' | 'transform' | 'adjust' | 'canvas'>('none');
+  const [panel, setPanel] = useState<'none' | 'transform' | 'adjust' | 'canvas' | 'pro'>('none');
   const [adjust, setAdjust] = useState({ hueShift: 0, satScale: 1, lightScale: 1 });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -587,9 +588,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         )}
         {/* Panel toggles */}
         <div className="flex flex-wrap gap-1.5 pt-1 border-t border-zinc-800">
-          {(['transform', 'adjust', 'canvas'] as const).map((p) => (
+          {(['transform', 'adjust', 'canvas', 'pro'] as const).map((p) => (
             <button key={p} type="button" onClick={() => setPanel(panel === p ? 'none' : p)}
-              className={cn(miniBtn, panel === p && 'bg-violet-700 text-white')}>{p}</button>
+              className={cn(miniBtn, panel === p && 'bg-violet-700 text-white')}>
+              {p === 'pro' ? 'pro studio' : p}
+            </button>
           ))}
         </div>
         {panel === 'transform' && (
@@ -630,6 +633,16 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           </div>
         )}
       </div>
+
+      {/* Pro Studio — Procreate / Krita parity tools */}
+      {panel === 'pro' && activeLayer && (
+        <ProStudioPanel
+          artworkId={artwork.id}
+          layerId={activeLayer}
+          selectedIds={[...selectedIds]}
+          onApplied={reload}
+        />
+      )}
     </div>
   );
 }

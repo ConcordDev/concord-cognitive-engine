@@ -11,13 +11,14 @@
 import React from 'react';
 import {
   LayoutDashboard, Briefcase, Users, Calendar, Timer, FileText,
-  Scale, FolderOpen, BarChart3, Mail,
+  Scale, FolderOpen, BarChart3, Mail, ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type ClioNav =
   | 'dashboard'
   | 'matters'
+  | 'intake'
   | 'contacts'
   | 'calendar'
   | 'time'
@@ -37,6 +38,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard',  icon: LayoutDashboard, group: 'home' },
+  { id: 'intake',    label: 'Intake',     icon: ClipboardList,   group: 'practice' },
   { id: 'matters',   label: 'Matters',    icon: Briefcase,       group: 'practice' },
   { id: 'contacts',  label: 'Contacts',   icon: Users,           group: 'practice' },
   { id: 'calendar',  label: 'Calendar',   icon: Calendar,        group: 'practice' },

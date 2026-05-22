@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Users, Plus, Trash2, Loader2, Phone, Mail } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Tech {
   id: string; name: string; skills: string[]; phone: string; email: string;

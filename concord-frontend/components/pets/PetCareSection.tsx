@@ -7,23 +7,25 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { PawPrint, Plus, HeartPulse, Activity, BellRing, CalendarHeart, Loader2 } from 'lucide-react';
+import { PawPrint, Plus, HeartPulse, Activity, BellRing, CalendarHeart, ShieldCheck, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PetHealthPanel } from './PetHealthPanel';
 import { PetWellnessPanel } from './PetWellnessPanel';
 import { PetRemindersPanel } from './PetRemindersPanel';
 import { PetServicesPanel } from './PetServicesPanel';
+import { PetRecordsPanel } from './PetRecordsPanel';
 
 interface Pet { id: string; name: string; species: string; breed: string | null }
 interface Dash { pets: number; overdueVaccines: number; openReminders: number; overdueReminders: number; monthSpend: number; activeBookings: number }
 
-type TabId = 'health' | 'wellness' | 'reminders' | 'services';
+type TabId = 'health' | 'wellness' | 'reminders' | 'services' | 'records';
 const TABS: { id: TabId; label: string; icon: typeof HeartPulse }[] = [
   { id: 'health', label: 'Health', icon: HeartPulse },
   { id: 'wellness', label: 'Weight & Care', icon: Activity },
   { id: 'reminders', label: 'Reminders', icon: BellRing },
   { id: 'services', label: 'Care Services', icon: CalendarHeart },
+  { id: 'records', label: 'Records & ID', icon: ShieldCheck },
 ];
 
 export function PetCareSection() {
@@ -153,6 +155,18 @@ export function PetCareSection() {
             {tab === 'wellness' && <PetWellnessPanel petId={selected} onChange={refresh} />}
             {tab === 'reminders' && <PetRemindersPanel petId={selected} onChange={refresh} />}
             {tab === 'services' && <PetServicesPanel petId={selected} onChange={refresh} />}
+            {tab === 'records' && (() => {
+              const sel = pets.find((p) => p.id === selected);
+              return (
+                <PetRecordsPanel
+                  petId={selected}
+                  petName={sel?.name || 'this pet'}
+                  species={sel?.species || 'dog'}
+                  breed={sel?.breed || null}
+                  onChange={refresh}
+                />
+              );
+            })()}
           </div>
         </>
       )}

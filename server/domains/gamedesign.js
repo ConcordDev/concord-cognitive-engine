@@ -52,6 +52,7 @@ export default function registerGameDesignActions(registerLensAction) {
     for (const k of [
       "games", "gdd", "mechanics", "entities", "levels",
       "loops", "narrativeNodes", "narrativeLinks", "enums", "customTiles", "autotileRules",
+      "assets", "animations", "behaviors", "playtests", "collabSessions",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -1147,5 +1148,641 @@ export default function registerGameDesignActions(registerLensAction) {
         mechanicsByCategory: byCategory,
       },
     };
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Feature-parity backlog — runtime, assets, collision, animation,
+  // visual scripting, playtest analytics, collaborative editing.
+  // ════════════════════════════════════════════════════════════════════
+
+  // ── 1. Playable runtime — compile a level into a runnable scene ─────
+  // Walks the level's layers + the game's entities and produces a
+  // deterministic, JSON-serialisable runtime scene: a spawn point, a
+  // solid-cell collision grid (from intgrid + collision config),
+  // placed actors (object instances bound to entities), and the
+  // mechanics/loops the runtime should advertise. The frontend renders
+  // and steps this scene on a <canvas> — no engine code on the server.
+  registerLensAction("game-design", "runtime-compile", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    const level = gdFindLevel(s, userId, params.levelId);
+    if (!level) return { ok: false, error: "level not found" };
+    const game = gdGame(s, userId, level.gameId);
+    if (!game) return { ok: false, error: "game not found" };
+    const cellCount = level.cols * level.rows;
+    // Collision: a cell is solid if any collision-flagged source marks it.
+    const collisionLayer = (s.levels.get(userId) || [])
+      .find((l) => l.id === level.id);
+    const solid = new Array(cellCount).fill(false);
+    const hazard = new Array(cellCount).fill(false);
+    const cfg = (collisionLayer && collisionLayer.collision) || {};
+    // intgrid layers: value 1..99 → solid if listed in cfg.solidInts
+    const solidInts = new Set((Array.isArray(cfg.solidInts) ? cfg.solidInts : []).map((v) => Math.round(gdNum(v))));
+    const hazardInts = new Set((Array.isArray(cfg.hazardInts) ? cfg.hazardInts : []).map((v) => Math.round(gdNum(v))));
+    // tile ids: solid if listed in cfg.solidTiles
+    const solidTiles = new Set((Array.isArray(cfg.solidTiles) ? cfg.solidTiles : []).map(String));
+    const hazardTiles = new Set((Array.isArray(cfg.hazardTiles) ? cfg.hazardTiles : []).map(String));
+    for (const ly of level.layers) {
+      if (ly.kind === "object") continue;
+      const arr = ly.tiles || [];
+      for (let i = 0; i < arr.length && i < cellCount; i++) {
+        const v = arr[i];
+        if (v == null || v === 0) continue;
+        if (ly.kind === "intgrid") {
+          if (solidInts.has(Math.round(gdNum(v)))) solid[i] = true;
+          if (hazardInts.has(Math.round(gdNum(v)))) hazard[i] = true;
+        } else {
+          if (solidTiles.has(String(v))) solid[i] = true;
+          if (hazardTiles.has(String(v))) hazard[i] = true;
+        }
+      }
+    }
+    // Actors: every object that resolves to an entity (or any object).
+    const entities = (s.entities.get(userId) || []).filter((e) => e.gameId === game.id);
+    const entById = new Map(entities.map((e) => [e.id, e]));
+    const actors = [];
+    let spawn = null;
+    for (const ly of level.layers) {
+      if (ly.kind !== "object") continue;
+      for (const o of ly.objects || []) {
+        const ent = o.entityId ? entById.get(o.entityId) : null;
+        const actor = {
+          id: o.id, name: o.name,
+          x: o.x, y: o.y, w: o.w, h: o.h,
+          kind: ent ? ent.kind : "prop",
+          health: ent ? ent.health : 0,
+          damage: ent ? ent.damage : 0,
+          speed: ent ? ent.speed : 0,
+          entityId: o.entityId || null,
+          color: o.color,
+        };
+        actors.push(actor);
+        if ((ent && ent.kind === "player") && !spawn) spawn = { x: o.x, y: o.y };
+      }
+    }
+    // Spawn fallback: first non-solid cell.
+    if (!spawn) {
+      let idx = solid.findIndex((v) => !v);
+      if (idx < 0) idx = 0;
+      spawn = { x: (idx % level.cols) * level.tileSize, y: Math.floor(idx / level.cols) * level.tileSize };
+    }
+    const scene = {
+      levelId: level.id, levelName: level.name, gameTitle: game.title,
+      cols: level.cols, rows: level.rows, tileSize: level.tileSize,
+      orientation: level.orientation,
+      gravity: cfg.gravity != null ? gdClamp(cfg.gravity, 0, 4000, 980) : 980,
+      tilemap: level.layers
+        .filter((l) => l.kind === "tile")
+        .map((l) => ({ name: l.name, opacity: l.opacity, data: l.tiles || [] })),
+      collision: { solid, hazard, solidCount: solid.filter(Boolean).length, hazardCount: hazard.filter(Boolean).length },
+      spawn,
+      actors,
+      mechanics: (s.mechanics.get(userId) || []).filter((m) => m.gameId === game.id).map((m) => m.name),
+      compiledAt: gdNow(),
+    };
+    return { ok: true, result: { scene } };
+  });
+
+  // ── Collision / physics config on a level ──────────────────────────
+  registerLensAction("game-design", "level-collision-get", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    const level = (s.levels.get(userId) || []).find((l) => l.id === params.levelId);
+    if (!level) return { ok: false, error: "level not found" };
+    const cfg = level.collision || {};
+    return {
+      ok: true,
+      result: {
+        collision: {
+          gravity: cfg.gravity != null ? gdNum(cfg.gravity, 980) : 980,
+          solidInts: Array.isArray(cfg.solidInts) ? cfg.solidInts : [],
+          hazardInts: Array.isArray(cfg.hazardInts) ? cfg.hazardInts : [],
+          solidTiles: Array.isArray(cfg.solidTiles) ? cfg.solidTiles : [],
+          hazardTiles: Array.isArray(cfg.hazardTiles) ? cfg.hazardTiles : [],
+        },
+      },
+    };
+  });
+
+  registerLensAction("game-design", "level-collision-set", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    const level = (s.levels.get(userId) || []).find((l) => l.id === params.levelId);
+    if (!level) return { ok: false, error: "level not found" };
+    const intList = (raw) => (Array.isArray(raw)
+      ? [...new Set(raw.map((v) => Math.round(gdClamp(v, 0, 99, 0))).filter((v) => v >= 1))].slice(0, 99)
+      : []);
+    const tileList = (raw) => (Array.isArray(raw)
+      ? [...new Set(raw.map((v) => gdClean(v, 40)).filter(Boolean))].slice(0, 99)
+      : []);
+    const cfg = level.collision || {};
+    if (params.gravity != null) cfg.gravity = gdClamp(params.gravity, 0, 4000, 980);
+    if (params.solidInts != null) cfg.solidInts = intList(params.solidInts);
+    if (params.hazardInts != null) cfg.hazardInts = intList(params.hazardInts);
+    if (params.solidTiles != null) cfg.solidTiles = tileList(params.solidTiles);
+    if (params.hazardTiles != null) cfg.hazardTiles = tileList(params.hazardTiles);
+    level.collision = cfg;
+    level.updatedAt = gdNow();
+    saveGdState();
+    return { ok: true, result: { collision: cfg } };
+  });
+
+  // ── 2. Asset import pipeline ────────────────────────────────────────
+  // Imports a user-supplied asset (a data URL or external URL the user
+  // pasted) and registers it as a project asset. No content is fetched
+  // or generated server-side — the user provides the source.
+  const GD_ASSET_KINDS = ["sprite", "tileset", "audio", "texture", "font", "other"];
+  registerLensAction("game-design", "asset-import", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    const name = gdClean(params.name, 120);
+    if (!name) return { ok: false, error: "asset name required" };
+    const src = String(params.src == null ? "" : params.src).trim();
+    if (!src) return { ok: false, error: "asset src (data URL or URL) required" };
+    if (src.length > 4_000_000) return { ok: false, error: "asset src exceeds 4MB limit" };
+    const isData = src.startsWith("data:");
+    const isUrl = /^https?:\/\//i.test(src);
+    if (!isData && !isUrl) return { ok: false, error: "src must be a data URL or http(s) URL" };
+    const asset = {
+      id: gdId("ast"), gameId: String(params.gameId), name,
+      kind: gdPick(params.kind, GD_ASSET_KINDS, "sprite"),
+      src, sourceType: isData ? "embedded" : "linked",
+      width: Math.max(0, Math.round(gdNum(params.width))),
+      height: Math.max(0, Math.round(gdNum(params.height))),
+      frameW: Math.max(0, Math.round(gdNum(params.frameW))),
+      frameH: Math.max(0, Math.round(gdNum(params.frameH))),
+      tags: Array.isArray(params.tags)
+        ? [...new Set(params.tags.map((t) => gdClean(t, 30)).filter(Boolean))].slice(0, 12)
+        : [],
+      bytes: isData ? src.length : 0,
+      createdAt: gdNow(),
+    };
+    gdListB(s.assets, userId).push(asset);
+    saveGdState();
+    return { ok: true, result: { asset } };
+  });
+
+  registerLensAction("game-design", "asset-list", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const assets = (s.assets.get(gdAid(ctx)) || []).filter((a) => a.gameId === String(params.gameId));
+    const byKind = {};
+    for (const k of GD_ASSET_KINDS) {
+      const n = assets.filter((a) => a.kind === k).length;
+      if (n) byKind[k] = n;
+    }
+    return { ok: true, result: { assets, count: assets.length, byKind } };
+  });
+
+  registerLensAction("game-design", "asset-update", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const asset = (s.assets.get(gdAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!asset) return { ok: false, error: "asset not found" };
+    if (params.name != null) asset.name = gdClean(params.name, 120) || asset.name;
+    if (params.kind != null) asset.kind = gdPick(params.kind, GD_ASSET_KINDS, asset.kind);
+    if (params.frameW != null) asset.frameW = Math.max(0, Math.round(gdNum(params.frameW)));
+    if (params.frameH != null) asset.frameH = Math.max(0, Math.round(gdNum(params.frameH)));
+    if (params.width != null) asset.width = Math.max(0, Math.round(gdNum(params.width)));
+    if (params.height != null) asset.height = Math.max(0, Math.round(gdNum(params.height)));
+    if (Array.isArray(params.tags)) {
+      asset.tags = [...new Set(params.tags.map((t) => gdClean(t, 30)).filter(Boolean))].slice(0, 12);
+    }
+    saveGdState();
+    return { ok: true, result: { asset } };
+  });
+
+  registerLensAction("game-design", "asset-delete", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.assets.get(gdAid(ctx)) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "asset not found" };
+    arr.splice(i, 1);
+    saveGdState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── 3. Animation timeline for entities / sprites ────────────────────
+  // An animation is a named clip on a game: an ordered list of frames,
+  // each a {assetId?, frameIndex, durationMs} keyframe. Frames index a
+  // sprite-sheet asset (or are abstract). Loop + fps metadata included.
+  registerLensAction("game-design", "animation-create", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    const name = gdClean(params.name, 120);
+    if (!name) return { ok: false, error: "animation name required" };
+    const anim = {
+      id: gdId("anm"), gameId: String(params.gameId), name,
+      entityId: params.entityId ? String(params.entityId) : null,
+      assetId: params.assetId ? String(params.assetId) : null,
+      loop: params.loop == null ? true : !!params.loop,
+      fps: Math.round(gdClamp(params.fps, 1, 60, 12)),
+      frames: [],
+      createdAt: gdNow(),
+    };
+    gdListB(s.animations, userId).push(anim);
+    saveGdState();
+    return { ok: true, result: { animation: anim } };
+  });
+
+  registerLensAction("game-design", "animation-list", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const animations = (s.animations.get(gdAid(ctx)) || []).filter((a) => a.gameId === String(params.gameId));
+    return { ok: true, result: { animations, count: animations.length } };
+  });
+
+  registerLensAction("game-design", "animation-update", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = (s.animations.get(gdAid(ctx)) || []).find((a) => a.id === params.id);
+    if (!anim) return { ok: false, error: "animation not found" };
+    if (params.name != null) anim.name = gdClean(params.name, 120) || anim.name;
+    if (params.entityId !== undefined) anim.entityId = params.entityId ? String(params.entityId) : null;
+    if (params.assetId !== undefined) anim.assetId = params.assetId ? String(params.assetId) : null;
+    if (params.loop != null) anim.loop = !!params.loop;
+    if (params.fps != null) anim.fps = Math.round(gdClamp(params.fps, 1, 60, anim.fps));
+    saveGdState();
+    return { ok: true, result: { animation: anim } };
+  });
+
+  registerLensAction("game-design", "animation-delete", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.animations.get(gdAid(ctx)) || [];
+    const i = arr.findIndex((a) => a.id === params.id);
+    if (i < 0) return { ok: false, error: "animation not found" };
+    arr.splice(i, 1);
+    saveGdState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("game-design", "animation-frame-add", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = (s.animations.get(gdAid(ctx)) || []).find((a) => a.id === params.animationId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    if (anim.frames.length >= 256) return { ok: false, error: "frame limit (256) reached" };
+    const frame = {
+      id: gdId("frm"),
+      frameIndex: Math.max(0, Math.round(gdNum(params.frameIndex))),
+      durationMs: Math.round(gdClamp(params.durationMs, 16, 10000, Math.round(1000 / anim.fps))),
+    };
+    const at = params.at != null ? Math.round(gdClamp(params.at, 0, anim.frames.length, anim.frames.length)) : anim.frames.length;
+    anim.frames.splice(at, 0, frame);
+    saveGdState();
+    return { ok: true, result: { frame, frames: anim.frames } };
+  });
+
+  registerLensAction("game-design", "animation-frame-update", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = (s.animations.get(gdAid(ctx)) || []).find((a) => a.id === params.animationId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    if (params.frameIndex != null) frame.frameIndex = Math.max(0, Math.round(gdNum(params.frameIndex)));
+    if (params.durationMs != null) frame.durationMs = Math.round(gdClamp(params.durationMs, 16, 10000, frame.durationMs));
+    saveGdState();
+    return { ok: true, result: { frame } };
+  });
+
+  registerLensAction("game-design", "animation-frame-delete", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = (s.animations.get(gdAid(ctx)) || []).find((a) => a.id === params.animationId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const i = anim.frames.findIndex((f) => f.id === params.frameId);
+    if (i < 0) return { ok: false, error: "frame not found" };
+    anim.frames.splice(i, 1);
+    saveGdState();
+    return { ok: true, result: { deleted: params.frameId, frames: anim.frames } };
+  });
+
+  // Reorder frames — params.order is the full ordered array of frame ids.
+  registerLensAction("game-design", "animation-frame-reorder", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = (s.animations.get(gdAid(ctx)) || []).find((a) => a.id === params.animationId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const order = Array.isArray(params.order) ? params.order.map(String) : [];
+    const byId = new Map(anim.frames.map((f) => [f.id, f]));
+    if (order.length !== anim.frames.length || order.some((id) => !byId.has(id))) {
+      return { ok: false, error: "order must list every frame id exactly once" };
+    }
+    anim.frames = order.map((id) => byId.get(id));
+    saveGdState();
+    return { ok: true, result: { order } };
+  });
+
+  // ── 4. Visual scripting for entity behavior ─────────────────────────
+  // A behavior is a list of trigger→action rules ("event sheets" in
+  // GDevelop / Construct terms). Each rule has a trigger (an event the
+  // runtime fires) and an action with parameters. The runtime walks
+  // these rules deterministically.
+  const GD_VS_TRIGGERS = ["on-spawn", "on-tick", "on-collide", "on-key", "on-timer", "on-damage", "on-death", "on-trigger-zone"];
+  const GD_VS_ACTIONS = ["move", "jump", "set-velocity", "spawn-entity", "destroy-self", "apply-damage", "set-variable", "play-animation", "emit-event", "wait"];
+  registerLensAction("game-design", "behavior-create", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    const name = gdClean(params.name, 120);
+    if (!name) return { ok: false, error: "behavior name required" };
+    const behavior = {
+      id: gdId("bhv"), gameId: String(params.gameId), name,
+      entityId: params.entityId ? String(params.entityId) : null,
+      rules: [],
+      createdAt: gdNow(),
+    };
+    gdListB(s.behaviors, userId).push(behavior);
+    saveGdState();
+    return { ok: true, result: { behavior } };
+  });
+
+  registerLensAction("game-design", "behavior-list", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const behaviors = (s.behaviors.get(gdAid(ctx)) || []).filter((b) => b.gameId === String(params.gameId));
+    return {
+      ok: true,
+      result: { behaviors, count: behaviors.length, triggers: GD_VS_TRIGGERS, actions: GD_VS_ACTIONS },
+    };
+  });
+
+  registerLensAction("game-design", "behavior-update", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const behavior = (s.behaviors.get(gdAid(ctx)) || []).find((b) => b.id === params.id);
+    if (!behavior) return { ok: false, error: "behavior not found" };
+    if (params.name != null) behavior.name = gdClean(params.name, 120) || behavior.name;
+    if (params.entityId !== undefined) behavior.entityId = params.entityId ? String(params.entityId) : null;
+    saveGdState();
+    return { ok: true, result: { behavior } };
+  });
+
+  registerLensAction("game-design", "behavior-delete", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.behaviors.get(gdAid(ctx)) || [];
+    const i = arr.findIndex((b) => b.id === params.id);
+    if (i < 0) return { ok: false, error: "behavior not found" };
+    arr.splice(i, 1);
+    saveGdState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("game-design", "behavior-rule-add", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const behavior = (s.behaviors.get(gdAid(ctx)) || []).find((b) => b.id === params.behaviorId);
+    if (!behavior) return { ok: false, error: "behavior not found" };
+    if (behavior.rules.length >= 64) return { ok: false, error: "rule limit (64) reached" };
+    if (!GD_VS_TRIGGERS.includes(String(params.trigger))) return { ok: false, error: "unknown trigger" };
+    if (!GD_VS_ACTIONS.includes(String(params.action))) return { ok: false, error: "unknown action" };
+    const rule = {
+      id: gdId("rul"),
+      trigger: String(params.trigger),
+      action: String(params.action),
+      triggerParam: gdClean(params.triggerParam, 80) || null,
+      params: params.params && typeof params.params === "object" ? params.params : {},
+      enabled: params.enabled == null ? true : !!params.enabled,
+    };
+    behavior.rules.push(rule);
+    saveGdState();
+    return { ok: true, result: { rule, rules: behavior.rules } };
+  });
+
+  registerLensAction("game-design", "behavior-rule-update", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const behavior = (s.behaviors.get(gdAid(ctx)) || []).find((b) => b.id === params.behaviorId);
+    if (!behavior) return { ok: false, error: "behavior not found" };
+    const rule = behavior.rules.find((r) => r.id === params.ruleId);
+    if (!rule) return { ok: false, error: "rule not found" };
+    if (params.trigger != null && GD_VS_TRIGGERS.includes(String(params.trigger))) rule.trigger = String(params.trigger);
+    if (params.action != null && GD_VS_ACTIONS.includes(String(params.action))) rule.action = String(params.action);
+    if (params.triggerParam !== undefined) rule.triggerParam = gdClean(params.triggerParam, 80) || null;
+    if (params.params && typeof params.params === "object") rule.params = params.params;
+    if (params.enabled != null) rule.enabled = !!params.enabled;
+    saveGdState();
+    return { ok: true, result: { rule } };
+  });
+
+  registerLensAction("game-design", "behavior-rule-delete", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const behavior = (s.behaviors.get(gdAid(ctx)) || []).find((b) => b.id === params.behaviorId);
+    if (!behavior) return { ok: false, error: "behavior not found" };
+    const i = behavior.rules.findIndex((r) => r.id === params.ruleId);
+    if (i < 0) return { ok: false, error: "rule not found" };
+    behavior.rules.splice(i, 1);
+    saveGdState();
+    return { ok: true, result: { deleted: params.ruleId, rules: behavior.rules } };
+  });
+
+  // ── 5. Playtest analytics ingestion (balance loop closure) ─────────
+  // A playtest run records real outcomes from playing a level — the
+  // frontend runtime reports these after a session. The macro stores
+  // them; playtest-report aggregates real runs into balance verdicts.
+  registerLensAction("game-design", "playtest-record", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    const game = gdGame(s, userId, params.gameId);
+    if (!game) return { ok: false, error: "game not found" };
+    if (params.levelId && !gdFindLevel(s, userId, params.levelId)) return { ok: false, error: "level not found" };
+    const outcome = gdPick(params.outcome, ["completed", "died", "quit", "timeout"], "quit");
+    const run = {
+      id: gdId("pty"), gameId: String(params.gameId),
+      levelId: params.levelId ? String(params.levelId) : null,
+      outcome,
+      durationMs: Math.max(0, Math.round(gdNum(params.durationMs))),
+      deaths: Math.max(0, Math.round(gdNum(params.deaths))),
+      damageDealt: Math.max(0, Math.round(gdNum(params.damageDealt))),
+      damageTaken: Math.max(0, Math.round(gdNum(params.damageTaken))),
+      collected: Math.max(0, Math.round(gdNum(params.collected))),
+      furthestX: Math.max(0, Math.round(gdNum(params.furthestX))),
+      note: gdClean(params.note, 400) || null,
+      recordedAt: gdNow(),
+    };
+    gdListB(s.playtests, userId).push(run);
+    saveGdState();
+    return { ok: true, result: { run } };
+  });
+
+  registerLensAction("game-design", "playtest-list", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let runs = (s.playtests.get(gdAid(ctx)) || []).filter((r) => r.gameId === String(params.gameId));
+    if (params.levelId) runs = runs.filter((r) => r.levelId === String(params.levelId));
+    return { ok: true, result: { runs: runs.slice(-200), count: runs.length } };
+  });
+
+  registerLensAction("game-design", "playtest-clear", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    const all = s.playtests.get(userId) || [];
+    const before = all.length;
+    const kept = all.filter((r) => r.gameId !== String(params.gameId)
+      || (params.levelId && r.levelId !== String(params.levelId)));
+    s.playtests.set(userId, kept);
+    saveGdState();
+    return { ok: true, result: { cleared: before - kept.length } };
+  });
+
+  // Aggregate real playtest runs into a balance report — closes the
+  // design → playtest → rebalance loop with measured data only.
+  registerLensAction("game-design", "playtest-report", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
+    let runs = (s.playtests.get(userId) || []).filter((r) => r.gameId === String(params.gameId));
+    if (params.levelId) runs = runs.filter((r) => r.levelId === String(params.levelId));
+    if (runs.length === 0) {
+      return { ok: true, result: { message: "No playtest runs recorded yet. Play a level to gather data.", runs: 0 } };
+    }
+    const n = runs.length;
+    const completed = runs.filter((r) => r.outcome === "completed").length;
+    const died = runs.filter((r) => r.outcome === "died").length;
+    const quit = runs.filter((r) => r.outcome === "quit").length;
+    const avg = (k) => Math.round(runs.reduce((acc, r) => acc + gdNum(r[k]), 0) / n);
+    const completionRate = Math.round((completed / n) * 100);
+    const sortedDur = runs.map((r) => r.durationMs).sort((a, b) => a - b);
+    const medianDuration = sortedDur[Math.floor(sortedDur.length / 2)];
+    let difficultyVerdict;
+    if (completionRate >= 85) difficultyVerdict = "too-easy — almost everyone finishes";
+    else if (completionRate >= 45) difficultyVerdict = "well-tuned — a fair completion rate";
+    else if (completionRate >= 15) difficultyVerdict = "hard — most runs fail";
+    else difficultyVerdict = "too-hard — almost nobody completes";
+    const avgDeaths = avg("deaths");
+    return {
+      ok: true,
+      result: {
+        runs: n, completed, died, quit,
+        completionRate,
+        avgDurationMs: avg("durationMs"),
+        medianDurationMs: medianDuration,
+        avgDeaths,
+        avgDamageDealt: avg("damageDealt"),
+        avgDamageTaken: avg("damageTaken"),
+        avgCollected: avg("collected"),
+        avgFurthestX: avg("furthestX"),
+        difficultyVerdict,
+        rebalanceHint: completionRate < 15 ? "lower enemy damage or add checkpoints"
+          : completionRate >= 85 ? "raise the challenge — add hazards or stronger enemies"
+            : avgDeaths > 5 ? "many deaths despite completion — tighten the pacing"
+              : "balance reads healthy from measured runs",
+      },
+    };
+  });
+
+  // ── 6. Collaborative real-time level editing ───────────────────────
+  // A collab session lets multiple participants share a level. Edits
+  // are recorded as an ordered op log; clients poll since a cursor to
+  // converge. Real participant ids only — no synthetic users.
+  registerLensAction("game-design", "collab-open", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    const level = gdFindLevel(s, userId, params.levelId);
+    if (!level) return { ok: false, error: "level not found" };
+    // One session per level per owner — reuse if already open.
+    const list = gdListB(s.collabSessions, userId);
+    let session = list.find((c) => c.levelId === level.id && c.open);
+    if (!session) {
+      session = {
+        id: gdId("col"), levelId: level.id, gameId: level.gameId,
+        ownerId: userId, open: true,
+        participants: [{ id: userId, joinedAt: gdNow(), lastSeen: gdNow() }],
+        ops: [], opSeq: 0,
+        createdAt: gdNow(),
+      };
+      list.push(session);
+    } else {
+      const me = session.participants.find((p) => p.id === userId);
+      if (me) me.lastSeen = gdNow();
+      else session.participants.push({ id: userId, joinedAt: gdNow(), lastSeen: gdNow() });
+    }
+    saveGdState();
+    return {
+      ok: true,
+      result: { sessionId: session.id, levelId: session.levelId, cursor: session.opSeq, participants: session.participants },
+    };
+  });
+
+  function gdCollabSession(s, userId, sessionId) {
+    return (s.collabSessions.get(userId) || []).find((c) => c.id === sessionId) || null;
+  }
+
+  registerLensAction("game-design", "collab-join", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    // Search every owner's sessions for this id (a collaborator is not
+    // the owner of the session record).
+    let session = null;
+    for (const list of s.collabSessions.values()) {
+      const found = list.find((c) => c.id === params.sessionId && c.open);
+      if (found) { session = found; break; }
+    }
+    if (!session) return { ok: false, error: "session not found or closed" };
+    const me = session.participants.find((p) => p.id === userId);
+    if (me) me.lastSeen = gdNow();
+    else session.participants.push({ id: userId, joinedAt: gdNow(), lastSeen: gdNow() });
+    saveGdState();
+    return {
+      ok: true,
+      result: { sessionId: session.id, levelId: session.levelId, cursor: session.opSeq, participants: session.participants },
+    };
+  });
+
+  registerLensAction("game-design", "collab-push-op", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    let session = null;
+    for (const list of s.collabSessions.values()) {
+      const found = list.find((c) => c.id === params.sessionId && c.open);
+      if (found) { session = found; break; }
+    }
+    if (!session) return { ok: false, error: "session not found or closed" };
+    if (!session.participants.some((p) => p.id === userId)) {
+      return { ok: false, error: "join the session before pushing ops" };
+    }
+    const kind = gdPick(params.kind, ["paint", "object", "layer", "resize", "note"], "paint");
+    session.opSeq += 1;
+    const op = {
+      seq: session.opSeq, kind,
+      authorId: userId,
+      payload: params.payload && typeof params.payload === "object" ? params.payload : {},
+      at: gdNow(),
+    };
+    session.ops.push(op);
+    if (session.ops.length > 1000) session.ops = session.ops.slice(-1000);
+    const me = session.participants.find((p) => p.id === userId);
+    if (me) me.lastSeen = gdNow();
+    saveGdState();
+    return { ok: true, result: { seq: op.seq } };
+  });
+
+  registerLensAction("game-design", "collab-poll", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    let session = null;
+    for (const list of s.collabSessions.values()) {
+      const found = list.find((c) => c.id === params.sessionId);
+      if (found) { session = found; break; }
+    }
+    if (!session) return { ok: false, error: "session not found" };
+    const me = session.participants.find((p) => p.id === userId);
+    if (me) me.lastSeen = gdNow();
+    const since = Math.max(0, Math.round(gdNum(params.since)));
+    const ops = session.ops.filter((o) => o.seq > since);
+    // Active = seen in the last 60s.
+    const cut = Date.now() - 60_000;
+    const active = session.participants.filter((p) => new Date(p.lastSeen).getTime() >= cut);
+    saveGdState();
+    return {
+      ok: true,
+      result: {
+        sessionId: session.id, levelId: session.levelId, open: session.open,
+        cursor: session.opSeq, ops,
+        participants: session.participants,
+        activeParticipants: active.length,
+      },
+    };
+  });
+
+  registerLensAction("game-design", "collab-close", (ctx, _a, params = {}) => {
+    const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = gdAid(ctx);
+    const session = gdCollabSession(s, userId, params.sessionId);
+    if (!session) return { ok: false, error: "session not found (only the owner can close)" };
+    session.open = false;
+    session.closedAt = gdNow();
+    saveGdState();
+    return { ok: true, result: { closed: session.id } };
   });
 }

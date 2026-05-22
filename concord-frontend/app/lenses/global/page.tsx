@@ -9,10 +9,11 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CountryAtlas } from '@/components/global/CountryAtlas';
 import { WorldBankPanel } from '@/components/global/WorldBankPanel';
+import { DataExplorer } from '@/components/global/DataExplorer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Loader2, BarChart3, Network, GitBranch } from 'lucide-react';
+import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Loader2, BarChart3, Network, GitBranch, Compass } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -71,11 +72,12 @@ export default function GlobalLensPage() {
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState('');
   const [offset, setOffset] = useState(0);
-  const [activeTab, setActiveTab] = useState<'regions' | 'trends' | 'indicators' | 'actions'>('regions');
+  const [activeTab, setActiveTab] = useState<'explore' | 'regions' | 'trends' | 'indicators' | 'actions'>('explore');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
     [
+      { id: 'tab-explore', keys: 'e', description: 'Data Explorer', category: 'navigation', action: () => setActiveTab('explore') },
       { id: 'tab-regions', keys: 'r', description: 'Regions', category: 'navigation', action: () => setActiveTab('regions') },
       { id: 'tab-trends', keys: 't', description: 'Trends', category: 'navigation', action: () => setActiveTab('trends') },
       { id: 'tab-indicators', keys: 'i', description: 'Indicators', category: 'navigation', action: () => setActiveTab('indicators') },
@@ -161,6 +163,7 @@ export default function GlobalLensPage() {
   }
 
   const tabs = [
+    { key: 'explore' as const, label: 'Data Explorer', icon: Compass },
     { key: 'regions' as const, label: 'Regions', icon: Globe },
     { key: 'trends' as const, label: 'Trends', icon: TrendingUp },
     { key: 'indicators' as const, label: 'Indicators', icon: Map },
@@ -242,6 +245,26 @@ export default function GlobalLensPage() {
       </div>
 
       <AnimatePresence mode="wait">
+        {activeTab === 'explore' && (
+          <motion.div
+            key="explore"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.25 }}
+            className="panel p-4"
+          >
+            <h2 className="font-semibold mb-1 flex items-center gap-2">
+              <Compass className="w-4 h-4 text-neon-cyan" /> World Bank Data Explorer
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">
+              Live World Bank Open Data — choropleth map, time series, country comparison, scatter explorer,
+              indicator catalog, and country profiles. Save any view for a shareable link.
+            </p>
+            <DataExplorer />
+          </motion.div>
+        )}
+
         {activeTab === 'regions' && (
           <motion.div
             key="regions"

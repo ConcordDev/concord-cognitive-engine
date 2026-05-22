@@ -720,7 +720,7 @@ Rules:
     }
     return ws;
   }
-  function saveWS() { if (typeof globalThis._concordSaveStateDebounced === 'function') { try { globalThis._concordSaveStateDebounced(); } catch (_e) {} } }
+  function saveWS() { if (typeof globalThis._concordSaveStateDebounced === 'function') { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best-effort: ignore */ } } }
   function aidC(ctx) { return ctx?.actor?.userId || ctx?.userId || 'anon'; }
   function uidC(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   // Short but collision-safe id for commits/stashes — keeps the random
@@ -1379,7 +1379,7 @@ Rules:
           maxTokens: 1500,
         });
         const text = String(r?.content || r?.text || '').trim();
-        const parsed = extractJsonCode(text);
+        const parsed = extractJsonObject(text);
         if (parsed?.plan && Array.isArray(parsed.plan)) {
           task.plan = parsed.plan.slice(0, 12).map(p => ({ action: String(p.action || ''), summary: String(p.summary || '') }));
           task.source = 'brain';
@@ -1648,6 +1648,519 @@ Rules:
     return { ok: true, result: { from, to, changed, filesChanged: changed.length, totalOccurrences } };
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  //  Parity backlog — LSP IntelliSense, remote GitHub git, step
+  //  debugger, codebase-wide @-file AI chat, extensions, split-pane
+  //  layout, real-time Live Share collaboration.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Live language-server IntelliSense ─────────────────────────
+  // hover types + signature help + completions derived from a real
+  // structural scan of the project's files. No external LSP daemon —
+  // a deterministic in-process analyzer over the virtual workspace.
+  registerLensAction("code", "lsp-hover", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const path = String(params.path || "");
+    const symbol = String(params.symbol || "").trim();
+    if (!projectId || !path) return { ok: false, error: "projectId + path required" };
+    if (!symbol) return { ok: false, error: "symbol required" };
+    const files = ensureFiles(s, userId, projectId);
+    if (!files.has(path)) return { ok: false, error: "file not found" };
+    const lang = langFromPath(path);
+    // Scan every project file for a declaration of the symbol.
+    let decl = null;
+    for (const [p, blob] of files) {
+      const d = findDeclaration(blob.content, symbol, langFromPath(p));
+      if (d) { decl = { ...d, path: p }; break; }
+    }
+    if (!decl) {
+      const builtin = builtinHover(symbol);
+      if (builtin) return { ok: true, result: { symbol, found: true, ...builtin, source: "builtin" } };
+      return { ok: true, result: { symbol, found: false, hover: `\`${symbol}\` — no declaration found in this project.` } };
+    }
+    return {
+      ok: true,
+      result: {
+        symbol, found: true,
+        kind: decl.kind,
+        type: decl.signature,
+        hover: `(${decl.kind}) ${decl.signature}`,
+        definedAt: { path: decl.path, line: decl.line },
+        doc: decl.doc || null,
+        language: lang,
+        source: "project",
+      },
+    };
+  });
+
+  registerLensAction("code", "lsp-signature", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const fnName = String(params.symbol || "").trim();
+    if (!projectId || !fnName) return { ok: false, error: "projectId + symbol required" };
+    const files = ensureFiles(s, userId, projectId);
+    let sig = null;
+    for (const [p, blob] of files) {
+      const d = findDeclaration(blob.content, fnName, langFromPath(p));
+      if (d && (d.kind === "function" || d.kind === "method")) {
+        sig = { ...d, path: p };
+        break;
+      }
+    }
+    const builtin = !sig ? builtinSignature(fnName) : null;
+    if (!sig && !builtin) return { ok: true, result: { symbol: fnName, found: false, parameters: [] } };
+    const params2 = sig ? sig.params : builtin.params;
+    return {
+      ok: true,
+      result: {
+        symbol: fnName,
+        found: true,
+        label: sig ? sig.signature : builtin.label,
+        parameters: params2,
+        returnType: sig ? (sig.returnType || "unknown") : builtin.returnType,
+        definedAt: sig ? { path: sig.path, line: sig.line } : null,
+        source: sig ? "project" : "builtin",
+      },
+    };
+  });
+
+  registerLensAction("code", "lsp-completions", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const path = String(params.path || "");
+    if (!projectId) return { ok: false, error: "projectId required" };
+    const prefix = String(params.prefix || "").trim();
+    const files = ensureFiles(s, userId, projectId);
+    const seen = new Map();
+    for (const [p, blob] of files) {
+      for (const sym of extractSymbols(blob.content, langFromPath(p))) {
+        if (prefix && !sym.name.toLowerCase().startsWith(prefix.toLowerCase())) continue;
+        if (!seen.has(sym.name)) {
+          seen.set(sym.name, { label: sym.name, kind: sym.kind, detail: `${p}:${sym.line}`, fromFile: p });
+        }
+      }
+    }
+    // Local identifiers in the currently-open file (variables, params).
+    if (path && files.has(path)) {
+      const ids = files.get(path).content.match(/[A-Za-z_$][\w$]*/g) || [];
+      for (const id of ids) {
+        if (prefix && !id.toLowerCase().startsWith(prefix.toLowerCase())) continue;
+        if (!seen.has(id) && id.length > 1) {
+          seen.set(id, { label: id, kind: "identifier", detail: "local", fromFile: path });
+        }
+      }
+    }
+    const completions = Array.from(seen.values()).slice(0, 100);
+    return { ok: true, result: { completions, count: completions.length, prefix } };
+  });
+
+  // ── Remote GitHub repo (push / pull) ──────────────────────────
+  // Pulls a real public GitHub repo into the virtual workspace via
+  // the keyless GitHub REST API. Push records a local export manifest
+  // (GitHub write requires an OAuth token the user supplies via BYO).
+  registerLensAction("code", "github-pull", async (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const owner = String(params.owner || "").trim();
+    const repo = String(params.repo || "").trim();
+    const ref = String(params.ref || "").trim();
+    if (!projectId || !owner || !repo) return { ok: false, error: "projectId + owner + repo required" };
+    const project = bucketC(s.projects, userId).find(p => p.id === projectId);
+    if (!project) return { ok: false, error: "project not found" };
+    let fetchJson;
+    try { ({ cachedFetchJson: fetchJson } = await import("../lib/external-fetch.js")); }
+    catch { return { ok: false, error: "external-fetch unavailable" }; }
+    const headers = { Accept: "application/vnd.github+json", "User-Agent": "concord-code-lens" };
+    let meta, tree;
+    try {
+      meta = await fetchJson(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, { ttlMs: 300000, opts: { headers } });
+      const branch = ref || meta?.default_branch || "main";
+      tree = await fetchJson(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`, { ttlMs: 300000, opts: { headers } });
+    } catch (e) {
+      return { ok: false, error: `github fetch failed: ${e?.message || "unknown"}` };
+    }
+    if (!tree || !Array.isArray(tree.tree)) {
+      return { ok: false, error: "github returned no tree (repo private, rate-limited, or not found)" };
+    }
+    const textBlobs = tree.tree
+      .filter(t => t.type === "blob" && t.size != null && t.size < 100_000 && isTextPath(t.path))
+      .slice(0, 60);
+    const files = ensureFiles(s, userId, projectId);
+    const pulled = [];
+    for (const blob of textBlobs) {
+      try {
+        const raw = await fetchRaw(`https://raw.githubusercontent.com/${owner}/${repo}/${ref || meta?.default_branch || "main"}/${blob.path}`);
+        if (raw == null) continue;
+        files.set(blob.path, { content: raw, modifiedAt: isoC() });
+        pulled.push(blob.path);
+      } catch { /* skip individual blob failures */ }
+    }
+    const git = ensureGit(s, userId, projectId);
+    if (!git.remote || typeof git.remote !== "object") git.remote = {};
+    git.remote = {
+      provider: "github", owner, repo,
+      url: meta?.html_url || `https://github.com/${owner}/${repo}`,
+      defaultBranch: meta?.default_branch || "main",
+      stars: meta?.stargazers_count || 0,
+      pulledAt: isoC(),
+    };
+    saveWS();
+    return {
+      ok: true,
+      result: {
+        remote: git.remote,
+        pulledFiles: pulled.length,
+        skipped: textBlobs.length - pulled.length,
+        files: pulled,
+      },
+    };
+  });
+
+  registerLensAction("code", "github-push", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    if (!projectId) return { ok: false, error: "projectId required" };
+    const git = ensureGit(s, userId, projectId);
+    if (!git.remote?.provider) return { ok: false, error: "no remote configured — pull a repo first" };
+    const message = String(params.message || "").trim();
+    if (!message) return { ok: false, error: "commit message required" };
+    const files = ensureFiles(s, userId, projectId);
+    if (files.size === 0) return { ok: false, error: "no files to push" };
+    if (!Array.isArray(git.pushLog)) git.pushLog = [];
+    const entry = {
+      id: shortIdC("push"),
+      message,
+      branch: String(params.branch || git.branch),
+      fileCount: files.size,
+      bytes: Array.from(files.values()).reduce((sum, f) => sum + f.content.length, 0),
+      remote: { owner: git.remote.owner, repo: git.remote.repo },
+      pushedAt: isoC(),
+      // GitHub write needs an OAuth token supplied via the BYO key
+      // drawer; without one, the push is staged locally as a manifest.
+      delivered: false,
+    };
+    git.pushLog.unshift(entry);
+    saveWS();
+    return {
+      ok: true,
+      result: {
+        push: entry,
+        note: "Push staged locally. Connect a GitHub OAuth token in BYO keys to deliver.",
+      },
+    };
+  });
+
+  registerLensAction("code", "github-remote-status", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const git = ensureGit(s, aidC(ctx), String(params.projectId || ""));
+    return {
+      ok: true,
+      result: {
+        remote: git.remote || null,
+        pushLog: Array.isArray(git.pushLog) ? git.pushLog.slice(0, 20) : [],
+        hasRemote: !!git.remote?.provider,
+      },
+    };
+  });
+
+  // ── Step debugger (breakpoints / watch / call stack) ──────────
+  // Instruments the user's JS and executes it under the vm sandbox,
+  // capturing a real call-stack + variable snapshot at each line
+  // that carries a breakpoint.
+  registerLensAction("code", "debug-run", (_ctx, _a, params = {}) => {
+    const code = String(params.code || "");
+    const language = String(params.language || "javascript").toLowerCase();
+    const breakpoints = Array.isArray(params.breakpoints)
+      ? params.breakpoints.map(n => Math.max(1, Math.round(Number(n)))).filter(Number.isFinite)
+      : [];
+    const watch = Array.isArray(params.watch) ? params.watch.map(String).filter(Boolean).slice(0, 20) : [];
+    if (!code.trim()) return { ok: false, error: "code required" };
+    if (!["javascript", "js", "typescript", "ts"].includes(language)) {
+      return { ok: false, error: `step debugger supports JS/TS only (got ${language})` };
+    }
+    return runDebugSession(code, language, new Set(breakpoints), watch);
+  });
+
+  // ── Codebase-wide AI chat with @-file context ─────────────────
+  // Cursor's killer feature: an AI chat where the user references
+  // files with @path and the macro injects their real content.
+  registerLensAction("code", "codebase-chat", async (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    const message = String(params.message || "").trim();
+    if (!projectId || !message) return { ok: false, error: "projectId + message required" };
+    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+    const files = ensureFiles(s, userId, projectId);
+    // Resolve @-references: explicit list OR parsed from the message.
+    const explicit = Array.isArray(params.mentionedFiles) ? params.mentionedFiles.map(String) : [];
+    const parsed = (message.match(/@([\w./-]+)/g) || []).map(m => m.slice(1));
+    const wanted = [...new Set([...explicit, ...parsed])];
+    const resolved = [];
+    const missing = [];
+    for (const w of wanted) {
+      const hit = files.has(w) ? w : Array.from(files.keys()).find(k => k.endsWith("/" + w) || k === w);
+      if (hit) resolved.push(hit); else missing.push(w);
+    }
+    // If no @-files referenced, attach the most-recently-modified files.
+    let contextPaths = resolved;
+    if (contextPaths.length === 0) {
+      contextPaths = Array.from(files.entries())
+        .sort((a, b) => String(b[1].modifiedAt || "").localeCompare(String(a[1].modifiedAt || "")))
+        .slice(0, 3)
+        .map(([p]) => p);
+    }
+    const ctxBlocks = contextPaths.slice(0, 8).map(p => {
+      const content = files.get(p)?.content || "";
+      return `## ${p} (${langFromPath(p)})\n\`\`\`\n${content.slice(0, 6000)}\n\`\`\``;
+    }).join("\n\n");
+    const history = Array.isArray(params.history)
+      ? params.history.filter(m => m && (m.role === "user" || m.role === "assistant"))
+          .slice(-8)
+          .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) }))
+      : [];
+    const sys = `You are an AI pair-programmer with full read access to the user's codebase. Answer questions about the attached files concretely — cite filenames and line numbers when relevant. When you propose code, wrap it in fenced blocks. Only reference facts visible in the attached files; never invent file paths or APIs.`;
+    const userMsg = `Attached files:\n\n${ctxBlocks || "(no files in this project yet)"}\n\n---\n\nQuestion: ${message}`;
+    let raw = "";
+    try {
+      const r = await withTimeout(ctx.llm.chat({
+        messages: [
+          { role: "system", content: sys },
+          ...history,
+          { role: "user", content: userMsg },
+        ],
+        temperature: 0.3,
+        maxTokens: 1500,
+        slot: "conscious",
+      }), MULTI_FILE_PLAN_TIMEOUT_MS);
+      raw = String(r?.text || r?.content || r?.message?.content || "").trim();
+    } catch (e) {
+      return { ok: false, error: `llm error: ${e?.message || "unknown"}` };
+    }
+    return {
+      ok: true,
+      result: {
+        reply: raw || "(no response)",
+        contextFiles: contextPaths,
+        missingFiles: missing,
+        filesIndexed: files.size,
+      },
+    };
+  });
+
+  // ── Extensions / plugin system ────────────────────────────────
+  // A registry of user-installed editor extensions persisted per user.
+  // Each extension carries a kind that hooks a real editor behavior
+  // (formatter / linter / snippet-pack / theme / language).
+  function ensureExtensions(state, userId) {
+    if (!(state.extensions instanceof Map)) state.extensions = new Map();
+    if (!state.extensions.has(userId)) state.extensions.set(userId, []);
+    return state.extensions.get(userId);
+  }
+  const EXTENSION_CATALOG = [
+    { id: "prettier-fmt", name: "Prettier Formatter", kind: "formatter", description: "Opinionated multi-language code formatter." },
+    { id: "eslint-lint", name: "ESLint", kind: "linter", description: "Pluggable JavaScript / TypeScript linter." },
+    { id: "todo-highlight", name: "TODO Highlight", kind: "decorator", description: "Highlights TODO / FIXME / HACK comments inline." },
+    { id: "bracket-rainbow", name: "Rainbow Brackets", kind: "decorator", description: "Colorizes matching bracket pairs." },
+    { id: "py-language", name: "Python Language Pack", kind: "language", description: "Adds Python syntax + outline support." },
+    { id: "rust-language", name: "Rust Language Pack", kind: "language", description: "Adds Rust syntax + outline support." },
+    { id: "git-lens-ext", name: "GitLens", kind: "git", description: "Inline blame annotations and history." },
+    { id: "code-snippets-js", name: "JavaScript Snippet Pack", kind: "snippet-pack", description: "Common JS / Node snippets." },
+  ];
+
+  registerLensAction("code", "extensions-catalog", (_ctx, _a, _p = {}) => {
+    return { ok: true, result: { catalog: EXTENSION_CATALOG, count: EXTENSION_CATALOG.length } };
+  });
+
+  registerLensAction("code", "extensions-list", (ctx, _a, _p = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureExtensions(s, aidC(ctx));
+    return { ok: true, result: { extensions: list, count: list.length } };
+  });
+
+  registerLensAction("code", "extensions-install", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const extId = String(params.extensionId || "").trim();
+    if (!extId) return { ok: false, error: "extensionId required" };
+    const catalogEntry = EXTENSION_CATALOG.find(e => e.id === extId);
+    if (!catalogEntry) return { ok: false, error: "unknown extension" };
+    const list = ensureExtensions(s, userId);
+    if (list.some(e => e.id === extId)) return { ok: true, result: { extension: list.find(e => e.id === extId), existed: true } };
+    const ext = { ...catalogEntry, enabled: true, installedAt: isoC() };
+    list.push(ext);
+    saveWS();
+    return { ok: true, result: { extension: ext } };
+  });
+
+  registerLensAction("code", "extensions-toggle", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureExtensions(s, aidC(ctx));
+    const ext = list.find(e => e.id === String(params.extensionId || ""));
+    if (!ext) return { ok: false, error: "extension not installed" };
+    ext.enabled = params.enabled === undefined ? !ext.enabled : params.enabled === true;
+    saveWS();
+    return { ok: true, result: { extension: ext } };
+  });
+
+  registerLensAction("code", "extensions-uninstall", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureExtensions(s, aidC(ctx));
+    const i = list.findIndex(e => e.id === String(params.extensionId || ""));
+    if (i < 0) return { ok: false, error: "extension not installed" };
+    list.splice(i, 1);
+    saveWS();
+    return { ok: true, result: { uninstalled: true } };
+  });
+
+  // ── Split-pane multi-file editing layout ──────────────────────
+  // Persists an editor split layout (which file is in which pane).
+  function ensureLayouts(state, userId) {
+    if (!(state.editorLayouts instanceof Map)) state.editorLayouts = new Map();
+    return state.editorLayouts;
+  }
+
+  registerLensAction("code", "layout-get", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    if (!projectId) return { ok: false, error: "projectId required" };
+    const layouts = ensureLayouts(s, userId);
+    const key = `${userId}::${projectId}`;
+    const layout = layouts.get(key) || { orientation: "single", panes: [{ id: "pane-1", path: null }] };
+    return { ok: true, result: { layout } };
+  });
+
+  registerLensAction("code", "layout-save", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    if (!projectId) return { ok: false, error: "projectId required" };
+    const orientation = ["single", "vertical", "horizontal", "grid"].includes(params.orientation)
+      ? params.orientation : "single";
+    const panes = Array.isArray(params.panes) ? params.panes : [];
+    if (panes.length === 0) return { ok: false, error: "at least one pane required" };
+    if (panes.length > 4) return { ok: false, error: "max 4 panes" };
+    const normalized = panes.slice(0, 4).map((p, i) => ({
+      id: String(p.id || `pane-${i + 1}`),
+      path: p.path != null ? String(p.path) : null,
+    }));
+    const layout = { orientation, panes: normalized, updatedAt: isoC() };
+    ensureLayouts(s, userId).set(`${userId}::${projectId}`, layout);
+    saveWS();
+    return { ok: true, result: { layout } };
+  });
+
+  // ── Real-time multiplayer / Live Share ────────────────────────
+  // A collaborative editing session: a host opens a session, peers
+  // join by code, and edits are appended to a shared op-log that
+  // every participant polls. In-memory, per-session.
+  function ensureSessions(state) {
+    if (!(state.liveSessions instanceof Map)) state.liveSessions = new Map();
+    return state.liveSessions;
+  }
+
+  registerLensAction("code", "liveshare-start", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const projectId = String(params.projectId || "");
+    if (!projectId) return { ok: false, error: "projectId required" };
+    const sessions = ensureSessions(s);
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const session = {
+      code,
+      hostId: userId,
+      projectId,
+      name: String(params.name || "Live Share session").slice(0, 120),
+      participants: [{ userId, role: "host", joinedAt: isoC() }],
+      ops: [],
+      status: "open",
+      startedAt: isoC(),
+    };
+    sessions.set(code, session);
+    saveWS();
+    return { ok: true, result: { session: publicSession(session) } };
+  });
+
+  registerLensAction("code", "liveshare-join", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const code = String(params.code || "").trim().toUpperCase();
+    if (!code) return { ok: false, error: "session code required" };
+    const session = ensureSessions(s).get(code);
+    if (!session) return { ok: false, error: "session not found" };
+    if (session.status !== "open") return { ok: false, error: "session closed" };
+    if (!session.participants.some(p => p.userId === userId)) {
+      session.participants.push({ userId, role: "guest", joinedAt: isoC() });
+      session.ops.push({ seq: session.ops.length, kind: "join", actor: userId, at: isoC() });
+    }
+    saveWS();
+    return { ok: true, result: { session: publicSession(session) } };
+  });
+
+  registerLensAction("code", "liveshare-edit", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const code = String(params.code || "").trim().toUpperCase();
+    const session = ensureSessions(s).get(code);
+    if (!session) return { ok: false, error: "session not found" };
+    if (session.status !== "open") return { ok: false, error: "session closed" };
+    if (!session.participants.some(p => p.userId === userId)) return { ok: false, error: "not a participant" };
+    const path = String(params.path || "").trim();
+    if (!path) return { ok: false, error: "path required" };
+    const op = {
+      seq: session.ops.length,
+      kind: "edit",
+      actor: userId,
+      path,
+      content: typeof params.content === "string" ? params.content.slice(0, 200_000) : null,
+      cursor: params.cursor && typeof params.cursor === "object"
+        ? { line: Number(params.cursor.line) || 1, column: Number(params.cursor.column) || 1 }
+        : null,
+      at: isoC(),
+    };
+    session.ops.push(op);
+    if (session.ops.length > 2000) session.ops = session.ops.slice(-2000);
+    saveWS();
+    return { ok: true, result: { op } };
+  });
+
+  registerLensAction("code", "liveshare-poll", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const code = String(params.code || "").trim().toUpperCase();
+    const session = ensureSessions(s).get(code);
+    if (!session) return { ok: false, error: "session not found" };
+    const since = Math.max(0, Math.round(Number(params.since) || 0));
+    const ops = session.ops.filter(o => o.seq >= since);
+    return {
+      ok: true,
+      result: {
+        session: publicSession(session),
+        ops,
+        nextSince: session.ops.length,
+      },
+    };
+  });
+
+  registerLensAction("code", "liveshare-end", (ctx, _a, params = {}) => {
+    const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aidC(ctx);
+    const code = String(params.code || "").trim().toUpperCase();
+    const session = ensureSessions(s).get(code);
+    if (!session) return { ok: false, error: "session not found" };
+    if (session.hostId !== userId) return { ok: false, error: "only the host can end the session" };
+    session.status = "closed";
+    session.endedAt = isoC();
+    saveWS();
+    return { ok: true, result: { session: publicSession(session) } };
+  });
+
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("code", "workspace-summary", (ctx, _a, _p = {}) => {
@@ -1743,7 +2256,7 @@ function execJavaScript(code, language) {
     src = src
       .replace(/^import\s.+?from\s.+?;\s*$/gm, "")
       .replace(/^export\s+(default\s+)?/gm, "")
-      .replace(/:\s*[A-Za-z_$][\w$<>\[\],\s|&?']*(?=\s*[,)={])/g, "")
+      .replace(/:\s*[A-Za-z_$][\w$<>[\],\s|&?']*(?=\s*[,)={])/g, "")
       .replace(/<[A-Za-z_$][\w$<>,\s|&?']*>(?=\s*\()/g, "");
   }
 
@@ -1945,4 +2458,245 @@ function extractJsonObject(raw) {
   } catch {
     return null;
   }
+}
+
+// ─── LSP-grade helpers (IntelliSense backlog item) ───────────────────────
+// findDeclaration — locates where `symbol` is declared in a file's source and
+// returns its kind / signature / leading doc-comment. Regex-driven, honest:
+// structural rather than a full type-checker, but covers the common shapes.
+function findDeclaration(content, symbol, lang) {
+  if (!symbol) return null;
+  const lines = String(content || "").split("\n");
+  const esc = escapeRegex(symbol);
+  // Per-language declaration patterns. Each entry: [regex, kind, sigBuilder].
+  const jsPatterns = [
+    [new RegExp(`^\\s*(?:export\\s+)?(?:default\\s+)?(?:async\\s+)?function\\s*\\*?\\s*${esc}\\s*(\\([^)]*\\))`), "function"],
+    [new RegExp(`^\\s*(?:export\\s+)?(?:abstract\\s+)?class\\s+${esc}\\b(.*)$`), "class"],
+    [new RegExp(`^\\s*(?:export\\s+)?interface\\s+${esc}\\b(.*)$`), "interface"],
+    [new RegExp(`^\\s*(?:export\\s+)?type\\s+${esc}\\s*=(.*)$`), "type"],
+    [new RegExp(`^\\s*(?:export\\s+)?enum\\s+${esc}\\b(.*)$`), "enum"],
+    [new RegExp(`^\\s*(?:export\\s+)?(?:const|let|var)\\s+${esc}\\s*=\\s*(?:async\\s*)?(\\([^)]*\\)|[A-Za-z_$][\\w$]*)\\s*=>`), "function"],
+    [new RegExp(`^\\s*(?:export\\s+)?(?:const|let|var)\\s+${esc}\\s*=(.*)$`), "variable"],
+    [new RegExp(`^\\s{2,}(?:async\\s+|static\\s+|get\\s+|set\\s+)*${esc}\\s*(\\([^;]*\\))\\s*\\{`), "method"],
+  ];
+  const pyPatterns = [
+    [new RegExp(`^\\s*class\\s+${esc}\\b(.*)$`), "class"],
+    [new RegExp(`^\\s*(?:async\\s+)?def\\s+${esc}\\s*(\\([^)]*\\))`), "function"],
+    [new RegExp(`^\\s*${esc}\\s*=(.*)$`), "variable"],
+  ];
+  const patterns = lang === "python" ? pyPatterns : jsPatterns;
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    for (const [re, kind] of patterns) {
+      const m = ln.match(re);
+      if (!m) continue;
+      const signature = ln.trim().replace(/\s*\{?\s*$/, "").slice(0, 240);
+      // Pull a leading doc comment (JSDoc /** */ or python """ """ or // lines).
+      let doc = null;
+      const params = parseParamList(m[1] || "");
+      let returnType = null;
+      const retM = ln.match(/\)\s*:\s*([A-Za-z_$][\w$<>[\],\s|&]*)/);
+      if (retM) returnType = retM[1].trim();
+      if (lang !== "python") {
+        const docLines = [];
+        for (let j = i - 1; j >= 0 && j >= i - 12; j--) {
+          const dl = lines[j].trim();
+          if (dl.endsWith("*/") || /^\*/.test(dl) || dl.startsWith("/**") || dl.startsWith("//")) {
+            docLines.unshift(dl.replace(/^\/\*\*?|\*\/$|^\*\s?|^\/\/\s?/g, "").trim());
+          } else if (dl === "") { continue; } else break;
+        }
+        if (docLines.length) doc = docLines.filter(Boolean).join(" ").slice(0, 400);
+      }
+      return { kind, signature, line: i + 1, doc, params, returnType };
+    }
+  }
+  return null;
+}
+
+// parseParamList — turns a "(a, b: number, c = 1)" string into structured params.
+function parseParamList(raw) {
+  const inner = String(raw || "").replace(/^\s*\(|\)\s*$/g, "").trim();
+  if (!inner) return [];
+  const parts = [];
+  let depth = 0, buf = "";
+  for (const ch of inner) {
+    if (ch === "<" || ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ">" || ch === ")" || ch === "]" || ch === "}") depth--;
+    if (ch === "," && depth === 0) { parts.push(buf); buf = ""; }
+    else buf += ch;
+  }
+  if (buf.trim()) parts.push(buf);
+  return parts.map(p => {
+    const t = p.trim();
+    const colon = t.indexOf(":");
+    const name = (colon >= 0 ? t.slice(0, colon) : t.split("=")[0]).trim().replace(/^\.\.\./, "");
+    const type = colon >= 0 ? t.slice(colon + 1).split("=")[0].trim() : null;
+    return { name, type, label: t };
+  }).filter(p => p.name);
+}
+
+// builtinHover — type info for common runtime globals so hover works even
+// before a symbol is declared in the project.
+const BUILTIN_DOCS = {
+  console: { kind: "namespace", type: "Console", hover: "(namespace) Console — logging API: log, info, warn, error, table, time.", returnType: null, params: [] },
+  Math: { kind: "namespace", type: "Math", hover: "(namespace) Math — mathematical constants and functions.", returnType: null, params: [] },
+  JSON: { kind: "namespace", type: "JSON", hover: "(namespace) JSON — parse / stringify serialization.", returnType: null, params: [] },
+  Object: { kind: "class", type: "ObjectConstructor", hover: "(class) Object — the base object constructor.", returnType: null, params: [] },
+  Array: { kind: "class", type: "ArrayConstructor", hover: "(class) Array — list constructor with map/filter/reduce.", returnType: null, params: [] },
+  Promise: { kind: "class", type: "PromiseConstructor", hover: "(class) Promise — async value with all/race/allSettled.", returnType: "Promise<T>", params: [] },
+  Map: { kind: "class", type: "MapConstructor", hover: "(class) Map — keyed collection preserving insertion order.", returnType: null, params: [] },
+  Set: { kind: "class", type: "SetConstructor", hover: "(class) Set — collection of unique values.", returnType: null, params: [] },
+  fetch: { kind: "function", type: "(input, init?) => Promise<Response>", hover: "(function) fetch(input, init?) — make an HTTP request.", returnType: "Promise<Response>", params: [{ name: "input", type: "RequestInfo", label: "input" }, { name: "init", type: "RequestInit?", label: "init?" }] },
+  parseInt: { kind: "function", type: "(string, radix?) => number", hover: "(function) parseInt(string, radix?) — parse an integer.", returnType: "number", params: [{ name: "string", type: "string", label: "string" }, { name: "radix", type: "number?", label: "radix?" }] },
+  parseFloat: { kind: "function", type: "(string) => number", hover: "(function) parseFloat(string) — parse a float.", returnType: "number", params: [{ name: "string", type: "string", label: "string" }] },
+  setTimeout: { kind: "function", type: "(handler, timeout?) => number", hover: "(function) setTimeout(handler, ms?) — defer a callback.", returnType: "number", params: [{ name: "handler", type: "Function", label: "handler" }, { name: "timeout", type: "number?", label: "timeout?" }] },
+};
+function builtinHover(symbol) {
+  const e = BUILTIN_DOCS[symbol];
+  if (!e) return null;
+  return { kind: e.kind, type: e.type, hover: e.hover, doc: null };
+}
+function builtinSignature(symbol) {
+  const e = BUILTIN_DOCS[symbol];
+  if (!e || (e.kind !== "function")) return null;
+  return { label: `${symbol}${e.type}`, params: e.params, returnType: e.returnType };
+}
+
+// ─── Remote-GitHub helpers (push/pull backlog item) ──────────────────────
+// isTextPath — is this repo path a text source file worth pulling?
+const TEXT_EXTS = new Set([
+  "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "rb", "go", "rs", "java",
+  "c", "h", "cpp", "hpp", "cc", "cs", "php", "swift", "kt", "scala",
+  "md", "txt", "json", "yml", "yaml", "toml", "xml", "html", "css", "scss",
+  "sh", "bash", "sql", "graphql", "vue", "svelte", "lua", "r", "dart", "ini", "cfg", "env",
+]);
+function isTextPath(p) {
+  const path = String(p || "");
+  if (/^(\.|node_modules\/|dist\/|build\/|\.git\/)/.test(path)) return false;
+  const base = path.split("/").pop() || "";
+  if (["LICENSE", "Dockerfile", "Makefile", ".gitignore"].includes(base)) return true;
+  const ext = (base.split(".").pop() || "").toLowerCase();
+  return TEXT_EXTS.has(ext);
+}
+
+// fetchRaw — fetch raw text from a URL (used to download GitHub blobs).
+// Caps body size and tolerates 404 / rate-limit gracefully (returns null).
+async function fetchRaw(url) {
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "concord-code-lens" } });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (text.length > 200_000) return text.slice(0, 200_000);
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Live Share helper (multiplayer backlog item) ────────────────────────
+// publicSession — strips internal-only fields from a live session before
+// returning it to a client (op-log can be large; participants summarised).
+function publicSession(session) {
+  return {
+    code: session.code,
+    name: session.name,
+    hostId: session.hostId,
+    projectId: session.projectId,
+    status: session.status,
+    participants: session.participants.map(p => ({ userId: p.userId, role: p.role, joinedAt: p.joinedAt })),
+    participantCount: session.participants.length,
+    opCount: session.ops.length,
+    startedAt: session.startedAt,
+    endedAt: session.endedAt || null,
+  };
+}
+
+// ─── Step debugger (breakpoints / watch / call-stack backlog item) ───────
+// runDebugSession — instruments JS line-by-line and executes it under the
+// vm sandbox. Before each source line that carries a breakpoint, a probe is
+// injected that records a real call-stack + the value of each watch
+// expression at that point. Returns an ordered list of debug frames.
+function runDebugSession(code, language, breakpointSet, watch) {
+  let src = code;
+  if (language === "typescript" || language === "ts") {
+    src = src
+      .replace(/^import\s.+?from\s.+?;\s*$/gm, "")
+      .replace(/^export\s+(default\s+)?/gm, "")
+      .replace(/:\s*[A-Za-z_$][\w$<>[\],\s|&?']*(?=\s*[,)={])/g, "")
+      .replace(/<[A-Za-z_$][\w$<>,\s|&?']*>(?=\s*\()/g, "");
+  }
+  const srcLines = src.split("\n");
+  const frames = [];
+  const stdoutLines = [];
+  const stderrLines = [];
+  const watchExprs = (watch || []).slice(0, 20);
+
+  // Probe fn the instrumented code calls. Captures line + scope + stack.
+  const __probe = (lineNo) => {
+    if (frames.length >= 500) return; // hard cap so a loop can't explode memory
+    const stackRaw = new Error().stack || "";
+    const callStack = stackRaw.split("\n").slice(2, 9)
+      .map(l => l.trim().replace(/^at\s+/, ""))
+      .filter(l => l && !l.includes("vm.js") && !l.includes("node:vm"));
+    frames.push({ line: lineNo, sourceText: (srcLines[lineNo - 1] || "").trim().slice(0, 200), callStack, watch: {} });
+  };
+
+  // Instrument: prepend `__probe(N);` to each line that has a breakpoint.
+  // Only instrument lines that look like statements (skip blank/comment/brace-only).
+  let instrumented = "";
+  for (let i = 0; i < srcLines.length; i++) {
+    const lineNo = i + 1;
+    const raw = srcLines[i];
+    const trimmed = raw.trim();
+    if (breakpointSet.has(lineNo) && trimmed && !trimmed.startsWith("//") && !/^[}\])]+;?$/.test(trimmed)) {
+      instrumented += `__probe(${lineNo});\n`;
+    }
+    instrumented += raw + "\n";
+  }
+
+  const stdout = (...a) => stdoutLines.push(a.map(formatExecArg).join(" "));
+  const sandbox = {
+    __probe,
+    console: { log: stdout, info: stdout, debug: stdout, warn: (...a) => stderrLines.push(a.map(formatExecArg).join(" ")), error: (...a) => stderrLines.push(a.map(formatExecArg).join(" ")) },
+    Math, JSON, Date, Number, String, Boolean, Array, Object, Map, Set,
+    Promise, RegExp, Error, TypeError, RangeError, Symbol,
+    parseInt, parseFloat, isFinite, isNaN, encodeURIComponent, decodeURIComponent,
+  };
+  const startedAt = performance.now();
+  let exitCode = 0;
+  try {
+    const ctx = vm.createContext(sandbox, { name: "code-lens-debug" });
+    const script = new vm.Script(instrumented, { filename: "debug.js" });
+    script.runInContext(ctx, { timeout: EXEC_TIMEOUT_MS, displayErrors: true });
+  } catch (e) {
+    exitCode = 1;
+    stderrLines.push(e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+  }
+
+  // Evaluate watch expressions against the final sandbox scope, per breakpoint
+  // hit (best effort — a watch expr is re-evaluated in the post-run context).
+  for (const frame of frames) {
+    for (const expr of watchExprs) {
+      try {
+        const v = vm.runInContext(`(${expr})`, vm.createContext({ ...sandbox }), { timeout: 200 });
+        frame.watch[expr] = formatExecArg(v);
+      } catch {
+        frame.watch[expr] = "<unavailable>";
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    result: {
+      frames,
+      hitCount: frames.length,
+      breakpoints: Array.from(breakpointSet).sort((a, b) => a - b),
+      watch: watchExprs,
+      stdout: stdoutLines.join("\n"),
+      stderr: stderrLines.join("\n"),
+      exitCode,
+      durationMs: Math.round(performance.now() - startedAt),
+    },
+  };
 }

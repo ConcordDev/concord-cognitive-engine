@@ -133,3 +133,132 @@ describe("fashion.analytics", () => {
     assert.equal(d.result.neverWorn, 1);
   });
 });
+
+// ─── 2026 parity backlog ───────────────────────────────────────────────
+
+describe("fashion.item-remove-bg", () => {
+  it("flags a CSS flat-lay mask when no remove.bg key is set", async () => {
+    const prev = process.env.REMOVEBG_API_KEY;
+    delete process.env.REMOVEBG_API_KEY;
+    const item = newItem(ctxA, { photo: "https://example.com/tee.png" });
+    const r = await call("item-remove-bg", ctxA, { id: item.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.processed, false);
+    assert.equal(r.result.mode, "css-mask");
+    assert.equal(r.result.item.bgRemovalMode, "css-mask");
+    if (prev != null) process.env.REMOVEBG_API_KEY = prev;
+  });
+
+  it("rejects an item with no photo", async () => {
+    const item = newItem(ctxA);
+    const r = await call("item-remove-bg", ctxA, { id: item.id });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("fashion.ai-outfit-generate", () => {
+  it("assembles head-to-toe looks from the real wardrobe by weather + occasion", () => {
+    newItem(ctxA, { name: "Tee", category: "top", season: "summer" });
+    newItem(ctxA, { name: "Shorts", category: "bottom", season: "summer" });
+    newItem(ctxA, { name: "Sandals", category: "shoes", season: "summer" });
+    const r = call("ai-outfit-generate", ctxA, { occasion: "casual", temp: 28, count: 3 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.weatherBand, "warm");
+    assert.ok(r.result.outfits.length >= 1);
+    assert.ok(r.result.outfits[0].itemIds.length >= 2);
+  });
+
+  it("returns an empty set with a note for an empty wardrobe", () => {
+    const r = call("ai-outfit-generate", ctxB, { occasion: "work" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.outfits.length, 0);
+    assert.ok(r.result.note);
+  });
+});
+
+describe("fashion.weather-forecast", () => {
+  it("requires valid lat and lon", async () => {
+    const r = await call("weather-forecast", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("fashion.style-quiz", () => {
+  it("returns quiz questions", () => {
+    const r = call("style-quiz-questions", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.questions.length >= 5);
+  });
+
+  it("rejects an incomplete submission", () => {
+    const r = call("style-quiz-submit", ctxA, { answers: { vibe: "minimal" } });
+    assert.equal(r.ok, false);
+  });
+
+  it("saves a profile and surfaces closet-gap recommendations", () => {
+    const r = call("style-quiz-submit", ctxA, {
+      answers: { vibe: "classic", palette: "neutral", fit: "fitted", spend: "balanced", priority: "versatility" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.profile.style, "classic");
+    assert.ok(r.result.profile.colors.length > 0);
+    assert.ok(r.result.recommendations.length > 0);
+    const got = call("style-profile-get", ctxA, {});
+    assert.equal(got.result.profile.style, "classic");
+  });
+});
+
+describe("fashion.resale / declutter", () => {
+  it("flags never-worn items for declutter and lists for resale", () => {
+    const item = newItem(ctxA, { name: "Dead stock", cost: 100 });
+    const d = call("declutter-suggestions", ctxA, {});
+    assert.equal(d.ok, true);
+    assert.ok(d.result.flagged.some((f) => f.id === item.id));
+    const listed = call("resale-list-item", ctxA, { id: item.id, askingPrice: 40, channel: "vinted" });
+    assert.equal(listed.ok, true);
+    assert.equal(listed.result.listing.channel, "vinted");
+    const listings = call("resale-listings", ctxA, {});
+    assert.equal(listings.result.count, 1);
+    assert.equal(call("resale-unlist-item", ctxA, { id: item.id }).ok, true);
+    assert.equal(call("resale-listings", ctxA, {}).result.count, 0);
+  });
+});
+
+describe("fashion.social feed", () => {
+  it("shares an outfit, likes and saves it", () => {
+    const outfit = call("outfit-create", ctxA, { name: "City look" }).result.outfit;
+    const post = call("social-share-outfit", ctxA, { outfitId: outfit.id, caption: "Friday fit" }).result.post;
+    assert.ok(post.id);
+    const liked = call("social-like", ctxB, { id: post.id });
+    assert.equal(liked.result.post.likes, 1);
+    const saved = call("social-save", ctxB, { id: post.id });
+    assert.equal(saved.result.post.saves, 1);
+    const feed = call("social-feed", ctxA, { sort: "popular" });
+    assert.equal(feed.result.posts[0].id, post.id);
+    assert.equal(call("social-delete", ctxA, { id: post.id }).ok, true);
+  });
+});
+
+describe("fashion.capsule + #30wears", () => {
+  it("creates a capsule and toggles items in", () => {
+    const item = newItem(ctxA, { name: "Capsule tee" });
+    const cap = call("capsule-create", ctxA, { name: "Summer 33", targetSize: 33 }).result.capsule;
+    const t = call("capsule-toggle-item", ctxA, { capsuleId: cap.id, itemId: item.id });
+    assert.equal(t.result.filled, 1);
+    const list = call("capsule-list", ctxA, {});
+    assert.equal(list.result.capsules[0].filled, 1);
+    assert.equal(call("capsule-delete", ctxA, { id: cap.id }).ok, true);
+  });
+
+  it("enrolls an item in the #30wears challenge and tracks progress", () => {
+    const item = newItem(ctxA, { name: "Pledge tee" });
+    const ch = call("challenge-enroll", ctxA, { itemId: item.id, target: 3 }).result.challenge;
+    assert.ok(ch.id);
+    call("item-wear", ctxA, { id: item.id });
+    call("item-wear", ctxA, { id: item.id });
+    const list = call("challenge-list", ctxA, {});
+    assert.equal(list.result.challenges[0].progress, 2);
+    assert.equal(list.result.challenges[0].complete, false);
+    assert.equal(call("challenge-unenroll", ctxA, { id: ch.id }).ok, true);
+  });
+});

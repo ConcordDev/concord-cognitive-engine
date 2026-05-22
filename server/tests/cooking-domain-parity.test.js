@@ -309,3 +309,179 @@ describe("cooking — 2026 parity macros", () => {
     assert.equal(r.result.pantryItems, 1);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+//  Paprika 3 + Samsung Food gap-closing backlog — URL import,
+//  photo OCR, ratings + made-it log, USDA-linked nutrition,
+//  multi-store shopping, printable recipe export.
+// ═════════════════════════════════════════════════════════════════
+
+describe("cooking — Paprika/Samsung Food backlog macros", () => {
+  beforeEach(() => {
+    globalThis._concordSTATE = { dtus: new Map() };
+    globalThis._concordSaveStateDebounced = () => {};
+  });
+
+  it("import-from-url rejects an invalid url", async () => {
+    const r = await call("import-from-url", ctxCk, { url: "not-a-url" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /url required/);
+  });
+
+  it("import-from-url parses schema.org/Recipe JSON-LD into a real recipe", async () => {
+    const html = `<!doctype html><html><head>
+      <script type="application/ld+json">${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Recipe",
+        name: "Garlic Butter Pasta",
+        recipeYield: "4 servings",
+        prepTime: "PT10M",
+        cookTime: "PT20M",
+        recipeCuisine: "Italian",
+        keywords: "pasta, quick, dinner",
+        recipeIngredient: ["400 g spaghetti", "3 cloves garlic", "½ cup butter"],
+        recipeInstructions: [
+          { "@type": "HowToStep", text: "Boil the pasta." },
+          { "@type": "HowToStep", text: "Melt the butter with garlic." },
+        ],
+        image: ["https://example.com/pasta.jpg"],
+        description: "A simple weeknight pasta.",
+      })}</script></head><body></body></html>`;
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => html });
+    const r = await call("import-from-url", ctxCk, { url: "https://example.com/recipe" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.recipe.title, "Garlic Butter Pasta");
+    assert.equal(r.result.recipe.servings, 4);
+    assert.equal(r.result.recipe.prepMin, 10);
+    assert.equal(r.result.recipe.cookMin, 20);
+    assert.equal(r.result.importedIngredients, 3);
+    assert.equal(r.result.importedSteps, 2);
+    assert.equal(r.result.recipe.cuisine, "Italian");
+    assert.equal(r.result.recipe.sourceUrl, "https://example.com/recipe");
+    // imported recipe lands in the recipe box
+    assert.equal(call("recipes-list", ctxCk).result.recipes.length, 1);
+  });
+
+  it("import-from-url fails clearly when no Recipe JSON-LD is present", async () => {
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => "<html><body>nothing</body></html>" });
+    const r = await call("import-from-url", ctxCk, { url: "https://example.com/blank" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no schema\.org\/Recipe/);
+  });
+
+  it("import-from-photo rejects when no image is supplied", async () => {
+    const r = await call("import-from-photo", ctxCk, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /imageB64 or imageUrl required/);
+  });
+
+  it("recipe-rate appends a star rating and returns the running average", () => {
+    const rec = call("recipes-create", ctxCk, { title: "Curry" }).result.recipe;
+    const a = call("recipe-rate", ctxCk, { id: rec.id, stars: 5, note: "Loved it" });
+    assert.equal(a.ok, true);
+    assert.equal(a.result.avgRating, 5);
+    const b = call("recipe-rate", ctxCk, { id: rec.id, stars: 3 });
+    assert.equal(b.result.ratingCount, 2);
+    assert.equal(b.result.avgRating, 4);
+  });
+
+  it("recipe-rate rejects out-of-range stars", () => {
+    const rec = call("recipes-create", ctxCk, { title: "X" }).result.recipe;
+    assert.equal(call("recipe-rate", ctxCk, { id: rec.id, stars: 9 }).ok, false);
+    assert.equal(call("recipe-rate", ctxCk, { id: rec.id, stars: 0 }).ok, false);
+  });
+
+  it("recipe-log-cooked records a made-it entry with a date", () => {
+    const rec = call("recipes-create", ctxCk, { title: "Stew" }).result.recipe;
+    const r = call("recipe-log-cooked", ctxCk, { id: rec.id, date: "2026-06-01", note: "Family dinner" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.timesCooked, 1);
+    assert.equal(r.result.lastCooked, "2026-06-01");
+  });
+
+  it("recipe-history aggregates ratings + made-it log", () => {
+    const rec = call("recipes-create", ctxCk, { title: "Soup" }).result.recipe;
+    call("recipe-rate", ctxCk, { id: rec.id, stars: 4 });
+    call("recipe-log-cooked", ctxCk, { id: rec.id, date: "2026-05-20" });
+    call("recipe-log-cooked", ctxCk, { id: rec.id, date: "2026-06-02" });
+    const r = call("recipe-history", ctxCk, { id: rec.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ratingCount, 1);
+    assert.equal(r.result.timesCooked, 2);
+    assert.equal(r.result.lastCooked, "2026-06-02");
+  });
+
+  it("recipe-nutrition-compute rejects a recipe with no ingredients", async () => {
+    const rec = call("recipes-create", ctxCk, { title: "Empty" }).result.recipe;
+    const r = await call("recipe-nutrition-compute", ctxCk, { id: rec.id });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no ingredients/);
+  });
+
+  it("recipe-nutrition-compute sums USDA nutrients scaled by ingredient grams", async () => {
+    const rec = call("recipes-create", ctxCk, {
+      title: "Buttered toast", servings: 2,
+      ingredients: [{ name: "butter", qty: 100, unit: "g" }],
+    }).result.recipe;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        foods: [{
+          fdcId: 173410, description: "Butter, salted",
+          foodNutrients: [
+            { nutrientName: "Energy", value: 717 },
+            { nutrientName: "Protein", value: 0.85 },
+            { nutrientName: "Total lipid (fat)", value: 81.11 },
+            { nutrientName: "Carbohydrate, by difference", value: 0.06 },
+          ],
+        }],
+      }),
+    });
+    const r = await call("recipe-nutrition-compute", ctxCk, { id: rec.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total.caloriesKcal, 717);
+    assert.equal(r.result.perServing.caloriesKcal, 359);
+    assert.equal(r.result.resolvedCount, 1);
+    assert.equal(r.result.source, "usda-fooddata-central");
+    // nutrition persists on the recipe
+    assert.ok(call("recipes-get", ctxCk, { id: rec.id }).result.recipe.nutrition);
+  });
+
+  it("shopping-list-by-store normalizes units + groups items by store", () => {
+    call("shopping-list-add", ctxCk, { name: "flour", qty: 1, unit: "kg" });
+    call("shopping-list-add", ctxCk, { name: "flour", qty: 500, unit: "g" });
+    call("shopping-list-add", ctxCk, { name: "bread", qty: 1, unit: "" });
+    const r = call("shopping-list-by-store", ctxCk);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.consolidatedFrom, 3);
+    // flour 1kg + 500g consolidates to 1500 g
+    const grocery = r.result.stores.find(st => st.store === "Grocery");
+    const pantryAisle = grocery.aisles.find(a => a.aisle === "pantry");
+    const flour = pantryAisle.items.find(i => i.name.toLowerCase() === "flour");
+    assert.equal(flour.qty, 1500);
+    assert.equal(flour.unit, "g");
+    // bread routes to the Bakery store
+    assert.ok(r.result.stores.find(st => st.store === "Bakery"));
+  });
+
+  it("recipe-export-card produces a printable text card + html", () => {
+    const rec = call("recipes-create", ctxCk, {
+      title: "Pancakes", servings: 4, prepMin: 5, cookMin: 15,
+      ingredients: [{ name: "flour", qty: 200, unit: "g" }, { name: "milk", qty: 1, unit: "cup" }],
+      steps: ["Mix batter", "Cook on griddle"],
+    }).result.recipe;
+    const r = call("recipe-export-card", ctxCk, { id: rec.id });
+    assert.equal(r.ok, true);
+    assert.match(r.result.card, /PANCAKES/);
+    assert.match(r.result.card, /INGREDIENTS/);
+    assert.match(r.result.card, /200 g flour/);
+    assert.match(r.result.html, /<!doctype html>/);
+    assert.match(r.result.html, /Pancakes/);
+    assert.equal(r.result.format, "printable-card");
+  });
+
+  it("recipe-export-card rejects an unknown recipe id", () => {
+    const r = call("recipe-export-card", ctxCk, { id: "rec_nope" });
+    assert.equal(r.ok, false);
+  });
+});

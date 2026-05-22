@@ -11,7 +11,7 @@
 import React from 'react';
 import {
   Wheat, Tractor, BarChart3, Warehouse, MapPin, Activity, Calendar,
-  Fuel, Droplet, AlertTriangle, CheckCircle,
+  Fuel, AlertTriangle, CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

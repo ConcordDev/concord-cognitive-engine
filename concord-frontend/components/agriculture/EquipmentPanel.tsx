@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tractor, Plus, Trash2, Loader2, Fuel, Activity } from 'lucide-react';
+import { Tractor, Plus, Trash2, Loader2, Fuel } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

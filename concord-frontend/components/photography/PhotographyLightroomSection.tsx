@@ -6,22 +6,24 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Camera, Image, SlidersHorizontal, FolderOpen, Download, Loader2 } from 'lucide-react';
+import { Camera, Image, SlidersHorizontal, FolderOpen, Download, Loader2, Aperture } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { LightroomLibraryPanel } from './LightroomLibraryPanel';
 import { LightroomDevelopPanel } from './LightroomDevelopPanel';
 import { LightroomCollectionsPanel } from './LightroomCollectionsPanel';
 import { LightroomExportPanel } from './LightroomExportPanel';
+import { LightroomDarkroomPanel } from './LightroomDarkroomPanel';
 
 interface Stats {
   photos: number; albums: number; shoots: number; presets: number;
   picks: number; edited: number;
 }
-type TabId = 'library' | 'develop' | 'collections' | 'export';
+type TabId = 'library' | 'develop' | 'darkroom' | 'collections' | 'export';
 const TABS: { id: TabId; label: string; icon: typeof Image }[] = [
   { id: 'library', label: 'Library', icon: Image },
   { id: 'develop', label: 'Develop', icon: SlidersHorizontal },
+  { id: 'darkroom', label: 'Darkroom', icon: Aperture },
   { id: 'collections', label: 'Albums & Shoots', icon: FolderOpen },
   { id: 'export', label: 'Export', icon: Download },
 ];
@@ -77,6 +79,7 @@ export function PhotographyLightroomSection() {
       <div className="p-4">
         {tab === 'library' && <LightroomLibraryPanel onChange={refreshStats} />}
         {tab === 'develop' && <LightroomDevelopPanel onChange={refreshStats} />}
+        {tab === 'darkroom' && <LightroomDarkroomPanel onChange={refreshStats} />}
         {tab === 'collections' && <LightroomCollectionsPanel onChange={refreshStats} />}
         {tab === 'export' && <LightroomExportPanel />}
       </div>

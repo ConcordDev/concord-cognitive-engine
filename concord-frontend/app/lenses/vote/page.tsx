@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoteFeed } from '@/components/vote/VoteFeed';
+import { GovernanceWorkbench } from '@/components/vote/GovernanceWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -100,12 +101,13 @@ export default function VoteLensPage() {
   // UI state
   const [filter, setFilter] = useState<'all' | 'active' | 'passed' | 'rejected'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'proposals' | 'dashboard'>('proposals');
+  const [activeTab, setActiveTab] = useState<'proposals' | 'governance' | 'dashboard'>('proposals');
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
 
   useLensCommand(
     [
       { id: 'tab-proposals', keys: 'p', description: 'Proposals', category: 'navigation', action: () => setActiveTab('proposals') },
+      { id: 'tab-governance', keys: 'g', description: 'Governance Workbench', category: 'navigation', action: () => setActiveTab('governance') },
       { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('dashboard') },
       { id: 'new-proposal', keys: 'n', description: 'New proposal', category: 'actions', action: () => setShowCreateModal(true) },
     ],
@@ -300,7 +302,7 @@ export default function VoteLensPage() {
 
       {/* Tab Switch: Proposals / Dashboard */}
       <div className="flex gap-2 border-b border-lattice-border pb-0">
-        {(['proposals', 'dashboard'] as const).map((tab) => (
+        {(['proposals', 'governance', 'dashboard'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -310,7 +312,7 @@ export default function VoteLensPage() {
                 : 'border-transparent text-gray-400 hover:text-white'
             }`}
           >
-            {tab === 'proposals' ? 'Proposals' : 'Results Dashboard'}
+            {tab === 'proposals' ? 'Proposals' : tab === 'governance' ? 'Governance Workbench' : 'Results Dashboard'}
           </button>
         ))}
       </div>
@@ -496,6 +498,13 @@ export default function VoteLensPage() {
             })}
           </div>
         </>
+      )}
+
+      {/* ============ GOVERNANCE WORKBENCH TAB ============ */}
+      {activeTab === 'governance' && (
+        <section className="rounded-xl border border-neon-purple/20 bg-lattice-surface/40 p-4">
+          <GovernanceWorkbench />
+        </section>
       )}
 
       {/* ============ DASHBOARD TAB ============ */}

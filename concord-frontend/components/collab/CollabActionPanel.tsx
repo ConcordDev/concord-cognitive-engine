@@ -55,7 +55,6 @@ interface LoadResult { members: MemberLoad[]; unassignedTasks: number; overloade
 // No seeded examples — every row in these editors comes from real user
 // input or from a Load-from-substrate fetch against a live backend endpoint.
 interface CollabWorkspace { id: string; name?: string; members?: { userId: string; role?: string }[]; dtuCount?: number }
-interface CollabComment { id?: string; user_id?: string; userId?: string; author?: string; text?: string; content?: string; created_at?: string; createdAt?: string }
 interface DmConvo { conversationId?: string; otherUserId?: string; messageCount?: number; lastMessage?: { content?: string; fromUserId?: string; createdAt?: string } }
 interface DmMessage { id?: string; fromUserId?: string; content?: string; createdAt?: string }
 

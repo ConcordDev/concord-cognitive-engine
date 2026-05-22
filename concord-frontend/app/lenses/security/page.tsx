@@ -10,6 +10,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SecurityAdvisories } from '@/components/security/SecurityAdvisories';
 import { ThreatVulnPanel } from '@/components/security/ThreatVulnPanel';
+import { VulnManager } from '@/components/security/VulnManager';
+import { SOCConsole } from '@/components/security/SOCConsole';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1279,11 +1281,19 @@ export default function SecurityLensPage() {
         )}
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <SOCConsole />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SecurityAdvisories />
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ThreatVulnPanel />
+      </section>
+
+      <section className="mt-6">
+        <VulnManager />
       </section>
     </div>
 

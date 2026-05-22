@@ -12,8 +12,7 @@
 
 import React from 'react';
 import {
-  Wrench, Calendar, DollarSign, Star, Users, CheckCircle, Clock,
-  MapPin, FileText, MessageCircle, Plus,
+  Wrench, Calendar, DollarSign, Star, Users, FileText, Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

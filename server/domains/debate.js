@@ -63,4 +63,365 @@ export default function registerDebateActions(registerLensAction) {
     const detected = checks.filter(c => c.pattern.test(text)).map(c => ({ fallacy: c.name, description: c.desc }));
     return { ok: true, result: { textLength: text.length, fallaciesDetected: detected, count: detected.length, logicalSoundness: detected.length === 0 ? "appears-sound" : detected.length <= 2 ? "minor-issues" : "significant-issues" } };
   });
+
+  // ─── Kialo-shape argument-tree substrate (per-user, STATE-backed) ────
+
+  function getDebateState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.debateLens) STATE.debateLens = {};
+    if (!(STATE.debateLens.debates instanceof Map)) STATE.debateLens.debates = new Map(); // userId -> Array
+    return STATE.debateLens;
+  }
+  function saveDebate() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const dbId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const dbNow = () => new Date().toISOString();
+  const dbActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const dbClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
+  const dbList = (s, userId) => { if (!s.debates.has(userId)) s.debates.set(userId, []); return s.debates.get(userId); };
+  const claimWeight = (c) => (c.votes.length ? c.votes.reduce((a, b) => a + b, 0) / c.votes.length : 3);
+
+  // Recursively score a claim's effective strength: its own weight,
+  // modulated by the pro/con balance of its children. A child's pull on
+  // its parent is scaled by the child's per-claim impact rating (1-5,
+  // default 3) so high-impact sub-claims propagate further up the tree.
+  function effectiveStrength(claims, claimId) {
+    const self = claims.find((c) => c.id === claimId);
+    if (!self) return 0;
+    const kids = claims.filter((c) => c.parentId === claimId);
+    let childBalance = 0;
+    for (const k of kids) {
+      const ks = effectiveStrength(claims, k.id);
+      const impactWeight = (Math.max(1, Math.min(5, k.impact || 3))) / 3;
+      childBalance += (k.stance === "pro" ? 1 : -1) * (ks / 5) * impactWeight;
+    }
+    const modulator = Math.max(0.2, Math.min(2, 1 + childBalance));
+    return claimWeight({ votes: self.votes }) * modulator;
+  }
+
+  function scoreDebateTree(debate) {
+    const claims = debate.claims;
+    const roots = claims.filter((c) => c.parentId === null);
+    let proTotal = 0, conTotal = 0;
+    for (const r of roots) {
+      const strength = effectiveStrength(claims, r.id);
+      if (r.stance === "pro") proTotal += strength;
+      else conTotal += strength;
+    }
+    const net = proTotal - conTotal;
+    const total = proTotal + conTotal;
+    const supportPct = total > 0 ? Math.round((proTotal / total) * 100) : 50;
+    return {
+      proTotal: Math.round(proTotal * 100) / 100,
+      conTotal: Math.round(conTotal * 100) / 100,
+      net: Math.round(net * 100) / 100,
+      supportPct,
+      verdict: supportPct >= 65 ? "well-supported" : supportPct >= 50 ? "leaning-for" : supportPct >= 35 ? "leaning-against" : "poorly-supported",
+    };
+  }
+
+  registerLensAction("debate", "debate-create", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const thesis = dbClean(params.thesis, 400);
+    if (thesis.length < 8) return { ok: false, error: "thesis must be at least 8 characters" };
+    const debate = { id: dbId("dbt"), thesis, claims: [], positions: [], shareToken: null, createdAt: dbNow(), updatedAt: dbNow() };
+    dbList(s, dbActor(ctx)).push(debate);
+    saveDebate();
+    return { ok: true, result: { debate } };
+  });
+
+  registerLensAction("debate", "debate-list", (ctx, _a, _params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debates = dbList(s, dbActor(ctx))
+      .map((d) => ({
+        id: d.id, thesis: d.thesis, claimCount: d.claims.length,
+        positionCount: Array.isArray(d.positions) ? d.positions.length : 0,
+        shared: !!d.shareToken, shareToken: d.shareToken || null,
+        score: scoreDebateTree(d), updatedAt: d.updatedAt,
+      }))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return { ok: true, result: { debates, count: debates.length } };
+  });
+
+  registerLensAction("debate", "debate-detail", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.id);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const claims = debate.claims.map((c) => ({
+      ...c,
+      positionId: c.positionId || null,
+      impact: c.impact || null,
+      sources: Array.isArray(c.sources) ? c.sources : [],
+      weight: Math.round(claimWeight(c) * 100) / 100,
+      effective: Math.round(effectiveStrength(debate.claims, c.id) * 100) / 100,
+      voteCount: c.votes.length,
+    }));
+    return {
+      ok: true,
+      result: {
+        debate: { ...debate, positions: Array.isArray(debate.positions) ? debate.positions : [], claims },
+        score: scoreDebateTree(debate),
+      },
+    };
+  });
+
+  registerLensAction("debate", "debate-delete", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = dbList(s, dbActor(ctx));
+    const i = arr.findIndex((d) => d.id === params.id);
+    if (i < 0) return { ok: false, error: "debate not found" };
+    arr.splice(i, 1);
+    saveDebate();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  registerLensAction("debate", "claim-add", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const text = dbClean(params.text, 600);
+    if (text.length < 4) return { ok: false, error: "claim text too short" };
+    const parentId = params.parentId || null;
+    if (parentId && !debate.claims.some((c) => c.id === parentId)) return { ok: false, error: "parent claim not found" };
+    const stance = params.stance === "con" ? "con" : "pro";
+    // Multi-thesis: a claim may attach to a specific position (root-level only).
+    let positionId = params.positionId || null;
+    if (positionId) {
+      if (!Array.isArray(debate.positions) || !debate.positions.some((p) => p.id === positionId)) {
+        return { ok: false, error: "position not found" };
+      }
+    }
+    const claim = { id: dbId("clm"), parentId, positionId, stance, text, votes: [], sources: [], createdAt: dbNow() };
+    debate.claims.push(claim);
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { claim, score: scoreDebateTree(debate) } };
+  });
+
+  // ── Per-claim impact rating (1-5) — distinct from votes, propagates up. ──
+  registerLensAction("debate", "claim-impact", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const claim = debate.claims.find((c) => c.id === params.claimId);
+    if (!claim) return { ok: false, error: "claim not found" };
+    const impact = Math.max(1, Math.min(5, Math.round(Number(params.impact) || 3)));
+    claim.impact = impact;
+    debate.updatedAt = dbNow();
+    saveDebate();
+    // Walk ancestors so the caller can show what the rating propagated to.
+    const chain = [];
+    let cur = claim;
+    while (cur && cur.parentId) {
+      const parent = debate.claims.find((c) => c.id === cur.parentId);
+      if (!parent) break;
+      chain.push({ id: parent.id, text: parent.text.slice(0, 80), effective: Math.round(effectiveStrength(debate.claims, parent.id) * 100) / 100 });
+      cur = parent;
+    }
+    return { ok: true, result: { claimId: claim.id, impact, propagatesTo: chain, score: scoreDebateTree(debate) } };
+  });
+
+  // ── Claim sourcing — attach evidence/citations to a claim. ──
+  registerLensAction("debate", "source-add", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const claim = debate.claims.find((c) => c.id === params.claimId);
+    if (!claim) return { ok: false, error: "claim not found" };
+    const title = dbClean(params.title, 200);
+    if (title.length < 3) return { ok: false, error: "source title too short" };
+    let url = dbClean(params.url, 500);
+    if (url && !/^https?:\/\//i.test(url)) return { ok: false, error: "url must start with http(s)://" };
+    const kind = ["study", "article", "data", "book", "primary", "other"].includes(params.kind) ? params.kind : "other";
+    if (!Array.isArray(claim.sources)) claim.sources = [];
+    const source = { id: dbId("src"), title, url, kind, note: dbClean(params.note, 300), addedAt: dbNow() };
+    claim.sources.push(source);
+    if (claim.sources.length > 20) claim.sources.shift();
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { claimId: claim.id, source, sourceCount: claim.sources.length } };
+  });
+
+  registerLensAction("debate", "source-delete", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const claim = debate.claims.find((c) => c.id === params.claimId);
+    if (!claim) return { ok: false, error: "claim not found" };
+    if (!Array.isArray(claim.sources)) claim.sources = [];
+    const i = claim.sources.findIndex((src) => src.id === params.sourceId);
+    if (i < 0) return { ok: false, error: "source not found" };
+    claim.sources.splice(i, 1);
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { claimId: claim.id, deleted: params.sourceId, sourceCount: claim.sources.length } };
+  });
+
+  // ── Multi-thesis positions — more than binary pro/con. ──
+  registerLensAction("debate", "position-add", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const label = dbClean(params.label, 200);
+    if (label.length < 3) return { ok: false, error: "position label too short" };
+    if (!Array.isArray(debate.positions)) debate.positions = [];
+    if (debate.positions.length >= 8) return { ok: false, error: "max 8 positions per debate" };
+    if (debate.positions.some((p) => p.label.toLowerCase() === label.toLowerCase())) return { ok: false, error: "position label already exists" };
+    const position = { id: dbId("pos"), label, summary: dbClean(params.summary, 400), createdAt: dbNow() };
+    debate.positions.push(position);
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { position, positions: debate.positions } };
+  });
+
+  registerLensAction("debate", "position-delete", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    if (!Array.isArray(debate.positions)) debate.positions = [];
+    const i = debate.positions.findIndex((p) => p.id === params.positionId);
+    if (i < 0) return { ok: false, error: "position not found" };
+    debate.positions.splice(i, 1);
+    // Detach any claims that referenced this position.
+    for (const c of debate.claims) { if (c.positionId === params.positionId) c.positionId = null; }
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { deleted: params.positionId, positions: debate.positions } };
+  });
+
+  // Score each position by the effective strength of its attached root claims.
+  registerLensAction("debate", "position-scores", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const positions = Array.isArray(debate.positions) ? debate.positions : [];
+    const scored = positions.map((p) => {
+      const roots = debate.claims.filter((c) => c.parentId === null && c.positionId === p.id);
+      let support = 0;
+      for (const r of roots) {
+        const st = effectiveStrength(debate.claims, r.id);
+        support += (r.stance === "pro" ? 1 : -1) * st;
+      }
+      return { id: p.id, label: p.label, summary: p.summary, claimCount: roots.length, support: Math.round(support * 100) / 100 };
+    });
+    const totalAbs = scored.reduce((n, p) => n + Math.abs(p.support), 0) || 1;
+    const ranked = scored
+      .map((p) => ({ ...p, sharePct: Math.round((Math.abs(p.support) / totalAbs) * 100) }))
+      .sort((a, b) => b.support - a.support);
+    return { ok: true, result: { positions: ranked, leader: ranked[0]?.label || null, count: ranked.length } };
+  });
+
+  // ── Debate sharing — public read-only link via opaque share token. ──
+  registerLensAction("debate", "debate-share", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    if (!(s.shared instanceof Map)) s.shared = new Map(); // token -> { ownerId, debateId }
+    if (params.revoke) {
+      if (debate.shareToken) { s.shared.delete(debate.shareToken); debate.shareToken = null; }
+      debate.updatedAt = dbNow();
+      saveDebate();
+      return { ok: true, result: { shared: false, shareToken: null } };
+    }
+    if (!debate.shareToken) {
+      debate.shareToken = `shr_${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 8)}`;
+    }
+    s.shared.set(debate.shareToken, { ownerId: dbActor(ctx), debateId: debate.id });
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { shared: true, shareToken: debate.shareToken, url: `/lenses/debate?share=${debate.shareToken}` } };
+  });
+
+  // Public read-only fetch by share token — no owner scoping, read-only shape.
+  registerLensAction("debate", "shared-view", (_ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.shared instanceof Map)) s.shared = new Map();
+    const token = dbClean(params.shareToken, 60);
+    const ref = s.shared.get(token);
+    if (!ref) return { ok: false, error: "share link invalid or revoked" };
+    const ownerDebates = s.debates.get(ref.ownerId) || [];
+    const debate = ownerDebates.find((d) => d.id === ref.debateId);
+    if (!debate || debate.shareToken !== token) return { ok: false, error: "share link invalid or revoked" };
+    const claims = debate.claims.map((c) => ({
+      id: c.id, parentId: c.parentId, positionId: c.positionId || null, stance: c.stance,
+      text: c.text, weight: Math.round(claimWeight(c) * 100) / 100, voteCount: c.votes.length,
+      impact: c.impact || null, sources: Array.isArray(c.sources) ? c.sources : [],
+    }));
+    return {
+      ok: true,
+      result: {
+        readOnly: true,
+        debate: { id: debate.id, thesis: debate.thesis, positions: debate.positions || [], claims },
+        score: scoreDebateTree(debate),
+      },
+    };
+  });
+
+  registerLensAction("debate", "claim-edit", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const claim = debate.claims.find((c) => c.id === params.claimId);
+    if (!claim) return { ok: false, error: "claim not found" };
+    const text = dbClean(params.text, 600);
+    if (text.length < 4) return { ok: false, error: "claim text too short" };
+    claim.text = text;
+    if (params.stance === "pro" || params.stance === "con") claim.stance = params.stance;
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { claim } };
+  });
+
+  registerLensAction("debate", "claim-delete", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    if (!debate.claims.some((c) => c.id === params.claimId)) return { ok: false, error: "claim not found" };
+    const toDelete = new Set([params.claimId]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const c of debate.claims) {
+        if (c.parentId && toDelete.has(c.parentId) && !toDelete.has(c.id)) { toDelete.add(c.id); grew = true; }
+      }
+    }
+    debate.claims = debate.claims.filter((c) => !toDelete.has(c.id));
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { deleted: [...toDelete], score: scoreDebateTree(debate) } };
+  });
+
+  registerLensAction("debate", "claim-vote", (ctx, _a, params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.debateId);
+    if (!debate) return { ok: false, error: "debate not found" };
+    const claim = debate.claims.find((c) => c.id === params.claimId);
+    if (!claim) return { ok: false, error: "claim not found" };
+    const weight = Math.max(1, Math.min(5, Math.round(Number(params.weight) || 3)));
+    claim.votes.push(weight);
+    if (claim.votes.length > 50) claim.votes.shift();
+    debate.updatedAt = dbNow();
+    saveDebate();
+    return { ok: true, result: { claimId: claim.id, weight: Math.round(claimWeight(claim) * 100) / 100, score: scoreDebateTree(debate) } };
+  });
+
+  registerLensAction("debate", "debate-dashboard", (ctx, _a, _params = {}) => {
+    const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const debates = dbList(s, dbActor(ctx));
+    return {
+      ok: true,
+      result: {
+        debates: debates.length,
+        totalClaims: debates.reduce((n, d) => n + d.claims.length, 0),
+        totalPositions: debates.reduce((n, d) => n + (Array.isArray(d.positions) ? d.positions.length : 0), 0),
+        totalSources: debates.reduce((n, d) => n + d.claims.reduce((m, c) => m + (Array.isArray(c.sources) ? c.sources.length : 0), 0), 0),
+        sharedDebates: debates.filter((d) => !!d.shareToken).length,
+        wellSupported: debates.filter((d) => scoreDebateTree(d).verdict === "well-supported").length,
+      },
+    };
+  });
 }

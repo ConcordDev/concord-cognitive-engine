@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Beaker, Plus, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
 
 interface Mix { id: string; name: string; components: Array<{ product: string; ratePerAcre: number; costPerAcre: number }>; carrierGalPerAcre: number; totalCostPerAcre: number; compatible: boolean }
 

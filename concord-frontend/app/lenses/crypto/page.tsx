@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -43,6 +44,7 @@ import { QRCodeReceive } from '@/components/crypto/QRCodeReceive';
 import { SwapPanel, type SwappableToken } from '@/components/crypto/SwapPanel';
 import { PriceAlerts } from '@/components/crypto/PriceAlerts';
 import { ApprovalsManager } from '@/components/crypto/ApprovalsManager';
+import { PortfolioWorkbench } from '@/components/crypto/PortfolioWorkbench';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -121,7 +123,7 @@ interface ActionResultData extends Record<string, unknown> {
   totalTransactions?: number;
 }
 
-type CryptoTab = 'portfolio' | 'transactions' | 'wallets' | 'chart' | 'swap' | 'alerts' | 'approvals';
+type CryptoTab = 'portfolio' | 'holdings' | 'transactions' | 'wallets' | 'chart' | 'swap' | 'alerts' | 'approvals';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -177,6 +179,7 @@ export default function CryptoLensPage() {
   useLensCommand(
     [
       { id: 'goto-portfolio', keys: 'p', description: 'Portfolio', category: 'navigation', action: () => setActiveTab('portfolio') },
+      { id: 'goto-holdings', keys: 'shift+h', description: 'Holdings workbench', category: 'navigation', action: () => setActiveTab('holdings') },
       { id: 'goto-transactions', keys: 't', description: 'Transactions', category: 'navigation', action: () => setActiveTab('transactions') },
       { id: 'goto-wallets', keys: 'w', description: 'Wallets', category: 'navigation', action: () => setActiveTab('wallets') },
       { id: 'goto-chart', keys: 'c', description: 'Chart', category: 'navigation', action: () => setActiveTab('chart') },
@@ -702,6 +705,7 @@ export default function CryptoLensPage() {
           <div className="flex gap-1 border-b border-lattice-border overflow-x-auto">
             {([
               { key: 'portfolio' as CryptoTab, label: 'Portfolio', icon: <TrendingUp className="w-4 h-4" /> },
+              { key: 'holdings' as CryptoTab, label: 'Holdings', icon: <Layers className="w-4 h-4" /> },
               { key: 'chart' as CryptoTab, label: 'Chart', icon: <BarChart3 className="w-4 h-4" /> },
               { key: 'swap' as CryptoTab, label: 'Swap', icon: <ArrowRightLeft className="w-4 h-4" /> },
               { key: 'transactions' as CryptoTab, label: 'Activity', icon: <ArrowRightLeft className="w-4 h-4" /> },
@@ -875,6 +879,10 @@ export default function CryptoLensPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === 'holdings' && (
+            <PortfolioWorkbench />
           )}
 
           {activeTab === 'transactions' && (
@@ -1643,6 +1651,7 @@ export default function CryptoLensPage() {
       {/* CoinGecko + Uniswap + Etherscan-shape workbench: portfolio / tokens / swap / gas + actions */}
       <PipingProvider>
         <section className="mt-6">
+      <section className="mt-6"><LensFeedButton domain="crypto" /></section>
           <CryptoActionPanel />
         </section>
       </PipingProvider>

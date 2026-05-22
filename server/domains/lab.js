@@ -505,4 +505,600 @@ export default function registerLabActions(registerLensAction) {
       },
     };
   });
+
+  // ─── ELN / LIMS substrate (per-user, STATE-backed) ──────────────────────
+  //
+  // Persistent lab-bench data: notebook entries, reagent inventory,
+  // protocols/SOPs, plate layouts, instrument runs and DNA constructs.
+  // Each store is a Map keyed by userId so multi-tenant deploys stay
+  // isolated. Every handler is try/catch wrapped and returns a plain
+  // { ok, result?, error? } object — never throws.
+
+  function getLabState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.labLens) STATE.labLens = {};
+    const L = STATE.labLens;
+    for (const k of ["notebook", "reagents", "protocols", "plates", "runs", "constructs"]) {
+      if (!(L[k] instanceof Map)) L[k] = new Map(); // userId -> Array
+    }
+    return L;
+  }
+  function saveLab() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const labId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const labActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const labClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
+  const labNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const labArr = (L, store, userId) => {
+    if (!L[store].has(userId)) L[store].set(userId, []);
+    return L[store].get(userId);
+  };
+  const labFind = (arr, id) => arr.find(x => x.id === id);
+
+  /* ── Electronic Lab Notebook ─────────────────────────────────────────── */
+
+  // notebook-create — start a new notebook entry (rich experiment page).
+  registerLensAction("lab", "notebook-create", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const title = labClean(params.title, 200);
+      if (!title) return { ok: false, error: "entry title required" };
+      const entry = {
+        id: labId("nb"),
+        title,
+        project: labClean(params.project, 160) || "Unfiled",
+        body: labClean(params.body, 20000) || "",
+        tags: Array.isArray(params.tags) ? params.tags.map(t => labClean(t, 40)).filter(Boolean).slice(0, 16) : [],
+        protocolId: labClean(params.protocolId, 64) || null,
+        status: "draft", // draft | witnessed | signed
+        author: labActor(ctx),
+        signedBy: null, signedAt: null,
+        witnessedBy: null, witnessedAt: null,
+        revisions: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      labArr(L, "notebook", labActor(ctx)).push(entry);
+      saveLab();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // notebook-list — all notebook entries for the user.
+  registerLensAction("lab", "notebook-list", (ctx, _a, _params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const entries = labArr(L, "notebook", labActor(ctx))
+        .slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+      return {
+        ok: true, result: {
+          entries,
+          total: entries.length,
+          signed: entries.filter(e => e.status === "signed").length,
+          draft: entries.filter(e => e.status === "draft").length,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // notebook-update — edit body/title; keeps a revision snapshot. A
+  // signed page is immutable (GLP requirement) — reject the edit.
+  registerLensAction("lab", "notebook-update", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const arr = labArr(L, "notebook", labActor(ctx));
+      const entry = labFind(arr, labClean(params.id, 64));
+      if (!entry) return { ok: false, error: "entry not found" };
+      if (entry.status === "signed") return { ok: false, error: "signed entries are immutable" };
+      entry.revisions.push({ body: entry.body, title: entry.title, at: entry.updatedAt });
+      if (entry.revisions.length > 50) entry.revisions.shift();
+      if (params.title != null) entry.title = labClean(params.title, 200) || entry.title;
+      if (params.body != null) entry.body = labClean(params.body, 20000);
+      if (Array.isArray(params.tags)) entry.tags = params.tags.map(t => labClean(t, 40)).filter(Boolean).slice(0, 16);
+      entry.updatedAt = new Date().toISOString();
+      saveLab();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // notebook-sign — author signs (or a witness counter-signs) a page.
+  // role: "author" → status signed; "witness" → records witness.
+  registerLensAction("lab", "notebook-sign", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const arr = labArr(L, "notebook", labActor(ctx));
+      const entry = labFind(arr, labClean(params.id, 64));
+      if (!entry) return { ok: false, error: "entry not found" };
+      const role = params.role === "witness" ? "witness" : "author";
+      const who = labClean(params.name, 120) || labActor(ctx);
+      const now = new Date().toISOString();
+      if (role === "witness") {
+        entry.witnessedBy = who; entry.witnessedAt = now;
+        if (entry.status === "draft") entry.status = "witnessed";
+      } else {
+        entry.signedBy = who; entry.signedAt = now;
+        entry.status = "signed";
+      }
+      entry.updatedAt = now;
+      saveLab();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Reagent Inventory ───────────────────────────────────────────────── */
+
+  // inventory-add — register a reagent / consumable lot.
+  registerLensAction("lab", "inventory-add", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const name = labClean(params.name, 160);
+      if (!name) return { ok: false, error: "reagent name required" };
+      const item = {
+        id: labId("rgt"),
+        name,
+        catalogNumber: labClean(params.catalogNumber, 80) || "",
+        lot: labClean(params.lot, 80) || "",
+        vendor: labClean(params.vendor, 120) || "",
+        location: labClean(params.location, 120) || "Unassigned",
+        freezerBox: labClean(params.freezerBox, 80) || "",
+        quantity: Math.max(0, labNum(params.quantity)),
+        unit: labClean(params.unit, 24) || "units",
+        lowThreshold: Math.max(0, labNum(params.lowThreshold)),
+        expiry: labClean(params.expiry, 32) || null, // ISO date
+        hazard: labClean(params.hazard, 40) || "none",
+        createdAt: new Date().toISOString(),
+      };
+      labArr(L, "reagents", labActor(ctx)).push(item);
+      saveLab();
+      return { ok: true, result: { item } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // inventory-list — reagents with computed expiry + low-stock alerts.
+  registerLensAction("lab", "inventory-list", (ctx, _a, _params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const now = Date.now();
+      const DAY = 86400000;
+      const items = labArr(L, "reagents", labActor(ctx)).map(it => {
+        let expiryStatus = "ok", daysToExpiry = null;
+        if (it.expiry) {
+          const t = Date.parse(it.expiry);
+          if (Number.isFinite(t)) {
+            daysToExpiry = Math.round((t - now) / DAY);
+            expiryStatus = daysToExpiry < 0 ? "expired" : daysToExpiry <= 30 ? "expiring-soon" : "ok";
+          }
+        }
+        const lowStock = it.lowThreshold > 0 && it.quantity <= it.lowThreshold;
+        return { ...it, daysToExpiry, expiryStatus, lowStock };
+      });
+      const alerts = items.filter(i => i.expiryStatus !== "ok" || i.lowStock);
+      return {
+        ok: true, result: {
+          items, total: items.length,
+          alerts,
+          expiredCount: items.filter(i => i.expiryStatus === "expired").length,
+          expiringSoonCount: items.filter(i => i.expiryStatus === "expiring-soon").length,
+          lowStockCount: items.filter(i => i.lowStock).length,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // inventory-consume — debit/restock a reagent quantity (delta can be ±).
+  registerLensAction("lab", "inventory-consume", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const arr = labArr(L, "reagents", labActor(ctx));
+      const item = labFind(arr, labClean(params.id, 64));
+      if (!item) return { ok: false, error: "reagent not found" };
+      const delta = labNum(params.delta);
+      item.quantity = Math.max(0, Math.round((item.quantity + delta) * 1000) / 1000);
+      saveLab();
+      return {
+        ok: true, result: {
+          item,
+          lowStock: item.lowThreshold > 0 && item.quantity <= item.lowThreshold,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // inventory-remove — delete a reagent record.
+  registerLensAction("lab", "inventory-remove", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const arr = labArr(L, "reagents", userId);
+      const id = labClean(params.id, 64);
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx === -1) return { ok: false, error: "reagent not found" };
+      arr.splice(idx, 1);
+      saveLab();
+      return { ok: true, result: { removed: id, remaining: arr.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Protocol / SOP Library ──────────────────────────────────────────── */
+
+  // protocol-create — author a protocol with ordered, timed steps.
+  registerLensAction("lab", "protocol-create", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const name = labClean(params.name, 200);
+      if (!name) return { ok: false, error: "protocol name required" };
+      const steps = (Array.isArray(params.steps) ? params.steps : []).map((s, i) => ({
+        order: i + 1,
+        text: labClean(typeof s === "string" ? s : s.text, 2000),
+        durationMinutes: Math.max(0, labNum(typeof s === "object" ? s.durationMinutes : 0)),
+        critical: !!(typeof s === "object" && s.critical),
+      })).filter(s => s.text);
+      const protocol = {
+        id: labId("proto"),
+        name,
+        category: labClean(params.category, 80) || "General",
+        description: labClean(params.description, 4000) || "",
+        version: 1,
+        steps,
+        history: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      labArr(L, "protocols", labActor(ctx)).push(protocol);
+      saveLab();
+      return { ok: true, result: { protocol } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // protocol-list — SOP library with step + duration summary.
+  registerLensAction("lab", "protocol-list", (ctx, _a, _params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const protocols = labArr(L, "protocols", labActor(ctx)).map(p => ({
+        ...p,
+        stepCount: p.steps.length,
+        totalMinutes: p.steps.reduce((s, st) => s + (st.durationMinutes || 0), 0),
+      }));
+      return { ok: true, result: { protocols, total: protocols.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // protocol-revise — publish a new version; prior version archived to history.
+  registerLensAction("lab", "protocol-revise", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const arr = labArr(L, "protocols", labActor(ctx));
+      const p = labFind(arr, labClean(params.id, 64));
+      if (!p) return { ok: false, error: "protocol not found" };
+      p.history.push({ version: p.version, steps: p.steps, at: p.updatedAt });
+      if (p.history.length > 30) p.history.shift();
+      p.version += 1;
+      if (Array.isArray(params.steps)) {
+        p.steps = params.steps.map((s, i) => ({
+          order: i + 1,
+          text: labClean(typeof s === "string" ? s : s.text, 2000),
+          durationMinutes: Math.max(0, labNum(typeof s === "object" ? s.durationMinutes : 0)),
+          critical: !!(typeof s === "object" && s.critical),
+        })).filter(s => s.text);
+      }
+      if (params.description != null) p.description = labClean(params.description, 4000);
+      p.updatedAt = new Date().toISOString();
+      saveLab();
+      return { ok: true, result: { protocol: p } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // protocol-run — start a step-by-step run; returns a guided run object.
+  registerLensAction("lab", "protocol-run", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const arr = labArr(L, "protocols", labActor(ctx));
+      const p = labFind(arr, labClean(params.id, 64));
+      if (!p) return { ok: false, error: "protocol not found" };
+      if (p.steps.length === 0) return { ok: false, error: "protocol has no steps" };
+      const run = {
+        runId: labId("run"),
+        protocolId: p.id, protocolName: p.name, protocolVersion: p.version,
+        steps: p.steps.map(s => ({ ...s, done: false })),
+        currentStep: 1,
+        startedAt: new Date().toISOString(),
+        estimatedMinutes: p.steps.reduce((s, st) => s + (st.durationMinutes || 0), 0),
+      };
+      return { ok: true, result: { run } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Plate / Well Layout Designer ────────────────────────────────────── */
+
+  // plate-design — build a 96- or 384-well plate map from well assignments.
+  // params.format: 96 | 384. params.wells = [{ well:"A1", sample, role }]
+  registerLensAction("lab", "plate-design", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const format = params.format === 384 || params.format === "384" ? 384 : 96;
+      const rows = format === 384 ? 16 : 8;
+      const cols = format === 384 ? 24 : 12;
+      const rowLabels = Array.from({ length: rows }, (_, i) => String.fromCharCode(65 + i));
+      const grid = {};
+      const inputWells = Array.isArray(params.wells) ? params.wells : [];
+      let assigned = 0;
+      for (const w of inputWells) {
+        const well = labClean(w.well, 6).toUpperCase();
+        if (!well) continue;
+        const rowChar = well[0];
+        const colNum = parseInt(well.slice(1), 10);
+        if (!rowLabels.includes(rowChar) || !(colNum >= 1 && colNum <= cols)) continue;
+        grid[well] = {
+          sample: labClean(w.sample, 120) || "",
+          role: labClean(w.role, 40) || "sample", // sample | standard | blank | control
+          concentration: w.concentration != null ? labNum(w.concentration) : null,
+        };
+        assigned++;
+      }
+      const roleCounts = {};
+      for (const v of Object.values(grid)) roleCounts[v.role] = (roleCounts[v.role] || 0) + 1;
+      const plate = {
+        id: labId("plate"),
+        name: labClean(params.name, 160) || `Plate ${format}`,
+        format, rows, cols, rowLabels,
+        grid,
+        assignedWells: assigned,
+        totalWells: format,
+        emptyWells: format - assigned,
+        roleCounts,
+        createdAt: new Date().toISOString(),
+      };
+      labArr(L, "plates", labActor(ctx)).push(plate);
+      saveLab();
+      return { ok: true, result: { plate } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // plate-list — saved plate layouts.
+  registerLensAction("lab", "plate-list", (ctx, _a, _params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const plates = labArr(L, "plates", labActor(ctx))
+        .slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      return { ok: true, result: { plates, total: plates.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Instrument Run Import ───────────────────────────────────────────── */
+
+  // run-import — parse a CSV blob into result records and store the run.
+  // params.csv: raw text. First row is the header; numeric columns parsed.
+  registerLensAction("lab", "run-import", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const csv = typeof params.csv === "string" ? params.csv : "";
+      if (!csv.trim()) return { ok: false, error: "csv content required" };
+      const lines = csv.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) return { ok: false, error: "csv needs a header row and at least one data row" };
+      const headers = lines[0].split(",").map(h => h.trim());
+      const records = lines.slice(1).map((line, idx) => {
+        const cells = line.split(",").map(c => c.trim());
+        const rec = { _row: idx + 1 };
+        headers.forEach((h, i) => {
+          const raw = cells[i] ?? "";
+          const num = Number(raw);
+          rec[h || `col${i}`] = raw !== "" && Number.isFinite(num) ? num : raw;
+        });
+        return rec;
+      });
+      // numeric column summary
+      const numericCols = headers.filter(h =>
+        records.length > 0 && records.every(r => typeof r[h] === "number"));
+      const summary = {};
+      for (const c of numericCols) {
+        const vals = records.map(r => r[c]);
+        const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+        summary[c] = {
+          n: vals.length,
+          min: Math.min(...vals),
+          max: Math.max(...vals),
+          mean: Math.round(mean * 10000) / 10000,
+        };
+      }
+      const run = {
+        id: labId("irun"),
+        name: labClean(params.name, 160) || `Run ${new Date().toISOString().slice(0, 10)}`,
+        instrument: labClean(params.instrument, 120) || "Unknown",
+        headers,
+        records,
+        recordCount: records.length,
+        numericColumns: numericCols,
+        summary,
+        importedAt: new Date().toISOString(),
+      };
+      labArr(L, "runs", labActor(ctx)).push(run);
+      saveLab();
+      return { ok: true, result: { run } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // run-list — imported instrument runs (records trimmed for listing).
+  registerLensAction("lab", "run-list", (ctx, _a, _params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const runs = labArr(L, "runs", labActor(ctx))
+        .slice().sort((a, b) => (b.importedAt || "").localeCompare(a.importedAt || ""));
+      return { ok: true, result: { runs, total: runs.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Sequence / Construct Registry ───────────────────────────────────── */
+
+  // construct-register — register a DNA / plasmid construct.
+  registerLensAction("lab", "construct-register", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const name = labClean(params.name, 160);
+      if (!name) return { ok: false, error: "construct name required" };
+      const seq = labClean(params.sequence, 200000).toUpperCase().replace(/[^ACGTUN]/g, "");
+      const gc = seq.length
+        ? Math.round(([...seq].filter(c => c === "G" || c === "C").length / seq.length) * 1000) / 10
+        : 0;
+      const construct = {
+        id: labId("dna"),
+        name,
+        type: labClean(params.type, 40) || "plasmid", // plasmid | gene | primer | linear
+        sequence: seq,
+        length: seq.length,
+        gcContent: gc,
+        backbone: labClean(params.backbone, 120) || "",
+        resistance: labClean(params.resistance, 80) || "",
+        features: Array.isArray(params.features)
+          ? params.features.map(f => ({
+              name: labClean(typeof f === "string" ? f : f.name, 80),
+              start: Math.max(0, Math.round(labNum(typeof f === "object" ? f.start : 0))),
+              end: Math.max(0, Math.round(labNum(typeof f === "object" ? f.end : 0))),
+            })).filter(f => f.name).slice(0, 64)
+          : [],
+        notes: labClean(params.notes, 4000) || "",
+        createdAt: new Date().toISOString(),
+      };
+      labArr(L, "constructs", labActor(ctx)).push(construct);
+      saveLab();
+      return { ok: true, result: { construct } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // construct-list — registered constructs.
+  registerLensAction("lab", "construct-list", (ctx, _a, _params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const constructs = labArr(L, "constructs", labActor(ctx))
+        .slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      return {
+        ok: true, result: {
+          constructs, total: constructs.length,
+          totalBases: constructs.reduce((s, c) => s + c.length, 0),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // construct-analyze — restriction-style sequence analysis on a stored
+  // or supplied sequence: GC content, ORF scan, codon count, motif search.
+  registerLensAction("lab", "construct-analyze", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      let seq = labClean(params.sequence, 200000).toUpperCase().replace(/[^ACGTUN]/g, "");
+      if (!seq && params.id) {
+        const c = labFind(labArr(L, "constructs", labActor(ctx)), labClean(params.id, 64));
+        if (c) seq = c.sequence;
+      }
+      if (!seq) return { ok: false, error: "sequence (or valid construct id) required" };
+      const gc = Math.round(([...seq].filter(c => c === "G" || c === "C").length / seq.length) * 1000) / 10;
+      // simple ORF scan on the forward strand (ATG ... stop)
+      const orfs = [];
+      const stops = new Set(["TAA", "TAG", "TGA"]);
+      for (let frame = 0; frame < 3; frame++) {
+        for (let i = frame; i + 3 <= seq.length; i += 3) {
+          if (seq.slice(i, i + 3) === "ATG") {
+            for (let j = i + 3; j + 3 <= seq.length; j += 3) {
+              if (stops.has(seq.slice(j, j + 3))) {
+                if (j - i >= 90) orfs.push({ frame: frame + 1, start: i, end: j + 3, lengthBp: j + 3 - i });
+                break;
+              }
+            }
+          }
+        }
+      }
+      // melting temp (Wallace rule for short, GC% formula for long)
+      let tm = null;
+      if (seq.length < 14) {
+        const at = [...seq].filter(c => c === "A" || c === "T" || c === "U").length;
+        const gcN = seq.length - at;
+        tm = 2 * at + 4 * gcN;
+      } else {
+        tm = Math.round((64.9 + 41 * (([...seq].filter(c => c === "G" || c === "C").length - 16.4) / seq.length)) * 10) / 10;
+      }
+      // motif search
+      const motif = labClean(params.motif, 64).toUpperCase().replace(/[^ACGTUN]/g, "");
+      const motifHits = [];
+      if (motif) {
+        let idx = seq.indexOf(motif);
+        while (idx !== -1 && motifHits.length < 500) {
+          motifHits.push(idx);
+          idx = seq.indexOf(motif, idx + 1);
+        }
+      }
+      return {
+        ok: true, result: {
+          length: seq.length,
+          gcContent: gc,
+          meltingTempC: tm,
+          orfCount: orfs.length,
+          orfs: orfs.slice(0, 50),
+          motif: motif || null,
+          motifHitCount: motifHits.length,
+          motifPositions: motifHits.slice(0, 100),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Result Audit Trail + Levey-Jennings over time ───────────────────── */
+
+  // qc-trend — Levey-Jennings QC chart across stored instrument runs or a
+  // supplied series of dated control values. Computes per-point Westgard
+  // zone classification and an audit trail of out-of-control events.
+  registerLensAction("lab", "qc-trend", (ctx, _a, params = {}) => {
+    try {
+      const points = (Array.isArray(params.points) ? params.points : [])
+        .map(p => ({
+          value: labNum(p.value),
+          date: labClean(p.date, 32) || new Date().toISOString(),
+          label: labClean(p.label, 80) || "",
+        }))
+        .filter(p => Number.isFinite(p.value))
+        .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+      if (points.length < 2) return { ok: false, error: "need at least 2 dated control points" };
+      const vals = points.map(p => p.value);
+      const n = vals.length;
+      const mean = params.targetMean != null ? labNum(params.targetMean) : vals.reduce((s, v) => s + v, 0) / n;
+      const sd = params.targetSD != null && labNum(params.targetSD) > 0
+        ? labNum(params.targetSD)
+        : Math.sqrt(vals.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / Math.max(1, n - 1));
+      const r4 = v => Math.round(v * 10000) / 10000;
+      const series = points.map((p, i) => {
+        const z = sd > 0 ? (p.value - mean) / sd : 0;
+        return {
+          ...p, index: i, zScore: r4(z),
+          zone: Math.abs(z) > 3 ? "out-of-control"
+            : Math.abs(z) > 2 ? "warning"
+              : Math.abs(z) > 1 ? "zone-2" : "zone-1",
+          inControl: Math.abs(z) <= 3,
+        };
+      });
+      const auditTrail = series
+        .filter(s => s.zone === "out-of-control" || s.zone === "warning")
+        .map(s => ({
+          date: s.date, value: s.value, zScore: s.zScore,
+          event: s.zone === "out-of-control" ? "1-3s rejection" : "1-2s warning",
+        }));
+      return {
+        ok: true, result: {
+          series,
+          controlLimits: {
+            mean: r4(mean), sd: r4(sd),
+            plus1sd: r4(mean + sd), minus1sd: r4(mean - sd),
+            plus2sd: r4(mean + 2 * sd), minus2sd: r4(mean - 2 * sd),
+            plus3sd: r4(mean + 3 * sd), minus3sd: r4(mean - 3 * sd),
+          },
+          n,
+          outOfControlCount: series.filter(s => s.zone === "out-of-control").length,
+          warningCount: series.filter(s => s.zone === "warning").length,
+          auditTrail,
+          inControl: series.every(s => s.inControl),
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
 }

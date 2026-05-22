@@ -428,4 +428,504 @@ export default function registerTimelineActions(registerLensAction) {
       },
     };
   });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Personal-feed substrate — Facebook-style timeline features.
+  // All data is persisted per-user in globalThis._concordSTATE.timelineLens,
+  // a set of Maps keyed by userId. Handlers never throw — every code path
+  // returns { ok: boolean, ... }.
+  // ──────────────────────────────────────────────────────────────────────
+
+  function getTlState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.timelineLens) STATE.timelineLens = {};
+    const s = STATE.timelineLens;
+    // posts:    Map<userId, Post[]>          — feed posts authored by the user
+    // comments: Map<postId, Comment[]>       — flat list, nested via parentId
+    // reactions:Map<postId, Reaction[]>      — one row per (userId, post)
+    // albums:   Map<userId, Album[]>         — media albums + their media items
+    // profiles: Map<userId, Profile>         — cover photo / bio / about
+    // notifs:   Map<userId, Notification[]>  — reaction/comment/tag alerts
+    for (const k of ["posts", "comments", "reactions", "albums", "profiles", "notifs"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  function saveTlState() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const tlId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const tlNow = () => new Date().toISOString();
+  const tlAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const tlList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const tlClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
+  const tlNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const REACTION_KINDS = ["like", "love", "haha", "sad", "angry"];
+  const PRIVACY_KINDS = ["public", "friends", "private"];
+  const MEDIA_KINDS = ["photo", "video"];
+
+  // Find a post by id across all users' feeds — returns { ownerId, post } | null.
+  function findPost(s, postId) {
+    for (const [ownerId, posts] of s.posts.entries()) {
+      const post = posts.find((p) => p.id === postId);
+      if (post) return { ownerId, post };
+    }
+    return null;
+  }
+
+  // Append a notification for a recipient (skips self-notifications).
+  function pushNotif(s, recipientId, actorId, type, payload) {
+    if (!recipientId || recipientId === actorId) return;
+    const list = tlList(s.notifs, recipientId);
+    list.unshift({
+      id: tlId("ntf"), type, actorId,
+      ...payload, read: false, at: tlNow(),
+    });
+    if (list.length > 200) list.length = 200;
+  }
+
+  // ── Post creation with privacy controls ────────────────────────────────
+  // Privacy controls per post (public / friends / only-me). Posts are the
+  // canonical timeline feed object; reactions/comments hang off post.id.
+  registerLensAction("timeline", "post-create", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const content = tlClean(params.content, 5000);
+    const media = Array.isArray(params.media) ? params.media : [];
+    if (!content && media.length === 0) {
+      return { ok: false, error: "Post needs content or media." };
+    }
+    const privacy = PRIVACY_KINDS.includes(String(params.privacy))
+      ? String(params.privacy) : "private";
+    const post = {
+      id: tlId("pst"),
+      authorId: tlAid(ctx),
+      content,
+      media: media
+        .filter((m) => m && MEDIA_KINDS.includes(String(m.kind)))
+        .slice(0, 12)
+        .map((m) => ({ kind: String(m.kind), url: tlClean(m.url, 1000), caption: tlClean(m.caption, 200) })),
+      privacy,
+      taggedUserIds: Array.isArray(params.taggedUserIds)
+        ? params.taggedUserIds.map((u) => tlClean(u, 64)).filter(Boolean).slice(0, 20)
+        : [],
+      sharedFrom: null,
+      createdAt: tlNow(),
+    };
+    tlList(s.posts, post.authorId).unshift(post);
+    // Tag notifications.
+    for (const tagged of post.taggedUserIds) {
+      pushNotif(s, tagged, post.authorId, "tag", { postId: post.id, preview: content.slice(0, 80) });
+    }
+    saveTlState();
+    return { ok: true, result: { post } };
+  });
+
+  // ── Feed listing (privacy-aware) ───────────────────────────────────────
+  // viewerId sees: own posts (all privacy), friends' posts marked
+  // public|friends, everyone else's public posts only.
+  registerLensAction("timeline", "feed-list", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const viewerId = tlAid(ctx);
+    const friendIds = new Set(
+      (Array.isArray(params.friendIds) ? params.friendIds : []).map((f) => tlClean(f, 64)),
+    );
+    const onlyAuthor = params.authorId ? tlClean(params.authorId, 64) : null;
+    let all = [];
+    for (const [ownerId, posts] of s.posts.entries()) {
+      if (onlyAuthor && ownerId !== onlyAuthor) continue;
+      for (const p of posts) {
+        const visible =
+          ownerId === viewerId ||
+          p.privacy === "public" ||
+          (p.privacy === "friends" && friendIds.has(ownerId));
+        if (!visible) continue;
+        const reactions = s.reactions.get(p.id) || [];
+        const counts = REACTION_KINDS.reduce((acc, k) => {
+          acc[k] = reactions.filter((r) => r.kind === k).length;
+          return acc;
+        }, {});
+        const mine = reactions.find((r) => r.userId === viewerId);
+        all.push({
+          ...p,
+          reactionCounts: counts,
+          reactionTotal: reactions.length,
+          userReaction: mine ? mine.kind : null,
+          commentCount: (s.comments.get(p.id) || []).length,
+        });
+      }
+    }
+    all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const limit = Math.max(1, Math.min(100, tlNum(params.limit, 30)));
+    const offset = Math.max(0, tlNum(params.offset, 0));
+    return {
+      ok: true,
+      result: { posts: all.slice(offset, offset + limit), total: all.length },
+    };
+  });
+
+  // ── Comments with nested replies ───────────────────────────────────────
+  registerLensAction("timeline", "comment-add", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    const text = tlClean(params.text, 2000);
+    if (!postId || !text) return { ok: false, error: "postId and text required." };
+    const found = findPost(s, postId);
+    if (!found) return { ok: false, error: "Post not found." };
+    const parentId = params.parentId ? tlClean(params.parentId, 64) : null;
+    const list = tlList(s.comments, postId);
+    if (parentId && !list.some((c) => c.id === parentId)) {
+      return { ok: false, error: "Parent comment not found." };
+    }
+    const actorId = tlAid(ctx);
+    const comment = {
+      id: tlId("cmt"), postId, parentId,
+      authorId: actorId, text, createdAt: tlNow(),
+    };
+    list.push(comment);
+    pushNotif(s, found.post.authorId, actorId, "comment", { postId, preview: text.slice(0, 80) });
+    if (parentId) {
+      const parent = list.find((c) => c.id === parentId);
+      if (parent) pushNotif(s, parent.authorId, actorId, "reply", { postId, preview: text.slice(0, 80) });
+    }
+    saveTlState();
+    return { ok: true, result: { comment, total: list.length } };
+  });
+
+  // List comments for a post as a nested thread tree.
+  registerLensAction("timeline", "comment-list", (_ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    if (!postId) return { ok: false, error: "postId required." };
+    const flat = [...(s.comments.get(postId) || [])];
+    flat.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const byId = new Map(flat.map((c) => [c.id, { ...c, replies: [] }]));
+    const roots = [];
+    for (const c of byId.values()) {
+      if (c.parentId && byId.has(c.parentId)) byId.get(c.parentId).replies.push(c);
+      else roots.push(c);
+    }
+    return { ok: true, result: { thread: roots, total: flat.length } };
+  });
+
+  registerLensAction("timeline", "comment-delete", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    const commentId = tlClean(params.commentId, 64);
+    if (!postId || !commentId) return { ok: false, error: "postId and commentId required." };
+    const list = s.comments.get(postId) || [];
+    const target = list.find((c) => c.id === commentId);
+    if (!target) return { ok: false, error: "Comment not found." };
+    if (target.authorId !== tlAid(ctx)) return { ok: false, error: "Not your comment." };
+    // Drop the comment and any direct replies to it.
+    const next = list.filter((c) => c.id !== commentId && c.parentId !== commentId);
+    s.comments.set(postId, next);
+    saveTlState();
+    return { ok: true, result: { removed: list.length - next.length, total: next.length } };
+  });
+
+  // ── Reactions with counts + "who reacted" breakdown ────────────────────
+  // Idempotent per (user, post): re-reacting changes the kind; reacting with
+  // the same kind toggles it off.
+  registerLensAction("timeline", "react", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    const kind = String(params.kind || "like");
+    if (!postId) return { ok: false, error: "postId required." };
+    if (!REACTION_KINDS.includes(kind)) return { ok: false, error: "Unknown reaction kind." };
+    const found = findPost(s, postId);
+    if (!found) return { ok: false, error: "Post not found." };
+    const actorId = tlAid(ctx);
+    const list = tlList(s.reactions, postId);
+    const existing = list.findIndex((r) => r.userId === actorId);
+    let action;
+    if (existing >= 0) {
+      if (list[existing].kind === kind) {
+        list.splice(existing, 1);
+        action = "removed";
+      } else {
+        list[existing] = { userId: actorId, kind, at: tlNow() };
+        action = "changed";
+      }
+    } else {
+      list.push({ userId: actorId, kind, at: tlNow() });
+      action = "added";
+      pushNotif(s, found.post.authorId, actorId, "reaction", { postId, kind });
+    }
+    const counts = REACTION_KINDS.reduce((acc, k) => {
+      acc[k] = list.filter((r) => r.kind === k).length;
+      return acc;
+    }, {});
+    saveTlState();
+    return {
+      ok: true,
+      result: { action, kind, counts, total: list.length, userReaction: action === "removed" ? null : kind },
+    };
+  });
+
+  // Full "who reacted" breakdown for a post.
+  registerLensAction("timeline", "reactions-breakdown", (_ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    if (!postId) return { ok: false, error: "postId required." };
+    const list = [...(s.reactions.get(postId) || [])];
+    list.sort((a, b) => b.at.localeCompare(a.at));
+    const byKind = REACTION_KINDS.reduce((acc, k) => {
+      acc[k] = list.filter((r) => r.kind === k).map((r) => ({ userId: r.userId, at: r.at }));
+      return acc;
+    }, {});
+    const counts = REACTION_KINDS.reduce((acc, k) => { acc[k] = byKind[k].length; return acc; }, {});
+    return {
+      ok: true,
+      result: {
+        total: list.length, counts, byKind,
+        reactors: list.map((r) => ({ userId: r.userId, kind: r.kind, at: r.at })),
+      },
+    };
+  });
+
+  // ── Share / repost ─────────────────────────────────────────────────────
+  registerLensAction("timeline", "share-post", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    if (!postId) return { ok: false, error: "postId required." };
+    const found = findPost(s, postId);
+    if (!found) return { ok: false, error: "Post not found." };
+    if (found.post.privacy === "private" && found.ownerId !== tlAid(ctx)) {
+      return { ok: false, error: "Cannot share a private post." };
+    }
+    const privacy = PRIVACY_KINDS.includes(String(params.privacy))
+      ? String(params.privacy) : "friends";
+    const actorId = tlAid(ctx);
+    const shared = {
+      id: tlId("pst"),
+      authorId: actorId,
+      content: tlClean(params.comment, 1000),
+      media: [],
+      privacy,
+      taggedUserIds: [],
+      sharedFrom: {
+        postId: found.post.id,
+        authorId: found.post.authorId,
+        content: found.post.content,
+        media: found.post.media,
+        createdAt: found.post.createdAt,
+      },
+      createdAt: tlNow(),
+    };
+    tlList(s.posts, actorId).unshift(shared);
+    pushNotif(s, found.post.authorId, actorId, "share", { postId: found.post.id });
+    saveTlState();
+    return { ok: true, result: { post: shared } };
+  });
+
+  // ── Media albums ───────────────────────────────────────────────────────
+  registerLensAction("timeline", "album-create", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = tlClean(params.name, 120);
+    if (!name) return { ok: false, error: "Album name required." };
+    const album = {
+      id: tlId("alb"),
+      ownerId: tlAid(ctx),
+      name,
+      description: tlClean(params.description, 500),
+      coverUrl: tlClean(params.coverUrl, 1000) || null,
+      media: [],
+      createdAt: tlNow(),
+    };
+    tlList(s.albums, album.ownerId).unshift(album);
+    saveTlState();
+    return { ok: true, result: { album } };
+  });
+
+  registerLensAction("timeline", "album-add-media", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const albumId = tlClean(params.albumId, 64);
+    const userId = tlAid(ctx);
+    const album = (s.albums.get(userId) || []).find((a) => a.id === albumId);
+    if (!album) return { ok: false, error: "Album not found." };
+    const items = Array.isArray(params.media) ? params.media : [params];
+    const added = [];
+    for (const m of items) {
+      const kind = String(m && m.kind);
+      const url = tlClean(m && m.url, 1000);
+      if (!MEDIA_KINDS.includes(kind) || !url) continue;
+      const item = { id: tlId("med"), kind, url, caption: tlClean(m.caption, 200), at: tlNow() };
+      album.media.push(item);
+      added.push(item);
+    }
+    if (added.length === 0) return { ok: false, error: "No valid media supplied." };
+    if (!album.coverUrl) album.coverUrl = added[0].url;
+    saveTlState();
+    return { ok: true, result: { album, added: added.length, mediaCount: album.media.length } };
+  });
+
+  registerLensAction("timeline", "album-list", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = params.ownerId ? tlClean(params.ownerId, 64) : tlAid(ctx);
+    const albums = [...(s.albums.get(userId) || [])];
+    albums.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return {
+      ok: true,
+      result: {
+        albums,
+        totalAlbums: albums.length,
+        totalMedia: albums.reduce((n, a) => n + a.media.length, 0),
+      },
+    };
+  });
+
+  // ── Profile: cover photo, bio, about ──────────────────────────────────
+  registerLensAction("timeline", "profile-get", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = params.userId ? tlClean(params.userId, 64) : tlAid(ctx);
+    const profile = s.profiles.get(userId) || {
+      userId, coverUrl: null, avatarUrl: null, bio: "",
+      about: { work: "", education: "", location: "", relationship: "", website: "" },
+      updatedAt: null,
+    };
+    const posts = s.posts.get(userId) || [];
+    return {
+      ok: true,
+      result: {
+        profile,
+        stats: {
+          posts: posts.length,
+          albums: (s.albums.get(userId) || []).length,
+        },
+      },
+    };
+  });
+
+  registerLensAction("timeline", "profile-update", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const prev = s.profiles.get(userId) || {
+      userId, coverUrl: null, avatarUrl: null, bio: "",
+      about: { work: "", education: "", location: "", relationship: "", website: "" },
+    };
+    const a = params.about || {};
+    const profile = {
+      userId,
+      coverUrl: params.coverUrl !== undefined ? (tlClean(params.coverUrl, 1000) || null) : prev.coverUrl,
+      avatarUrl: params.avatarUrl !== undefined ? (tlClean(params.avatarUrl, 1000) || null) : prev.avatarUrl,
+      bio: params.bio !== undefined ? tlClean(params.bio, 500) : prev.bio,
+      about: {
+        work: a.work !== undefined ? tlClean(a.work, 200) : prev.about.work,
+        education: a.education !== undefined ? tlClean(a.education, 200) : prev.about.education,
+        location: a.location !== undefined ? tlClean(a.location, 200) : prev.about.location,
+        relationship: a.relationship !== undefined ? tlClean(a.relationship, 100) : prev.about.relationship,
+        website: a.website !== undefined ? tlClean(a.website, 300) : prev.about.website,
+      },
+      updatedAt: tlNow(),
+    };
+    s.profiles.set(userId, profile);
+    saveTlState();
+    return { ok: true, result: { profile } };
+  });
+
+  // ── Memories / "On this day" ──────────────────────────────────────────
+  // Surfaces past posts whose month+day match the requested day (default
+  // today) but from a prior year — the Facebook Memories experience.
+  registerLensAction("timeline", "memories", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const ref = params.date ? new Date(params.date) : new Date();
+    if (isNaN(ref.getTime())) return { ok: false, error: "Invalid date." };
+    const refMonth = ref.getMonth();
+    const refDay = ref.getDate();
+    const refYear = ref.getFullYear();
+    const posts = s.posts.get(userId) || [];
+    const memories = [];
+    for (const p of posts) {
+      const d = new Date(p.createdAt);
+      if (isNaN(d.getTime())) continue;
+      if (d.getMonth() === refMonth && d.getDate() === refDay && d.getFullYear() < refYear) {
+        memories.push({
+          ...p,
+          yearsAgo: refYear - d.getFullYear(),
+          reactionTotal: (s.reactions.get(p.id) || []).length,
+          commentCount: (s.comments.get(p.id) || []).length,
+        });
+      }
+    }
+    memories.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return {
+      ok: true,
+      result: {
+        memories,
+        count: memories.length,
+        onThisDay: `${ref.toLocaleString("en-US", { month: "long" })} ${refDay}`,
+      },
+    };
+  });
+
+  // ── Notifications ──────────────────────────────────────────────────────
+  registerLensAction("timeline", "notifications-list", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    let list = [...(s.notifs.get(userId) || [])];
+    if (params.unreadOnly) list = list.filter((n) => !n.read);
+    const limit = Math.max(1, Math.min(100, tlNum(params.limit, 50)));
+    return {
+      ok: true,
+      result: {
+        notifications: list.slice(0, limit),
+        total: list.length,
+        unread: (s.notifs.get(userId) || []).filter((n) => !n.read).length,
+      },
+    };
+  });
+
+  registerLensAction("timeline", "notifications-mark-read", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tlAid(ctx);
+    const list = s.notifs.get(userId) || [];
+    const ids = Array.isArray(params.ids) ? new Set(params.ids.map((i) => tlClean(i, 64))) : null;
+    let marked = 0;
+    for (const n of list) {
+      if (!n.read && (!ids || ids.has(n.id))) { n.read = true; marked += 1; }
+    }
+    saveTlState();
+    return {
+      ok: true,
+      result: { marked, unread: list.filter((n) => !n.read).length },
+    };
+  });
+
+  // Delete a post (author only) — cascades comments + reactions.
+  registerLensAction("timeline", "post-delete", (ctx, _a, params = {}) => {
+    const s = getTlState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = tlClean(params.postId, 64);
+    if (!postId) return { ok: false, error: "postId required." };
+    const userId = tlAid(ctx);
+    const list = s.posts.get(userId) || [];
+    const before = list.length;
+    const next = list.filter((p) => p.id !== postId);
+    if (next.length === before) return { ok: false, error: "Post not found or not yours." };
+    s.posts.set(userId, next);
+    s.comments.delete(postId);
+    s.reactions.delete(postId);
+    saveTlState();
+    return { ok: true, result: { removed: true } };
+  });
 }

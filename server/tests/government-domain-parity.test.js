@@ -348,3 +348,174 @@ describe("government.dashboard-summary (CityGovShell data source)", () => {
     assert.equal(d.result.brokenAssets, 1);
   });
 });
+
+// ── Parity backlog: 7 buildable civic-portal features ──────────
+
+describe("government.payments-* (online payment processing)", () => {
+  it("fines: create / list scoped per user, rejects bad input", () => {
+    const f = call("fines-create", ctxA, { payerName: "Jane Doe", reason: "Expired meter", amountUsd: 45 });
+    assert.equal(f.ok, true);
+    assert.equal(f.result.fine.paid, false);
+    assert.equal(call("fines-list", ctxA, {}).result.fines.length, 1);
+    assert.equal(call("fines-list", ctxB, {}).result.fines.length, 0);
+    assert.equal(call("fines-create", ctxA, { payerName: "", reason: "x", amountUsd: 5 }).ok, false);
+    assert.equal(call("fines-create", ctxA, { payerName: "X", reason: "y", amountUsd: 0 }).ok, false);
+  });
+
+  it("permit fee: checkout -> confirm marks permit paid + emits notification", () => {
+    const p = call("permits-apply", ctxA, { applicantName: "Bob", applicantEmail: "b@x", kind: "fence", feeUsd: 120 });
+    const co = call("payments-checkout", ctxA, { kind: "permit", refId: p.result.permit.id });
+    assert.equal(co.ok, true);
+    assert.equal(co.result.payment.status, "pending");
+    assert.equal(co.result.payment.amountUsd, 120);
+    const conf = call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok_test", cardLast4: "4242" });
+    assert.equal(conf.ok, true);
+    assert.equal(conf.result.payment.status, "succeeded");
+    assert.match(conf.result.payment.receiptNumber, /^RCPT-/);
+    const permits = call("permits-list", ctxA, {}).result.permits;
+    assert.equal(permits.find(x => x.id === p.result.permit.id).paid, true);
+    assert.ok(call("notifications-list", ctxA, {}).result.notifications.some(n => n.kind === "payment_received"));
+  });
+
+  it("fine payment: checkout requires valid card, refund reverses paid flag", () => {
+    const f = call("fines-create", ctxA, { payerName: "Sam", reason: "Litter", amountUsd: 30 });
+    const co = call("payments-checkout", ctxA, { kind: "fine", refId: f.result.fine.id });
+    assert.equal(call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "", cardLast4: "1111" }).ok, false);
+    assert.equal(call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok", cardLast4: "12" }).ok, false);
+    const conf = call("payments-confirm", ctxA, { paymentId: co.result.payment.id, methodToken: "tok", cardLast4: "9999" });
+    assert.equal(conf.ok, true);
+    const refunded = call("payments-refund", ctxA, { paymentId: co.result.payment.id, reason: "duplicate" });
+    assert.equal(refunded.result.payment.status, "refunded");
+    assert.equal(call("fines-list", ctxA, {}).result.fines.find(x => x.id === f.result.fine.id).paid, false);
+  });
+
+  it("rejects checkout on unknown / zero-amount payable and double payment", () => {
+    assert.equal(call("payments-checkout", ctxA, { kind: "permit", refId: "nope" }).ok, false);
+    const p = call("permits-apply", ctxA, { applicantName: "X", applicantEmail: "x@x", kind: "fence", feeUsd: 0 });
+    assert.equal(call("payments-checkout", ctxA, { kind: "permit", refId: p.result.permit.id }).ok, false);
+  });
+});
+
+describe("government.meetings-* (public meeting calendar)", () => {
+  it("schedule / list / set-agenda / publish-minutes / delete cycle", () => {
+    const m = call("meetings-schedule", ctxA, { title: "Council Regular Session", body: "city_council", scheduledAt: "2026-09-01T18:00:00Z", location: "Chambers", agenda: ["Budget vote", "Zoning appeal"] });
+    assert.equal(m.ok, true);
+    assert.equal(m.result.meeting.status, "scheduled");
+    assert.equal(m.result.meeting.agenda.length, 2);
+    assert.equal(call("meetings-list", ctxA, {}).result.meetings.length, 1);
+    assert.equal(call("meetings-list", ctxB, {}).result.meetings.length, 0);
+    const ag = call("meetings-set-agenda", ctxA, { id: m.result.meeting.id, agenda: ["A", "B", "C"] });
+    assert.equal(ag.result.meeting.agenda.length, 3);
+    const min = call("meetings-publish-minutes", ctxA, { id: m.result.meeting.id, minutes: "Motion carried 5-0." });
+    assert.equal(min.result.meeting.status, "minutes_published");
+    assert.equal(call("meetings-delete", ctxA, { id: m.result.meeting.id }).ok, true);
+  });
+
+  it("rejects missing fields, bad body, invalid date", () => {
+    assert.equal(call("meetings-schedule", ctxA, { title: "", body: "city_council", scheduledAt: "2026-09-01T18:00:00Z" }).ok, false);
+    assert.equal(call("meetings-schedule", ctxA, { title: "X", body: "alien_council", scheduledAt: "2026-09-01T18:00:00Z" }).ok, false);
+    assert.equal(call("meetings-schedule", ctxA, { title: "X", body: "city_council", scheduledAt: "not-a-date" }).ok, false);
+  });
+
+  it("upcoming filter excludes past meetings", () => {
+    call("meetings-schedule", ctxA, { title: "Past", body: "city_council", scheduledAt: "2020-01-01T00:00:00Z" });
+    call("meetings-schedule", ctxA, { title: "Future", body: "city_council", scheduledAt: "2099-01-01T00:00:00Z" });
+    const upcoming = call("meetings-list", ctxA, { upcoming: true }).result.meetings;
+    assert.ok(upcoming.every(x => new Date(x.scheduledAt).getTime() >= Date.now()));
+  });
+});
+
+describe("government.voter-registration + elections (election info)", () => {
+  it("voter registration: submit / status, rejects under-18 + bad state", () => {
+    assert.equal(call("voter-registration-status", ctxA, {}).result.registration, null);
+    const r = call("voter-registration-submit", ctxA, { fullName: "Pat Voter", residentialAddress: "1 Main St", dateOfBirth: "1990-05-01", stateCode: "CA", partyPreference: "unaffiliated" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.registration.status, "submitted");
+    assert.equal(call("voter-registration-status", ctxA, {}).result.registration.fullName, "Pat Voter");
+    assert.equal(call("voter-registration-submit", ctxA, { fullName: "Kid", residentialAddress: "x", dateOfBirth: "2020-01-01", stateCode: "CA" }).ok, false);
+    assert.equal(call("voter-registration-submit", ctxA, { fullName: "X", residentialAddress: "y", dateOfBirth: "1990-01-01", stateCode: "California" }).ok, false);
+  });
+
+  it("elections-upcoming requires GOOGLE_CIVIC_API_KEY", async () => {
+    delete process.env.GOOGLE_CIVIC_API_KEY;
+    const r = await call("elections-upcoming", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /GOOGLE_CIVIC_API_KEY/);
+  });
+
+  it("polling-place-lookup requires GOOGLE_CIVIC_API_KEY and address", async () => {
+    delete process.env.GOOGLE_CIVIC_API_KEY;
+    const r = await call("polling-place-lookup", ctxA, { address: "1 Main St" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /GOOGLE_CIVIC_API_KEY/);
+  });
+});
+
+describe("government.advocacy-* (call-your-rep)", () => {
+  it("record / list / tally / delete, scoped per user", () => {
+    const a = call("advocacy-record", ctxA, { billId: "HR1234-119", billTitle: "Climate Act", stance: "support", channel: "email", message: "Please vote yes." });
+    assert.equal(a.ok, true);
+    call("advocacy-record", ctxA, { billId: "HR1234-119", stance: "oppose", channel: "call" });
+    assert.equal(call("advocacy-list", ctxA, {}).result.actions.length, 2);
+    assert.equal(call("advocacy-list", ctxB, {}).result.actions.length, 0);
+    const t = call("advocacy-bill-tally", ctxA, { billId: "HR1234-119" });
+    assert.equal(t.result.total, 2);
+    assert.equal(t.result.tally.support, 1);
+    assert.equal(t.result.tally.oppose, 1);
+    assert.equal(call("advocacy-delete", ctxA, { id: a.result.action.id }).ok, true);
+  });
+
+  it("rejects bad stance / channel and missing message for written channels", () => {
+    assert.equal(call("advocacy-record", ctxA, { billId: "HR1-119", stance: "maybe", channel: "email", message: "x" }).ok, false);
+    assert.equal(call("advocacy-record", ctxA, { billId: "HR1-119", stance: "support", channel: "telepathy", message: "x" }).ok, false);
+    assert.equal(call("advocacy-record", ctxA, { billId: "HR1-119", stance: "support", channel: "email" }).ok, false);
+  });
+});
+
+describe("government.documents-* (form library with e-signature)", () => {
+  it("publish / list / sign / delete, signature fingerprint is tamper-evident", () => {
+    const d = call("documents-publish", ctxA, { title: "Permit Application", category: "permit_form", bodyText: "Fill in all fields.", requiresSignature: true });
+    assert.equal(d.ok, true);
+    assert.equal(call("documents-list", ctxA, {}).result.documents.length, 1);
+    assert.equal(call("documents-list", ctxB, {}).result.documents.length, 0);
+    const s = call("documents-sign", ctxA, { id: d.result.document.id, signerName: "Alice Smith", signerEmail: "a@x", typedSignature: "Alice Smith" });
+    assert.equal(s.ok, true);
+    assert.match(s.result.signature.fingerprint, /^sig-/);
+    assert.equal(s.result.document.signatures.length, 1);
+    assert.equal(call("documents-delete", ctxA, { id: d.result.document.id }).ok, true);
+  });
+
+  it("rejects bad category and signature that does not match name", () => {
+    assert.equal(call("documents-publish", ctxA, { title: "X", category: "ufo_form", bodyText: "y" }).ok, false);
+    const d = call("documents-publish", ctxA, { title: "Y", category: "notice", bodyText: "z", requiresSignature: true });
+    assert.equal(call("documents-sign", ctxA, { id: d.result.document.id, signerName: "Bob", signerEmail: "b@x", typedSignature: "Not Bob" }).ok, false);
+  });
+});
+
+describe("government.notifications-* (case-status notifications)", () => {
+  it("subscribe / list / mark-read, subscription carries chosen channel", () => {
+    const p = call("permits-apply", ctxA, { applicantName: "X", applicantEmail: "x@x", kind: "fence", feeUsd: 50 });
+    const sub = call("notifications-subscribe", ctxA, { subjectKind: "permit", subjectId: p.result.permit.id, channel: "sms", contact: "+15551234567" });
+    assert.equal(sub.ok, true);
+    assert.equal(sub.result.subscription.channel, "sms");
+    // approving a paid permit emits a notification on the subscribed channel
+    call("permits-pay-fee", ctxA, { id: p.result.permit.id });
+    call("permits-approve", ctxA, { id: p.result.permit.id });
+    const list = call("notifications-list", ctxA, {}).result;
+    const approvalNotif = list.notifications.find(n => n.subjectId === p.result.permit.id && /approved/.test(n.message));
+    assert.ok(approvalNotif);
+    assert.equal(approvalNotif.channel, "sms");
+    assert.ok(list.unreadCount >= 1);
+    const marked = call("notifications-mark-read", ctxA, {});
+    assert.ok(marked.result.markedRead >= 1);
+    assert.equal(call("notifications-list", ctxA, { unreadOnly: true }).result.notifications.length, 0);
+  });
+
+  it("notifications-emit + rejects bad subject kind", () => {
+    const e = call("notifications-emit", ctxA, { subjectKind: "court_case", subjectId: "case_1", message: "Hearing rescheduled." });
+    assert.equal(e.ok, true);
+    assert.equal(e.result.notification.subjectKind, "court_case");
+    assert.equal(call("notifications-emit", ctxA, { subjectKind: "alien_abduction", subjectId: "x", message: "y" }).ok, false);
+    assert.equal(call("notifications-subscribe", ctxA, { subjectKind: "permit", subjectId: "", channel: "email", contact: "a@x" }).ok, false);
+  });
+});

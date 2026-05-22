@@ -1,6 +1,5 @@
 'use client';
 
-import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -8,58 +7,52 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { SettingsHealth } from '@/components/settings/SettingsHealth';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { SettingsHealth } from '@/components/settings/SettingsHealth';
+import { QualityPresetSelector } from '@/components/settings/QualityPresetSelector';
 import { MouseSensitivitySlider } from '@/components/settings/MouseSensitivitySlider';
-import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { PreferencesPanel } from '@/components/settings/PreferencesPanel';
+import { KeybindingPanel } from '@/components/settings/KeybindingPanel';
+import { SnapshotManager } from '@/components/settings/SnapshotManager';
+import { AccountSecurityPanel } from '@/components/settings/AccountSecurityPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useCallback, useState } from 'react';
-import { Save, Loader2 } from 'lucide-react';
+import { SlidersHorizontal, Keyboard, Camera, ShieldCheck, Monitor } from 'lucide-react';
 
-interface PresetSnapshot {
-  qualityPreset?: string;
-  mouseSensitivity?: number;
-  takenAt: string;
-}
+type Tab = 'preferences' | 'keybindings' | 'snapshots' | 'account' | 'system';
+
+const TABS: { id: Tab; label: string; icon: typeof SlidersHorizontal }[] = [
+  { id: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
+  { id: 'keybindings', label: 'Keybindings', icon: Keyboard },
+  { id: 'snapshots', label: 'Snapshots', icon: Camera },
+  { id: 'account', label: 'Account & Security', icon: ShieldCheck },
+  { id: 'system', label: 'System & Graphics', icon: Monitor },
+];
 
 export default function SettingsPage() {
-  const recent = useArtifacts<PresetSnapshot>('settings', { type: 'preset', limit: 5 });
-  const createSnapshot = useCreateArtifact<PresetSnapshot>('settings');
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('preferences');
+  // Bumping this key forces the PreferencesPanel to re-fetch server truth
+  // after a snapshot is restored.
+  const [prefVersion, setPrefVersion] = useState(0);
 
-  // Capture the current preset snapshot from localStorage so the user
-  // can roll back to a known-good config.
-  const captureSnapshot = useCallback(() => {
-    setSaving(true);
-    try {
-      const qualityPreset = typeof window !== 'undefined'
-        ? window.localStorage.getItem('concord:quality-preset') ?? undefined
-        : undefined;
-      const mouseSensitivityRaw = typeof window !== 'undefined'
-        ? window.localStorage.getItem('concord:mouse-sensitivity')
-        : null;
-      const mouseSensitivity = mouseSensitivityRaw ? Number(mouseSensitivityRaw) : undefined;
-      const takenAt = new Date().toISOString();
-      createSnapshot.mutate({
-        type: 'preset',
-        title: `Snapshot ${new Date().toLocaleString()}`,
-        data: { qualityPreset, mouseSensitivity, takenAt },
-        meta: { tags: ['settings', 'snapshot'], status: 'completed', visibility: 'private' },
-      });
-      setSavedAt(new Date().toLocaleTimeString());
-    } finally {
-      setSaving(false);
-    }
-  }, [createSnapshot]);
+  const onSnapshotApplied = useCallback(() => {
+    setPrefVersion((v) => v + 1);
+    setTab('preferences');
+  }, []);
 
-  // ⌘S captures a snapshot — matches the GitHub-settings idiom.
+  // ⌘K jumps focus to the Preferences tab (search-within-settings lives there).
   useLensCommand(
     [
-      { id: 'snapshot', keys: 'mod+s', description: 'Capture preset snapshot', category: 'actions',
-        action: () => { if (!saving) captureSnapshot(); }, global: true },
+      {
+        id: 'search', keys: 'mod+k', description: 'Search within settings', category: 'navigation',
+        action: () => setTab('preferences'), global: true,
+      },
+      {
+        id: 'snapshots', keys: 'mod+s', description: 'Open snapshots', category: 'actions',
+        action: () => setTab('snapshots'), global: true,
+      },
     ],
-    { lensId: 'settings' }
+    { lensId: 'settings' },
   );
 
   return (
@@ -68,59 +61,78 @@ export default function SettingsPage() {
       <ManifestActionBar />
       <DepthBadge lensId="settings" size="sm" className="ml-2" />
       <LensVerticalHero lensId="settings" className="mx-6 mt-4" />
-    <main className="min-h-screen p-6 sm:p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
-      <section className="space-y-4">
-        <QualityPresetSelector />
-        <MouseSensitivitySlider />
-      </section>
+      <main className="min-h-screen p-6 sm:p-8 max-w-3xl mx-auto">
+        <h1 className="text-2xl font-bold text-white mb-4">Settings</h1>
 
-      <section className="mt-8 border-t border-white/10 pt-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white/80">Preset snapshots</h2>
-          <button
-            onClick={captureSnapshot}
-            disabled={saving}
-            className="px-3 py-1.5 text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-            Capture snapshot
-          </button>
-        </div>
-        {savedAt && <p className="text-[11px] text-emerald-300 mb-2">Saved {savedAt}</p>}
-        {recent.data?.artifacts && recent.data.artifacts.length > 0 ? (
-          <ul className="space-y-1 text-xs">
-            {recent.data.artifacts.map((a) => {
-              const data = a.data as PresetSnapshot;
-              return (
-                <li key={a.id} className="flex items-center gap-2 text-gray-400">
-                  <span className="text-gray-200 flex-1 truncate">{a.title}</span>
-                  <span className="text-[10px] text-white/40">
-                    {data.qualityPreset ?? 'unset'} · ms{data.mouseSensitivity ?? '—'}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="text-[11px] text-gray-500 italic">No snapshots yet — capture one to roll back later.</p>
+        <nav className="flex flex-wrap gap-1 border-b border-white/10 mb-6" role="tablist" aria-label="Settings sections">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`px-3 py-2 text-xs font-medium inline-flex items-center gap-1.5 border-b-2 -mb-px focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-t ${
+                tab === id
+                  ? 'border-cyan-500 text-cyan-300'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        {tab === 'preferences' && (
+          <section aria-label="Preferences">
+            <p className="text-[11px] text-gray-500 mb-4">
+              Preferences are persisted on the server and sync across every device you sign in on.
+            </p>
+            <PreferencesPanel key={prefVersion} />
+          </section>
         )}
-      </section>
 
-      <p className="text-[11px] text-gray-500 mt-8">
-        More settings (audio volume, accessibility, language) live in their respective lenses.
-      </p>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SettingsHealth />
-      </section>
-    </main>
+        {tab === 'keybindings' && (
+          <section aria-label="Keybindings">
+            <p className="text-[11px] text-gray-500 mb-4">
+              Click a binding, then press the key chord you want. Press Escape to cancel.
+            </p>
+            <KeybindingPanel />
+          </section>
+        )}
+
+        {tab === 'snapshots' && (
+          <section aria-label="Snapshots">
+            <p className="text-[11px] text-gray-500 mb-4">
+              Capture the current preference set so you can roll back to a known-good config.
+            </p>
+            <SnapshotManager onApplied={onSnapshotApplied} />
+          </section>
+        )}
+
+        {tab === 'account' && (
+          <section aria-label="Account and security">
+            <AccountSecurityPanel />
+          </section>
+        )}
+
+        {tab === 'system' && (
+          <section aria-label="System and graphics" className="space-y-4">
+            <QualityPresetSelector />
+            <MouseSensitivitySlider />
+            <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <SettingsHealth />
+            </div>
+          </section>
+        )}
+      </main>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders &ldquo;No data yet&rdquo; if main view has no rows</div>
       <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
-          <RecentMineCard domain="settings" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="settings" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="settings" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <RecentMineCard domain="settings" limit={10} hideWhenEmpty className="mt-4" />
+      <AutoActionStrip domain="settings" hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="settings" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -29,6 +29,17 @@ export default function registerMessageActions(registerLensAction) {
     if (!s.readState)      s.readState      = new Map();
     if (!s.mentions)       s.mentions       = new Map();
     if (!s.seq)            s.seq            = new Map();
+    if (!s.pins)           s.pins           = new Map();
+    if (!s.bookmarks)      s.bookmarks      = new Map();
+    if (!s.status)         s.status         = new Map();
+    // 2026 Slack-parity backlog backfills — append-only.
+    if (!s.huddles)        s.huddles        = new Map(); // userId -> Map<huddleId, huddle>
+    if (!s.files)          s.files          = new Map(); // userId -> Map<channelId, fileEntry[]>
+    if (!s.typing)         s.typing         = new Map(); // userId -> Map<channelId, { handle, expiresAt }[]>
+    if (!s.commands)       s.commands       = new Map(); // userId -> slashCommand registry[]
+    if (!s.appMessages)    s.appMessages    = new Map(); // userId -> Map<channelId, appMsg[]>
+    if (!s.notifPrefs)     s.notifPrefs     = new Map(); // userId -> { dndStart, dndEnd, keywords[], perChannel{} }
+    if (!s.profiles)       s.profiles       = new Map(); // userId -> Map<memberId, profile>
     return s;
   }
   function saveMessageState() {
@@ -709,8 +720,8 @@ export default function registerMessageActions(registerLensAction) {
     const items = actionish.slice(0, 10).map((s, i) => ({
       id: `ai_${Date.now()}_${i}`,
       text: s.trim(),
-      owner: (s.match(/@(\w+)/) || [, ''])[1] || null,
-      due: (s.match(/by ([A-Z][a-z]+(?:day)?|\d{4}-\d{2}-\d{2})/) || [, ''])[1] || null,
+      owner: (s.match(/@(\w+)/) || [undefined, ''])[1] || null,
+      due: (s.match(/by ([A-Z][a-z]+(?:day)?|\d{4}-\d{2}-\d{2})/) || [undefined, ''])[1] || null,
     }));
     const brain = ctx?.llm?.chat;
     if (typeof brain !== 'function' || items.length >= 3) {
@@ -787,5 +798,626 @@ export default function registerMessageActions(registerLensAction) {
         snoozedCount,
       },
     };
+  });
+
+  // ── Pinned messages (Slack-shape, channel-scoped) ──────────────
+  registerLensAction("message", "pin-message", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const messageId = String(params.messageId || "");
+    if (!channelId || !messageId) return { ok: false, error: "channelId + messageId required" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const msg = listB(mapB(s.messages, userId), channelId).find(m => m.id === messageId);
+    if (!msg) return { ok: false, error: "message not found" };
+    const pins = listB(mapB(s.pins, userId), channelId);
+    if (pins.some(p => p.messageId === messageId)) return { ok: false, error: "already pinned" };
+    const pin = { messageId, body: msg.body, senderName: msg.senderName, pinnedBy: userId, pinnedAt: nowIsoMsg() };
+    pins.push(pin);
+    msg.pinned = true;
+    saveMessageState();
+    return { ok: true, result: { pin, pinCount: pins.length } };
+  });
+
+  registerLensAction("message", "unpin-message", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const messageId = String(params.messageId || "");
+    const pins = listB(mapB(s.pins, userId), channelId);
+    const i = pins.findIndex(p => p.messageId === messageId);
+    if (i < 0) return { ok: false, error: "not pinned" };
+    pins.splice(i, 1);
+    const msg = listB(mapB(s.messages, userId), channelId).find(m => m.id === messageId);
+    if (msg) msg.pinned = false;
+    saveMessageState();
+    return { ok: true, result: { unpinned: messageId, pinCount: pins.length } };
+  });
+
+  registerLensAction("message", "pins-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const pins = listB(mapB(s.pins, userId), channelId);
+    return { ok: true, result: { pins, count: pins.length } };
+  });
+
+  // ── Channel bookmarks ──────────────────────────────────────────
+  registerLensAction("message", "bookmark-add", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const title = String(params.title || "").trim().slice(0, 120);
+    if (!channelId || !title) return { ok: false, error: "channelId + title required" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const bookmarks = listB(mapB(s.bookmarks, userId), channelId);
+    const bm = {
+      id: nextMsgId('bm'),
+      title,
+      url: String(params.url || "").trim().slice(0, 500),
+      emoji: String(params.emoji || "🔖").slice(0, 8),
+      addedBy: userId,
+      addedAt: nowIsoMsg(),
+    };
+    bookmarks.push(bm);
+    saveMessageState();
+    return { ok: true, result: { bookmark: bm, count: bookmarks.length } };
+  });
+
+  registerLensAction("message", "bookmark-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const bookmarks = listB(mapB(s.bookmarks, userId), channelId);
+    return { ok: true, result: { bookmarks, count: bookmarks.length } };
+  });
+
+  registerLensAction("message", "bookmark-remove", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const id = String(params.id || "");
+    const bookmarks = listB(mapB(s.bookmarks, userId), channelId);
+    const i = bookmarks.findIndex(b => b.id === id);
+    if (i < 0) return { ok: false, error: "bookmark not found" };
+    bookmarks.splice(i, 1);
+    saveMessageState();
+    return { ok: true, result: { removed: id, count: bookmarks.length } };
+  });
+
+  // ── Status & presence (Slack-shape) ────────────────────────────
+  registerLensAction("message", "status-set", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const presence = ['active', 'away', 'dnd'].includes(params.presence) ? params.presence : 'active';
+    const durationMin = Number(params.durationMin) || 0;
+    const status = {
+      emoji: String(params.emoji || "").slice(0, 8),
+      text: String(params.text || "").trim().slice(0, 100),
+      presence,
+      expiresAt: durationMin > 0 ? new Date(Date.now() + durationMin * 60000).toISOString() : null,
+      setAt: nowIsoMsg(),
+    };
+    s.status.set(userId, status);
+    saveMessageState();
+    return { ok: true, result: { status } };
+  });
+
+  registerLensAction("message", "status-get", (ctx, _a, _params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const blank = { emoji: "", text: "", presence: "active", expiresAt: null };
+    const status = s.status.get(userId);
+    if (!status) return { ok: true, result: { status: blank } };
+    if (status.expiresAt && new Date(status.expiresAt).getTime() <= Date.now()) {
+      s.status.delete(userId);
+      return { ok: true, result: { status: blank, expired: true } };
+    }
+    return { ok: true, result: { status } };
+  });
+
+  registerLensAction("message", "status-clear", (ctx, _a, _params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    s.status.delete(msgActor(ctx));
+    saveMessageState();
+    return { ok: true, result: { cleared: true } };
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  2026 Slack-parity backlog — huddles, file sharing, typing /
+  //  live delivery, slash-command + bot integrations, notification
+  //  preferences, and a workspace member directory.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Huddles — live audio/video sessions in a channel ───────────
+
+  registerLensAction("message", "huddle-start", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const map = mapB(s.huddles, userId);
+    const liveOnChannel = Array.from(map.values()).find(h => h.channelId === channelId && h.status === "live");
+    if (liveOnChannel) return { ok: false, error: "huddle already live on this channel" };
+    const mode = ["audio", "video"].includes(params.mode) ? params.mode : "audio";
+    const handle = String(ctx?.actor?.handle || ctx?.actor?.displayName || userId);
+    const huddle = {
+      id: nextMsgId("hud"),
+      channelId,
+      channelName: channel.name,
+      mode,
+      status: "live",
+      topic: String(params.topic || "").slice(0, 120),
+      host: handle,
+      participants: [{ handle, joinedAt: nowIsoMsg(), muted: false, video: mode === "video" }],
+      startedAt: nowIsoMsg(),
+      endedAt: null,
+    };
+    map.set(huddle.id, huddle);
+    saveMessageState();
+    emitToUserRoom(userId, "message:huddle-started", { huddleId: huddle.id, channelId, mode });
+    return { ok: true, result: { huddle } };
+  });
+
+  registerLensAction("message", "huddle-join", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const huddleId = String(params.huddleId || "");
+    if (!huddleId) return { ok: false, error: "huddleId required" };
+    const huddle = mapB(s.huddles, userId).get(huddleId);
+    if (!huddle) return { ok: false, error: "huddle not found" };
+    if (huddle.status !== "live") return { ok: false, error: "huddle has ended" };
+    const handle = String(params.handle || ctx?.actor?.handle || ctx?.actor?.displayName || userId);
+    if (huddle.participants.some(p => p.handle === handle)) return { ok: false, error: "already in huddle" };
+    huddle.participants.push({ handle, joinedAt: nowIsoMsg(), muted: false, video: false });
+    saveMessageState();
+    emitToUserRoom(userId, "message:huddle-joined", { huddleId, handle });
+    return { ok: true, result: { huddle } };
+  });
+
+  registerLensAction("message", "huddle-leave", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const huddleId = String(params.huddleId || "");
+    const huddle = mapB(s.huddles, userId).get(huddleId);
+    if (!huddle) return { ok: false, error: "huddle not found" };
+    const handle = String(params.handle || ctx?.actor?.handle || ctx?.actor?.displayName || userId);
+    const i = huddle.participants.findIndex(p => p.handle === handle);
+    if (i < 0) return { ok: false, error: "not in huddle" };
+    huddle.participants.splice(i, 1);
+    if (huddle.participants.length === 0 && huddle.status === "live") {
+      huddle.status = "ended";
+      huddle.endedAt = nowIsoMsg();
+    }
+    saveMessageState();
+    emitToUserRoom(userId, "message:huddle-left", { huddleId, handle });
+    return { ok: true, result: { huddle } };
+  });
+
+  registerLensAction("message", "huddle-end", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const huddle = mapB(s.huddles, userId).get(String(params.huddleId || ""));
+    if (!huddle) return { ok: false, error: "huddle not found" };
+    if (huddle.status === "ended") return { ok: false, error: "already ended" };
+    huddle.status = "ended";
+    huddle.endedAt = nowIsoMsg();
+    huddle.durationMs = new Date(huddle.endedAt).getTime() - new Date(huddle.startedAt).getTime();
+    saveMessageState();
+    emitToUserRoom(userId, "message:huddle-ended", { huddleId: huddle.id, channelId: huddle.channelId });
+    return { ok: true, result: { huddle } };
+  });
+
+  registerLensAction("message", "huddle-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = params.channelId ? String(params.channelId) : null;
+    let huddles = Array.from(mapB(s.huddles, userId).values());
+    if (channelId) huddles = huddles.filter(h => h.channelId === channelId);
+    if (params.liveOnly) huddles = huddles.filter(h => h.status === "live");
+    huddles.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    return { ok: true, result: { huddles, liveCount: huddles.filter(h => h.status === "live").length } };
+  });
+
+  // ── File sharing & attachments ────────────────────────────────
+
+  registerLensAction("message", "file-upload", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "file name required" };
+    const sizeBytes = Number(params.sizeBytes);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return { ok: false, error: "sizeBytes > 0 required" };
+    if (sizeBytes > 1024 * 1024 * 1024) return { ok: false, error: "file exceeds 1 GB limit" };
+    const ext = (name.split(".").pop() || "").toLowerCase();
+    const IMG = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
+    const VID = ["mp4", "webm", "mov"];
+    const AUD = ["mp3", "wav", "ogg", "m4a"];
+    const fileKind = IMG.includes(ext) ? "image" : VID.includes(ext) ? "video" : AUD.includes(ext) ? "audio"
+      : ["pdf", "doc", "docx", "txt", "md", "csv", "xlsx"].includes(ext) ? "document" : "file";
+    const entry = {
+      id: nextMsgId("file"),
+      channelId,
+      name,
+      ext,
+      fileKind,
+      sizeBytes,
+      mimeType: String(params.mimeType || "").slice(0, 120),
+      dataUrl: String(params.dataUrl || "").slice(0, 6_000_000) || null,
+      url: String(params.url || "").trim().slice(0, 2000) || null,
+      messageId: String(params.messageId || "") || null,
+      uploadedBy: String(ctx?.actor?.handle || ctx?.actor?.displayName || userId),
+      uploadedAt: nowIsoMsg(),
+    };
+    if (!entry.dataUrl && !entry.url) return { ok: false, error: "dataUrl or url required" };
+    listB(mapB(s.files, userId), channelId).push(entry);
+    saveMessageState();
+    emitToUserRoom(userId, "message:file-uploaded", { channelId, fileId: entry.id, name });
+    return { ok: true, result: { file: entry } };
+  });
+
+  registerLensAction("message", "file-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = params.channelId ? String(params.channelId) : null;
+    const kindFilter = params.fileKind ? String(params.fileKind) : null;
+    const filesMap = mapB(s.files, userId);
+    let files = [];
+    if (channelId) files = listB(filesMap, channelId).slice();
+    else for (const arr of filesMap.values()) files.push(...arr);
+    if (kindFilter) files = files.filter(f => f.fileKind === kindFilter);
+    files.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+    const totalBytes = files.reduce((sum, f) => sum + (f.sizeBytes || 0), 0);
+    return { ok: true, result: { files, count: files.length, totalBytes } };
+  });
+
+  registerLensAction("message", "file-delete", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const id = String(params.id || "");
+    if (!channelId || !id) return { ok: false, error: "channelId + id required" };
+    const arr = listB(mapB(s.files, userId), channelId);
+    const i = arr.findIndex(f => f.id === id);
+    if (i < 0) return { ok: false, error: "file not found" };
+    arr.splice(i, 1);
+    saveMessageState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Realtime typing indicators + live delivery cursor ─────────
+
+  registerLensAction("message", "typing-start", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const handle = String(params.handle || ctx?.actor?.handle || ctx?.actor?.displayName || userId);
+    const arr = listB(mapB(s.typing, userId), channelId);
+    const ttlMs = 6000;
+    const existing = arr.find(t => t.handle === handle);
+    const expiresAt = Date.now() + ttlMs;
+    if (existing) existing.expiresAt = expiresAt;
+    else arr.push({ handle, expiresAt });
+    saveMessageState();
+    emitToUserRoom(userId, "message:typing", { channelId, handle, typing: true });
+    return { ok: true, result: { channelId, handle, expiresInMs: ttlMs } };
+  });
+
+  registerLensAction("message", "typing-stop", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const handle = String(params.handle || ctx?.actor?.handle || ctx?.actor?.displayName || userId);
+    const arr = listB(mapB(s.typing, userId), channelId);
+    const i = arr.findIndex(t => t.handle === handle);
+    if (i >= 0) arr.splice(i, 1);
+    saveMessageState();
+    emitToUserRoom(userId, "message:typing", { channelId, handle, typing: false });
+    return { ok: true, result: { channelId, handle } };
+  });
+
+  // Poll-based live state: who is typing + how many new messages
+  // have arrived in a channel since the caller's last-seen timestamp.
+  registerLensAction("message", "channel-live-state", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const now = Date.now();
+    const arr = listB(mapB(s.typing, userId), channelId);
+    // GC stale typing entries.
+    for (let i = arr.length - 1; i >= 0; i--) if (arr[i].expiresAt <= now) arr.splice(i, 1);
+    const typing = arr.map(t => t.handle);
+    const sinceMs = params.sinceTs ? new Date(String(params.sinceTs)).getTime() : 0;
+    const msgs = listB(mapB(s.messages, userId), channelId);
+    const newMessages = sinceMs
+      ? msgs.filter(m => new Date(m.ts).getTime() > sinceMs)
+      : [];
+    const latest = msgs[msgs.length - 1] || null;
+    return {
+      ok: true,
+      result: {
+        channelId,
+        typing,
+        newMessageCount: newMessages.length,
+        newMessages: newMessages.slice(-50),
+        latestTs: latest?.ts || null,
+        serverTs: nowIsoMsg(),
+      },
+    };
+  });
+
+  // ── Slash commands + bot / app integrations ───────────────────
+
+  const BUILTIN_COMMANDS = [
+    { name: "/remind", description: "Set a reminder for yourself", builtin: true },
+    { name: "/shrug", description: "Append ¯\\_(ツ)_/¯", builtin: true },
+    { name: "/here", description: "Notify active channel members", builtin: true },
+    { name: "/topic", description: "Set the channel topic", builtin: true },
+    { name: "/poll", description: "Start a quick poll", builtin: true },
+  ];
+
+  registerLensAction("message", "command-list", (ctx, _a, _p = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const custom = listB(s.commands, msgActor(ctx));
+    return { ok: true, result: { commands: [...BUILTIN_COMMANDS, ...custom], builtinCount: BUILTIN_COMMANDS.length, customCount: custom.length } };
+  });
+
+  registerLensAction("message", "command-register", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    let name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "command name required" };
+    if (!name.startsWith("/")) name = "/" + name;
+    name = name.toLowerCase().replace(/\s+/g, "-");
+    const description = String(params.description || "").trim().slice(0, 200);
+    if (!description) return { ok: false, error: "description required" };
+    if (BUILTIN_COMMANDS.some(c => c.name === name)) return { ok: false, error: "name collides with a builtin command" };
+    const list = listB(s.commands, userId);
+    if (list.some(c => c.name === name)) return { ok: false, error: "command already registered" };
+    const cmd = {
+      id: nextMsgId("cmd"),
+      name,
+      description,
+      appName: String(params.appName || "Custom").slice(0, 60),
+      responseTemplate: String(params.responseTemplate || "").slice(0, 1000),
+      builtin: false,
+      createdAt: nowIsoMsg(),
+    };
+    list.push(cmd);
+    saveMessageState();
+    return { ok: true, result: { command: cmd } };
+  });
+
+  registerLensAction("message", "command-remove", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = listB(s.commands, msgActor(ctx));
+    const i = list.findIndex(c => c.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "command not found" };
+    list.splice(i, 1);
+    saveMessageState();
+    return { ok: true, result: { removed: true } };
+  });
+
+  // Run a slash command against a channel — posts an app/bot message.
+  registerLensAction("message", "command-run", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const raw = String(params.text || "").trim();
+    if (!channelId || !raw) return { ok: false, error: "channelId + text required" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const cmdName = (raw.split(/\s+/)[0] || "").toLowerCase();
+    const argStr = raw.slice(cmdName.length).trim();
+    const builtin = BUILTIN_COMMANDS.find(c => c.name === cmdName);
+    const custom = listB(s.commands, userId).find(c => c.name === cmdName);
+    if (!builtin && !custom) return { ok: false, error: `unknown command ${cmdName}` };
+    let appName = "Concord Bot";
+    let body = "";
+    let ephemeral = true;
+    if (builtin) {
+      switch (cmdName) {
+        case "/shrug": body = `${argStr} ¯\\_(ツ)_/¯`.trim(); ephemeral = false; break;
+        case "/topic":
+          if (!argStr) return { ok: false, error: "/topic requires text" };
+          channel.topic = argStr.slice(0, 200);
+          body = `Channel topic set to: ${channel.topic}`;
+          break;
+        case "/here": body = `<!here> ${argStr}`.trim(); ephemeral = false; break;
+        case "/remind": body = argStr ? `Reminder set: ${argStr}` : "Usage: /remind <text> in <time>"; break;
+        case "/poll": body = argStr ? `Poll started: ${argStr}` : "Usage: /poll <question>"; ephemeral = false; break;
+        default: body = `Ran ${cmdName}`;
+      }
+    } else {
+      appName = custom.appName;
+      body = custom.responseTemplate
+        ? custom.responseTemplate.replace(/\{args\}/g, argStr)
+        : `${custom.name} executed${argStr ? `: ${argStr}` : ""}`;
+    }
+    const appMsg = {
+      id: nextMsgId("appmsg"),
+      channelId,
+      command: cmdName,
+      appName,
+      body,
+      ephemeral,
+      ranBy: String(ctx?.actor?.handle || ctx?.actor?.displayName || userId),
+      ts: nowIsoMsg(),
+    };
+    listB(mapB(s.appMessages, userId), channelId).push(appMsg);
+    saveMessageState();
+    emitToUserRoom(userId, "message:app-message", { channelId, command: cmdName });
+    return { ok: true, result: { appMessage: appMsg } };
+  });
+
+  registerLensAction("message", "app-messages-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const list = listB(mapB(s.appMessages, userId), channelId);
+    return { ok: true, result: { appMessages: list.slice(-100), count: list.length } };
+  });
+
+  // ── Notification preferences ──────────────────────────────────
+
+  function defaultNotifPrefs() {
+    return {
+      dndEnabled: false,
+      dndStart: "22:00",
+      dndEnd: "08:00",
+      keywords: [],
+      globalLevel: "all", // all | mentions | nothing
+      perChannel: {},     // channelId -> 'all' | 'mentions' | 'muted'
+    };
+  }
+
+  registerLensAction("message", "notif-prefs-get", (ctx, _a, _p = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const prefs = s.notifPrefs.get(userId) || defaultNotifPrefs();
+    // Is DND currently active? (handles overnight windows that wrap midnight)
+    let dndActive = false;
+    if (prefs.dndEnabled) {
+      const now = new Date();
+      const cur = now.getHours() * 60 + now.getMinutes();
+      const [sh, sm] = prefs.dndStart.split(":").map(Number);
+      const [eh, em] = prefs.dndEnd.split(":").map(Number);
+      const start = sh * 60 + sm, end = eh * 60 + em;
+      dndActive = start <= end ? (cur >= start && cur < end) : (cur >= start || cur < end);
+    }
+    return { ok: true, result: { prefs, dndActive } };
+  });
+
+  registerLensAction("message", "notif-prefs-set", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const prefs = s.notifPrefs.get(userId) || defaultNotifPrefs();
+    if (params.dndEnabled !== undefined) prefs.dndEnabled = Boolean(params.dndEnabled);
+    const timeRe = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (params.dndStart !== undefined) {
+      if (!timeRe.test(String(params.dndStart))) return { ok: false, error: "dndStart must be HH:MM" };
+      prefs.dndStart = String(params.dndStart);
+    }
+    if (params.dndEnd !== undefined) {
+      if (!timeRe.test(String(params.dndEnd))) return { ok: false, error: "dndEnd must be HH:MM" };
+      prefs.dndEnd = String(params.dndEnd);
+    }
+    if (params.globalLevel !== undefined) {
+      if (!["all", "mentions", "nothing"].includes(params.globalLevel)) return { ok: false, error: "invalid globalLevel" };
+      prefs.globalLevel = params.globalLevel;
+    }
+    if (Array.isArray(params.keywords)) {
+      prefs.keywords = Array.from(new Set(params.keywords.map(k => String(k).trim().toLowerCase()).filter(Boolean))).slice(0, 30);
+    }
+    s.notifPrefs.set(userId, prefs);
+    saveMessageState();
+    return { ok: true, result: { prefs } };
+  });
+
+  registerLensAction("message", "notif-channel-set", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const level = params.level;
+    if (!channelId) return { ok: false, error: "channelId required" };
+    if (!["all", "mentions", "muted"].includes(level)) return { ok: false, error: "level must be all|mentions|muted" };
+    const channel = listB(s.channels, userId).find(c => c.id === channelId);
+    if (!channel) return { ok: false, error: "channel not found" };
+    const prefs = s.notifPrefs.get(userId) || defaultNotifPrefs();
+    prefs.perChannel[channelId] = level;
+    s.notifPrefs.set(userId, prefs);
+    saveMessageState();
+    return { ok: true, result: { channelId, level, perChannel: prefs.perChannel } };
+  });
+
+  // Evaluate whether a given message text would notify the user.
+  registerLensAction("message", "notif-check", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const channelId = String(params.channelId || "");
+    const text = String(params.text || "");
+    const isMention = Boolean(params.isMention);
+    if (!channelId) return { ok: false, error: "channelId required" };
+    const prefs = s.notifPrefs.get(userId) || defaultNotifPrefs();
+    const lower = text.toLowerCase();
+    const matchedKeywords = prefs.keywords.filter(k => lower.includes(k));
+    const channelLevel = prefs.perChannel[channelId] || prefs.globalLevel;
+    let willNotify = false;
+    let reason = "muted";
+    if (channelLevel === "muted" || channelLevel === "nothing") {
+      willNotify = matchedKeywords.length > 0 || isMention;
+      reason = willNotify ? (isMention ? "mention" : "keyword") : "muted";
+    } else if (channelLevel === "mentions") {
+      willNotify = isMention || matchedKeywords.length > 0;
+      reason = willNotify ? (isMention ? "mention" : "keyword") : "mentions_only";
+    } else {
+      willNotify = true;
+      reason = "all";
+    }
+    return { ok: true, result: { willNotify, reason, matchedKeywords, channelLevel } };
+  });
+
+  // ── Workspace member directory + profiles ─────────────────────
+
+  registerLensAction("message", "profile-set", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const memberId = String(params.memberId || ctx?.actor?.handle || ctx?.actor?.displayName || userId).trim();
+    if (!memberId) return { ok: false, error: "memberId required" };
+    const map = mapB(s.profiles, userId);
+    const existing = map.get(memberId) || { memberId, createdAt: nowIsoMsg() };
+    const profile = {
+      ...existing,
+      displayName: params.displayName !== undefined ? String(params.displayName).trim().slice(0, 80) : (existing.displayName || memberId),
+      title: params.title !== undefined ? String(params.title).trim().slice(0, 120) : (existing.title || ""),
+      timezone: params.timezone !== undefined ? String(params.timezone).trim().slice(0, 60) : (existing.timezone || ""),
+      pronouns: params.pronouns !== undefined ? String(params.pronouns).trim().slice(0, 40) : (existing.pronouns || ""),
+      bio: params.bio !== undefined ? String(params.bio).trim().slice(0, 500) : (existing.bio || ""),
+      email: params.email !== undefined ? String(params.email).trim().slice(0, 160) : (existing.email || ""),
+      avatarEmoji: params.avatarEmoji !== undefined ? String(params.avatarEmoji).slice(0, 8) : (existing.avatarEmoji || "👤"),
+      updatedAt: nowIsoMsg(),
+    };
+    map.set(memberId, profile);
+    saveMessageState();
+    return { ok: true, result: { profile } };
+  });
+
+  registerLensAction("message", "profile-get", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const memberId = String(params.memberId || "").trim();
+    if (!memberId) return { ok: false, error: "memberId required" };
+    const profile = mapB(s.profiles, userId).get(memberId);
+    if (!profile) return { ok: true, result: { profile: null, found: false } };
+    return { ok: true, result: { profile, found: true } };
+  });
+
+  registerLensAction("message", "directory-list", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const q = String(params.query || "").trim().toLowerCase();
+    let members = Array.from(mapB(s.profiles, userId).values());
+    if (q) {
+      members = members.filter(m =>
+        (m.displayName || "").toLowerCase().includes(q) ||
+        (m.title || "").toLowerCase().includes(q) ||
+        (m.memberId || "").toLowerCase().includes(q));
+    }
+    members.sort((a, b) => (a.displayName || a.memberId).localeCompare(b.displayName || b.memberId));
+    return { ok: true, result: { members, count: members.length } };
   });
 }

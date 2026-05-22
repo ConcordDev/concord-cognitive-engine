@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
 import { PlumbCalc } from '@/components/plumbing/PlumbCalc';
+import { FieldServiceConsole } from '@/components/plumbing/FieldServiceConsole';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -38,12 +39,14 @@ import {
   Gauge,
   Siren,
   Zap,
+  Calendar,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
 type ModeTab =
+  | 'operations'
   | 'jobs'
   | 'estimates'
   | 'codes'
@@ -119,6 +122,7 @@ const MODE_TABS: {
   icon: typeof Droplets;
   artifactType: ArtifactType;
 }[] = [
+  { id: 'operations', label: 'Operations', icon: Calendar, artifactType: 'Job' },
   { id: 'jobs', label: 'Jobs', icon: Wrench, artifactType: 'Job' },
   { id: 'estimates', label: 'Estimates', icon: Calculator, artifactType: 'Estimate' },
   { id: 'codes', label: 'Codes', icon: FileText, artifactType: 'CodeRef' },
@@ -734,7 +738,14 @@ export default function PlumbingLensPage() {
           </button>
         ))}
       </nav>
-      {activeTab === 'map' ? (
+      {activeTab === 'operations' ? (
+        <div className={cn(ds.panel, 'p-4')}>
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-neon-cyan" /> Field Service Operations
+          </h3>
+          <FieldServiceConsole />
+        </div>
+      ) : activeTab === 'map' ? (
         <div className={cn(ds.panel, 'p-4')}>
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
             <Map className="w-4 h-4 text-neon-cyan" /> Job Site Locations

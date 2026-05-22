@@ -6,7 +6,7 @@
  * mood journal + correlation, workout log, goals. Wired to wellness.*
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   HeartPulse, Loader2, Plus, Trash2, Flame, Activity, Smile, Target,
   TrendingUp, TrendingDown, Minus, Dumbbell, Sparkles, Check,

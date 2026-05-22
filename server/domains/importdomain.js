@@ -401,6 +401,47 @@ export default function registerImportActions(registerLensAction) {
    *   operations: "trim", "lowercase", "uppercase", "toNumber", "toDate", "replace", "default", "truncate"
    * artifact.data.previewCount: number (default 5)
    */
+  // ---------------------------------------------------------------------------
+  // Per-user STATE substrate for parity macros (sessions, templates, connectors,
+  // schedules, rollback snapshots). Keyed by ctx.userId in globalThis._concordSTATE.
+  // ---------------------------------------------------------------------------
+  function getImportState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.importLens) {
+      STATE.importLens = {
+        sessions: new Map(),   // userId -> Array<importSession>
+        templates: new Map(),  // userId -> Array<mappingTemplate>
+        connectors: new Map(), // userId -> Array<connector>
+        schedules: new Map(),  // userId -> Array<schedule>
+        snapshots: new Map(),  // userId -> Array<rollbackSnapshot>
+      };
+    }
+    const s = STATE.importLens;
+    if (!s.sessions) s.sessions = new Map();
+    if (!s.templates) s.templates = new Map();
+    if (!s.connectors) s.connectors = new Map();
+    if (!s.schedules) s.schedules = new Map();
+    if (!s.snapshots) s.snapshots = new Map();
+    return s;
+  }
+  function importActId(ctx) {
+    return ctx?.actor?.userId || ctx?.userId || "anon";
+  }
+  function importList(map, userId) {
+    if (!map.has(userId)) map.set(userId, []);
+    return map.get(userId);
+  }
+  function importNextId(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function importNowIso() { return new Date().toISOString(); }
+  function importSave() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+
   registerLensAction("import", "transformPreview", (ctx, artifact, _params) => {
     const rows = artifact.data?.rows || [];
     const transforms = artifact.data?.transforms || [];
@@ -533,5 +574,699 @@ export default function registerImportActions(registerLensAction) {
 
     artifact.data.transformPreview = result;
     return { ok: true, result };
+  });
+
+  // ===========================================================================
+  // PARITY BACKLOG MACROS
+  // ===========================================================================
+
+  // ---------------------------------------------------------------------------
+  // [M] Schema inference + auto-suggest target fields.
+  // params.rows: [{...}]  — infers per-column type, nullability, sample values.
+  // ---------------------------------------------------------------------------
+  registerLensAction("import", "inferSchema", (ctx, artifact, params) => {
+    const rows = params.rows || artifact.data?.rows || [];
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { ok: true, result: { message: "No rows yet. Supply params.rows as an array of objects to infer a schema.", fields: [], rowCount: 0 } };
+    }
+    const objRows = rows.filter((r) => r && typeof r === "object" && !Array.isArray(r));
+    if (objRows.length === 0) {
+      return { ok: false, error: "rows contain no valid objects" };
+    }
+    const colNames = new Set();
+    for (const r of objRows) for (const k of Object.keys(r)) colNames.add(k);
+
+    function classify(value) {
+      if (value === null || value === undefined || value === "") return "empty";
+      if (typeof value === "boolean") return "boolean";
+      const str = String(value).trim();
+      if (/^(true|false|yes|no)$/i.test(str)) return "boolean";
+      if (str !== "" && !isNaN(Number(str))) return Number.isInteger(Number(str)) ? "integer" : "number";
+      if (/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2})?/.test(str) || (!isNaN(new Date(str).getTime()) && /[-/:]/.test(str) && str.length >= 6)) return "date";
+      if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(str)) return "email";
+      if (/^https?:\/\//i.test(str)) return "url";
+      return "string";
+    }
+
+    const fields = [];
+    for (const col of colNames) {
+      const typeCounts = {};
+      let nonEmpty = 0;
+      let nullCount = 0;
+      const samples = [];
+      const seen = new Set();
+      for (const r of objRows) {
+        const v = r[col];
+        const t = classify(v);
+        if (t === "empty") { nullCount++; continue; }
+        nonEmpty++;
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
+        const sv = String(v);
+        if (samples.length < 3 && !seen.has(sv)) { samples.push(v); seen.add(sv); }
+      }
+      // Dominant type — integer collapses into number, email/url collapse into string for the target.
+      let dominant = "string";
+      let max = -1;
+      for (const [t, c] of Object.entries(typeCounts)) {
+        if (c > max) { max = c; dominant = t; }
+      }
+      const baseType = dominant === "integer" ? "number" : (dominant === "email" || dominant === "url") ? "string" : dominant;
+      const confidence = nonEmpty > 0 ? Math.round((max / nonEmpty) * 10000) / 10000 : 0;
+      // Auto-suggest a snake_case target field name.
+      const suggestedTarget = String(col)
+        .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+        .toLowerCase()
+        .replace(/[\s.-]+/g, "_")
+        .replace(/[^a-z0-9_]/g, "")
+        .replace(/_+/g, "_")
+        .replace(/^_|_$/g, "");
+      fields.push({
+        source: col,
+        suggestedTarget: suggestedTarget || col,
+        inferredType: baseType,
+        semanticHint: dominant === "email" || dominant === "url" ? dominant : null,
+        confidence,
+        nullable: nullCount > 0,
+        nullRate: Math.round((nullCount / objRows.length) * 10000) / 100,
+        required: nullCount === 0,
+        uniqueSamples: samples,
+      });
+    }
+    fields.sort((a, b) => a.source.localeCompare(b.source));
+    const result = {
+      rowCount: objRows.length,
+      fieldCount: fields.length,
+      fields,
+      schema: Object.fromEntries(fields.map((f) => [f.suggestedTarget, { type: f.inferredType, required: f.required }])),
+    };
+    return { ok: true, result };
+  });
+
+  // ---------------------------------------------------------------------------
+  // [M] Interactive in-grid error correction.
+  // Persists an editable correction session; row patches commit before import.
+  // ---------------------------------------------------------------------------
+  registerLensAction("import", "startCorrectionSession", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const rows = params.rows || [];
+    const schema = params.schema || {};
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { ok: false, error: "params.rows must be a non-empty array" };
+    }
+    const userId = importActId(ctx);
+    const sessions = importList(s.sessions, userId);
+    const session = {
+      id: importNextId("imps"),
+      name: String(params.name || `Correction ${sessions.length + 1}`),
+      schema,
+      rows: rows.map((r, i) => ({ rowIndex: i, original: r, current: { ...r }, corrected: false })),
+      createdAt: importNowIso(),
+      updatedAt: importNowIso(),
+      committed: false,
+    };
+    sessions.unshift(session);
+    importSave();
+    return { ok: true, result: { session: summarizeSession(session) } };
+  });
+
+  registerLensAction("import", "listCorrectionSessions", (ctx) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = importList(s.sessions, importActId(ctx));
+    return { ok: true, result: { sessions: sessions.map(summarizeSession), count: sessions.length } };
+  });
+
+  registerLensAction("import", "getCorrectionSession", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = importList(s.sessions, importActId(ctx));
+    const session = sessions.find((x) => x.id === params.id);
+    if (!session) return { ok: false, error: "session not found" };
+    return { ok: true, result: { session, validation: validateSessionRows(session) } };
+  });
+
+  registerLensAction("import", "correctCell", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = importList(s.sessions, importActId(ctx));
+    const session = sessions.find((x) => x.id === params.id);
+    if (!session) return { ok: false, error: "session not found" };
+    if (session.committed) return { ok: false, error: "session already committed" };
+    const rowIndex = Number(params.rowIndex);
+    const field = params.field;
+    if (!Number.isInteger(rowIndex) || !field) return { ok: false, error: "rowIndex and field required" };
+    const row = session.rows.find((r) => r.rowIndex === rowIndex);
+    if (!row) return { ok: false, error: "row not found" };
+    row.current = { ...row.current, [field]: params.value };
+    row.corrected = JSON.stringify(row.current) !== JSON.stringify(row.original);
+    session.updatedAt = importNowIso();
+    importSave();
+    return { ok: true, result: { row, validation: validateSessionRows(session) } };
+  });
+
+  registerLensAction("import", "commitCorrectionSession", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const sessions = importList(s.sessions, importActId(ctx));
+    const session = sessions.find((x) => x.id === params.id);
+    if (!session) return { ok: false, error: "session not found" };
+    if (session.committed) return { ok: false, error: "session already committed" };
+    const validation = validateSessionRows(session);
+    if (validation.invalidRows > 0 && !params.force) {
+      return { ok: false, error: `${validation.invalidRows} rows still have errors — fix them or pass force:true` };
+    }
+    session.committed = true;
+    session.committedAt = importNowIso();
+    session.updatedAt = importNowIso();
+    importSave();
+    return { ok: true, result: { committedRows: session.rows.map((r) => r.current), correctedCount: session.rows.filter((r) => r.corrected).length, validation } };
+  });
+
+  function summarizeSession(session) {
+    const v = validateSessionRows(session);
+    return {
+      id: session.id,
+      name: session.name,
+      rowCount: session.rows.length,
+      correctedCount: session.rows.filter((r) => r.corrected).length,
+      invalidRows: v.invalidRows,
+      committed: session.committed,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+    };
+  }
+
+  function validateSessionRows(session) {
+    const schema = session.schema || {};
+    const schemaFields = Object.keys(schema);
+    const requiredFields = schemaFields.filter((f) => schema[f].required);
+    let invalidRows = 0;
+    const cellErrors = [];
+    for (const r of session.rows) {
+      const row = r.current;
+      let rowOk = true;
+      for (const f of requiredFields) {
+        if (row[f] === undefined || row[f] === null || row[f] === "") {
+          cellErrors.push({ rowIndex: r.rowIndex, field: f, error: "required field missing" });
+          rowOk = false;
+        }
+      }
+      for (const f of schemaFields) {
+        const val = row[f];
+        if (val === undefined || val === null || val === "") continue;
+        const type = schema[f].type;
+        let bad = false;
+        if (type === "number" && isNaN(Number(val))) bad = true;
+        if (type === "boolean" && !/^(true|false|yes|no|1|0)$/i.test(String(val))) bad = true;
+        if (type === "date" && isNaN(new Date(val).getTime())) bad = true;
+        if (bad) {
+          cellErrors.push({ rowIndex: r.rowIndex, field: f, error: `expected ${type}` });
+          rowOk = false;
+        }
+      }
+      if (!rowOk) invalidRows++;
+    }
+    return { totalRows: session.rows.length, invalidRows, validRows: session.rows.length - invalidRows, cellErrors };
+  }
+
+  // ---------------------------------------------------------------------------
+  // [S] Custom transform rules editor — apply formula / find-replace / coercion
+  // rules to a row set and return the transformed output + per-rule impact.
+  // ---------------------------------------------------------------------------
+  registerLensAction("import", "applyTransformRules", (ctx, artifact, params) => {
+    const rows = params.rows || [];
+    const rules = params.rules || [];
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { ok: false, error: "params.rows must be a non-empty array" };
+    }
+    if (!Array.isArray(rules) || rules.length === 0) {
+      return { ok: true, result: { message: "No rules supplied. Pass params.rules as [{ field, kind, ... }]. Kinds: find_replace, coerce, formula, set_default, regex_extract.", output: rows, ruleImpact: [] } };
+    }
+
+    function coerce(value, to) {
+      if (value === null || value === undefined || value === "") return value;
+      switch (to) {
+        case "number": { const n = Number(value); return isNaN(n) ? value : n; }
+        case "string": return String(value);
+        case "boolean": return /^(true|yes|1)$/i.test(String(value));
+        case "date": { const d = new Date(value); return isNaN(d.getTime()) ? value : d.toISOString(); }
+        case "uppercase": return String(value).toUpperCase();
+        case "lowercase": return String(value).toLowerCase();
+        case "trim": return String(value).trim();
+        default: return value;
+      }
+    }
+    function evalFormula(expr, row) {
+      // Safe arithmetic over {field} placeholders — no eval, only +,-,*,/ tokens.
+      const substituted = String(expr).replace(/\{([^}]+)\}/g, (_m, f) => {
+        const v = Number(row[f.trim()]);
+        return isNaN(v) ? "0" : String(v);
+      });
+      if (!/^[\d\s+\-*/().]+$/.test(substituted)) return null;
+      const tokens = substituted.match(/\d+\.?\d*|[+\-*/()]/g) || [];
+      try {
+        // Shunting-yard → RPN evaluation (arithmetic only, fully sandboxed).
+        const prec = { "+": 1, "-": 1, "*": 2, "/": 2 };
+        const out = [];
+        const ops = [];
+        for (const tk of tokens) {
+          if (/^\d/.test(tk)) out.push(Number(tk));
+          else if (tk === "(") ops.push(tk);
+          else if (tk === ")") { while (ops.length && ops[ops.length - 1] !== "(") out.push(ops.pop()); ops.pop(); }
+          else { while (ops.length && prec[ops[ops.length - 1]] >= prec[tk]) out.push(ops.pop()); ops.push(tk); }
+        }
+        while (ops.length) out.push(ops.pop());
+        const st = [];
+        for (const tk of out) {
+          if (typeof tk === "number") st.push(tk);
+          else { const b = st.pop(); const a = st.pop(); st.push(tk === "+" ? a + b : tk === "-" ? a - b : tk === "*" ? a * b : b === 0 ? 0 : a / b); }
+        }
+        const r = st.pop();
+        return Number.isFinite(r) ? Math.round(r * 1e6) / 1e6 : null;
+      } catch (_e) { return null; }
+    }
+
+    const ruleImpact = rules.map((r) => ({ field: r.field, kind: r.kind, changed: 0 }));
+    const output = rows.map((row) => {
+      if (!row || typeof row !== "object") return row;
+      const next = { ...row };
+      rules.forEach((rule, ri) => {
+        const f = rule.field;
+        if (!f) return;
+        const before = next[f];
+        let after = before;
+        switch (rule.kind) {
+          case "find_replace":
+            if (typeof before === "string") {
+              after = rule.regex
+                ? before.replace(new RegExp(rule.find || "", rule.flags || "g"), rule.replace || "")
+                : before.split(rule.find || "").join(rule.replace || "");
+            }
+            break;
+          case "coerce":
+            after = coerce(before, rule.to);
+            break;
+          case "formula": {
+            const computed = evalFormula(rule.expression || "", next);
+            if (computed !== null) after = computed;
+            break;
+          }
+          case "set_default":
+            if (before === undefined || before === null || before === "") after = rule.value;
+            break;
+          case "regex_extract":
+            if (typeof before === "string" && rule.pattern) {
+              const m = before.match(new RegExp(rule.pattern));
+              after = m ? (m[1] !== undefined ? m[1] : m[0]) : before;
+            }
+            break;
+          default:
+            break;
+        }
+        if (after !== before) { next[f] = after; ruleImpact[ri].changed++; }
+      });
+      return next;
+    });
+
+    return {
+      ok: true,
+      result: {
+        rowCount: rows.length,
+        ruleCount: rules.length,
+        output,
+        totalChanges: ruleImpact.reduce((sum, r) => sum + r.changed, 0),
+        ruleImpact,
+      },
+    };
+  });
+
+  // ---------------------------------------------------------------------------
+  // [S] Saved import templates / mapping presets.
+  // ---------------------------------------------------------------------------
+  registerLensAction("import", "saveTemplate", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!params.name) return { ok: false, error: "params.name required" };
+    const userId = importActId(ctx);
+    const templates = importList(s.templates, userId);
+    const template = {
+      id: importNextId("impt"),
+      name: String(params.name),
+      description: String(params.description || ""),
+      mappings: Array.isArray(params.mappings) ? params.mappings : [],
+      transformRules: Array.isArray(params.transformRules) ? params.transformRules : [],
+      schema: params.schema && typeof params.schema === "object" ? params.schema : {},
+      keyFields: Array.isArray(params.keyFields) ? params.keyFields : [],
+      usageCount: 0,
+      createdAt: importNowIso(),
+      updatedAt: importNowIso(),
+    };
+    templates.unshift(template);
+    importSave();
+    return { ok: true, result: { template } };
+  });
+
+  registerLensAction("import", "listTemplates", (ctx) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const templates = importList(s.templates, importActId(ctx));
+    return { ok: true, result: { templates, count: templates.length } };
+  });
+
+  registerLensAction("import", "applyTemplate", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const templates = importList(s.templates, importActId(ctx));
+    const template = templates.find((t) => t.id === params.id);
+    if (!template) return { ok: false, error: "template not found" };
+    template.usageCount += 1;
+    template.lastUsedAt = importNowIso();
+    importSave();
+    return {
+      ok: true,
+      result: {
+        template,
+        mappings: template.mappings,
+        transformRules: template.transformRules,
+        schema: template.schema,
+        keyFields: template.keyFields,
+      },
+    };
+  });
+
+  registerLensAction("import", "deleteTemplate", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = importActId(ctx);
+    const templates = importList(s.templates, userId);
+    const idx = templates.findIndex((t) => t.id === params.id);
+    if (idx === -1) return { ok: false, error: "template not found" };
+    const [removed] = templates.splice(idx, 1);
+    importSave();
+    return { ok: true, result: { deleted: removed.id, name: removed.name } };
+  });
+
+  // ---------------------------------------------------------------------------
+  // [M] Connector library — import directly from Google Sheets / public APIs.
+  // Uses keyless public endpoints via cachedFetchJson. Sheets via the gviz
+  // public CSV/JSON endpoint (works on link-shared sheets, no key required).
+  // ---------------------------------------------------------------------------
+  registerLensAction("import", "listConnectors", (ctx) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const saved = importList(s.connectors, importActId(ctx));
+    return {
+      ok: true,
+      result: {
+        catalog: [
+          { kind: "google_sheets", label: "Google Sheets", note: "Public / link-shared sheet — no API key", params: ["sheetId", "gid"] },
+          { kind: "rest_api", label: "REST API (JSON)", note: "Any public keyless JSON endpoint", params: ["url", "rootPath"] },
+          { kind: "csv_url", label: "CSV from URL", note: "Any public CSV file", params: ["url"] },
+        ],
+        saved,
+        savedCount: saved.length,
+      },
+    };
+  });
+
+  registerLensAction("import", "saveConnector", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const kind = params.kind;
+    if (!["google_sheets", "rest_api", "csv_url"].includes(kind)) {
+      return { ok: false, error: "kind must be google_sheets, rest_api, or csv_url" };
+    }
+    if (!params.name) return { ok: false, error: "params.name required" };
+    const userId = importActId(ctx);
+    const connectors = importList(s.connectors, userId);
+    const connector = {
+      id: importNextId("impc"),
+      name: String(params.name),
+      kind,
+      config: {
+        sheetId: params.sheetId ? String(params.sheetId) : undefined,
+        gid: params.gid ? String(params.gid) : undefined,
+        url: params.url ? String(params.url) : undefined,
+        rootPath: params.rootPath ? String(params.rootPath) : undefined,
+      },
+      createdAt: importNowIso(),
+      lastFetchedAt: null,
+      lastRowCount: 0,
+    };
+    connectors.unshift(connector);
+    importSave();
+    return { ok: true, result: { connector } };
+  });
+
+  registerLensAction("import", "fetchFromConnector", async (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = importActId(ctx);
+    let kind = params.kind;
+    let cfg = { sheetId: params.sheetId, gid: params.gid, url: params.url, rootPath: params.rootPath };
+    let connector = null;
+    if (params.connectorId) {
+      const connectors = importList(s.connectors, userId);
+      connector = connectors.find((c) => c.id === params.connectorId);
+      if (!connector) return { ok: false, error: "connector not found" };
+      kind = connector.kind;
+      cfg = connector.config;
+    }
+    let rows = [];
+    try {
+      const { cachedFetchJson, fetchJsonWithTimeout } = await import("../lib/external-fetch.js");
+      if (kind === "google_sheets") {
+        if (!cfg.sheetId) return { ok: false, error: "sheetId required for google_sheets connector" };
+        const gid = cfg.gid || "0";
+        const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(cfg.sheetId)}/gviz/tq?tqx=out:json&gid=${encodeURIComponent(gid)}`;
+        const res = await fetchJsonWithTimeout(url, {}, 12000).catch(async () => {
+          // gviz returns JS-wrapped JSON; fetchJsonWithTimeout may need raw text.
+          const r = await fetch(url);
+          const txt = await r.text();
+          const m = txt.match(/setResponse\(([\s\S]+)\);?\s*$/);
+          return m ? JSON.parse(m[1]) : null;
+        });
+        const table = res?.table || (typeof res === "string" ? null : res);
+        if (!table?.cols) return { ok: false, error: "could not parse Google Sheet — ensure it is link-shared/public" };
+        const headers = table.cols.map((c, i) => c.label || `col_${i}`);
+        rows = (table.rows || []).map((r) => {
+          const obj = {};
+          (r.c || []).forEach((cell, i) => { obj[headers[i]] = cell ? (cell.v ?? null) : null; });
+          return obj;
+        });
+      } else if (kind === "rest_api") {
+        if (!cfg.url) return { ok: false, error: "url required for rest_api connector" };
+        const data = await cachedFetchJson(cfg.url, { ttlMs: 60000 });
+        let payload = data;
+        if (cfg.rootPath) {
+          for (const seg of String(cfg.rootPath).split(".")) {
+            if (payload && typeof payload === "object") payload = payload[seg];
+          }
+        }
+        rows = Array.isArray(payload) ? payload : (payload && typeof payload === "object" ? [payload] : []);
+      } else if (kind === "csv_url") {
+        if (!cfg.url) return { ok: false, error: "url required for csv_url connector" };
+        const r = await fetch(cfg.url);
+        if (!r.ok) return { ok: false, error: `CSV fetch failed: HTTP ${r.status}` };
+        const text = await r.text();
+        rows = parseCsv(text);
+      } else {
+        return { ok: false, error: "unknown connector kind" };
+      }
+    } catch (e) {
+      return { ok: false, error: `connector fetch failed: ${String(e?.message || e)}` };
+    }
+    if (connector) {
+      connector.lastFetchedAt = importNowIso();
+      connector.lastRowCount = rows.length;
+      importSave();
+    }
+    return { ok: true, result: { kind, rowCount: rows.length, rows: rows.slice(0, 500), truncated: rows.length > 500 } };
+  });
+
+  function parseCsv(text) {
+    const lines = String(text).replace(/\r\n/g, "\n").split("\n").filter((l) => l.length > 0);
+    if (lines.length === 0) return [];
+    function splitLine(line) {
+      const out = [];
+      let cur = "";
+      let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+          else inQ = !inQ;
+        } else if (ch === "," && !inQ) { out.push(cur); cur = ""; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out;
+    }
+    const headers = splitLine(lines[0]).map((h) => h.trim());
+    return lines.slice(1).map((line) => {
+      const cells = splitLine(line);
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = cells[i] !== undefined ? cells[i].trim() : ""; });
+      return obj;
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // [S] Incremental / scheduled imports — a sync definition, not a one-shot.
+  // ---------------------------------------------------------------------------
+  registerLensAction("import", "createSchedule", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!params.name) return { ok: false, error: "params.name required" };
+    const cadence = params.cadence || "daily";
+    if (!["hourly", "daily", "weekly", "manual"].includes(cadence)) {
+      return { ok: false, error: "cadence must be hourly, daily, weekly, or manual" };
+    }
+    const mode = params.mode || "incremental";
+    if (!["incremental", "full"].includes(mode)) {
+      return { ok: false, error: "mode must be incremental or full" };
+    }
+    const userId = importActId(ctx);
+    const schedules = importList(s.schedules, userId);
+    const schedule = {
+      id: importNextId("imps"),
+      name: String(params.name),
+      connectorId: params.connectorId ? String(params.connectorId) : null,
+      cadence,
+      mode,
+      keyField: params.keyField ? String(params.keyField) : null,
+      enabled: params.enabled !== false,
+      runCount: 0,
+      lastRunAt: null,
+      lastRowCount: 0,
+      lastNewCount: 0,
+      knownKeys: [],
+      createdAt: importNowIso(),
+    };
+    schedules.unshift(schedule);
+    importSave();
+    return { ok: true, result: { schedule } };
+  });
+
+  registerLensAction("import", "listSchedules", (ctx) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedules = importList(s.schedules, importActId(ctx));
+    return { ok: true, result: { schedules, count: schedules.length } };
+  });
+
+  registerLensAction("import", "runSchedule", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedules = importList(s.schedules, importActId(ctx));
+    const schedule = schedules.find((x) => x.id === params.id);
+    if (!schedule) return { ok: false, error: "schedule not found" };
+    if (!schedule.enabled) return { ok: false, error: "schedule is disabled" };
+    const rows = params.rows || [];
+    if (!Array.isArray(rows)) return { ok: false, error: "params.rows must be an array of fetched rows" };
+
+    let newRows = rows;
+    let skipped = 0;
+    if (schedule.mode === "incremental" && schedule.keyField) {
+      const known = new Set(schedule.knownKeys);
+      newRows = [];
+      for (const r of rows) {
+        const key = r && typeof r === "object" ? String(r[schedule.keyField]) : null;
+        if (key && known.has(key)) { skipped++; continue; }
+        if (key) { known.add(key); }
+        newRows.push(r);
+      }
+      schedule.knownKeys = Array.from(known).slice(-10000);
+    }
+    schedule.runCount += 1;
+    schedule.lastRunAt = importNowIso();
+    schedule.lastRowCount = rows.length;
+    schedule.lastNewCount = newRows.length;
+    importSave();
+    return {
+      ok: true,
+      result: {
+        scheduleId: schedule.id,
+        mode: schedule.mode,
+        totalFetched: rows.length,
+        newRows,
+        newCount: newRows.length,
+        skippedExisting: skipped,
+        runCount: schedule.runCount,
+      },
+    };
+  });
+
+  registerLensAction("import", "toggleSchedule", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const schedules = importList(s.schedules, importActId(ctx));
+    const schedule = schedules.find((x) => x.id === params.id);
+    if (!schedule) return { ok: false, error: "schedule not found" };
+    schedule.enabled = !schedule.enabled;
+    importSave();
+    return { ok: true, result: { schedule } };
+  });
+
+  // ---------------------------------------------------------------------------
+  // [M] Rollback an import — snapshot committed rows, then undo.
+  // ---------------------------------------------------------------------------
+  registerLensAction("import", "snapshotImport", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const rows = params.rows || [];
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { ok: false, error: "params.rows must be a non-empty array of imported rows" };
+    }
+    const userId = importActId(ctx);
+    const snapshots = importList(s.snapshots, userId);
+    const snapshot = {
+      id: importNextId("impr"),
+      label: String(params.label || `Import ${snapshots.length + 1}`),
+      source: String(params.source || "manual"),
+      rows,
+      rowCount: rows.length,
+      status: "applied",
+      createdAt: importNowIso(),
+      rolledBackAt: null,
+    };
+    snapshots.unshift(snapshot);
+    importSave();
+    return { ok: true, result: { snapshot: { ...snapshot, rows: undefined } } };
+  });
+
+  registerLensAction("import", "listSnapshots", (ctx) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const snapshots = importList(s.snapshots, importActId(ctx));
+    return {
+      ok: true,
+      result: {
+        snapshots: snapshots.map((sn) => ({ ...sn, rows: undefined })),
+        count: snapshots.length,
+      },
+    };
+  });
+
+  registerLensAction("import", "rollbackImport", (ctx, artifact, params) => {
+    const s = getImportState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const snapshots = importList(s.snapshots, importActId(ctx));
+    const snapshot = snapshots.find((x) => x.id === params.id);
+    if (!snapshot) return { ok: false, error: "snapshot not found" };
+    if (snapshot.status === "rolled_back") return { ok: false, error: "import already rolled back" };
+    snapshot.status = "rolled_back";
+    snapshot.rolledBackAt = importNowIso();
+    importSave();
+    return {
+      ok: true,
+      result: {
+        snapshotId: snapshot.id,
+        label: snapshot.label,
+        rolledBackRows: snapshot.rowCount,
+        rolledBackAt: snapshot.rolledBackAt,
+      },
+    };
   });
 }

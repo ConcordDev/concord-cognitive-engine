@@ -10,6 +10,7 @@ import React from 'react';
 import {
   LayoutDashboard, Users, Calendar, ClipboardList, Mail, Pill,
   Activity, FileSearch, Stethoscope, Sparkles, Database, FlaskConical, HeartPulse,
+  Video, Watch, ShieldCheck, ShieldAlert, Share2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,9 +19,15 @@ export type EpicNav =
   | 'patients'
   | 'chart'
   | 'orders'
+  | 'cds'
   | 'care'
   | 'encounters'
   | 'schedule'
+  | 'telehealth'
+  | 'results'
+  | 'devices'
+  | 'insurance'
+  | 'sharing'
   | 'inbox'
   | 'refills'
   | 'scribe'
@@ -32,7 +39,7 @@ interface NavItem {
   id: EpicNav;
   label: string;
   icon: typeof LayoutDashboard;
-  group: 'home' | 'clinical' | 'communications' | 'tools';
+  group: 'home' | 'clinical' | 'patient' | 'communications' | 'tools';
 }
 
 const NAV: NavItem[] = [
@@ -40,9 +47,15 @@ const NAV: NavItem[] = [
   { id: 'patients',     label: 'Patients',     icon: Users,           group: 'clinical' },
   { id: 'chart',        label: 'Chart',        icon: Stethoscope,     group: 'clinical' },
   { id: 'orders',       label: 'Orders',       icon: FlaskConical,    group: 'clinical' },
+  { id: 'cds',          label: 'Order Check',  icon: ShieldAlert,     group: 'clinical' },
   { id: 'care',         label: 'Care',         icon: HeartPulse,      group: 'clinical' },
   { id: 'encounters',   label: 'Encounters',   icon: ClipboardList,   group: 'clinical' },
   { id: 'schedule',     label: 'Schedule',     icon: Calendar,        group: 'clinical' },
+  { id: 'telehealth',   label: 'Telehealth',   icon: Video,           group: 'patient' },
+  { id: 'results',      label: 'Results',      icon: FlaskConical,    group: 'patient' },
+  { id: 'devices',      label: 'Device Data',  icon: Watch,           group: 'patient' },
+  { id: 'insurance',    label: 'Insurance',    icon: ShieldCheck,     group: 'patient' },
+  { id: 'sharing',      label: 'Record Share', icon: Share2,          group: 'patient' },
   { id: 'inbox',        label: 'Inbox',        icon: Mail,            group: 'communications' },
   { id: 'refills',      label: 'Refills',      icon: Pill,            group: 'communications' },
   { id: 'scribe',       label: 'AI Scribe',    icon: Sparkles,        group: 'tools' },
@@ -51,7 +64,7 @@ const NAV: NavItem[] = [
   { id: 'reports',      label: 'Reports',      icon: Activity,        group: 'tools' },
 ];
 
-const GROUP_LABELS = { home: '', clinical: 'Clinical', communications: 'Inbox', tools: 'Tools' } as const;
+const GROUP_LABELS = { home: '', clinical: 'Clinical', patient: 'Patient Portal', communications: 'Inbox', tools: 'Tools' } as const;
 
 export interface EpicShellProps {
   activeNav: EpicNav;
@@ -62,7 +75,7 @@ export interface EpicShellProps {
 }
 
 export function EpicShell({ activeNav, onNavChange, badges = {}, children, askBar }: EpicShellProps) {
-  const groups: NavItem['group'][] = ['home', 'clinical', 'communications', 'tools'];
+  const groups: NavItem['group'][] = ['home', 'clinical', 'patient', 'communications', 'tools'];
   return (
     <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-cyan-500/15 rounded-lg overflow-hidden">
       <aside className="w-44 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">

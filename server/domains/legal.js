@@ -240,6 +240,11 @@ export default function registerLegalActions(registerLensAction) {
     if (!s.esignEnv)     s.esignEnv     = new Map();
     if (!s.calendar)     s.calendar     = new Map();
     if (!s.seq)          s.seq          = new Map();
+    // Parity backlog (May 2026) — intake forms, payments, matter budgets.
+    if (!s.intakeForms)  s.intakeForms  = new Map();   // form definitions
+    if (!s.intakeSubs)   s.intakeSubs   = new Map();   // submitted responses
+    if (!s.payments)     s.payments     = new Map();   // client payment records
+    if (!s.budgets)      s.budgets      = new Map();   // matter budgets (keyed matterId)
     return s;
   }
   function saveLegalState() {
@@ -336,9 +341,9 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   function isoDay() { return new Date().toISOString().slice(0, 10); }
   function ensureBucket(m, userId) { if (!m.has(userId)) m.set(userId, []); return m.get(userId); }
   function ensureSeqLegal(s, userId) {
-    if (!s.seq.has(userId)) s.seq.set(userId, { mat: 1, party: 1, te: 1, inv: 1, doc: 1, env: 1, ev: 1, ta: 1 });
+    if (!s.seq.has(userId)) s.seq.set(userId, { mat: 1, party: 1, te: 1, inv: 1, doc: 1, env: 1, ev: 1, ta: 1, frm: 1, sub: 1, pay: 1 });
     const seq = s.seq.get(userId);
-    for (const k of ['mat','party','te','inv','doc','env','ev','ta']) if (!Number.isFinite(seq[k])) seq[k] = 1;
+    for (const k of ['mat','party','te','inv','doc','env','ev','ta','frm','sub','pay']) if (!Number.isFinite(seq[k])) seq[k] = 1;
     return seq;
   }
 
@@ -1254,6 +1259,422 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         runningTimers: timers.length,
         upcomingEvents: upcoming,
         contactCount: ensureBucket(s.contacts, userId).length,
+      },
+    };
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Parity backlog (May 2026) — client intake forms, online client
+  // payment portal, and matter budgeting + realization reporting.
+  // ═══════════════════════════════════════════════════════════════
+
+  const FIELD_TYPES = ['text','textarea','email','phone','date','number','select','checkbox'];
+
+  // ── Client intake forms ────────────────────────────────────────
+  // A firm builds a reusable intake form (custom fields); a prospective
+  // client submits responses; the submission can be converted to a real
+  // contact + matter in one call.
+
+  registerLensAction("legal", "intake-forms-list", (ctx, _a, _p = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const forms = ensureBucket(s.intakeForms, userId);
+    const subs = ensureBucket(s.intakeSubs, userId);
+    const withCounts = forms.map(f => ({
+      ...f,
+      submissionCount: subs.filter(x => x.formId === f.id).length,
+      newCount: subs.filter(x => x.formId === f.id && x.status === 'new').length,
+    }));
+    return { ok: true, result: { forms: withCounts.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) } };
+  });
+
+  registerLensAction("legal", "intake-forms-create", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    const rawFields = Array.isArray(params.fields) ? params.fields : [];
+    const fields = rawFields.map((f, i) => ({
+      key: String(f.key || `field_${i + 1}`).trim().replace(/[^a-z0-9_]/gi, '_').toLowerCase() || `field_${i + 1}`,
+      label: String(f.label || `Field ${i + 1}`).trim(),
+      type: FIELD_TYPES.includes(f.type) ? f.type : 'text',
+      required: f.required === true,
+      options: Array.isArray(f.options) ? f.options.map(String) : [],
+    })).filter(f => f.label);
+    if (fields.length === 0) return { ok: false, error: "at least one field required" };
+    const seq = ensureSeqLegal(s, userId);
+    const form = {
+      id: uid("intakeform"),
+      number: `IF-${String(seq.frm).padStart(4, "0")}`,
+      name,
+      matterType: MATTER_TYPES.includes(params.matterType) ? params.matterType : 'other',
+      description: String(params.description || "").slice(0, 500),
+      fields,
+      status: 'published',
+      createdAt: isoNow(),
+    };
+    seq.frm++;
+    ensureBucket(s.intakeForms, userId).push(form);
+    saveLegalState();
+    return { ok: true, result: { form } };
+  });
+
+  registerLensAction("legal", "intake-forms-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.intakeForms, aid(ctx));
+    const i = list.findIndex(f => f.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "form not found" };
+    list.splice(i, 1);
+    saveLegalState();
+    return { ok: true, result: { deleted: true } };
+  });
+
+  registerLensAction("legal", "intake-submit", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const formId = String(params.formId || "");
+    const form = ensureBucket(s.intakeForms, userId).find(f => f.id === formId);
+    if (!form) return { ok: false, error: "form not found" };
+    const answers = params.answers && typeof params.answers === 'object' ? params.answers : {};
+    const missing = form.fields.filter(f => f.required && !String(answers[f.key] ?? '').trim()).map(f => f.label);
+    if (missing.length > 0) return { ok: false, error: `required fields missing: ${missing.join(', ')}` };
+    const contactName = String(params.contactName || answers.name || answers.full_name || answers.client_name || "").trim();
+    if (!contactName) return { ok: false, error: "contactName (or a name answer) required" };
+    const seq = ensureSeqLegal(s, userId);
+    const sub = {
+      id: uid("intakesub"),
+      number: `IS-${String(seq.sub).padStart(5, "0")}`,
+      formId,
+      formName: form.name,
+      contactName,
+      contactEmail: String(params.contactEmail || answers.email || "").trim(),
+      contactPhone: String(params.contactPhone || answers.phone || "").trim(),
+      matterType: form.matterType,
+      answers: form.fields.reduce((acc, f) => { acc[f.key] = answers[f.key] ?? ''; return acc; }, {}),
+      status: 'new',
+      convertedContactId: null,
+      convertedMatterId: null,
+      createdAt: isoNow(),
+    };
+    seq.sub++;
+    ensureBucket(s.intakeSubs, userId).push(sub);
+    saveLegalState();
+    return { ok: true, result: { submission: sub } };
+  });
+
+  registerLensAction("legal", "intake-submissions-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const formId = params.formId ? String(params.formId) : null;
+    const status = ['new','converted','declined','all'].includes(params.status) ? params.status : 'all';
+    let list = ensureBucket(s.intakeSubs, aid(ctx));
+    if (formId) list = list.filter(x => x.formId === formId);
+    if (status !== 'all') list = list.filter(x => x.status === status);
+    return { ok: true, result: { submissions: list.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) } };
+  });
+
+  // Convert an intake submission into a real client contact + open matter.
+  registerLensAction("legal", "intake-convert", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const sub = ensureBucket(s.intakeSubs, userId).find(x => x.id === String(params.id || ""));
+    if (!sub) return { ok: false, error: "submission not found" };
+    if (sub.status === 'converted') return { ok: false, error: "submission already converted" };
+    const seq = ensureSeqLegal(s, userId);
+    const contact = {
+      id: uid("party"),
+      number: `P-${String(seq.party).padStart(5, "0")}`,
+      name: sub.contactName,
+      kind: 'client',
+      email: sub.contactEmail,
+      phone: sub.contactPhone,
+      organization: String(sub.answers.organization || ""),
+      address: String(sub.answers.address || ""),
+      notes: `Created from intake submission ${sub.number}`,
+      createdAt: isoNow(),
+    };
+    seq.party++;
+    ensureBucket(s.contacts, userId).push(contact);
+    const matter = {
+      id: uid("matter"),
+      number: `MAT-${String(seq.mat).padStart(5, "0")}`,
+      name: String(params.matterName || `${sub.contactName} — ${sub.formName}`),
+      clientId: contact.id,
+      clientName: contact.name,
+      matterType: sub.matterType,
+      status: 'intake',
+      jurisdiction: "",
+      court: "",
+      caseNumber: "",
+      hourlyRate: Number(params.hourlyRate) || 0,
+      flatFee: 0,
+      billingType: 'hourly',
+      openedAt: isoDay(),
+      closedAt: null,
+      description: String(sub.answers.description || sub.answers.matter_description || `Intake: ${sub.formName}`).slice(0, 1000),
+      partyIds: [contact.id],
+    };
+    seq.mat++;
+    ensureBucket(s.matters, userId).push(matter);
+    sub.status = 'converted';
+    sub.convertedContactId = contact.id;
+    sub.convertedMatterId = matter.id;
+    saveLegalState();
+    return { ok: true, result: { submission: sub, contact, matter } };
+  });
+
+  // ── Online client payment portal ───────────────────────────────
+  // Records client payments against an invoice (or a matter as a general
+  // retainer/credit). Self-service: the client pays online → status flips.
+
+  const PAYMENT_METHODS = ['card','ach','check','wire','cash'];
+
+  registerLensAction("legal", "payment-record", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const amount = Number(params.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const method = PAYMENT_METHODS.includes(params.method) ? params.method : 'card';
+    const invoiceId = params.invoiceId ? String(params.invoiceId) : null;
+    const matterId = params.matterId ? String(params.matterId) : null;
+    let invoice = null;
+    let matter = null;
+    if (invoiceId) {
+      invoice = ensureBucket(s.invoices, userId).find(i => i.id === invoiceId);
+      if (!invoice) return { ok: false, error: "invoice not found" };
+    }
+    if (matterId) {
+      matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+      if (!matter) return { ok: false, error: "matter not found" };
+    }
+    if (!invoice && !matter) return { ok: false, error: "invoiceId or matterId required" };
+    const resolvedMatterId = invoice ? invoice.matterId : matterId;
+    // Card payments incur a processing fee (Concord token-purchase rate parity).
+    const feeRate = method === 'card' ? 0.029 : 0;
+    const processingFee = Math.round(amount * feeRate * 100) / 100;
+    const netAmount = Math.round((amount - processingFee) * 100) / 100;
+    const seq = ensureSeqLegal(s, userId);
+    const payment = {
+      id: uid("pay"),
+      number: `PMT-${String(seq.pay).padStart(5, "0")}`,
+      invoiceId,
+      invoiceNumber: invoice ? invoice.number : null,
+      matterId: resolvedMatterId,
+      matterName: invoice ? invoice.matterName : (matter ? matter.name : ""),
+      clientName: invoice ? invoice.clientName : (matter ? matter.clientName : String(params.clientName || "")),
+      amount,
+      method,
+      processingFee,
+      netAmount,
+      reference: String(params.reference || ""),
+      memo: String(params.memo || (invoice ? `Payment for ${invoice.number}` : "Retainer / account credit")),
+      portalPaid: params.portalPaid === true,
+      date: String(params.date || isoDay()),
+      createdAt: isoNow(),
+    };
+    seq.pay++;
+    ensureBucket(s.payments, userId).push(payment);
+    // Apply against the invoice — flip to paid when fully covered.
+    if (invoice) {
+      const paidSoFar = ensureBucket(s.payments, userId)
+        .filter(p => p.invoiceId === invoice.id)
+        .reduce((sum, p) => sum + p.amount, 0);
+      payment.invoiceBalanceAfter = Math.round((invoice.total - paidSoFar) * 100) / 100;
+      if (paidSoFar + 0.01 >= invoice.total && invoice.status !== 'paid') {
+        invoice.status = 'paid';
+        invoice.paidAt = payment.date;
+        invoice.paidVia = method;
+      }
+    }
+    saveLegalState();
+    return { ok: true, result: { payment, invoice: invoice || null } };
+  });
+
+  registerLensAction("legal", "payments-list", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const matterId = params.matterId ? String(params.matterId) : null;
+    const invoiceId = params.invoiceId ? String(params.invoiceId) : null;
+    let list = ensureBucket(s.payments, aid(ctx));
+    if (matterId) list = list.filter(p => p.matterId === matterId);
+    if (invoiceId) list = list.filter(p => p.invoiceId === invoiceId);
+    const total = list.reduce((sum, p) => sum + p.amount, 0);
+    const fees = list.reduce((sum, p) => sum + (p.processingFee || 0), 0);
+    return {
+      ok: true,
+      result: {
+        payments: list.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+        total: Math.round(total * 100) / 100,
+        processingFees: Math.round(fees * 100) / 100,
+        netReceived: Math.round((total - fees) * 100) / 100,
+      },
+    };
+  });
+
+  // Client-facing portal view: what a given client owes + has paid.
+  registerLensAction("legal", "payment-portal-summary", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = params.matterId ? String(params.matterId) : null;
+    let invoices = ensureBucket(s.invoices, userId);
+    let payments = ensureBucket(s.payments, userId);
+    if (matterId) {
+      invoices = invoices.filter(i => i.matterId === matterId);
+      payments = payments.filter(p => p.matterId === matterId);
+    }
+    const openInvoices = invoices.filter(i => i.status === 'open').map(inv => {
+      const paid = payments.filter(p => p.invoiceId === inv.id).reduce((sum, p) => sum + p.amount, 0);
+      return {
+        id: inv.id,
+        number: inv.number,
+        matterName: inv.matterName,
+        clientName: inv.clientName,
+        issuedAt: inv.issuedAt,
+        dueAt: inv.dueAt,
+        total: inv.total,
+        paid: Math.round(paid * 100) / 100,
+        balance: Math.round((inv.total - paid) * 100) / 100,
+        overdue: (inv.dueAt || '') < isoDay(),
+      };
+    });
+    const totalDue = openInvoices.reduce((sum, i) => sum + i.balance, 0);
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    return {
+      ok: true,
+      result: {
+        openInvoices: openInvoices.sort((a, b) => (a.dueAt || '').localeCompare(b.dueAt || '')),
+        totalDue: Math.round(totalDue * 100) / 100,
+        totalPaid: Math.round(totalPaid * 100) / 100,
+        overdueCount: openInvoices.filter(i => i.overdue).length,
+        paidInvoiceCount: invoices.filter(i => i.status === 'paid').length,
+      },
+    };
+  });
+
+  // ── Matter budgeting + realization / collection-rate reporting ─
+
+  registerLensAction("legal", "budget-set", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = String(params.matterId || "");
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    const budgetAmount = Number(params.budgetAmount);
+    if (!Number.isFinite(budgetAmount) || budgetAmount < 0) return { ok: false, error: "budgetAmount must be >= 0" };
+    const budgetHours = Number.isFinite(Number(params.budgetHours)) ? Number(params.budgetHours) : 0;
+    const budget = {
+      matterId,
+      matterName: matter.name,
+      budgetAmount,
+      budgetHours,
+      alertThreshold: Number.isFinite(Number(params.alertThreshold)) && Number(params.alertThreshold) > 0 && Number(params.alertThreshold) <= 1
+        ? Number(params.alertThreshold) : 0.8,
+      note: String(params.note || "").slice(0, 300),
+      updatedAt: isoNow(),
+    };
+    s.budgets.set(`${userId}::${matterId}`, budget);
+    saveLegalState();
+    return { ok: true, result: { budget } };
+  });
+
+  // Realization report for one matter: budget vs worked vs billed vs collected.
+  registerLensAction("legal", "budget-report", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matterId = String(params.matterId || "");
+    const matter = ensureBucket(s.matters, userId).find(m => m.id === matterId);
+    if (!matter) return { ok: false, error: "matter not found" };
+    const budget = s.budgets.get(`${userId}::${matterId}`) || null;
+    const time = ensureBucket(s.timeEntries, userId).filter(t => t.matterId === matterId);
+    const invoices = ensureBucket(s.invoices, userId).filter(i => i.matterId === matterId);
+    const payments = ensureBucket(s.payments, userId).filter(p => p.matterId === matterId);
+    // Worked value = potential value of all billable hours at their rate.
+    const workedValue = Math.round(time.filter(t => t.status !== 'non_billable')
+      .reduce((sum, t) => sum + (t.amount || 0), 0) * 100) / 100;
+    const workedHours = Math.round(time.reduce((sum, t) => sum + (t.hours || 0), 0) * 100) / 100;
+    const billableHours = Math.round(time.filter(t => t.status !== 'non_billable')
+      .reduce((sum, t) => sum + (t.hours || 0), 0) * 100) / 100;
+    const billedValue = Math.round(invoices.reduce((sum, i) => sum + (i.subtotal || 0), 0) * 100) / 100;
+    const collectedValue = Math.round(payments.reduce((sum, p) => sum + p.amount, 0) * 100) / 100;
+    // Realization = billed / worked.  Collection = collected / billed.
+    const realizationRate = workedValue > 0 ? Math.round((billedValue / workedValue) * 1000) / 1000 : null;
+    const collectionRate = billedValue > 0 ? Math.round((collectedValue / billedValue) * 1000) / 1000 : null;
+    const overallRate = workedValue > 0 ? Math.round((collectedValue / workedValue) * 1000) / 1000 : null;
+    const utilizationRate = workedHours > 0 ? Math.round((billableHours / workedHours) * 1000) / 1000 : null;
+    let budgetStatus = null;
+    if (budget && budget.budgetAmount > 0) {
+      const consumed = workedValue / budget.budgetAmount;
+      budgetStatus = {
+        consumedFraction: Math.round(consumed * 1000) / 1000,
+        remaining: Math.round((budget.budgetAmount - workedValue) * 100) / 100,
+        overBudget: workedValue > budget.budgetAmount,
+        alert: consumed >= budget.alertThreshold,
+        hoursConsumedFraction: budget.budgetHours > 0
+          ? Math.round((workedHours / budget.budgetHours) * 1000) / 1000 : null,
+      };
+    }
+    return {
+      ok: true,
+      result: {
+        matterId,
+        matterName: matter.name,
+        budget,
+        budgetStatus,
+        workedValue,
+        workedHours,
+        billableHours,
+        billedValue,
+        collectedValue,
+        realizationRate,
+        collectionRate,
+        overallRate,
+        utilizationRate,
+        unbilledValue: Math.round((workedValue - billedValue) * 100) / 100,
+        uncollectedValue: Math.round((billedValue - collectedValue) * 100) / 100,
+      },
+    };
+  });
+
+  // Firm-wide realization rollup across every matter.
+  registerLensAction("legal", "realization-rollup", (ctx, _a, _p = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const matters = ensureBucket(s.matters, userId);
+    const time = ensureBucket(s.timeEntries, userId);
+    const invoices = ensureBucket(s.invoices, userId);
+    const payments = ensureBucket(s.payments, userId);
+    const rows = matters.map(m => {
+      const mt = time.filter(t => t.matterId === m.id);
+      const worked = mt.filter(t => t.status !== 'non_billable').reduce((sum, t) => sum + (t.amount || 0), 0);
+      const billed = invoices.filter(i => i.matterId === m.id).reduce((sum, i) => sum + (i.subtotal || 0), 0);
+      const collected = payments.filter(p => p.matterId === m.id).reduce((sum, p) => sum + p.amount, 0);
+      const budget = s.budgets.get(`${userId}::${m.id}`) || null;
+      return {
+        matterId: m.id,
+        matterName: m.name,
+        status: m.status,
+        worked: Math.round(worked * 100) / 100,
+        billed: Math.round(billed * 100) / 100,
+        collected: Math.round(collected * 100) / 100,
+        realizationRate: worked > 0 ? Math.round((billed / worked) * 1000) / 1000 : null,
+        collectionRate: billed > 0 ? Math.round((collected / billed) * 1000) / 1000 : null,
+        budgetAmount: budget ? budget.budgetAmount : null,
+        overBudget: budget && budget.budgetAmount > 0 ? worked > budget.budgetAmount : false,
+      };
+    });
+    const totWorked = rows.reduce((sum, r) => sum + r.worked, 0);
+    const totBilled = rows.reduce((sum, r) => sum + r.billed, 0);
+    const totCollected = rows.reduce((sum, r) => sum + r.collected, 0);
+    return {
+      ok: true,
+      result: {
+        matters: rows.sort((a, b) => b.worked - a.worked),
+        totals: {
+          worked: Math.round(totWorked * 100) / 100,
+          billed: Math.round(totBilled * 100) / 100,
+          collected: Math.round(totCollected * 100) / 100,
+          firmRealizationRate: totWorked > 0 ? Math.round((totBilled / totWorked) * 1000) / 1000 : null,
+          firmCollectionRate: totBilled > 0 ? Math.round((totCollected / totBilled) * 1000) / 1000 : null,
+          mattersOverBudget: rows.filter(r => r.overBudget).length,
+        },
       },
     };
   });

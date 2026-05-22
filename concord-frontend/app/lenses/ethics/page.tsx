@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
+import { DecisionToolkit } from '@/components/ethics/DecisionToolkit';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -36,7 +37,7 @@ import {
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
-type ModeTab = 'frameworks' | 'dilemmas' | 'cases' | 'principles' | 'reviews' | 'policies';
+type ModeTab = 'toolkit' | 'frameworks' | 'dilemmas' | 'cases' | 'principles' | 'reviews' | 'policies';
 type ArtifactType = 'Framework' | 'Dilemma' | 'Case' | 'Principle' | 'Review' | 'Policy';
 type Status = 'active' | 'resolved' | 'pending' | 'contested' | 'archived' | 'draft';
 
@@ -123,7 +124,7 @@ export default function EthicsLensPage() {
     { lensId: "ethics" }
   );
 
-  const [activeTab, setActiveTab] = useState<ModeTab>('frameworks');
+  const [activeTab, setActiveTab] = useState<ModeTab>('toolkit');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -844,6 +845,21 @@ export default function EthicsLensPage() {
       })()}
 
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
+        <button
+          onClick={() => {
+            setActiveTab('toolkit');
+            setShowDashboard(false);
+          }}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
+            activeTab === 'toolkit' && !showDashboard
+              ? 'bg-neon-purple/20 text-neon-purple'
+              : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
+          )}
+        >
+          <Zap className="w-4 h-4" />
+          Decision Toolkit
+        </button>
         {MODE_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -863,7 +879,13 @@ export default function EthicsLensPage() {
           </button>
         ))}
       </nav>
-      {showDashboard ? renderDashboard() : renderLibrary()}
+      {showDashboard ? (
+        renderDashboard()
+      ) : activeTab === 'toolkit' ? (
+        <DecisionToolkit />
+      ) : (
+        renderLibrary()
+      )}
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <PhilosophyStack />

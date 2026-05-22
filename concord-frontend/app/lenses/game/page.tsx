@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TriviaPanel } from '@/components/game/TriviaPanel';
 import { GameFeed } from '@/components/game/GameFeed';
+import { HabitHub } from '@/components/game/HabitHub';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -37,7 +38,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 // Types
 // ---------------------------------------------------------------------------
 
-type MainTab = 'dashboard' | 'skills' | 'quests' | 'achievements' | 'leaderboard' | 'shop' | 'history' | 'minigame';
+type MainTab = 'dashboard' | 'habits' | 'skills' | 'quests' | 'achievements' | 'leaderboard' | 'shop' | 'history' | 'minigame';
 type LeaderboardPeriod = 'weekly' | 'monthly' | 'alltime';
 type QuestStatus = 'available' | 'accepted' | 'completed';
 type SkillBranch = 'production' | 'theory' | 'engineering' | 'performance';
@@ -246,6 +247,8 @@ export default function GameLensPage() {
     [
 
       { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('dashboard') },
+
+      { id: 'tab-habits', keys: 'b', description: 'Habit Hub', category: 'navigation', action: () => setActiveTab('habits') },
 
       { id: 'tab-skills', keys: 's', description: 'Skills', category: 'navigation', action: () => setActiveTab('skills') },
 
@@ -901,6 +904,7 @@ export default function GameLensPage() {
 
   const TABS: { id: MainTab; label: string; icon: typeof Trophy }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'habits', label: 'Habit Hub', icon: Flame },
     { id: 'skills', label: 'Skill Tree', icon: GitBranch },
     { id: 'quests', label: 'Quests', icon: Target },
     { id: 'achievements', label: 'Achievements', icon: Trophy },
@@ -1091,6 +1095,16 @@ export default function GameLensPage() {
               )}
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* ================================================================= */}
+      {/* HABIT HUB TAB — dailies, streaks, parties, cosmetics, rewards,     */}
+      {/* reminders, cross-user challenges (Habitica behavior-change loop)   */}
+      {/* ================================================================= */}
+      {activeTab === 'habits' && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <HabitHub onXpChange={(xp) => setPlayerXp((prev) => (xp > prev ? xp : prev))} />
         </motion.div>
       )}
 

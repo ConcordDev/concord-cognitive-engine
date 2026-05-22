@@ -84,8 +84,18 @@ function scan(pattern, allowlist) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 test("CodeQL drift: vm.runIn* only in audit-approved files", () => {
-  // Sovereign /eval is the ONLY approved vm.runInNewContext site.
-  const allowed = ["server/routes/sovereign.js"];
+  // Audited vm-sandbox code-execution sites. Each runs user-supplied code
+  // in a restricted vm.createContext (no process / require / globalThis
+  // leak into server scope) under a hard vm-enforced timeout — the same
+  // boundary as the sovereign /eval route:
+  //   - routes/sovereign.js — sovereign /eval, requireSovereign-gated
+  //   - domains/code.js     — code lens run + step-debugger sandbox
+  //   - domains/chat.js     — chat lens code-interpreter sandbox
+  const allowed = [
+    "server/routes/sovereign.js",
+    "server/domains/code.js",
+    "server/domains/chat.js",
+  ];
   const violations = scan(/vm\.runIn(NewContext|ThisContext|Context)\(/, allowed);
   if (violations.length > 0) {
     console.error("\nUnapproved vm.runIn* sites:");
@@ -120,6 +130,7 @@ test("CodeQL drift: no top-level eval() in any source file", () => {
   const allowed = [
     "server/routes/forge.js",          // forbidden-pattern detector string
     "server/routes/frontier-part3.js", // forbidden-pattern detector string
+    "server/domains/repos.js",         // code-review detector: /eval\s*\(/ rule pattern
   ];
   // Negative lookbehind: not preceded by `$` (Puppeteer) or `.` (foo.eval).
   // Word boundary already excludes `evaluate`, `evaluator`, etc.

@@ -6,11 +6,13 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Play, Disc3, Trash2 } from 'lucide-react';
+import { Loader2, Play, Disc3, Mic2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 
 interface Track { id: string; title: string; artist: string; durationSec: number }
 interface NowPlaying { track: Track; positionSec: number }
+interface LyricLine { timeSec: number | null; line: string }
 
 function dur(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -21,6 +23,7 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
   const [queue, setQueue] = useState<Track[]>([]);
   const [recent, setRecent] = useState<Track[]>([]);
+  const [lyrics, setLyrics] = useState<{ lines: LyricLine[]; synced: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -30,9 +33,17 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
       lensRun('music', 'queue-list', {}),
       lensRun('music', 'recently-played', {}),
     ]);
-    setNowPlaying((np.data?.result?.nowPlaying as NowPlaying | null) || null);
+    const npVal = (np.data?.result?.nowPlaying as NowPlaying | null) || null;
+    setNowPlaying(npVal);
     setQueue(q.data?.result?.tracks || []);
     setRecent(r.data?.result?.tracks || []);
+    if (npVal) {
+      const ly = await lensRun('music', 'track-lyrics-get', { id: npVal.track.id });
+      const lines = (ly.data?.result?.lyrics as LyricLine[]) || [];
+      setLyrics(lines.length ? { lines, synced: !!ly.data?.result?.synced } : null);
+    } else {
+      setLyrics(null);
+    }
     setLoading(false);
     onChange();
   }, [onChange]);
@@ -76,6 +87,31 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
           <p className="text-xs text-zinc-500 italic text-center py-4">Nothing playing. Press play on a track in your library.</p>
         )}
       </section>
+
+      {/* Lyrics */}
+      {nowPlaying && lyrics && (
+        <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Mic2 className="w-3.5 h-3.5 text-emerald-300" />
+            <h3 className="text-xs font-semibold text-zinc-300">Lyrics</h3>
+            {lyrics.synced && <span className="text-[10px] text-zinc-500">synced</span>}
+          </div>
+          <div className="max-h-44 overflow-y-auto space-y-0.5">
+            {lyrics.lines.map((l, i) => {
+              const active = lyrics.synced && l.timeSec != null
+                && nowPlaying.positionSec >= l.timeSec
+                && (i === lyrics.lines.length - 1
+                  || nowPlaying.positionSec < (lyrics.lines[i + 1]?.timeSec ?? Infinity));
+              return (
+                <p key={i} className={cn('text-xs transition-colors',
+                  active ? 'text-emerald-300 font-semibold' : 'text-zinc-400')}>
+                  {l.line}
+                </p>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Queue */}
       <section>

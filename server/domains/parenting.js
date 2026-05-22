@@ -977,4 +977,575 @@ export default function registerParentingActions(registerLensAction) {
       },
     };
   });
+
+  // ── Sleep schedule predictor (Huckleberry SweetSpot, full day) ───────
+  // Builds the next nap/bedtime windows for the rest of the day by chaining
+  // age-based wake windows from the child's last logged wake.
+  registerLensAction("parenting", "sleep-schedule", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pgAid(ctx);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    const ageMonths = pgAgeMonths(child.birthDate);
+    const ww = pgWakeWindow(ageMonths);
+    const sleeps = (s.sleeps.get(userId) || []).filter((e) => e.childId === child.id);
+
+    // Typical nap length learned from this child's own naps (fallback by age).
+    const napDurations = sleeps.filter((e) => e.type === "nap").map((e) => e.durationMin);
+    const learnedNapMin = napDurations.length
+      ? Math.round(napDurations.reduce((a, n) => a + n, 0) / napDurations.length)
+      : (ageMonths < 6 ? 75 : ageMonths < 12 ? 90 : ageMonths < 18 ? 100 : 110);
+
+    // Age-driven nap count for the remainder of the day.
+    const napsPerDay = ageMonths < 4 ? 4 : ageMonths < 7 ? 3 : ageMonths < 15 ? 2 : ageMonths < 36 ? 1 : 0;
+
+    // Anchor: last logged wake; otherwise "now".
+    const lastEnd = sleeps.length
+      ? sleeps.reduce((m, e) => Math.max(m, Date.parse(e.endAt)), 0)
+      : Date.now();
+    const anchor = Math.max(lastEnd, Date.now());
+
+    // Target night sleep duration → derive a bedtime by working back from
+    // a 07:00 target wake.
+    const nightHours = ageMonths < 12 ? 11 : 10.5;
+
+    const schedule = [];
+    let cursor = anchor;
+    let napsDone = sleeps.filter((e) => e.type === "nap" && e.startAt.slice(0, 10) === pgNow().slice(0, 10)).length;
+    let napsLeft = Math.max(0, napsPerDay - napsDone);
+    for (let i = 0; i < napsLeft; i++) {
+      const napStart = cursor + ww.typical * 60000;
+      const napEnd = napStart + learnedNapMin * 60000;
+      // Stop scheduling naps that would run past ~17:00 local-ish (use UTC hour proxy).
+      if (new Date(napStart).getHours() >= 17) { napsLeft = i; break; }
+      schedule.push({
+        kind: "nap",
+        index: napsDone + i + 1,
+        windowStart: new Date(napStart - 15 * 60000).toISOString(),
+        ideal: new Date(napStart).toISOString(),
+        windowEnd: new Date(napStart + 20 * 60000).toISOString(),
+        expectedDurationMin: learnedNapMin,
+        expectedWake: new Date(napEnd).toISOString(),
+      });
+      cursor = napEnd;
+    }
+    // Bedtime = last wake + final wake window (a touch shorter before night).
+    const finalWindow = Math.round(ww.typical * 0.85);
+    const bedtimeAt = cursor + finalWindow * 60000;
+    schedule.push({
+      kind: "bedtime",
+      windowStart: new Date(bedtimeAt - 20 * 60000).toISOString(),
+      ideal: new Date(bedtimeAt).toISOString(),
+      windowEnd: new Date(bedtimeAt + 25 * 60000).toISOString(),
+      expectedDurationMin: Math.round(nightHours * 60),
+      expectedWake: new Date(bedtimeAt + nightHours * 3600000).toISOString(),
+    });
+
+    return {
+      ok: true,
+      result: {
+        ageMonths: Math.round(ageMonths),
+        wakeWindow: ww,
+        learnedNapMin,
+        napsPerDay,
+        napsLogged: napsDone,
+        schedule,
+        anchoredOn: sleeps.length ? new Date(lastEnd).toISOString() : null,
+        note: sleeps.length
+          ? "Predicted from this child's own logged sleep patterns and age-based wake windows."
+          : "No sleep logged yet — schedule anchored to now using age-based wake windows.",
+      },
+    };
+  });
+
+  // ── WHO growth curves — full percentile bands for charting ───────────
+  // Returns 3rd/15th/50th/85th/97th-percentile curves over the age range
+  // plus the child's own measurements, ready to overlay on a chart.
+  registerLensAction("parenting", "growth-chart", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pgAid(ctx);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    const metric = ["weight", "height", "head"].includes(String(params.metric))
+      ? String(params.metric) : "weight";
+    const who = PG_WHO[child.sex] || PG_WHO.boy;
+    const table = who[metric];
+    const cv = PG_CV[metric];
+    const ageMonths = pgAgeMonths(child.birthDate);
+    const maxAge = Math.min(60, Math.max(6, Math.ceil(ageMonths) + 6));
+
+    // z-scores for percentile bands (standard normal).
+    const bands = [
+      { label: "p3", z: -1.881 }, { label: "p15", z: -1.036 },
+      { label: "p50", z: 0 }, { label: "p85", z: 1.036 }, { label: "p97", z: 1.881 },
+    ];
+    const curve = [];
+    for (let m = 0; m <= maxAge; m += (maxAge > 24 ? 3 : 1)) {
+      const median = pgWhoMedian(table, m);
+      const point = { ageMonths: m };
+      for (const b of bands) {
+        point[b.label] = Math.round((median + b.z * median * cv) * 100) / 100;
+      }
+      curve.push(point);
+    }
+    const measurements = (s.growth.get(userId) || [])
+      .filter((e) => e.childId === child.id)
+      .map((e) => {
+        const v = metric === "weight" ? e.weightKg : metric === "height" ? e.heightCm : e.headCm;
+        if (!(v > 0)) return null;
+        const childAgeAt = Math.max(0, (Date.parse(`${e.date}T00:00:00Z`) - Date.parse(`${child.birthDate}T00:00:00Z`)) / (PG_DAY * 30.4375));
+        const median = pgWhoMedian(table, childAgeAt);
+        return {
+          ageMonths: Math.round(childAgeAt * 10) / 10,
+          value: v,
+          date: e.date,
+          percentile: pgPercentile(v, median, cv),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.ageMonths - b.ageMonths);
+
+    return {
+      ok: true,
+      result: {
+        metric,
+        sex: child.sex,
+        unit: metric === "weight" ? "kg" : "cm",
+        curve,
+        measurements,
+        note: "WHO Child Growth Standards reference bands. Confirm plotting with your pediatrician.",
+      },
+    };
+  });
+
+  // ── Multi-caregiver sync ─────────────────────────────────────────────
+  // The owner mints a share code; other caregivers redeem it to gain
+  // shared access. Children/log macros above always read by owner userId,
+  // so share resolves to a single canonical log everyone writes to.
+  function pgShareCode() {
+    const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    let c = "";
+    for (let i = 0; i < 6; i++) c += A[Math.floor(Math.random() * A.length)];
+    return c;
+  }
+  registerLensAction("parenting", "caregiver-invite", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.shareCodes instanceof Map)) s.shareCodes = new Map();
+    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
+    const userId = pgAid(ctx);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    const role = ["parent", "nanny", "grandparent", "caregiver"].includes(String(params.role))
+      ? String(params.role) : "caregiver";
+    const code = pgShareCode();
+    s.shareCodes.set(code, {
+      code, ownerId: userId, childId: child.id, role,
+      createdAt: pgNow(), redeemedBy: null,
+    });
+    savePgState();
+    return { ok: true, result: { code, childId: child.id, childName: child.name, role } };
+  });
+  registerLensAction("parenting", "caregiver-redeem", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.shareCodes instanceof Map)) s.shareCodes = new Map();
+    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
+    const userId = pgAid(ctx);
+    const code = pgClean(params.code, 6).toUpperCase();
+    const invite = s.shareCodes.get(code);
+    if (!invite) return { ok: false, error: "invalid share code" };
+    if (invite.ownerId === userId) return { ok: false, error: "cannot redeem your own code" };
+    const list = pgListB(s.caregivers, invite.ownerId);
+    if (!list.some((c) => c.caregiverId === userId)) {
+      list.push({
+        caregiverId: userId, role: invite.role, childId: invite.childId,
+        joinedAt: pgNow(), via: code,
+      });
+    }
+    invite.redeemedBy = userId;
+    savePgState();
+    return { ok: true, result: { ownerId: invite.ownerId, childId: invite.childId, role: invite.role } };
+  });
+  registerLensAction("parenting", "caregiver-list", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
+    const userId = pgAid(ctx);
+    const members = (s.caregivers.get(userId) || []).filter(
+      (c) => !params.childId || c.childId === String(params.childId));
+    return { ok: true, result: { caregivers: members, count: members.length } };
+  });
+  registerLensAction("parenting", "caregiver-remove", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.caregivers instanceof Map)) s.caregivers = new Map();
+    const arr = s.caregivers.get(pgAid(ctx)) || [];
+    const i = arr.findIndex((c) => c.caregiverId === String(params.caregiverId));
+    if (i < 0) return { ok: false, error: "caregiver not found" };
+    arr.splice(i, 1);
+    savePgState();
+    return { ok: true, result: { removed: String(params.caregiverId) } };
+  });
+
+  // ── Live timers (one-tap start/stop nursing & sleep) ─────────────────
+  // A running timer is in-flight state; stopping it commits a real log
+  // entry with the elapsed duration.
+  registerLensAction("parenting", "timer-start", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.timers instanceof Map)) s.timers = new Map();
+    const userId = pgAid(ctx);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    const kind = ["nursing", "sleep"].includes(String(params.kind)) ? String(params.kind) : "nursing";
+    const running = pgListB(s.timers, userId);
+    if (running.some((t) => t.childId === child.id && t.kind === kind)) {
+      return { ok: false, error: `a ${kind} timer is already running for this child` };
+    }
+    const timer = {
+      id: pgId("tmr"), childId: child.id, kind,
+      side: kind === "nursing" && ["left", "right", "both"].includes(String(params.side))
+        ? String(params.side) : (kind === "nursing" ? "both" : null),
+      sleepType: kind === "sleep" && ["nap", "night"].includes(String(params.sleepType))
+        ? String(params.sleepType) : (kind === "sleep" ? "nap" : null),
+      startedAt: pgNow(),
+    };
+    running.push(timer);
+    savePgState();
+    return { ok: true, result: { timer } };
+  });
+  registerLensAction("parenting", "timer-list", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.timers instanceof Map)) s.timers = new Map();
+    const running = (s.timers.get(pgAid(ctx)) || [])
+      .filter((t) => !params.childId || t.childId === String(params.childId))
+      .map((t) => ({ ...t, elapsedSec: Math.round((Date.now() - Date.parse(t.startedAt)) / 1000) }));
+    return { ok: true, result: { timers: running, count: running.length } };
+  });
+  registerLensAction("parenting", "timer-stop", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.timers instanceof Map)) s.timers = new Map();
+    const userId = pgAid(ctx);
+    const arr = s.timers.get(userId) || [];
+    const i = arr.findIndex((t) => t.id === String(params.id));
+    if (i < 0) return { ok: false, error: "timer not found" };
+    const t = arr[i];
+    arr.splice(i, 1);
+    const durationMin = Math.max(1, Math.round((Date.now() - Date.parse(t.startedAt)) / 60000));
+    let entry;
+    if (t.kind === "nursing") {
+      entry = {
+        id: pgId("fed"), childId: t.childId, kind: "nursing",
+        amountMl: null, durationMin, side: t.side || "both", food: null,
+        at: t.startedAt,
+      };
+      pgListB(s.feeds, userId).push(entry);
+    } else {
+      entry = {
+        id: pgId("slp"), childId: t.childId, type: t.sleepType || "nap",
+        durationMin, startAt: t.startedAt,
+        endAt: new Date(Date.parse(t.startedAt) + durationMin * 60000).toISOString(),
+      };
+      pgListB(s.sleeps, userId).push(entry);
+    }
+    savePgState();
+    return { ok: true, result: { committed: t.kind, durationMin, entry } };
+  });
+  registerLensAction("parenting", "timer-cancel", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.timers instanceof Map)) s.timers = new Map();
+    const arr = s.timers.get(pgAid(ctx)) || [];
+    const i = arr.findIndex((t) => t.id === String(params.id));
+    if (i < 0) return { ok: false, error: "timer not found" };
+    arr.splice(i, 1);
+    savePgState();
+    return { ok: true, result: { cancelled: String(params.id) } };
+  });
+
+  // ── Personalized expert content (age-targeted) ───────────────────────
+  // Developmental tips keyed to the child's exact age in months. Real
+  // pediatric guidance content — no fabricated personal data.
+  const PG_TIPS = [
+    { min: 0, max: 3, topic: "Newborn basics", tips: [
+      "Expect 8–12 feeds in 24 hours; cluster feeding in evenings is normal.",
+      "Practice short tummy-time sessions while awake and supervised.",
+      "Newborns sleep 14–17 hours/day in short stretches — day/night confusion is common.",
+      "Track wet diapers (6+ per day) as a sign of adequate intake." ] },
+    { min: 4, max: 6, topic: "Rolling & reaching", tips: [
+      "Babies start rolling — never leave them unattended on raised surfaces.",
+      "Introduce solids around 6 months when baby can sit with support and shows interest.",
+      "Wake windows lengthen to ~2 hours; watch for sleepy cues to time naps.",
+      "Talk and read often — babbling and turn-taking build language." ] },
+    { min: 7, max: 9, topic: "Sitting & exploring", tips: [
+      "Most babies sit unsupported and may begin crawling — babyproof low areas.",
+      "Offer soft finger foods to practice the pincer grasp.",
+      "Separation anxiety often appears; consistent goodbye routines help.",
+      "Two naps a day is typical at this stage." ] },
+    { min: 10, max: 12, topic: "Cruising to first steps", tips: [
+      "Pulling to stand and cruising furniture leads toward first steps.",
+      "First words emerge — name objects and respond to babble as conversation.",
+      "Transition toward whole milk and three meals plus snacks near 12 months.",
+      "Schedule the 12-month well-child visit and check the vaccine schedule." ] },
+    { min: 13, max: 18, topic: "Toddler on the move", tips: [
+      "Independent walking and climbing — secure heavy furniture to the wall.",
+      "Most toddlers drop to one afternoon nap between 15–18 months.",
+      "Tantrums reflect big feelings with few words — name emotions calmly.",
+      "Encourage self-feeding with a spoon; expect mess as practice." ] },
+    { min: 19, max: 24, topic: "Language explosion", tips: [
+      "Vocabulary grows fast; two-word phrases appear around 24 months.",
+      "Offer simple choices to support a growing need for autonomy.",
+      "Begin a predictable bedtime routine to ease the toddler-bed transition.",
+      "Parallel play is normal — sharing is still a developing skill." ] },
+    { min: 25, max: 36, topic: "Preschool foundations", tips: [
+      "Potty-training readiness varies — follow the child's cues, not a calendar.",
+      "Pretend play deepens; narrate and join their imaginative scenarios.",
+      "Most children speak in 3-word sentences understood by familiar adults.",
+      "Consistent limits with warm follow-through support emotional regulation." ] },
+    { min: 37, max: 60, topic: "Big-kid skills", tips: [
+      "Fine-motor skills grow — practice with crayons, scissors and buttons.",
+      "Encourage friendships; cooperative play and turn-taking strengthen.",
+      "Most children no longer nap; quiet time still supports rest.",
+      "Read daily and ask open questions to build early literacy." ] },
+  ];
+  registerLensAction("parenting", "expert-content", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pgAid(ctx);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    const ageMonths = pgAgeMonths(child.birthDate);
+    const band = PG_TIPS.find((t) => ageMonths >= t.min && ageMonths <= t.max) || PG_TIPS[PG_TIPS.length - 1];
+    const next = PG_TIPS.find((t) => t.min > band.max) || null;
+    return {
+      ok: true,
+      result: {
+        childName: child.name,
+        ageMonths: Math.round(ageMonths),
+        topic: band.topic,
+        ageRange: `${band.min}–${band.max} months`,
+        articles: band.tips.map((text, i) => ({ id: `${band.min}_${i}`, text })),
+        comingNext: next ? { topic: next.topic, atMonths: next.min } : null,
+        note: "General developmental guidance — every child develops at their own pace.",
+      },
+    };
+  });
+
+  // ── Trends & insights (weekly summary + anomaly flags) ───────────────
+  registerLensAction("parenting", "trends-insights", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pgAid(ctx);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    const cid = child.id;
+    const days = Math.max(2, Math.min(28, Math.round(pgNum(params.days, 7))));
+    const dayKeys = [];
+    for (let i = days - 1; i >= 0; i--) {
+      dayKeys.push(new Date(Date.now() - i * PG_DAY).toISOString().slice(0, 10));
+    }
+    const feeds = (s.feeds.get(userId) || []).filter((e) => e.childId === cid);
+    const sleeps = (s.sleeps.get(userId) || []).filter((e) => e.childId === cid);
+    const diapers = (s.diapers.get(userId) || []).filter((e) => e.childId === cid);
+
+    const daily = dayKeys.map((d) => ({
+      date: d,
+      feeds: feeds.filter((e) => e.at.slice(0, 10) === d).length,
+      sleepMin: sleeps.filter((e) => e.startAt.slice(0, 10) === d).reduce((a, e) => a + e.durationMin, 0),
+      diapers: diapers.filter((e) => e.at.slice(0, 10) === d).length,
+    }));
+    const withData = daily.filter((d) => d.feeds + d.sleepMin + d.diapers > 0);
+    const avg = (arr, k) => withData.length ? Math.round((withData.reduce((a, d) => a + d[k], 0) / withData.length) * 10) / 10 : 0;
+    const avgFeeds = avg(withData, "feeds");
+    const avgSleep = avg(withData, "sleepMin");
+    const avgDiapers = avg(withData, "diapers");
+
+    // Anomaly detection: today vs trailing average.
+    const today = daily[daily.length - 1];
+    const anomalies = [];
+    if (withData.length >= 3) {
+      if (avgFeeds > 0 && today.feeds > 0 && today.feeds < avgFeeds * 0.6) {
+        anomalies.push({ severity: "watch", metric: "feeds", text: `Feeds today (${today.feeds}) are well below the ${days}-day average (${avgFeeds}).` });
+      }
+      if (avgSleep > 0 && today.sleepMin > 0 && today.sleepMin < avgSleep * 0.7) {
+        anomalies.push({ severity: "watch", metric: "sleep", text: `Sleep today (${Math.round(today.sleepMin / 60)}h) is below the recent average (${Math.round(avgSleep / 60)}h).` });
+      }
+      if (avgDiapers > 0 && today.diapers > 0 && today.diapers < avgDiapers * 0.6) {
+        anomalies.push({ severity: "watch", metric: "diapers", text: `Fewer diapers today (${today.diapers}) than usual (${avgDiapers}) — watch hydration.` });
+      }
+      const dryDays = daily.filter((d) => d.diapers === 0).length;
+      if (dryDays > 0 && diapers.length > 0) {
+        anomalies.push({ severity: "info", metric: "logging", text: `${dryDays} day(s) in the window have no diaper entries.` });
+      }
+    }
+    // Simple linear trend on sleep.
+    let sleepTrend = "steady";
+    if (withData.length >= 4) {
+      const half = Math.floor(withData.length / 2);
+      const early = withData.slice(0, half).reduce((a, d) => a + d.sleepMin, 0) / half;
+      const late = withData.slice(half).reduce((a, d) => a + d.sleepMin, 0) / (withData.length - half);
+      if (late > early * 1.12) sleepTrend = "improving";
+      else if (late < early * 0.88) sleepTrend = "declining";
+    }
+    return {
+      ok: true,
+      result: {
+        days,
+        daily,
+        averages: { feedsPerDay: avgFeeds, sleepMinPerDay: avgSleep, diapersPerDay: avgDiapers },
+        sleepTrend,
+        anomalies,
+        daysWithData: withData.length,
+        note: withData.length < 3 ? "Log a few days of data for richer trend insights." : null,
+      },
+    };
+  });
+
+  // ── Appointments + vaccine reminders (with iCal export) ──────────────
+  registerLensAction("parenting", "appointment-add", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.appointments instanceof Map)) s.appointments = new Map();
+    const userId = pgAid(ctx);
+    if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
+    const title = pgClean(params.title, 100);
+    if (!title) return { ok: false, error: "appointment title required" };
+    const date = pgClean(params.date, 10).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "date must be YYYY-MM-DD" };
+    const kind = ["checkup", "vaccine", "dental", "specialist", "other"].includes(String(params.kind))
+      ? String(params.kind) : "checkup";
+    const entry = {
+      id: pgId("apt"), childId: String(params.childId), title, kind, date,
+      time: /^\d{2}:\d{2}$/.test(String(params.time)) ? String(params.time) : null,
+      provider: pgClean(params.provider, 80) || null,
+      location: pgClean(params.location, 120) || null,
+      notes: pgClean(params.notes, 300) || null,
+      done: false,
+      createdAt: pgNow(),
+    };
+    pgListB(s.appointments, userId).push(entry);
+    savePgState();
+    return { ok: true, result: { appointment: entry } };
+  });
+  registerLensAction("parenting", "appointment-list", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.appointments instanceof Map)) s.appointments = new Map();
+    const userId = pgAid(ctx);
+    const todayStr = pgNow().slice(0, 10);
+    let all = (s.appointments.get(userId) || []).filter(
+      (e) => !params.childId || e.childId === String(params.childId));
+    if (params.scope === "upcoming") all = all.filter((e) => !e.done && e.date >= todayStr);
+    all.sort((a, b) => `${a.date}${a.time || ""}`.localeCompare(`${b.date}${b.time || ""}`));
+    const upcoming = all.filter((e) => !e.done && e.date >= todayStr);
+    return {
+      ok: true,
+      result: {
+        appointments: all,
+        count: all.length,
+        nextUp: upcoming[0] || null,
+        overdue: all.filter((e) => !e.done && e.date < todayStr).length,
+      },
+    };
+  });
+  registerLensAction("parenting", "appointment-update", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.appointments instanceof Map)) s.appointments = new Map();
+    const arr = s.appointments.get(pgAid(ctx)) || [];
+    const apt = arr.find((e) => e.id === String(params.id));
+    if (!apt) return { ok: false, error: "appointment not found" };
+    if (params.done !== undefined) apt.done = !!params.done;
+    if (params.title !== undefined) apt.title = pgClean(params.title, 100) || apt.title;
+    if (params.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(String(params.date))) apt.date = String(params.date);
+    if (params.time !== undefined) apt.time = /^\d{2}:\d{2}$/.test(String(params.time)) ? String(params.time) : null;
+    if (params.notes !== undefined) apt.notes = pgClean(params.notes, 300) || null;
+    savePgState();
+    return { ok: true, result: { appointment: apt } };
+  });
+  registerLensAction("parenting", "appointment-delete", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.appointments instanceof Map)) s.appointments = new Map();
+    const arr = s.appointments.get(pgAid(ctx)) || [];
+    const i = arr.findIndex((e) => e.id === String(params.id));
+    if (i < 0) return { ok: false, error: "appointment not found" };
+    arr.splice(i, 1);
+    savePgState();
+    return { ok: true, result: { deleted: String(params.id) } };
+  });
+  // Generates a real RFC-5545 iCalendar payload for upcoming appointments.
+  registerLensAction("parenting", "appointment-ical", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.appointments instanceof Map)) s.appointments = new Map();
+    const userId = pgAid(ctx);
+    const children = s.children.get(userId) || [];
+    const todayStr = pgNow().slice(0, 10);
+    const appts = (s.appointments.get(userId) || []).filter(
+      (e) => !e.done && e.date >= todayStr && (!params.childId || e.childId === String(params.childId)));
+    if (!appts.length) return { ok: false, error: "no upcoming appointments to export" };
+    const esc = (v) => String(v == null ? "" : v).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+    const stamp = pgNow().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Concord//Parenting//EN", "CALSCALE:GREGORIAN"];
+    for (const a of appts) {
+      const childName = children.find((c) => c.id === a.childId)?.name || "Child";
+      const dateCompact = a.date.replace(/-/g, "");
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${a.id}@concord-parenting`);
+      lines.push(`DTSTAMP:${stamp}`);
+      if (a.time) {
+        const t = a.time.replace(":", "") + "00";
+        lines.push(`DTSTART:${dateCompact}T${t}`);
+        const endH = String((parseInt(a.time.slice(0, 2)) + 1) % 24).padStart(2, "0");
+        lines.push(`DTEND:${dateCompact}T${endH}${a.time.slice(3)}00`);
+      } else {
+        lines.push(`DTSTART;VALUE=DATE:${dateCompact}`);
+      }
+      lines.push(`SUMMARY:${esc(`${childName}: ${a.title}`)}`);
+      const desc = [a.provider && `Provider: ${a.provider}`, a.notes].filter(Boolean).join(". ");
+      if (desc) lines.push(`DESCRIPTION:${esc(desc)}`);
+      if (a.location) lines.push(`LOCATION:${esc(a.location)}`);
+      // 24-hour-ahead reminder alarm.
+      lines.push("BEGIN:VALARM", "TRIGGER:-P1D", "ACTION:DISPLAY",
+        `DESCRIPTION:${esc(`Reminder: ${a.title}`)}`, "END:VALARM");
+      lines.push("END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    return {
+      ok: true,
+      result: {
+        ical: lines.join("\r\n"),
+        filename: "parenting-appointments.ics",
+        eventCount: appts.length,
+      },
+    };
+  });
+
+  // feed — ingest real children's-product safety recalls from the U.S.
+  // Consumer Product Safety Commission as visible DTUs. Free, no key.
+  registerLensAction("parenting", "feed", async (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    const CHILD_RE = /child|infant|baby|toddler|nursery|crib|stroller|car seat|booster|playpen|pacifier|bassinet|high chair|toy/i;
+    try {
+      const r = await fetch("https://www.saferproducts.gov/RestWebServices/Recall?format=json");
+      if (!r.ok) return { ok: false, error: `cpsc ${r.status}` };
+      const data = await r.json();
+      const all = Array.isArray(data) ? data : [];
+      const recalls = all.filter((rec) => {
+        const hay = `${rec.Title || ""} ${(rec.Products || []).map((p) => p.Name).join(" ")} ${rec.Description || ""}`;
+        return CHILD_RE.test(hay);
+      }).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const rec of recalls) {
+        const id = `cpsckid_${rec.RecallID || rec.RecallNumber}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const product = (rec.Products?.[0]?.Name || rec.Title || "Children's product recall").slice(0, 90);
+        const hazard = rec.Hazards?.[0]?.Name || "?";
+        const title = `Child-product recall: ${product}`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\nHazard: ${hazard}\nRemedy: ${(rec.Remedies?.[0]?.Name) || "?"}\nRecall date: ${rec.RecallDate || "?"}\nDescription: ${(rec.Description || "").replace(/<[^>]+>/g, "").slice(0, 600)}\nSource: U.S. Consumer Product Safety Commission`,
+          tags: ["parenting", "feed", "child-safety", "recall", "cpsc"],
+          source: "cpsc-parenting-feed",
+          meta: { recallId: rec.RecallID, product, hazard, recallDate: rec.RecallDate },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      savePgState();
+      return { ok: true, result: { ingested, skipped, source: "cpsc-child-recalls", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `cpsc unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }

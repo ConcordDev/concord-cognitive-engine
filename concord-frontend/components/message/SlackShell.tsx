@@ -6,10 +6,13 @@
  */
 
 import React from 'react';
-import { Hash, Lock, MessageSquare, Bell, Inbox, Calendar, Bookmark, Search, Sparkles } from 'lucide-react';
+import { Hash, Lock, MessageSquare, Bell, Inbox, Calendar, Bookmark, Search, Radio, Paperclip, Bot, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { StatusControl } from './StatusControl';
 
-export type MsgNav = 'channels' | 'inbox' | 'activity' | 'scheduled' | 'snoozed' | 'saved' | 'search';
+export type MsgNav =
+  | 'channels' | 'inbox' | 'activity' | 'scheduled' | 'snoozed' | 'saved' | 'search'
+  | 'huddles' | 'files' | 'integrations' | 'notifications' | 'directory';
 
 interface NavItem { id: MsgNav; label: string; icon: typeof Hash; badge?: number | string }
 
@@ -24,13 +27,18 @@ export interface SlackShellProps {
 }
 
 const NAV: NavItem[] = [
-  { id: 'channels',  label: 'Channels & DMs', icon: MessageSquare },
-  { id: 'inbox',     label: 'Inbox',          icon: Inbox },
-  { id: 'activity',  label: 'Activity',       icon: Bell },
-  { id: 'scheduled', label: 'Scheduled',      icon: Calendar },
-  { id: 'snoozed',   label: 'Snoozed',        icon: Bookmark },
-  { id: 'saved',     label: 'Saved',          icon: Bookmark },
-  { id: 'search',    label: 'Search',         icon: Search },
+  { id: 'channels',     label: 'Channels & DMs', icon: MessageSquare },
+  { id: 'inbox',        label: 'Inbox',          icon: Inbox },
+  { id: 'activity',     label: 'Activity',       icon: Bell },
+  { id: 'huddles',      label: 'Huddles',        icon: Radio },
+  { id: 'files',        label: 'Files',          icon: Paperclip },
+  { id: 'integrations', label: 'Integrations',   icon: Bot },
+  { id: 'scheduled',    label: 'Scheduled',      icon: Calendar },
+  { id: 'snoozed',      label: 'Snoozed',        icon: Bookmark },
+  { id: 'saved',        label: 'Saved',          icon: Bookmark },
+  { id: 'directory',    label: 'Directory',      icon: Users },
+  { id: 'notifications',label: 'Notifications',  icon: Bell },
+  { id: 'search',       label: 'Search',         icon: Search },
 ];
 
 export function SlackShell({ activeNav, onNavChange, badges = {}, channelList, main, thread, askBar }: SlackShellProps) {
@@ -60,6 +68,7 @@ export function SlackShell({ activeNav, onNavChange, badges = {}, channelList, m
             </button>
           );
         })}
+        <StatusControl />
       </nav>
 
       {/* Channel list */}

@@ -167,3 +167,131 @@ describe("wellness — dashboard summary", () => {
     assert.ok(r.result.avgMoodThisWeek !== null);
   });
 });
+
+// ───────────────────────────────────────────────────────────────
+//  Whoop / Calm / Woebot 2026-parity macros — self-composed
+//  therapeutic fields, guided CBT thought records, wearable import,
+//  meditation + breathing sessions, daily recovery recommendation.
+// ───────────────────────────────────────────────────────────────
+
+describe("wellness — self-composed therapeutic fields", () => {
+  it("self-composes a field, lists it active, then revokes it", () => {
+    const c = call("self-field-compose", ctxA, { fieldKind: "rumination", intention: "set the loop down", durationSeconds: 6 * 3600 });
+    assert.equal(c.ok, true);
+    assert.equal(c.result.field.selfComposed, true);
+    assert.equal(c.result.field.authorUserId, "well_a");
+    const id = c.result.field.id;
+    let list = call("self-field-list", ctxA);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.activeCount, 1);
+    const rev = call("self-field-deactivate", ctxA, { id });
+    assert.equal(rev.ok, true);
+    assert.equal(rev.result.revoked, true);
+    list = call("self-field-list", ctxA);
+    assert.equal(list.result.activeCount, 0);
+  });
+
+  it("rejects an unknown field kind and a missing id", () => {
+    assert.equal(call("self-field-compose", ctxA, { fieldKind: "vibes" }).ok, false);
+    assert.equal(call("self-field-deactivate", ctxA, { id: "nope" }).ok, false);
+  });
+});
+
+describe("wellness — guided CBT thought records", () => {
+  it("cbt-prompts lists all 8 kinds and returns a full prompt set per kind", () => {
+    const all = call("cbt-prompts", ctxA, {});
+    assert.equal(all.ok, true);
+    assert.equal(all.result.kinds.length, 8);
+    const one = call("cbt-prompts", ctxA, { fieldKind: "catastrophising" });
+    assert.equal(one.ok, true);
+    assert.ok(Array.isArray(one.result.challenges));
+    assert.ok(one.result.reframe.length > 0);
+    assert.equal(call("cbt-prompts", ctxA, { fieldKind: "nonsense" }).ok, false);
+  });
+
+  it("creates a thought record, computes relief, and lists it", () => {
+    const r = call("cbt-record-create", ctxA, {
+      fieldKind: "shame_spiral",
+      situation: "missed a deadline",
+      emotion: "ashamed",
+      automaticThought: "I always fail",
+      evidenceAgainst: "I shipped two projects last month",
+      reframe: "One missed deadline, not a verdict",
+      intensityBefore: 80,
+      intensityAfter: 35,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.record.relief, 45);
+    const list = call("cbt-record-list", ctxA, { days: 90 });
+    assert.equal(list.ok, true);
+    assert.equal(list.result.total, 1);
+    assert.equal(list.result.completed, 1);
+    assert.equal(list.result.avgRelief, 45);
+  });
+
+  it("rejects a record with no situation or automatic thought", () => {
+    assert.equal(call("cbt-record-create", ctxA, { fieldKind: "numbing", situation: "x" }).ok, false);
+  });
+});
+
+describe("wellness — wearable import", () => {
+  it("imports mapped readings into the metric store and records a sync", () => {
+    const r = call("wearable-import", ctxA, {
+      source: "apple_health",
+      readings: [
+        { type: "hrv", value: 62, date: dayAgo(1) },
+        { type: "sleep", value: 7.5, date: dayAgo(1) },
+        { type: "restingHeartRate", value: 54, date: dayAgo(1) },
+        { type: "garbage", value: 1, date: dayAgo(1) },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.summary.imported, 3);
+    assert.equal(r.result.summary.skipped, 1);
+    // imported readings are queryable as metrics
+    assert.ok(call("metrics-list", ctxA, { type: "hrv_ms" }).result.metrics.length >= 1);
+    const hist = call("wearable-sync-history", ctxA);
+    assert.equal(hist.ok, true);
+    assert.ok(hist.result.syncs.length >= 1);
+  });
+
+  it("rejects an empty readings batch", () => {
+    assert.equal(call("wearable-import", ctxA, { source: "whoop", readings: [] }).ok, false);
+  });
+});
+
+describe("wellness — meditation + breathing sessions", () => {
+  it("session-catalogue returns the authored preset list", () => {
+    const r = call("session-catalogue", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.sessions.length >= 5);
+    assert.ok(r.result.sessions.some(s => s.kind === "breathing"));
+  });
+
+  it("logs a completed session with a mood shift and builds a streak", () => {
+    const cat = call("session-catalogue", ctxA, {}).result.sessions[0];
+    const r = call("session-complete", ctxA, { catalogueId: cat.id, durationMin: 5, moodBefore: 1, moodAfter: 3 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.session.moodShift, 2);
+    const hist = call("session-history", ctxA, { days: 30 });
+    assert.equal(hist.ok, true);
+    assert.equal(hist.result.count, 1);
+    assert.equal(hist.result.streak, 1);
+    assert.equal(call("session-complete", ctxA, { catalogueId: "fake_id" }).ok, false);
+  });
+});
+
+describe("wellness — daily recommendation", () => {
+  it("folds today's signals into a prioritized recommendation set", () => {
+    const today = dayAgo(0);
+    call("metrics-log", ctxA, { type: "sleep_hours", value: 5, date: today });
+    call("metrics-log", ctxA, { type: "hrv_ms", value: 45, date: today });
+    const r = call("daily-recommendation", ctxA, { date: today });
+    assert.equal(r.ok, true);
+    assert.ok(["green", "yellow", "red"].includes(r.result.band));
+    assert.ok(Array.isArray(r.result.recommendations));
+    assert.ok(r.result.recommendations.length >= 1);
+    assert.equal(typeof r.result.focus, "string");
+    assert.equal(r.result.hasEnoughData, true);
+  });
+});

@@ -112,7 +112,10 @@ export default function registerMentalhealthActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.mentalHealthLens) STATE.mentalHealthLens = {};
     const s = STATE.mentalHealthLens;
-    for (const k of ["sessions", "courses", "moods", "breathing", "sleep", "gratitude", "goal"]) {
+    for (const k of [
+      "sessions", "courses", "moods", "breathing", "sleep", "gratitude", "goal",
+      "companion", "factors", "reminders", "worksheets", "safetyPlan",
+    ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -467,6 +470,499 @@ export default function registerMentalhealthActions(registerLensAction) {
         activeCourses: (s.courses.get(userId) || []).filter((c) => c.completedSessions < c.totalSessions).length,
         gratitudeEntries: (s.gratitude.get(userId) || []).length,
       },
+    };
+  });
+
+  // ── [M] Conversational AI check-in companion (Wysa-style) ───────────
+  // Supportive, non-clinical chat backed by the conscious brain.
+  registerLensAction("mental-health", "companion-history", (ctx, _a, _params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const turns = s.companion.get(mhAid(ctx)) || [];
+    return { ok: true, result: { turns: turns.slice(-50), count: turns.length } };
+  });
+
+  registerLensAction("mental-health", "companion-reset", (ctx, _a, _params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    s.companion.set(mhAid(ctx), []);
+    saveMhState();
+    return { ok: true, result: { cleared: true } };
+  });
+
+  registerLensAction("mental-health", "companion-chat", async (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const message = mhClean(params.message, 1200);
+    if (!message) return { ok: false, error: "message required" };
+    const userId = mhAid(ctx);
+    const turns = mhListB(s.companion, userId);
+    const userTurn = { role: "user", content: message, at: mhNow() };
+    turns.push(userTurn);
+
+    const SUPPORT_SYS = [
+      "You are a warm, non-judgmental wellbeing companion inside a self-reflection app.",
+      "You are NOT a therapist or doctor and you never diagnose or give medical advice.",
+      "Reflect feelings, ask gentle open questions, and suggest simple grounding/coping steps.",
+      "Keep replies short (2-4 sentences), kind, and concrete.",
+      "If the user expresses intent to harm themselves or others, calmly urge them to contact",
+      "988 (US Suicide & Crisis Lifeline) or local emergency services right away.",
+    ].join(" ");
+
+    // Lightweight risk scan — surfaced to the UI regardless of LLM availability.
+    const RISK_RE = /\b(kill myself|suicid|end my life|want to die|hurt myself|self.?harm|no reason to live)\b/i;
+    const riskFlag = RISK_RE.test(message);
+
+    let reply = "";
+    if (ctx?.llm?.chat) {
+      try {
+        const hist = turns.slice(-12).map((t) => ({
+          role: t.role === "user" ? "user" : "assistant",
+          content: String(t.content || ""),
+        }));
+        const llmRes = await ctx.llm.chat({
+          messages: [{ role: "system", content: SUPPORT_SYS }, ...hist],
+          temperature: 0.6,
+          maxTokens: 220,
+          slot: "conscious",
+        });
+        reply = String(llmRes?.text || llmRes?.content || llmRes?.message?.content || "").trim();
+      } catch (_e) { reply = ""; }
+    }
+    if (!reply) {
+      reply = riskFlag
+        ? "It sounds like you're carrying something really heavy right now. You don't have to face it alone — please reach out to the 988 Suicide & Crisis Lifeline (call or text 988) or your local emergency number. I'm here with you."
+        : "Thank you for sharing that with me. It takes courage to put feelings into words. What feels like the heaviest part of this right now?";
+    }
+    const botTurn = { role: "companion", content: reply, at: mhNow(), riskFlag };
+    turns.push(botTurn);
+    if (turns.length > 200) turns.splice(0, turns.length - 200);
+    saveMhState();
+    return {
+      ok: true,
+      result: {
+        reply, riskFlag,
+        turn: botTurn,
+        disclaimer: "This companion is for reflection only, not medical advice.",
+      },
+    };
+  });
+
+  // ── [M] Custom mood factors / activity tags (Daylio core) ───────────
+  registerLensAction("mental-health", "factor-create", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = mhClean(params.name, 40);
+    if (!name) return { ok: false, error: "factor name required" };
+    const userId = mhAid(ctx);
+    const list = mhListB(s.factors, userId);
+    if (list.some((f) => f.name.toLowerCase() === name.toLowerCase())) {
+      return { ok: false, error: "factor already exists" };
+    }
+    const factor = {
+      id: mhId("fac"), name,
+      group: mhClean(params.group, 24).toLowerCase() || "activity",
+      icon: mhClean(params.icon, 8) || null,
+      createdAt: mhNow(),
+    };
+    list.push(factor);
+    saveMhState();
+    return { ok: true, result: { factor } };
+  });
+
+  registerLensAction("mental-health", "factor-list", (ctx, _a, _params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const factors = [...(s.factors.get(mhAid(ctx)) || [])];
+    return { ok: true, result: { factors, count: factors.length } };
+  });
+
+  registerLensAction("mental-health", "factor-delete", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.factors.get(mhAid(ctx)) || [];
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "factor not found" };
+    arr.splice(i, 1);
+    saveMhState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Log a mood entry tagged with user-defined factors.
+  registerLensAction("mental-health", "mood-log-tagged", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const mood = Math.round(mhNum(params.mood));
+    if (mood < 1 || mood > 5) return { ok: false, error: "mood must be 1–5" };
+    const userId = mhAid(ctx);
+    const known = new Set((s.factors.get(userId) || []).map((f) => f.id));
+    const factors = Array.isArray(params.factors)
+      ? params.factors.map((x) => mhClean(x, 64)).filter((x) => known.has(x)).slice(0, 25)
+      : [];
+    const entry = {
+      id: mhId("mood"), mood,
+      energy: Math.max(0, Math.min(5, Math.round(mhNum(params.energy)))) || null,
+      label: mhClean(params.label, 40).toLowerCase() || null,
+      note: mhClean(params.note, 500) || null,
+      factors,
+      date: mhDay(params.date) || mhDay(mhNow()),
+      at: mhNow(),
+    };
+    mhListB(s.moods, userId).push(entry);
+    saveMhState();
+    return { ok: true, result: { entry } };
+  });
+
+  // ── [M] Correlation insights — which factors lift / lower mood ──────
+  registerLensAction("mental-health", "factor-correlations", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mhAid(ctx);
+    const minSamples = Math.max(2, Math.round(mhNum(params.minSamples, 3)));
+    const moods = (s.moods.get(userId) || []).filter((m) => Array.isArray(m.factors) && m.factors.length);
+    if (moods.length < minSamples) {
+      return { ok: true, result: { hasData: false, baseline: null, correlations: [] } };
+    }
+    const baseline = moods.reduce((a, m) => a + m.mood, 0) / moods.length;
+    const factorMeta = new Map((s.factors.get(userId) || []).map((f) => [f.id, f]));
+    const buckets = new Map();
+    for (const m of moods) {
+      for (const fid of m.factors) {
+        if (!buckets.has(fid)) buckets.set(fid, []);
+        buckets.get(fid).push(m.mood);
+      }
+    }
+    const correlations = [];
+    for (const [fid, scores] of buckets) {
+      if (scores.length < minSamples) continue;
+      const avg = scores.reduce((a, v) => a + v, 0) / scores.length;
+      const delta = Math.round((avg - baseline) * 100) / 100;
+      const meta = factorMeta.get(fid);
+      correlations.push({
+        factorId: fid,
+        name: meta ? meta.name : fid,
+        group: meta ? meta.group : "activity",
+        samples: scores.length,
+        avgMood: Math.round(avg * 100) / 100,
+        delta,
+        effect: delta > 0.25 ? "lifts" : delta < -0.25 ? "lowers" : "neutral",
+      });
+    }
+    correlations.sort((a, b) => b.delta - a.delta);
+    return {
+      ok: true,
+      result: {
+        hasData: true,
+        baseline: Math.round(baseline * 100) / 100,
+        entriesAnalyzed: moods.length,
+        correlations,
+      },
+    };
+  });
+
+  // ── [S] Mood calendar / year-in-pixels ─────────────────────────────
+  registerLensAction("mental-health", "mood-calendar", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const year = Math.round(mhNum(params.year, new Date().getUTCFullYear()));
+    if (year < 2000 || year > 2200) return { ok: false, error: "year out of range" };
+    const moods = (s.moods.get(mhAid(ctx)) || []).filter((m) => m.date.startsWith(String(year)));
+    // Average mood per day (a day can have multiple check-ins).
+    const byDay = new Map();
+    for (const m of moods) {
+      if (!byDay.has(m.date)) byDay.set(m.date, []);
+      byDay.get(m.date).push(m.mood);
+    }
+    const days = [];
+    for (const [date, scores] of byDay) {
+      days.push({ date, mood: Math.round((scores.reduce((a, v) => a + v, 0) / scores.length) * 10) / 10, count: scores.length });
+    }
+    days.sort((a, b) => a.date.localeCompare(b.date));
+    const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const d of days) dist[Math.round(d.mood)] = (dist[Math.round(d.mood)] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        year,
+        days,
+        loggedDays: days.length,
+        distribution: dist,
+        avgMood: days.length ? Math.round((days.reduce((a, d) => a + d.mood, 0) / days.length) * 100) / 100 : null,
+      },
+    };
+  });
+
+  // ── [S] Reminders for check-ins, breathing, gratitude ──────────────
+  const REMINDER_KINDS = ["mood", "breathing", "gratitude", "journal", "meditation"];
+  registerLensAction("mental-health", "reminder-set", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mhAid(ctx);
+    const list = mhListB(s.reminders, userId);
+    const kind = REMINDER_KINDS.includes(String(params.kind)) ? String(params.kind) : "mood";
+    const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(params.time)) ? String(params.time) : "20:00";
+    if (params.id) {
+      const r = list.find((x) => x.id === params.id);
+      if (!r) return { ok: false, error: "reminder not found" };
+      r.kind = kind; r.time = time;
+      if (params.enabled !== undefined) r.enabled = Boolean(params.enabled);
+      r.updatedAt = mhNow();
+      saveMhState();
+      return { ok: true, result: { reminder: r } };
+    }
+    const reminder = { id: mhId("rem"), kind, time, enabled: true, createdAt: mhNow() };
+    list.push(reminder);
+    saveMhState();
+    return { ok: true, result: { reminder } };
+  });
+
+  registerLensAction("mental-health", "reminder-list", (ctx, _a, _params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const reminders = [...(s.reminders.get(mhAid(ctx)) || [])].sort((a, b) => a.time.localeCompare(b.time));
+    return { ok: true, result: { reminders, count: reminders.length } };
+  });
+
+  registerLensAction("mental-health", "reminder-delete", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.reminders.get(mhAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "reminder not found" };
+    arr.splice(i, 1);
+    saveMhState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // Surface which enabled reminders are still outstanding today.
+  registerLensAction("mental-health", "reminder-due", (ctx, _a, _params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mhAid(ctx);
+    const today = mhDay(mhNow());
+    const reminders = (s.reminders.get(userId) || []).filter((r) => r.enabled);
+    const doneToday = {
+      mood: (s.moods.get(userId) || []).some((x) => x.date === today),
+      breathing: (s.breathing.get(userId) || []).some((x) => x.date === today),
+      gratitude: (s.gratitude.get(userId) || []).some((x) => x.date === today),
+      journal: false,
+      meditation: (s.sessions.get(userId) || []).some((x) => x.date === today),
+    };
+    const due = reminders
+      .filter((r) => !doneToday[r.kind])
+      .map((r) => ({ id: r.id, kind: r.kind, time: r.time }));
+    return { ok: true, result: { due, doneToday, total: reminders.length } };
+  });
+
+  // ── [M] Guided CBT/DBT worksheets — thought records, reframing ─────
+  const WORKSHEET_TEMPLATES = {
+    thought_record: {
+      title: "Thought Record (CBT)",
+      modality: "CBT",
+      fields: [
+        { key: "situation", label: "Situation — what happened?", type: "text" },
+        { key: "emotion", label: "Emotion(s) and intensity (0-100%)", type: "text" },
+        { key: "automaticThought", label: "Automatic / hot thought", type: "text" },
+        { key: "evidenceFor", label: "Evidence supporting the thought", type: "text" },
+        { key: "evidenceAgainst", label: "Evidence against the thought", type: "text" },
+        { key: "balancedThought", label: "Balanced / alternative thought", type: "text" },
+        { key: "outcomeEmotion", label: "Re-rate emotion intensity (0-100%)", type: "text" },
+      ],
+    },
+    cognitive_reframe: {
+      title: "Cognitive Reframing Worksheet (CBT)",
+      modality: "CBT",
+      fields: [
+        { key: "trigger", label: "Triggering event or thought", type: "text" },
+        { key: "distortion", label: "Cognitive distortion you notice", type: "text" },
+        { key: "reframe", label: "A kinder, more accurate reframe", type: "text" },
+        { key: "actionStep", label: "One small action you can take", type: "text" },
+      ],
+    },
+    dbt_check_facts: {
+      title: "Check the Facts (DBT)",
+      modality: "DBT",
+      fields: [
+        { key: "emotion", label: "Emotion you want to check", type: "text" },
+        { key: "promptingEvent", label: "Prompting event", type: "text" },
+        { key: "interpretation", label: "Your interpretation / assumptions", type: "text" },
+        { key: "factualAssessment", label: "What the facts actually support", type: "text" },
+        { key: "fitsFacts", label: "Does the emotion fit the facts? (yes/partly/no)", type: "text" },
+        { key: "skillToUse", label: "DBT skill to use next", type: "text" },
+      ],
+    },
+    dbt_opposite_action: {
+      title: "Opposite Action (DBT)",
+      modality: "DBT",
+      fields: [
+        { key: "emotion", label: "Emotion and its urge", type: "text" },
+        { key: "urge", label: "What the emotion makes you want to do", type: "text" },
+        { key: "justified", label: "Is acting on the urge effective right now?", type: "text" },
+        { key: "oppositeAction", label: "The opposite action to take, fully", type: "text" },
+        { key: "result", label: "How you felt afterward", type: "text" },
+      ],
+    },
+  };
+
+  registerLensAction("mental-health", "worksheet-templates", (_ctx, _a, _params = {}) => {
+    const templates = Object.entries(WORKSHEET_TEMPLATES).map(([id, t]) => ({
+      id, title: t.title, modality: t.modality, fieldCount: t.fields.length, fields: t.fields,
+    }));
+    return { ok: true, result: { templates, count: templates.length } };
+  });
+
+  registerLensAction("mental-health", "worksheet-save", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const tplId = String(params.templateId || "");
+    const tpl = WORKSHEET_TEMPLATES[tplId];
+    if (!tpl) return { ok: false, error: "unknown worksheet template" };
+    const responses = {};
+    const input = params.responses && typeof params.responses === "object" ? params.responses : {};
+    let answered = 0;
+    for (const f of tpl.fields) {
+      const v = mhClean(input[f.key], 1000);
+      responses[f.key] = v || null;
+      if (v) answered += 1;
+    }
+    if (!answered) return { ok: false, error: "at least one field must be filled in" };
+    const worksheet = {
+      id: mhId("wks"), templateId: tplId, title: tpl.title, modality: tpl.modality,
+      responses, answered, totalFields: tpl.fields.length,
+      date: mhDay(mhNow()), at: mhNow(),
+    };
+    mhListB(s.worksheets, mhAid(ctx)).push(worksheet);
+    saveMhState();
+    return { ok: true, result: { worksheet } };
+  });
+
+  registerLensAction("mental-health", "worksheet-list", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    let list = [...(s.worksheets.get(mhAid(ctx)) || [])];
+    if (params.templateId) list = list.filter((w) => w.templateId === String(params.templateId));
+    list.sort((a, b) => b.at.localeCompare(a.at));
+    return { ok: true, result: { worksheets: list, count: list.length } };
+  });
+
+  registerLensAction("mental-health", "worksheet-delete", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.worksheets.get(mhAid(ctx)) || [];
+    const i = arr.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "worksheet not found" };
+    arr.splice(i, 1);
+    saveMhState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── [M] Safety plan builder — personalized crisis coping plan ───────
+  // Modeled on the Stanley-Brown Safety Planning Intervention.
+  const SAFETY_SECTIONS = [
+    { key: "warningSigns", label: "Warning signs that a crisis may be developing" },
+    { key: "copingStrategies", label: "Internal coping strategies I can do on my own" },
+    { key: "distractions", label: "People and settings that provide distraction" },
+    { key: "supportContacts", label: "People I can ask for help" },
+    { key: "professionals", label: "Professionals or agencies I can contact" },
+    { key: "environmentSafety", label: "Making my environment safer" },
+    { key: "reasonsToLive", label: "Reasons worth living / what matters to me" },
+  ];
+
+  registerLensAction("mental-health", "safety-plan-template", (_ctx, _a, _params = {}) => {
+    return {
+      ok: true,
+      result: {
+        sections: SAFETY_SECTIONS,
+        crisisLine: { name: "988 Suicide & Crisis Lifeline", phone: "988", text: "988" },
+        note: "Based on the Stanley-Brown Safety Planning Intervention. Build this when you feel calm, so it is ready when you need it.",
+      },
+    };
+  });
+
+  registerLensAction("mental-health", "safety-plan-save", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const input = params.sections && typeof params.sections === "object" ? params.sections : {};
+    const sections = {};
+    let filled = 0;
+    for (const sec of SAFETY_SECTIONS) {
+      const raw = input[sec.key];
+      const items = Array.isArray(raw)
+        ? raw.map((x) => mhClean(x, 300)).filter(Boolean).slice(0, 12)
+        : (mhClean(raw, 300) ? [mhClean(raw, 300)] : []);
+      sections[sec.key] = items;
+      if (items.length) filled += 1;
+    }
+    if (!filled) return { ok: false, error: "fill in at least one section" };
+    const plan = {
+      sections,
+      sectionsFilled: filled,
+      totalSections: SAFETY_SECTIONS.length,
+      updatedAt: mhNow(),
+      createdAt: (s.safetyPlan.get(mhAid(ctx)) || {}).createdAt || mhNow(),
+    };
+    s.safetyPlan.set(mhAid(ctx), plan);
+    saveMhState();
+    return { ok: true, result: { plan } };
+  });
+
+  registerLensAction("mental-health", "safety-plan-get", (ctx, _a, _params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const plan = s.safetyPlan.get(mhAid(ctx)) || null;
+    return {
+      ok: true,
+      result: {
+        plan,
+        sections: SAFETY_SECTIONS,
+        hasPlan: !!plan,
+      },
+    };
+  });
+
+  // ── [S] Export / shareable report for a therapist ──────────────────
+  registerLensAction("mental-health", "therapist-report", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mhAid(ctx);
+    const days = Math.max(7, Math.min(365, Math.round(mhNum(params.days, 30))));
+    const cutoff = new Date(Date.now() - days * MH_DAY).toISOString().slice(0, 10);
+
+    const moods = (s.moods.get(userId) || []).filter((m) => m.date >= cutoff)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const sleep = (s.sleep.get(userId) || []).filter((x) => x.date >= cutoff);
+    const sessions = (s.sessions.get(userId) || []).filter((x) => x.date >= cutoff);
+    const worksheets = (s.worksheets.get(userId) || []).filter((w) => w.date >= cutoff);
+    const gratitude = (s.gratitude.get(userId) || []).filter((g) => g.date >= cutoff);
+
+    const moodAvg = moods.length
+      ? Math.round((moods.reduce((a, m) => a + m.mood, 0) / moods.length) * 100) / 100 : null;
+    const sleepAvg = sleep.length
+      ? Math.round((sleep.reduce((a, x) => a + x.hoursSlept, 0) / sleep.length) * 100) / 100 : null;
+
+    const summary = {
+      periodDays: days,
+      from: cutoff,
+      to: mhDay(mhNow()),
+      moodEntries: moods.length,
+      avgMood: moodAvg,
+      lowestMood: moods.length ? Math.min(...moods.map((m) => m.mood)) : null,
+      highestMood: moods.length ? Math.max(...moods.map((m) => m.mood)) : null,
+      sleepNights: sleep.length,
+      avgSleepHours: sleepAvg,
+      mindfulnessSessions: sessions.length,
+      mindfulnessMinutes: sessions.reduce((a, x) => a + x.durationMin, 0),
+      worksheetsCompleted: worksheets.length,
+      gratitudeEntries: gratitude.length,
+    };
+
+    // CSV of the day-level mood log — the part a clinician most often wants.
+    const header = "date,mood,energy,label,note";
+    const rows = moods.map((m) => [
+      m.date, m.mood, m.energy == null ? "" : m.energy,
+      m.label || "",
+      (m.note || "").replace(/"/g, '""'),
+    ].map((c) => (/[",\n]/.test(String(c)) ? `"${c}"` : String(c))).join(","));
+    const csv = [header, ...rows].join("\n");
+
+    const text = [
+      `Mental Health Self-Tracking Report`,
+      `Period: ${cutoff} to ${mhDay(mhNow())} (${days} days)`,
+      ``,
+      `Mood: ${summary.moodEntries} entries, average ${moodAvg ?? "n/a"}/5 (range ${summary.lowestMood ?? "-"}-${summary.highestMood ?? "-"})`,
+      `Sleep: ${summary.sleepNights} nights logged, average ${sleepAvg ?? "n/a"} hours`,
+      `Mindfulness: ${summary.mindfulnessSessions} sessions, ${summary.mindfulnessMinutes} minutes`,
+      `CBT/DBT worksheets completed: ${summary.worksheetsCompleted}`,
+      `Gratitude entries: ${summary.gratitudeEntries}`,
+      ``,
+      `Generated by Concord Mental Health lens for sharing with a care provider.`,
+      `This is self-reported tracking data, not a clinical assessment.`,
+    ].join("\n");
+
+    return {
+      ok: true,
+      result: { summary, csv, text, moodLog: moods, worksheets },
     };
   });
 }

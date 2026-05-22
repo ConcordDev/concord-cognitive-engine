@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConceptExplorer } from '@/components/commonsense/ConceptExplorer';
 import { CommonsenseActionPanel } from '@/components/commonsense/CommonsenseActionPanel';
+import { KnowledgeBaseWorkbench } from '@/components/commonsense/KnowledgeBaseWorkbench';
 import { PipingProvider } from '@/components/panel-polish';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -1003,6 +1004,12 @@ export default function CommonsenseLensPage() {
           </div>
         )}
       </div>
+
+      {/* Knowledge Base Workbench — graph, inference, contradiction,
+          taxonomy, confidence query, text import, provenance */}
+      <section className="mt-6 rounded-xl border border-amber-500/20 bg-zinc-950/40 p-4">
+        <KnowledgeBaseWorkbench />
+      </section>
 
       {/* Bespoke ConceptNet concept graph explorer with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

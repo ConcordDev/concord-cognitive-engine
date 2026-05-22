@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Activity, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -21,16 +21,16 @@ export function ShipmentEventsTimeline({ shipmentId }: { shipmentId?: string }) 
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { refresh(); }, [shipmentId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await lensRun({ domain: 'logistics', action: 'shipment-events', input: shipmentId ? { shipmentId } : {} });
       setEvents((res.data?.result?.events || []) as Event[]);
     } catch (e) { console.error('[Events] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [shipmentId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">

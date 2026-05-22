@@ -961,6 +961,356 @@ export default function registerNewsActions(registerLensAction) {
     return { ok: true, result: { topics: sortWeights(w.topics), sources: sortWeights(w.sources) } };
   });
 
+  // ─── Parity backlog — Ground News + Apple News surface ──────────────
+  // Bias-spectrum comparison, story clustering, audio mode, push alerts,
+  // offline sync, source transparency, digest scheduling.
+
+  function getNewsParityState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.newsParity) STATE.newsParity = {};
+    const s = STATE.newsParity;
+    for (const k of ["alertSubs", "alertFeed", "offline", "digestSchedule"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  // Bias lexicon for left/center/right placement based on loaded language.
+  const NW_LEFT_WORDS = new Set([
+    "progressive", "reform", "equity", "climate", "marginalized", "rights",
+    "inclusive", "solidarity", "regulation", "welfare", "diversity",
+  ]);
+  const NW_RIGHT_WORDS = new Set([
+    "patriot", "freedom", "tradition", "liberty", "border", "deregulation",
+    "taxpayer", "faith", "sovereignty", "enforcement", "values",
+  ]);
+  function nwBiasLean(text) {
+    const words = String(text || "").toLowerCase().split(/\s+/).map((w) => w.replace(/[^a-z]/g, ""));
+    let l = 0, rt = 0;
+    for (const w of words) { if (NW_LEFT_WORDS.has(w)) l++; if (NW_RIGHT_WORDS.has(w)) rt++; }
+    const total = l + rt;
+    if (total === 0) return { lean: "center", score: 0, left: l, right: rt };
+    const score = (rt - l) / total; // -1 left .. +1 right
+    return {
+      lean: score < -0.25 ? "left" : score > 0.25 ? "right" : "center",
+      score: Math.round(score * 1000) / 1000,
+      left: l, right: rt,
+    };
+  }
+
+  // ── Bias-spectrum comparison ────────────────────────────────────────
+  // Place every article on the same story across left/center/right.
+  registerLensAction("news", "bias-spectrum", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const topic = nwclean(params.topic, 60).toLowerCase();
+    const q = nwclean(params.query, 80).toLowerCase();
+    let arts = [...s.articles.values()];
+    if (topic) arts = arts.filter((a) => a.topic === topic);
+    if (q) {arts = arts.filter((a) =>
+      a.title.toLowerCase().includes(q) || (a.summary || "").toLowerCase().includes(q));}
+    if (arts.length === 0) {
+      return { ok: true, result: { columns: { left: [], center: [], right: [], count: 0 } } };
+    }
+    const cols = { left: [], center: [], right: [] };
+    for (const a of arts) {
+      const b = nwBiasLean(`${a.title} ${a.summary || ""}`);
+      cols[b.lean].push({ ...articleView(s, userId, a), biasLean: b.lean, biasScore: b.score });
+    }
+    for (const k of ["left", "center", "right"]) {
+      cols[k].sort((x, y) => String(y.publishedAt).localeCompare(String(x.publishedAt)));
+    }
+    const total = arts.length;
+    return {
+      ok: true,
+      result: {
+        topic: topic || q || "all",
+        columns: cols,
+        count: total,
+        coverage: {
+          left: Math.round((cols.left.length / total) * 100),
+          center: Math.round((cols.center.length / total) * 100),
+          right: Math.round((cols.right.length / total) * 100),
+        },
+        blindspot:
+          cols.left.length === 0 ? "left" :
+          cols.right.length === 0 ? "right" :
+          cols.center.length === 0 ? "center" : null,
+      },
+    };
+  });
+
+  // ── Story clustering ────────────────────────────────────────────────
+  // Group articles covering the same event into one story by title/summary
+  // token overlap (Jaccard >= threshold).
+  registerLensAction("news", "story-clusters", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const threshold = Math.min(0.9, Math.max(0.1, Number(params.threshold) || 0.28));
+    const STOP = new Set(["the", "a", "an", "is", "are", "was", "were", "to", "of", "in",
+      "for", "on", "with", "at", "by", "from", "as", "and", "but", "or", "this", "that"]);
+    const toks = (t) => new Set(String(t || "").toLowerCase().replace(/[^a-z\s]/g, " ")
+      .split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w)));
+    const arts = [...s.articles.values()].map((a) => ({
+      art: a, tk: toks(`${a.title} ${a.summary || ""}`),
+    }));
+    const jac = (x, y) => {
+      if (x.size === 0 || y.size === 0) return 0;
+      let inter = 0;
+      for (const t of x) if (y.has(t)) inter++;
+      return inter / (x.size + y.size - inter);
+    };
+    const used = new Set();
+    const clusters = [];
+    for (let i = 0; i < arts.length; i++) {
+      if (used.has(i)) continue;
+      const members = [i]; used.add(i);
+      for (let j = i + 1; j < arts.length; j++) {
+        if (used.has(j)) continue;
+        if (jac(arts[i].tk, arts[j].tk) >= threshold) { members.push(j); used.add(j); }
+      }
+      const memArts = members.map((m) => arts[m].art);
+      memArts.sort((x, y) => String(y.publishedAt).localeCompare(String(x.publishedAt)));
+      const sources = [...new Set(memArts.map((m) => m.source))];
+      const leans = memArts.map((m) => nwBiasLean(`${m.title} ${m.summary || ""}`).lean);
+      clusters.push({
+        storyId: `story_${memArts[0].id}`,
+        headline: memArts[0].title,
+        articleCount: memArts.length,
+        sourceCount: sources.length,
+        sources,
+        latest: memArts[0].publishedAt,
+        spread: {
+          left: leans.filter((l) => l === "left").length,
+          center: leans.filter((l) => l === "center").length,
+          right: leans.filter((l) => l === "right").length,
+        },
+        articles: memArts.map((m) => articleView(s, userId, m)),
+      });
+    }
+    clusters.sort((a, b) => b.articleCount - a.articleCount ||
+      String(b.latest).localeCompare(String(a.latest)));
+    return {
+      ok: true,
+      result: {
+        clusters,
+        storyCount: clusters.length,
+        multiSource: clusters.filter((c) => c.sourceCount > 1).length,
+      },
+    };
+  });
+
+  // ── Audio / read-aloud mode ─────────────────────────────────────────
+  // Returns a clean, sentence-segmented script + estimated duration so the
+  // client can drive the Web Speech API.
+  registerLensAction("news", "article-audio", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = s.articles.get(String(params.id));
+    if (!art) return { ok: false, error: "article not found" };
+    const body = [art.title, art.summary].filter(Boolean).join(". ");
+    const segments = body.split(/(?<=[.!?])\s+/).map((t) => t.trim()).filter(Boolean);
+    const wordCount = body.split(/\s+/).filter(Boolean).length;
+    const estSeconds = Math.max(3, Math.round((wordCount / 165) * 60)); // ~165 wpm
+    return {
+      ok: true,
+      result: {
+        articleId: art.id,
+        title: art.title,
+        source: art.source,
+        segments,
+        wordCount,
+        estimatedSeconds: estSeconds,
+      },
+    };
+  });
+
+  // ── Push notifications — breaking + followed-topic alerts ───────────
+  registerLensAction("news", "alert-subscribe", (ctx, _a, params = {}) => {
+    const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const kind = ["breaking", "topic", "channel"].includes(String(params.kind))
+      ? String(params.kind) : null;
+    if (!kind) return { ok: false, error: "kind must be 'breaking', 'topic' or 'channel'" };
+    const target = kind === "breaking" ? "*" : nwclean(params.target, 80).toLowerCase();
+    if (kind !== "breaking" && !target) return { ok: false, error: "target required" };
+    const list = nwlistB(p.alertSubs, userId);
+    const existing = list.find((x) => x.kind === kind && x.target === target);
+    if (existing) {
+      list.splice(list.indexOf(existing), 1);
+      saveNewsState();
+      return { ok: true, result: { subscribed: false, kind, target } };
+    }
+    const sub = { id: nwid("alsub"), kind, target, createdAt: nwnow() };
+    list.push(sub);
+    saveNewsState();
+    return { ok: true, result: { subscribed: true, subscription: sub } };
+  });
+
+  registerLensAction("news", "alert-list", (ctx, _a, _params = {}) => {
+    const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
+    const subs = p.alertSubs.get(nwaid(ctx)) || [];
+    return { ok: true, result: { subscriptions: subs, count: subs.length } };
+  });
+
+  // Generate alerts by matching newly-added articles against subscriptions.
+  registerLensAction("news", "alert-feed", (ctx, _a, params = {}) => {
+    const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const subs = p.alertSubs.get(userId) || [];
+    const delivered = nwlistB(p.alertFeed, userId);
+    const deliveredIds = new Set(delivered.map((d) => d.articleId + ":" + d.subId));
+    if (subs.length > 0) {
+      for (const art of s.articles.values()) {
+        for (const sub of subs) {
+          const match =
+            sub.kind === "breaking" ||
+            (sub.kind === "topic" && art.topic === sub.target) ||
+            (sub.kind === "channel" && art.source.toLowerCase() === sub.target);
+          if (!match) continue;
+          const key = art.id + ":" + sub.id;
+          if (deliveredIds.has(key)) continue;
+          deliveredIds.add(key);
+          delivered.push({
+            id: nwid("alert"), articleId: art.id, subId: sub.id,
+            kind: sub.kind, title: art.title, source: art.source,
+            topic: art.topic, deliveredAt: nwnow(), read: false,
+          });
+        }
+      }
+      saveNewsState();
+    }
+    if (params.markRead === true) {
+      for (const d of delivered) d.read = true;
+      saveNewsState();
+    }
+    const sorted = [...delivered].sort((a, b) => String(b.deliveredAt).localeCompare(String(a.deliveredAt)));
+    return {
+      ok: true,
+      result: { alerts: sorted, count: sorted.length, unread: sorted.filter((a) => !a.read).length },
+    };
+  });
+
+  // ── Offline reading / save-for-later sync ───────────────────────────
+  registerLensAction("news", "offline-sync", (ctx, _a, params = {}) => {
+    const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const art = s.articles.get(String(params.id));
+    if (!art) return { ok: false, error: "article not found" };
+    const userId = nwaid(ctx);
+    const list = nwlistB(p.offline, userId);
+    const existing = list.find((x) => x.articleId === art.id);
+    if (existing) {
+      list.splice(list.indexOf(existing), 1);
+      saveNewsState();
+      return { ok: true, result: { synced: false, articleId: art.id } };
+    }
+    list.push({
+      articleId: art.id,
+      snapshot: { title: art.title, summary: art.summary, source: art.source,
+        topic: art.topic, url: art.url, publishedAt: art.publishedAt },
+      syncedAt: nwnow(),
+    });
+    saveNewsState();
+    return { ok: true, result: { synced: true, articleId: art.id } };
+  });
+
+  registerLensAction("news", "offline-list", (ctx, _a, _params = {}) => {
+    const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
+    const list = (p.offline.get(nwaid(ctx)) || [])
+      .slice().sort((a, b) => String(b.syncedAt).localeCompare(String(a.syncedAt)));
+    return {
+      ok: true,
+      result: {
+        articles: list.map((x) => ({ articleId: x.articleId, ...x.snapshot, syncedAt: x.syncedAt })),
+        count: list.length,
+      },
+    };
+  });
+
+  // ── Source transparency — ownership, factuality, blindspot ──────────
+  registerLensAction("news", "source-profile", (ctx, _a, params = {}) => {
+    const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const source = nwclean(params.source, 80);
+    if (!source) return { ok: false, error: "source required" };
+    const arts = [...s.articles.values()].filter((a) => a.source === source);
+    if (arts.length === 0) return { ok: false, error: "no articles from this source" };
+    const leans = arts.map((a) => nwBiasLean(`${a.title} ${a.summary || ""}`));
+    const avgScore = leans.reduce((acc, l) => acc + l.score, 0) / leans.length;
+    // Factuality proxy: hedge-word presence + summary completeness.
+    const hedge = /\b(allegedly|reportedly|claimed|unverified|disputed|sources say)\b/i;
+    let withSummary = 0, hedged = 0;
+    for (const a of arts) {
+      if (a.summary && a.summary.length > 40) withSummary++;
+      if (hedge.test(`${a.title} ${a.summary || ""}`)) hedged++;
+    }
+    const summaryRate = withSummary / arts.length;
+    const hedgeRate = hedged / arts.length;
+    const factuality = Math.round(
+      Math.max(0, Math.min(1, 0.5 + summaryRate * 0.4 - hedgeRate * 0.3)) * 100,
+    );
+    const topics = {};
+    for (const a of arts) topics[a.topic] = (topics[a.topic] || 0) + 1;
+    return {
+      ok: true,
+      result: {
+        source,
+        articleCount: arts.length,
+        contributors: [...new Set(arts.map((a) => a.addedBy))].length,
+        biasLean: avgScore < -0.25 ? "left" : avgScore > 0.25 ? "right" : "center",
+        biasScore: Math.round(avgScore * 1000) / 1000,
+        factualityRating: factuality,
+        factualityLabel: factuality >= 75 ? "high" : factuality >= 50 ? "mixed" : "low",
+        transparency: {
+          summaryRate: Math.round(summaryRate * 100),
+          hedgeRate: Math.round(hedgeRate * 100),
+        },
+        topicSpread: Object.entries(topics)
+          .map(([topic, count]) => ({ topic, count }))
+          .sort((a, b) => b.count - a.count),
+      },
+    };
+  });
+
+  // ── Personalized digest scheduling ──────────────────────────────────
+  registerLensAction("news", "digest-schedule-set", (ctx, _a, params = {}) => {
+    const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
+    const userId = nwaid(ctx);
+    const cadence = ["daily", "weekdays", "weekly", "off"].includes(String(params.cadence))
+      ? String(params.cadence) : null;
+    if (!cadence) return { ok: false, error: "cadence must be daily, weekdays, weekly or off" };
+    const hour = Math.max(0, Math.min(23, Math.round(Number(params.hour))));
+    if (!Number.isFinite(hour)) return { ok: false, error: "hour must be 0-23" };
+    const schedule = {
+      cadence, hour,
+      topicsOnly: params.topicsOnly === true,
+      updatedAt: nwnow(),
+    };
+    p.digestSchedule.set(userId, schedule);
+    saveNewsState();
+    return { ok: true, result: { schedule } };
+  });
+
+  registerLensAction("news", "digest-schedule-get", (ctx, _a, _params = {}) => {
+    const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
+    const schedule = p.digestSchedule.get(nwaid(ctx)) || null;
+    let nextDelivery = null;
+    if (schedule && schedule.cadence !== "off") {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(schedule.hour, 0, 0, 0);
+      if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+      if (schedule.cadence === "weekdays") {
+        while (next.getDay() === 0 || next.getDay() === 6) next.setDate(next.getDate() + 1);
+      } else if (schedule.cadence === "weekly") {
+        while (next.getDay() !== 1) next.setDate(next.getDate() + 1); // Monday
+      }
+      nextDelivery = next.toISOString();
+    }
+    return { ok: true, result: { schedule, nextDelivery } };
+  });
+
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("news", "news-dashboard", (ctx, _a, _params = {}) => {
     const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };

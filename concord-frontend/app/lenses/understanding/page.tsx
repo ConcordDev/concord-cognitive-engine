@@ -32,12 +32,14 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { NotesWorkbench } from '@/components/understanding/NotesWorkbench';
+import { KnowledgeGraph } from '@/components/understanding/KnowledgeGraph';
 import {
   Lightbulb, Search, Loader2, Plus, Sparkles, GitBranch, TrendingUp,
-  RefreshCw, X, ChevronRight, ShieldCheck, AlertCircle, Layers,
-  Clock, BarChart3, Zap, BookOpen,
+  RefreshCw, X, ChevronRight, AlertCircle, Layers,
+  Clock, BarChart3, Zap, BookOpen, FileText, Network,
 } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -68,6 +70,13 @@ interface EvolutionStats {
   averageConfidence?: number;
 }
 
+interface NotesOverview {
+  noteCount?: number;
+  manualLinkCount?: number;
+  wikiLinkCount?: number;
+  tagCount?: number;
+}
+
 interface PromotionEval {
   ok: boolean;
   decision?: 'promote' | 'reject' | 'pending';
@@ -91,7 +100,7 @@ interface LineageNode {
   composedAt?: string | number;
 }
 
-type Tab = 'browse' | 'compose' | 'evolution' | 'lineage';
+type Tab = 'notes' | 'graph' | 'browse' | 'compose' | 'evolution' | 'lineage';
 
 // ── Page ────────────────────────────────────────────────────────────
 
@@ -105,10 +114,14 @@ async function macro<T = unknown>(
 }
 
 export default function UnderstandingPage() {
-  const [tab, setTab] = useState<Tab>('browse');
+  const [tab, setTab] = useState<Tab>('notes');
+  // When the graph asks to open a note, the Notes tab focuses it.
+  const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
 
   useLensCommand(
     [
+      { id: 'tab-notes',     keys: 'n', description: 'Notes',     category: 'navigation', action: () => setTab('notes') },
+      { id: 'tab-graph',     keys: 'g', description: 'Graph',     category: 'navigation', action: () => setTab('graph') },
       { id: 'tab-browse',    keys: 'b', description: 'Browse',    category: 'navigation', action: () => setTab('browse') },
       { id: 'tab-compose',   keys: 'c', description: 'Compose',   category: 'navigation', action: () => setTab('compose') },
       { id: 'tab-evolution', keys: 'e', description: 'Evolution', category: 'navigation', action: () => setTab('evolution') },
@@ -119,6 +132,7 @@ export default function UnderstandingPage() {
 
   const [subjectKinds, setSubjectKinds] = useState<SubjectKind[]>([]);
   const [stats, setStats] = useState<EvolutionStats | null>(null);
+  const [notesOverview, setNotesOverview] = useState<NotesOverview | null>(null);
   const [headerErr, setHeaderErr] = useState<string | null>(null);
 
   const refreshHeader = useCallback(async () => {
@@ -130,12 +144,19 @@ export default function UnderstandingPage() {
       ]);
       if (k?.kinds) setSubjectKinds(k.kinds);
       if (s?.stats) setStats(s.stats);
+      const ov = await lensRun<NotesOverview>('understanding', 'overview', {}).catch(() => null);
+      if (ov?.data?.ok && ov.data.result) setNotesOverview(ov.data.result);
     } catch (e) {
       setHeaderErr(e instanceof Error ? e.message : 'header refresh failed');
     }
   }, []);
 
   useEffect(() => { refreshHeader(); }, [refreshHeader]);
+
+  const openNoteInWorkbench = useCallback((id: string) => {
+    setPendingNoteId(id);
+    setTab('notes');
+  }, []);
 
   return (
     <LensShell lensId="understanding" asMain={false}>
@@ -161,17 +182,21 @@ export default function UnderstandingPage() {
           </button>
         </header>
 
-        <StatsStrip stats={stats} subjectKindsCount={subjectKinds.length} />
+        <StatsStrip stats={stats} subjectKindsCount={subjectKinds.length} notesOverview={notesOverview} />
 
         {headerErr && <p className="text-xs text-red-400 mb-3">{headerErr}</p>}
 
         <nav className="flex gap-2 mt-5 mb-5 border-b border-white/10 pb-3 overflow-x-auto">
+          <TabButton current={tab} value="notes"     label="Notes"     onClick={() => setTab('notes')}     icon={<FileText  className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="graph"     label="Graph"     onClick={() => setTab('graph')}     icon={<Network   className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="browse"    label="Browse"    onClick={() => setTab('browse')}    icon={<Search    className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="compose"   label="Compose"   onClick={() => setTab('compose')}   icon={<Plus      className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="evolution" label="Evolution" onClick={() => setTab('evolution')} icon={<TrendingUp className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="lineage"   label="Lineage"   onClick={() => setTab('lineage')}   icon={<GitBranch className="w-3.5 h-3.5" />} />
         </nav>
 
+        {tab === 'notes'     && <NotesWorkbench key={pendingNoteId ?? 'workbench'} initialNoteId={pendingNoteId} onChanged={refreshHeader} />}
+        {tab === 'graph'     && <KnowledgeGraph onOpenNote={openNoteInWorkbench} />}
         {tab === 'browse'    && <BrowseTab subjectKinds={subjectKinds} />}
         {tab === 'compose'   && <ComposeTab subjectKinds={subjectKinds} onComposed={refreshHeader} />}
         {tab === 'evolution' && <EvolutionTab onChanged={refreshHeader} />}
@@ -190,16 +215,19 @@ export default function UnderstandingPage() {
 // ── Stats strip ─────────────────────────────────────────────────────
 
 function StatsStrip({
-  stats, subjectKindsCount,
-}: { stats: EvolutionStats | null; subjectKindsCount: number }) {
+  stats, subjectKindsCount, notesOverview,
+}: { stats: EvolutionStats | null; subjectKindsCount: number; notesOverview: NotesOverview | null }) {
+  const linkTotal = notesOverview
+    ? (notesOverview.manualLinkCount ?? 0) + (notesOverview.wikiLinkCount ?? 0)
+    : null;
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-      <StatCard label="Total" value={String(stats?.totalUnderstandings ?? '—')} icon={<Lightbulb className="w-3.5 h-3.5 text-violet-300" />} />
+      <StatCard label="Notes" value={String(notesOverview?.noteCount ?? '—')} icon={<FileText className="w-3.5 h-3.5 text-violet-300" />} />
+      <StatCard label="Links" value={linkTotal != null ? String(linkTotal) : '—'} icon={<Network className="w-3.5 h-3.5 text-cyan-300" />} />
+      <StatCard label="Tags" value={String(notesOverview?.tagCount ?? '—')} icon={<BookOpen className="w-3.5 h-3.5 text-rose-300" />} />
+      <StatCard label="Composed" value={String(stats?.totalUnderstandings ?? '—')} icon={<Lightbulb className="w-3.5 h-3.5 text-amber-300" />} />
       <StatCard label="Promoted" value={String(stats?.promotedCount ?? '—')} icon={<TrendingUp className="w-3.5 h-3.5 text-emerald-300" />} />
-      <StatCard label="Consolidated" value={String(stats?.consolidatedCount ?? '—')} icon={<Layers className="w-3.5 h-3.5 text-amber-300" />} />
-      <StatCard label="Pending" value={String(stats?.pendingPromotion ?? '—')} icon={<Clock className="w-3.5 h-3.5 text-cyan-300" />} />
-      <StatCard label="Avg conf." value={stats?.averageConfidence != null ? stats.averageConfidence.toFixed(2) : '—'} icon={<ShieldCheck className="w-3.5 h-3.5 text-blue-300" />} />
-      <StatCard label="Subject kinds" value={String(subjectKindsCount)} icon={<BookOpen className="w-3.5 h-3.5 text-rose-300" />} />
+      <StatCard label="Subject kinds" value={String(subjectKindsCount)} icon={<Layers className="w-3.5 h-3.5 text-blue-300" />} />
     </div>
   );
 }

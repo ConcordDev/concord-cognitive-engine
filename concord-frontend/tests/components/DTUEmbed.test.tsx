@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('lucide-react', async (importOriginal) => {
   const React = await import('react');
@@ -31,15 +33,23 @@ const dtu: DTUEmbedRecord = {
   royaltyRate: 0.21,
 };
 
+// DTUEmbed mounts ReactionBar, which calls useQueryClient() — wrap renders
+// in a QueryClientProvider so the hook resolves (the real app provides one
+// at the root).
+function renderDTU(ui: React.ReactElement) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
+
 describe('DTUEmbed', () => {
   it('renders the title in card mode', () => {
-    render(<DTUEmbed dtu={dtu} mode="card" />);
+    renderDTU(<DTUEmbed dtu={dtu} mode="card" />);
     expect(screen.getByText('Reasoning trace v1')).toBeInTheDocument();
   });
 
   it('renders compact mode as a single-line button', () => {
     const onOpen = vi.fn();
-    render(<DTUEmbed dtu={dtu} mode="compact" onOpen={onOpen} />);
+    renderDTU(<DTUEmbed dtu={dtu} mode="compact" onOpen={onOpen} />);
     const btn = screen.getByLabelText(/Open DTU: Reasoning trace v1/);
     expect(btn).toBeInTheDocument();
     fireEvent.click(btn);
@@ -47,7 +57,7 @@ describe('DTUEmbed', () => {
   });
 
   it('shows the creator displayName', () => {
-    render(<DTUEmbed dtu={dtu} mode="full" />);
+    renderDTU(<DTUEmbed dtu={dtu} mode="full" />);
     expect(screen.getByText('Aria')).toBeInTheDocument();
   });
 
@@ -59,12 +69,12 @@ describe('DTUEmbed', () => {
         { id: 'dtu-3', title: 'Sub-trace B' },
       ],
     };
-    render(<DTUEmbed dtu={withKids} mode="full" />);
+    renderDTU(<DTUEmbed dtu={withKids} mode="full" />);
     expect(screen.getByText('Reasoning trace v1')).toBeInTheDocument();
   });
 
   it('falls back to a truncated id when title is missing', () => {
-    render(<DTUEmbed dtu={{ ...dtu, title: undefined, id: 'longgggggg-id' }} mode="compact" />);
+    renderDTU(<DTUEmbed dtu={{ ...dtu, title: undefined, id: 'longgggggg-id' }} mode="compact" />);
     expect(screen.getByText('longgggggg-id'.slice(0, 16))).toBeInTheDocument();
   });
 });

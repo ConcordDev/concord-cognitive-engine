@@ -9,6 +9,9 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivSearch } from '@/components/paper/ArxivSearch';
+import { PaperLibrary } from '@/components/paper/PaperLibrary';
+import { PaperWorkbench } from '@/components/paper/PaperWorkbench';
+import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { OpenLibraryPanel } from '@/components/paper/OpenLibraryPanel';
 import { CrossRefPanel } from '@/components/research/CrossRefPanel';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
@@ -1129,6 +1132,15 @@ export default function PaperLensPage() {
     {/* Bespoke arXiv search with Save-as-DTU */}
     <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
       <ArxivSearch />
+    </section>
+    <section className="mt-4 mx-4">
+      <LensFeedButton domain="paper" />
+      <PaperLibrary />
+    </section>
+    {/* Librarian essentials — PDF reader, annotation, DOI capture,
+        Semantic Scholar enrichment, dedupe, group libraries, alerts. */}
+    <section className="mt-4 mx-4">
+      <PaperWorkbench />
     </section>
     {/* Phase 4 — REAL Open Library book search. */}
     <section className="mt-4 mx-4">

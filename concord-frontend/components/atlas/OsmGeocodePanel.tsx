@@ -15,7 +15,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Search, Loader2, MapPin, ExternalLink, AlertTriangle } from 'lucide-react';
-import { api, lensRun } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface GeocodeResult {

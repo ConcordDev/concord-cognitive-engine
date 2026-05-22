@@ -199,6 +199,7 @@ export function AstronomyActionPanel() {
           <div className="rounded-md border border-violet-500/30 bg-violet-500/5 p-2.5 md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-violet-300 font-semibold">APOD · {apodResult.date}</div>
             <div className="text-[12px] font-semibold text-violet-200">{apodResult.title}</div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- NASA APOD serves arbitrary external image hosts; next/image domain allowlist is impractical here */}
             {apodResult.mediaType === 'image' && apodResult.url && <img src={apodResult.url} alt={apodResult.title} className="mt-1.5 rounded max-h-64 object-contain" />}
             <div className="text-[10px] text-zinc-400 mt-1 line-clamp-3">{apodResult.explanation}</div>
             {apodResult.copyright && <div className="text-[10px] text-zinc-500 italic mt-0.5">© {apodResult.copyright}</div>}

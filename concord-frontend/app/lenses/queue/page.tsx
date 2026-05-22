@@ -10,636 +10,627 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QueueRepos } from '@/components/queue/QueueRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { useState } from 'react';
-import { Inbox, Play, Trash2, Clock, Zap, Globe, FileText, Layers, ChevronDown, Activity, Bot, Coins, CheckCircle2, AlertCircle, RefreshCw, BarChart3, ListOrdered, Timer, X } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useCallback, useState } from 'react';
+import {
+  Inbox, Play, Clock, Zap, Layers, ChevronDown, RefreshCw,
+  BarChart3, ListOrdered, Timer, AlertTriangle, Pause, PlayCircle,
+  Trash2, RotateCcw, Server, CalendarClock, ShieldAlert,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-import { ErrorState } from '@/components/common/EmptyState';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { ChartKit } from '@/components/viz';
+import { JobList, type QueueJob } from '@/components/queue/JobList';
+import { JobDetailDrawer, type QueueEvent } from '@/components/queue/JobDetailDrawer';
+import { EnqueueForm, type EnqueueInput } from '@/components/queue/EnqueueForm';
 
-interface QueueItem {
-  id: string;
-  type: string;
-  content: string;
-  priority: 'high' | 'normal' | 'low';
-  createdAt: string;
-  status: 'pending' | 'processing' | 'completed';
+interface QueueRow {
+  name: string;
+  paused: boolean;
+  concurrency: number;
+  depth: number;
+  counts: {
+    pending: number; delayed: number; active: number;
+    completed: number; failed: number; dead: number;
+  };
 }
+interface QueueWorker {
+  id: string; name: string; queue: string; status: string;
+  currentJob: string | null; startedAt: string; lastSeen: string; processed: number;
+}
+interface ThroughputSlot { slot: string; processed: number; failed: number; latencyMs: number }
+interface QueueAlert { level: string; message: string; jobs?: string[] }
+interface QueueMetrics {
+  totals: { pending: number; delayed: number; active: number; completed: number; failed: number; dead: number; depth: number; all: number };
+  byPriority: { high: number; normal: number; low: number };
+  throughput: { series: ThroughputSlot[]; completed24h: number; failed24h: number; ratePerMin: number; avgLatencyMs: number };
+  alerts: QueueAlert[];
+}
+
+type TabKey = 'jobs' | 'scheduled' | 'dead' | 'workers';
 
 export default function QueueLensPage() {
   useLensNav('queue');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('queue');
   const queryClient = useQueryClient();
-  const [selectedQueue, setSelectedQueue] = useState<'ingest' | 'autocrawl' | 'terminal'>('ingest');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [tab, setTab] = useState<TabKey>('jobs');
+  const [queueFilter, setQueueFilter] = useState<string>('');
+  const [showFeatures, setShowFeatures] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<{ job: QueueJob; history: QueueEvent[] } | null>(null);
 
-  // Sidekiq / Bull / Celery idiom: i/a/t jumps between queues.
-  useLensCommand(
-    [
-      { id: 'queue-ingest',    keys: 'i', description: 'Ingest queue',    category: 'navigation', action: () => setSelectedQueue('ingest') },
-      { id: 'queue-autocrawl', keys: 'a', description: 'Autocrawl queue', category: 'navigation', action: () => setSelectedQueue('autocrawl') },
-      { id: 'queue-terminal',  keys: 't', description: 'Terminal queue',  category: 'navigation', action: () => setSelectedQueue('terminal') },
-    ],
-    { lensId: 'queue' }
-  );
+  const toast = (type: 'success' | 'error', message: string) =>
+    useUIStore.getState().addToast({ type, message });
 
-  const { items: queueArtifacts } = useLensData('queue', 'queue', { seed: [] });
-  const runAction = useRunArtifact('queue');
-  const [queueActionResult, setQueueActionResult] = useState<Record<string, unknown> | null>(null);
-  const [queueActiveAction, setQueueActiveAction] = useState<string | null>(null);
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['queue'] });
+  }, [queryClient]);
 
-  const handleQueueAction = async (action: string) => {
-    const id = queueArtifacts[0]?.id;
-    if (!id) return;
-    setQueueActiveAction(action);
-    try {
-      const res = await runAction.mutateAsync({ id, action });
-      if (res.ok === false) { setQueueActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setQueueActionResult({ action, ...(res.result as Record<string, unknown>) }); }
-    } catch (err) { console.error('Queue action failed:', err); }
-    finally { setQueueActiveAction(null); }
-  };
-
-  // Backend: GET /api/status for queue counts
-  const { data: status, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
-    queryKey: ['status'],
-    queryFn: () => api.get('/api/status').then((r) => r.data),
+  // ── Live data: queues, jobs, metrics, workers, events ──────────────────
+  const queuesQ = useQuery({
+    queryKey: ['queue', 'queues'],
+    queryFn: async () => (await lensRun('queue', 'queues', {})).data.result as { queues: QueueRow[] } | null,
     refetchInterval: 5000,
   });
+  const queues: QueueRow[] = queuesQ.data?.queues || [];
+  const queueNames = queues.map((q) => q.name);
 
-  // Backend: GET /api/jobs/status
-  const { data: jobs, isError: isError2, error: error2, refetch: refetch2,} = useQuery({
-    queryKey: ['jobs-status'],
-    queryFn: () => api.get('/api/jobs/status').then((r) => r.data),
+  const jobsQ = useQuery({
+    queryKey: ['queue', 'list', queueFilter],
+    queryFn: async () =>
+      (await lensRun('queue', 'list', queueFilter ? { queue: queueFilter } : {})).data
+        .result as { jobs: QueueJob[]; total: number } | null,
+    refetchInterval: 4000,
   });
+  const jobs: QueueJob[] = jobsQ.data?.jobs || [];
 
-  const queueItems: Record<string, QueueItem[]> = {
-    ingest: [],
-    autocrawl: [],
-    terminal: [],
+  const scheduledQ = useQuery({
+    queryKey: ['queue', 'scheduled'],
+    queryFn: async () => (await lensRun('queue', 'scheduled', {})).data.result as { jobs: QueueJob[]; total: number } | null,
+    refetchInterval: 6000,
+    enabled: tab === 'scheduled',
+  });
+  const deadQ = useQuery({
+    queryKey: ['queue', 'dead-letter'],
+    queryFn: async () => (await lensRun('queue', 'dead-letter', {})).data.result as { jobs: QueueJob[]; total: number } | null,
+    refetchInterval: 6000,
+    enabled: tab === 'dead',
+  });
+  const workersQ = useQuery({
+    queryKey: ['queue', 'workers'],
+    queryFn: async () => (await lensRun('queue', 'workers', { action: 'list' })).data.result as { workers: QueueWorker[]; total: number } | null,
+    refetchInterval: 5000,
+  });
+  const workers: QueueWorker[] = workersQ.data?.workers || [];
+
+  const metricsQ = useQuery({
+    queryKey: ['queue', 'metrics'],
+    queryFn: async () => (await lensRun('queue', 'metrics', {})).data.result as QueueMetrics | null,
+    refetchInterval: 5000,
+  });
+  const metrics = metricsQ.data;
+
+  const eventsQ = useQuery({
+    queryKey: ['queue', 'events'],
+    queryFn: async () => (await lensRun('queue', 'events', { limit: 20 })).data.result as { events: QueueEvent[] } | null,
+    refetchInterval: 5000,
+  });
+  const events: QueueEvent[] = eventsQ.data?.events || [];
+
+  // ── Mutating actions (every one wired to a real macro) ─────────────────
+  const runAction = async (
+    action: string,
+    input: Record<string, unknown>,
+    okMsg: string,
+    jobId?: string,
+  ) => {
+    if (jobId) setBusyId(jobId);
+    try {
+      const res = await lensRun('queue', action, input);
+      if (res.data.ok === false) {
+        toast('error', res.data.error || `${action} failed`);
+        return null;
+      }
+      toast('success', okMsg);
+      invalidate();
+      return res.data.result;
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : `${action} failed`);
+      return null;
+    } finally {
+      if (jobId) setBusyId(null);
+    }
   };
 
-  const processItem = useMutation({
-    mutationFn: async (_itemId: string) => {
-      // Would call backend to process queue item
-      return { ok: true };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['status'] });
-    },
-    onError: (err) => console.error('processItem failed:', err instanceof Error ? err.message : err),
-  });
+  const handleEnqueue = (input: EnqueueInput) =>
+    runAction('enqueue', input as unknown as Record<string, unknown>, `Enqueued ${input.name}`);
+  const handleProcess = (id: string) => runAction('process', { jobId: id }, 'Job processed', id);
+  const handleProcessNext = () => runAction('process', queueFilter ? { queue: queueFilter } : {}, 'Picked next job');
+  const handleRetry = (id: string) => runAction('retry', { jobId: id }, 'Job requeued', id);
+  const handleRemove = async (id: string) => {
+    await runAction('remove', { jobId: id }, 'Job removed', id);
+    if (detail?.job.id === id) setDetail(null);
+  };
+  const handleControl = (queue: string, paused: boolean) =>
+    runAction('control', { queue, paused }, `${queue} ${paused ? 'paused' : 'resumed'}`);
+  const handleConcurrency = (queue: string, concurrency: number) =>
+    runAction('control', { queue, concurrency }, `${queue} concurrency → ${concurrency}`);
+  const handleDeadBulk = (action: 'retry-all' | 'purge') =>
+    runAction('dead-letter', { action }, action === 'purge' ? 'Dead-letter purged' : 'Failed jobs requeued');
+  const handleClearCompleted = () => runAction('clear-completed', {}, 'Completed jobs cleared');
+  const handleRegisterWorker = () =>
+    runAction('workers', { action: 'register', name: `worker-${workers.length + 1}` }, 'Worker registered');
+  const handleStopWorker = (id: string) =>
+    runAction('workers', { action: 'stop', workerId: id }, 'Worker stopped');
 
-  const removeItem = useMutation({
-    mutationFn: async (itemId: string) => {
-      return api.delete(`/api/queue/${itemId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['status'] });
-      useUIStore.getState().addToast({ type: 'success', message: 'Item removed from queue' });
-    },
-    onError: (err) => useUIStore.getState().addToast({ type: 'error', message: `Failed to remove: ${err instanceof Error ? err.message : 'Unknown error'}` }),
-  });
+  const openDetail = async (job: QueueJob) => {
+    const res = await lensRun('queue', 'job-detail', { jobId: job.id });
+    if (res.data.ok && res.data.result) {
+      const r = res.data.result as { job: QueueJob; history: QueueEvent[] };
+      setDetail({ job: r.job, history: r.history });
+    } else {
+      setDetail({ job, history: [] });
+    }
+  };
 
-  const queues = [
-    { key: 'ingest', label: 'Ingest Queue', icon: <FileText className="w-4 h-4" />, count: status?.queues?.ingest || 0 },
-    { key: 'autocrawl', label: 'Autocrawl Queue', icon: <Globe className="w-4 h-4" />, count: status?.queues?.autocrawl || 0 },
-    { key: 'terminal', label: 'Terminal Queue', icon: <Zap className="w-4 h-4" />, count: queueItems.terminal.length },
-  ];
+  // Sidekiq / BullMQ idiom keys.
+  useLensCommand(
+    [
+      { id: 'queue-jobs', keys: 'j', description: 'Jobs tab', category: 'navigation', action: () => setTab('jobs') },
+      { id: 'queue-scheduled', keys: 's', description: 'Scheduled tab', category: 'navigation', action: () => setTab('scheduled') },
+      { id: 'queue-dead', keys: 'd', description: 'Dead-letter tab', category: 'navigation', action: () => setTab('dead') },
+      { id: 'queue-workers', keys: 'w', description: 'Workers tab', category: 'navigation', action: () => setTab('workers') },
+      { id: 'queue-next', keys: 'n', description: 'Process next job', category: 'actions', action: handleProcessNext },
+    ],
+    { lensId: 'queue' },
+  );
 
+  const t = metrics?.totals;
+  const tp = metrics?.throughput;
+  const alerts = metrics?.alerts || [];
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError || isError2) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
-      </div>
-    );
-  }
   return (
     <LensShell lensId="queue" asMain={false}>
       <FirstRunTour lensId="queue" />
       <ManifestActionBar />
       <DepthBadge lensId="queue" size="sm" className="ml-2" />
-    <div data-lens-theme="queue" className="p-6 space-y-6">
-      <header className="flex items-center gap-3">
-        <span className="text-2xl">📥</span>
-        <div>
-          <h1 className="text-xl font-bold">Queue Lens</h1>
-          <p className="text-sm text-gray-400">
-            Manage all system queues: ingest, crawl, terminal proposals
-          </p>
-        </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="queue" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-      </header>
-
-      <RealtimeDataPanel domain="queue" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
-
-      {/* Quick Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="lens-card">
-          <ListOrdered className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold text-neon-cyan">74</p>
-          <p className="text-sm text-gray-400">Total Queue Depth</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lens-card">
-          <Timer className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold text-neon-green">7.8/min</p>
-          <p className="text-sm text-gray-400">Processing Rate</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lens-card">
-          <Zap className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold text-neon-purple">418</p>
-          <p className="text-sm text-gray-400">Completed (24h)</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lens-card">
-          <Clock className="w-5 h-5 text-yellow-400 mb-2" />
-          <p className="text-2xl font-bold text-yellow-400">3.2s</p>
-          <p className="text-sm text-gray-400">Avg Latency</p>
-        </motion.div>
-      </div>
-
-      {/* Queue Depth Gauge */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-        className="panel p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-neon-cyan" /> Queue Depth Gauge
-          </h2>
-          <span className="text-xs text-gray-400">74 / 200 capacity</span>
-        </div>
-        <div className="relative w-full h-8 bg-lattice-deep rounded-full overflow-hidden">
-          <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-neon-green via-neon-blue to-neon-purple rounded-full transition-all duration-700"
-            style={{ width: '37%' }} />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-bold text-white drop-shadow">37% utilized</span>
+      <div data-lens-theme="queue" className="space-y-6 p-6">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📥</span>
+            <div>
+              <h1 className="text-xl font-bold">Queue Console</h1>
+              <p className="text-sm text-gray-400">
+                Job queue management — enqueue, process, retry, dead-letter, schedule
+              </p>
+            </div>
           </div>
-        </div>
-      </motion.div>
-
-      {/* Priority Lanes */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-        className="panel p-4">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-neon-purple" /> Priority Lanes
-        </h2>
-        <div className="space-y-3">
-          {[
-            { label: 'High Priority', count: 8, color: 'bg-red-500', textColor: 'text-red-400', pct: 11 },
-            { label: 'Normal Priority', count: 52, color: 'bg-neon-blue', textColor: 'text-neon-blue', pct: 70 },
-            { label: 'Low Priority', count: 14, color: 'bg-gray-500', textColor: 'text-gray-400', pct: 19 },
-          ].map((lane, idx) => (
-            <div key={lane.label} className="flex items-center gap-3">
-              <span className={`text-xs w-28 ${lane.textColor}`}>{lane.label}</span>
-              <div className="flex-1 h-4 bg-lattice-deep rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${lane.pct}%` }} transition={{ delay: 0.35 + idx * 0.1, duration: 0.6 }}
-                  className={`h-full ${lane.color} rounded-full`} />
-              </div>
-              <span className="text-xs font-mono w-8 text-right">{lane.count}</span>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Queue Tabs */}
-      <div className="flex gap-2">
-        {queues.map((q) => (
           <button
-            key={q.key}
-            onClick={() => setSelectedQueue(q.key as 'ingest' | 'autocrawl' | 'terminal')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              selectedQueue === q.key
-                ? 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30'
-                : 'bg-lattice-surface text-gray-400 hover:text-white'
-            }`}
+            onClick={handleProcessNext}
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-sm text-emerald-300 hover:bg-emerald-500/30"
           >
-            {q.icon}
-            <span>{q.label}</span>
-            <span className="ml-2 px-2 py-0.5 bg-lattice-elevated rounded text-xs">
-              {q.count}
-            </span>
+            <Play className="h-4 w-4" /> Process next
           </button>
-        ))}
-      </div>
+        </header>
 
-      {/* Queue Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="lens-card">
-          <Inbox className="w-5 h-5 text-neon-blue mb-2" />
-          <p className="text-2xl font-bold">
-            {(status?.queues?.ingest || 0) + (status?.queues?.autocrawl || 0)}
-          </p>
-          <p className="text-sm text-gray-400">Total Queued</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="lens-card">
-          <Play className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">
-            {Object.values(jobs?.jobs || {}).filter((j: unknown) => (j as Record<string, unknown>)?.enabled).length}
-          </p>
-          <p className="text-sm text-gray-400">Active Jobs</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="lens-card">
-          <Clock className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">2m</p>
-          <p className="text-sm text-gray-400">Heartbeat Interval</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="lens-card">
-          <Zap className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{status?.llm?.enabled ? 'On' : 'Off'}</p>
-          <p className="text-sm text-gray-400">LLM Processing</p>
-        </motion.div>
-      </div>
-
-      {/* Queue Items */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Inbox className="w-4 h-4 text-neon-blue" />
-          {queues.find((q) => q.key === selectedQueue)?.label} Items
-        </h2>
-        <div className="space-y-3">
-          {queueItems[selectedQueue]?.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">
-              No items in queue. System is idle.
-            </p>
-          ) : (
-            queueItems[selectedQueue]?.map((item) => (
+        {/* Alerts — queue depth + stalled jobs + dead-letter */}
+        {alerts.length > 0 && (
+          <div className="space-y-2">
+            {alerts.map((a, i) => (
               <div
-                key={item.id}
-                className="flex items-center justify-between p-4 bg-lattice-deep rounded-lg"
-              >
-                <div className="flex items-center gap-4">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      item.status === 'processing'
-                        ? 'bg-neon-blue animate-pulse'
-                        : item.status === 'completed'
-                        ? 'bg-neon-green'
-                        : 'bg-gray-500'
-                    }`}
-                  />
-                  <div>
-                    <p className="font-medium">{item.content}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs px-2 py-0.5 bg-lattice-surface rounded">
-                        {item.type}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded ${
-                          item.priority === 'high'
-                            ? 'bg-neon-pink/20 text-neon-pink'
-                            : item.priority === 'low'
-                            ? 'bg-gray-500/20 text-gray-400'
-                            : 'bg-neon-blue/20 text-neon-blue'
-                        }`}
-                      >
-                        {item.priority}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(item.createdAt).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => processItem.mutate(item.id)}
-                    disabled={processItem.isPending}
-                    className="p-2 bg-neon-green/20 text-neon-green rounded-lg hover:bg-neon-green/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Process Now"
-                  >
-                    {processItem.isPending ? (
-                      <div className="w-4 h-4 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => removeItem.mutate(item.id)}
-                    disabled={removeItem.isPending}
-                    className="p-2 bg-neon-pink/20 text-neon-pink rounded-lg hover:bg-neon-pink/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Remove"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Job Controls */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4">Governor Jobs</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {Object.entries(jobs?.jobs || {}).length === 0 ? (
-            <div className="col-span-full text-center py-8">
-              <p className="text-gray-500">No governor jobs configured</p>
-              <p className="text-sm text-gray-400 mt-1">Jobs will appear here once the system is initialized</p>
-            </div>
-          ) : (
-            Object.entries(jobs?.jobs || {}).map(([name, job]) => {
-              const j = job as Record<string, unknown>;
-              return (
-              <div
-                key={name}
-                className={`lens-card flex items-center justify-between ${
-                  j?.enabled ? 'border-neon-green/30' : 'border-gray-600'
+                key={i}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                  a.level === 'critical'
+                    ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                    : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
                 }`}
               >
-                <span className="capitalize">{name}</span>
-                <span
-                  className={`w-3 h-3 rounded-full ${
-                    j?.enabled ? 'bg-neon-green' : 'bg-gray-500'
-                  }`}
-                />
+                {a.level === 'critical' ? (
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                )}
+                <span>{a.message}</span>
               </div>
+            ))}
+          </div>
+        )}
+
+        {/* Quick stats — live from metrics macro */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="lens-card">
+            <ListOrdered className="mb-2 h-5 w-5 text-neon-cyan" />
+            <p className="text-2xl font-bold text-neon-cyan">{t?.depth ?? 0}</p>
+            <p className="text-sm text-gray-400">Queue Depth</p>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="lens-card">
+            <Timer className="mb-2 h-5 w-5 text-neon-green" />
+            <p className="text-2xl font-bold text-neon-green">{tp?.ratePerMin ?? 0}/min</p>
+            <p className="text-sm text-gray-400">Processing Rate</p>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lens-card">
+            <Zap className="mb-2 h-5 w-5 text-neon-purple" />
+            <p className="text-2xl font-bold text-neon-purple">{tp?.completed24h ?? 0}</p>
+            <p className="text-sm text-gray-400">Completed (24h)</p>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lens-card">
+            <Clock className="mb-2 h-5 w-5 text-yellow-400" />
+            <p className="text-2xl font-bold text-yellow-400">{tp?.avgLatencyMs ?? 0}ms</p>
+            <p className="text-sm text-gray-400">Avg Latency</p>
+          </motion.div>
+        </div>
+
+        {/* Throughput + latency time-series */}
+        <div className="panel space-y-3 p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <BarChart3 className="h-4 w-4 text-neon-cyan" /> Throughput &amp; Latency (last hour)
+          </h2>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ChartKit
+              kind="bar"
+              data={(tp?.series || []) as unknown as Array<Record<string, unknown>>}
+              xKey="slot"
+              series={[
+                { key: 'processed', label: 'Processed', color: '#22c55e' },
+                { key: 'failed', label: 'Failed', color: '#ef4444' },
+              ]}
+              stacked
+              height={200}
+            />
+            <ChartKit
+              kind="line"
+              data={(tp?.series || []) as unknown as Array<Record<string, unknown>>}
+              xKey="slot"
+              series={[{ key: 'latencyMs', label: 'Latency (ms)', color: '#06b6d4' }]}
+              height={200}
+            />
+          </div>
+        </div>
+
+        {/* Priority lanes — live byPriority */}
+        {metrics && (
+          <div className="panel space-y-3 p-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Zap className="h-4 w-4 text-neon-purple" /> Priority Lanes (waiting)
+            </h2>
+            {(['high', 'normal', 'low'] as const).map((p) => {
+              const count = metrics.byPriority[p];
+              const total =
+                metrics.byPriority.high + metrics.byPriority.normal + metrics.byPriority.low || 1;
+              const pct = Math.round((count / total) * 100);
+              const color =
+                p === 'high' ? 'bg-rose-500' : p === 'low' ? 'bg-zinc-500' : 'bg-neon-blue';
+              return (
+                <div key={p} className="flex items-center gap-3">
+                  <span className="w-28 text-xs capitalize text-gray-400">{p} priority</span>
+                  <div className="h-4 flex-1 overflow-hidden rounded-full bg-lattice-deep">
+                    <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-8 text-right font-mono text-xs">{count}</span>
+                </div>
               );
-            })
-          )}
-        </div>
-
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="queue"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
-      </div>
-
-      {/* Job Monitor — Queue Status Cards */}
-      <div className="panel p-6 space-y-5">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <Activity className="w-5 h-5 text-neon-cyan" />
-          Job Monitor
-        </h2>
-        <p className="text-sm text-gray-400">
-          Real-time status cards for compression, royalty processing, and bot task queues.
-        </p>
-
-        {/* Queue Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Compression Queue */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-neon-cyan" />
-                <span className="text-sm font-semibold text-white">Compression</span>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Running
-              </span>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">In queue</span>
-                <span className="text-white font-mono">24</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Processing</span>
-                <span className="text-neon-cyan font-mono">3</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Completed (24h)</span>
-                <span className="text-neon-green font-mono">187</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Failed (24h)</span>
-                <span className="text-red-400 font-mono">2</span>
-              </div>
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-neon-cyan rounded-full" style={{ width: '78%' }} />
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Throughput</span>
-                <span className="text-neon-cyan">7.8 DTUs/min</span>
-              </div>
-            </div>
+            })}
           </div>
+        )}
 
-          {/* Royalty Processing Queue */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Coins className="w-4 h-4 text-neon-green" />
-                <span className="text-sm font-semibold text-white">Royalties</span>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Running
-              </span>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Pending payouts</span>
-                <span className="text-white font-mono">12</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Processing</span>
-                <span className="text-neon-green font-mono">1</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Settled (24h)</span>
-                <span className="text-neon-green font-mono">89</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Disputed</span>
-                <span className="text-yellow-400 font-mono">1</span>
-              </div>
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-neon-green rounded-full" style={{ width: '92%' }} />
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Total CC distributed</span>
-                <span className="text-neon-green">1,247 CC</span>
-              </div>
-            </div>
+        {/* Queue controls — pause/resume + concurrency per queue */}
+        <div className="panel space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Server className="h-4 w-4 text-neon-cyan" /> Queues
+            </h2>
+            <button
+              onClick={handleClearCompleted}
+              className="flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-xs text-gray-400 hover:bg-white/10"
+            >
+              <Trash2 className="h-3 w-3" /> Clear completed
+            </button>
           </div>
-
-          {/* Bot Tasks Queue */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-neon-purple" />
-                <span className="text-sm font-semibold text-white">Bot Tasks</span>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> Backlogged
-              </span>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Queued tasks</span>
-                <span className="text-white font-mono">38</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Active bots</span>
-                <span className="text-neon-purple font-mono">5</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Completed (24h)</span>
-                <span className="text-neon-green font-mono">142</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Timed out</span>
-                <span className="text-red-400 font-mono">4</span>
-              </div>
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-neon-purple rounded-full" style={{ width: '45%' }} />
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Avg task time</span>
-                <span className="text-neon-purple">3.2s</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Job Activity Feed */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-neon-cyan" />
-            Recent Activity
-          </h3>
-          <div className="space-y-2">
-            {[
-              { time: '2s ago', task: 'Compressed DTU batch #4821', type: 'compression', status: 'done' },
-              { time: '8s ago', task: 'Royalty payout: 4.2 CC to creator @nova', type: 'royalty', status: 'done' },
-              { time: '15s ago', task: 'Bot auto-tag: 6 DTUs classified', type: 'bot', status: 'done' },
-              { time: '22s ago', task: 'Compressed DTU batch #4820', type: 'compression', status: 'done' },
-              { time: '31s ago', task: 'Bot council-vote on DTU #19284', type: 'bot', status: 'done' },
-              { time: '45s ago', task: 'Royalty split: fork lineage resolved', type: 'royalty', status: 'done' },
-            ].map((item, idx) => (
-              <div key={idx} className="flex items-center gap-3 px-3 py-2 rounded bg-black/30 hover:bg-white/5 transition-colors">
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  item.type === 'compression' ? 'bg-neon-cyan' :
-                  item.type === 'royalty' ? 'bg-neon-green' : 'bg-neon-purple'
-                }`} />
-                <span className="text-xs text-gray-300 flex-1">{item.task}</span>
-                <span className="text-xs text-gray-600">{item.time}</span>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {queues.length === 0 && (
+              <p className="col-span-full py-4 text-center text-sm text-gray-500">
+                No queues yet. Enqueue a job to create one.
+              </p>
+            )}
+            {queues.map((q) => (
+              <div key={q.name} className="rounded-lg border border-white/10 bg-black/30 p-3">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setQueueFilter(queueFilter === q.name ? '' : q.name)}
+                    className={`text-sm font-semibold ${
+                      queueFilter === q.name ? 'text-neon-cyan' : 'text-white'
+                    }`}
+                  >
+                    {q.name}
+                  </button>
+                  <button
+                    onClick={() => handleControl(q.name, !q.paused)}
+                    title={q.paused ? 'Resume' : 'Pause'}
+                    className={`rounded p-1.5 ${
+                      q.paused
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-emerald-500/20 text-emerald-300'
+                    }`}
+                  >
+                    {q.paused ? <PlayCircle className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                  <span className="rounded bg-zinc-700/40 px-1.5 py-0.5 text-zinc-300">
+                    depth {q.depth}
+                  </span>
+                  <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-cyan-300">
+                    active {q.counts.active}
+                  </span>
+                  <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-300">
+                    done {q.counts.completed}
+                  </span>
+                  {q.counts.dead > 0 && (
+                    <span className="rounded bg-red-700/30 px-1.5 py-0.5 text-red-300">
+                      dead {q.counts.dead}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="text-[10px] text-gray-500">Concurrency</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={64}
+                    defaultValue={q.concurrency}
+                    onBlur={(e) => {
+                      const v = Number(e.target.value);
+                      if (v !== q.concurrency) handleConcurrency(q.name, v);
+                    }}
+                    className="w-14 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-xs text-white"
+                  />
+                  {q.paused && <span className="text-[10px] text-amber-400">paused</span>}
+                </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Queue Domain Actions */}
-      <div className="panel p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-neon-cyan flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Queue Analysis Actions</h3>
+        {/* Enqueue form */}
+        <EnqueueForm queues={queueNames.length ? queueNames : ['ingest', 'autocrawl', 'terminal']} busy={false} onEnqueue={handleEnqueue} />
+
+        {/* Tabs */}
         <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'queueAnalytics', label: 'Queue Analytics' },
-            { action: 'prioritySchedule', label: 'Priority Schedule' },
-            { action: 'backpressure', label: 'Backpressure' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleQueueAction(action)} disabled={queueActiveAction === action || !queueArtifacts[0]?.id}
-              className="px-3 py-1.5 text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded-lg hover:bg-neon-cyan/20 disabled:opacity-50 flex items-center gap-1.5">
-              {queueActiveAction === action ? <div className="w-3 h-3 border border-neon-cyan border-t-transparent rounded-full animate-spin" /> : <Activity className="w-3 h-3 text-neon-cyan" />}
-              {label}
+          {([
+            { key: 'jobs', label: 'Jobs', icon: <Inbox className="h-4 w-4" />, count: t?.all },
+            { key: 'scheduled', label: 'Scheduled', icon: <CalendarClock className="h-4 w-4" />, count: t?.delayed },
+            { key: 'dead', label: 'Dead-letter', icon: <ShieldAlert className="h-4 w-4" />, count: (t?.failed ?? 0) + (t?.dead ?? 0) },
+            { key: 'workers', label: 'Workers', icon: <Server className="h-4 w-4" />, count: workers.length },
+          ] as const).map((tabDef) => (
+            <button
+              key={tabDef.key}
+              onClick={() => setTab(tabDef.key)}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-colors ${
+                tab === tabDef.key
+                  ? 'border border-neon-blue/30 bg-neon-blue/20 text-neon-blue'
+                  : 'bg-lattice-surface text-gray-400 hover:text-white'
+              }`}
+            >
+              {tabDef.icon}
+              <span>{tabDef.label}</span>
+              <span className="rounded bg-lattice-elevated px-2 py-0.5 text-xs">
+                {tabDef.count ?? 0}
+              </span>
             </button>
           ))}
         </div>
-        {queueActionResult && (
-          <div className="p-3 bg-black/40 rounded-lg border border-neon-cyan/20 text-xs space-y-2">
-            {queueActionResult.action === 'queueAnalytics' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Arrival rate: <span className="text-neon-cyan font-mono">{String(((queueActionResult.rates as Record<string,unknown>)?.arrivalRate as number)?.toFixed?.(3) ?? 'N/A')}/s</span></span>
-                  <span className="text-gray-400">Utilization: <span className={`font-mono ${((queueActionResult.utilization as Record<string,unknown>)?.rho as number) > 0.8 ? 'text-red-400' : ((queueActionResult.utilization as Record<string,unknown>)?.rho as number) > 0.5 ? 'text-yellow-400' : 'text-green-400'}`}>{String((((queueActionResult.utilization as Record<string,unknown>)?.rho as number) * 100)?.toFixed?.(1) ?? '')}%</span></span>
-                  <span className={`${(queueActionResult.utilization as Record<string,unknown>)?.stable ? 'text-green-400' : 'text-red-400'}`}>{(queueActionResult.utilization as Record<string,unknown>)?.stable ? 'Stable' : 'Unstable'}</span>
+
+        {/* Tab content */}
+        <div className="panel space-y-3 p-4">
+          {tab === 'jobs' && (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <Inbox className="h-4 w-4 text-neon-blue" />
+                  Jobs {queueFilter && <span className="text-xs text-neon-cyan">· {queueFilter}</span>}
+                </h2>
+                {queueFilter && (
+                  <button
+                    onClick={() => setQueueFilter('')}
+                    className="text-xs text-gray-500 hover:text-gray-300"
+                  >
+                    Clear filter
+                  </button>
+                )}
+              </div>
+              <JobList
+                jobs={jobs}
+                busyId={busyId}
+                onProcess={handleProcess}
+                onRetry={handleRetry}
+                onRemove={handleRemove}
+                onSelect={openDetail}
+              />
+            </>
+          )}
+
+          {tab === 'scheduled' && (
+            <>
+              <h2 className="flex items-center gap-2 font-semibold">
+                <CalendarClock className="h-4 w-4 text-amber-400" /> Scheduled / Delayed Jobs
+              </h2>
+              <JobList
+                jobs={scheduledQ.data?.jobs || []}
+                busyId={busyId}
+                onProcess={handleProcess}
+                onRetry={handleRetry}
+                onRemove={handleRemove}
+                onSelect={openDetail}
+              />
+            </>
+          )}
+
+          {tab === 'dead' && (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <ShieldAlert className="h-4 w-4 text-rose-400" /> Dead-letter &amp; Failed
+                </h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleDeadBulk('retry-all')}
+                    className="flex items-center gap-1 rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-300 hover:bg-amber-500/30"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Retry all
+                  </button>
+                  <button
+                    onClick={() => handleDeadBulk('purge')}
+                    className="flex items-center gap-1 rounded bg-rose-500/20 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/30"
+                  >
+                    <Trash2 className="h-3 w-3" /> Purge
+                  </button>
                 </div>
-                {!!queueActionResult.message && <p className="text-gray-400 italic">{String(queueActionResult.message)}</p>}
               </div>
-            )}
-            {queueActionResult.action === 'prioritySchedule' && (
-              <div className="space-y-1">
-                {queueActionResult.message ? <p className="text-gray-400 italic">{String(queueActionResult.message)}</p> : (
-                  <div className="flex gap-4 flex-wrap">
-                    <span className="text-gray-400">Algorithm: <span className="text-neon-cyan font-mono">{String(queueActionResult.algorithm ?? '')}</span></span>
-                    <span className="text-gray-400">Jobs: <span className="text-neon-green font-mono">{String((queueActionResult.metrics as Record<string,unknown>)?.totalJobs ?? 0)}</span></span>
-                    <span className="text-gray-400">Starvation: <span className={`font-mono ${(queueActionResult.starvation as Record<string,unknown>)?.detected ? 'text-red-400' : 'text-green-400'}`}>{(queueActionResult.starvation as Record<string,unknown>)?.detected ? 'Detected' : 'None'}</span></span>
-                  </div>
-                )}
-              </div>
-            )}
-            {queueActionResult.action === 'backpressure' && (
-              <div className="space-y-1">
-                {queueActionResult.message ? <p className="text-gray-400 italic">{String(queueActionResult.message)}</p> : (
-                  <div className="flex gap-4 flex-wrap">
-                    <span className="text-gray-400">Status: <span className={`font-mono ${(queueActionResult.backpressure as Record<string,unknown>)?.level === 'critical' || (queueActionResult.backpressure as Record<string,unknown>)?.level === 'high' ? 'text-red-400' : 'text-green-400'}`}>{String((queueActionResult.backpressure as Record<string,unknown>)?.level ?? 'normal')}</span></span>
-                    <span className="text-gray-400">Fill: <span className="text-neon-cyan font-mono">{String((queueActionResult.currentState as Record<string,unknown>)?.fillRatio ?? '')}%</span></span>
-                  </div>
-                )}
-              </div>
-            )}
-            <button onClick={() => setQueueActionResult(null)} className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1"><X className="w-3 h-3" /> Dismiss</button>
-          </div>
-        )}
-      </div>
+              <JobList
+                jobs={deadQ.data?.jobs || []}
+                busyId={busyId}
+                onProcess={handleProcess}
+                onRetry={handleRetry}
+                onRemove={handleRemove}
+                onSelect={openDetail}
+              />
+            </>
+          )}
 
-      {/* ConnectiveTissueBar */}
-      <ConnectiveTissueBar lensId="queue" />
+          {tab === 'workers' && (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <Server className="h-4 w-4 text-neon-purple" /> Workers
+                </h2>
+                <button
+                  onClick={handleRegisterWorker}
+                  className="flex items-center gap-1 rounded bg-neon-purple/20 px-2 py-1 text-xs text-neon-purple hover:bg-neon-purple/30"
+                >
+                  <Server className="h-3 w-3" /> Register worker
+                </button>
+              </div>
+              {workers.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+                  No workers registered. Register one to track who is processing what.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {workers.map((w) => (
+                    <div
+                      key={w.id}
+                      className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            w.status === 'busy'
+                              ? 'bg-cyan-400 animate-pulse'
+                              : w.status === 'idle'
+                                ? 'bg-emerald-400'
+                                : w.status === 'offline'
+                                  ? 'bg-zinc-600'
+                                  : 'bg-rose-400'
+                          }`}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-white">{w.name}</p>
+                          <p className="text-[11px] text-zinc-500">
+                            {w.status} · queue {w.queue} · {w.processed} processed
+                            {w.currentJob && ` · job ${w.currentJob.slice(0, 12)}`}
+                          </p>
+                        </div>
+                      </div>
+                      {w.status !== 'stopped' && (
+                        <button
+                          onClick={() => handleStopWorker(w.id)}
+                          className="rounded bg-rose-500/20 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/30"
+                        >
+                          Stop
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+        {/* Recent activity feed — live events macro */}
+        <div className="panel space-y-3 p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <RefreshCw className="h-4 w-4 text-neon-cyan" /> Recent Activity
+          </h2>
+          {events.length === 0 ? (
+            <p className="py-4 text-center text-xs text-gray-500">No activity yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {events.map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center gap-3 rounded bg-black/30 px-3 py-2 transition-colors hover:bg-white/5"
+                >
+                  <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] uppercase text-zinc-400">
+                    {e.kind}
+                  </span>
+                  <span className="flex-1 text-xs text-gray-300">{e.message}</span>
+                  <span className="text-xs text-gray-600">
+                    {new Date(e.at).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ConnectiveTissueBar */}
+        <ConnectiveTissueBar lensId="queue" />
+
+        {/* Lens Features */}
+        <div className="border-t border-white/10">
+          <button
+            onClick={() => setShowFeatures(!showFeatures)}
+            className="flex w-full items-center justify-between rounded-lg bg-white/[0.02] px-4 py-3 text-sm text-gray-300 transition-colors hover:bg-white/[0.04] hover:text-white"
+          >
+            <span className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Lens Features &amp; Capabilities
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          </button>
+          {showFeatures && (
+            <div className="px-4 pb-4">
+              <LensFeaturePanel lensId="queue" />
+            </div>
+          )}
+        </div>
+
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <QueueRepos />
+        </section>
+
+        <a
+          href="#queue-skip"
+          className="sr-only focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="queue" />
-          </div>
-        )}
+          Skip to queue content
+        </a>
+        <RecentMineCard domain="queue" limit={10} hideWhenEmpty className="mt-4" />
+        <AutoActionStrip domain="queue" hideWhenEmpty className="mt-3" />
+        <CrossLensRecentsPanel lensId="queue" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <QueueRepos />
-      </section>
-    </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <a href="#queue-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to queue content</a>
-          <RecentMineCard domain="queue" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="queue" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="queue" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <JobDetailDrawer
+        job={detail?.job || null}
+        history={detail?.history || []}
+        onClose={() => setDetail(null)}
+        onProcess={handleProcess}
+        onRetry={handleRetry}
+        onRemove={handleRemove}
+      />
     </LensShell>
   );
 }

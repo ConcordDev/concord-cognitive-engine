@@ -389,3 +389,214 @@ describe("fitness.fitness-dashboard", () => {
     assert.equal(r.result.totals.activities, 1);
   });
 });
+
+// ─── Strava / Garmin 2026 parity backlog ──────────────────────────────
+
+describe("fitness.gps-record + gps-track (GPS recording + GPX import)", () => {
+  const pt = (lat, lon, ele, tOffsetSec) => ({
+    lat, lon, ele,
+    t: new Date(Date.now() - 3600000 + tOffsetSec * 1000).toISOString(),
+  });
+
+  it("records a point stream into a backed activity with computed summary", () => {
+    const points = [
+      pt(37.0000, -122.0000, 10, 0),
+      pt(37.0030, -122.0000, 14, 120),
+      pt(37.0060, -122.0000, 20, 240),
+    ];
+    const r = call("gps-record", ctxA, { type: "run", points });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.activity.hasGps);
+    assert.equal(r.result.activity.source, "gps_recording");
+    assert.ok(r.result.summary.distanceKm > 0);
+    assert.ok(r.result.summary.elevationGainM >= 10);
+  });
+
+  it("rejects a stream with fewer than 2 points", () => {
+    assert.equal(call("gps-record", ctxA, { type: "run", points: [pt(37, -122, 0, 0)] }).ok, false);
+  });
+
+  it("imports a GPX string and round-trips the raw track", () => {
+    const gpx = `<?xml version="1.0"?><gpx><trk><trkseg>
+      <trkpt lat="40.0000" lon="-105.0000"><ele>1600</ele><time>2026-05-01T08:00:00Z</time></trkpt>
+      <trkpt lat="40.0050" lon="-105.0000"><ele>1620</ele><time>2026-05-01T08:05:00Z</time></trkpt>
+      <trkpt lat="40.0100" lon="-105.0000"><ele>1650</ele><time>2026-05-01T08:10:00Z</time></trkpt>
+    </trkseg></trk></gpx>`;
+    const r = call("gps-record", ctxA, { type: "hike", gpx });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.imported, true);
+    assert.equal(r.result.activity.source, "gpx_import");
+    const track = call("gps-track", ctxA, { id: r.result.activity.id });
+    assert.equal(track.ok, true);
+    assert.equal(track.result.track.points.length, 3);
+  });
+});
+
+describe("fitness.wearable-* (link / status / sync)", () => {
+  it("links a provider, lists it, and unlinks", () => {
+    const r = call("wearable-link", ctxA, { provider: "garmin", deviceName: "Forerunner 965" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.link.provider, "garmin");
+    assert.equal(call("wearable-status", ctxA, {}).result.count, 1);
+    assert.equal(call("wearable-link", ctxA, { provider: "garmin", unlink: true }).ok, true);
+    assert.equal(call("wearable-status", ctxA, {}).result.count, 0);
+  });
+
+  it("rejects an unknown provider", () => {
+    assert.equal(call("wearable-link", ctxA, { provider: "casio" }).ok, false);
+  });
+
+  it("syncs HR/sleep/steps into recovery + activity logs", () => {
+    call("wearable-link", ctxA, { provider: "whoop" });
+    const r = call("wearable-sync", ctxA, {
+      provider: "whoop",
+      samples: [
+        { date: daysAgoISO(1), restingHr: 52, hrv: 65, sleepHours: 7.8, recoveryScore: 80, steps: 9000, activeCalories: 420 },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.synced >= 2);
+    assert.equal(call("recovery-history", ctxA, { days: 7 }).result.days.length, 1);
+    assert.equal(call("activity-summary", ctxA, { days: 7 }).result.days.length, 1);
+  });
+
+  it("requires the provider to be linked before sync", () => {
+    assert.equal(call("wearable-sync", ctxB, { provider: "fitbit", samples: [{ date: todayISO(), steps: 100 }] }).ok, false);
+  });
+});
+
+describe("fitness.activity-heatmap + segment-explore (map surfaces)", () => {
+  it("aggregates GPS track points into a density grid", () => {
+    const points = [
+      { lat: 51.5000, lon: -0.1000, t: new Date(Date.now() - 600000).toISOString() },
+      { lat: 51.5005, lon: -0.1000, t: new Date(Date.now() - 300000).toISOString() },
+      { lat: 51.5010, lon: -0.1000, t: new Date().toISOString() },
+    ];
+    call("gps-record", ctxA, { type: "run", points });
+    const r = call("activity-heatmap", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.ok(r.result.cells.length > 0);
+    assert.equal(r.result.tracks, 1);
+    assert.ok(r.result.bounds);
+  });
+
+  it("surfaces only geo-located segments on segment-explore", () => {
+    call("segment-create", ctxA, { name: "No geo", distanceKm: 1 });
+    call("segment-create", ctxA, { name: "Geo climb", distanceKm: 2, lat: 46.5, lon: 7.9 });
+    const r = call("segment-explore", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 1);
+    assert.equal(r.result.segments[0].name, "Geo climb");
+  });
+});
+
+describe("fitness.activity-photo-* + comments thread", () => {
+  it("attaches and removes photos", () => {
+    const id = call("activity-create", ctxA, { type: "ride", distanceKm: 20, durationSec: 3600 }).result.activity.id;
+    const add = call("activity-photo-add", ctxA, { id, dataUrl: "data:image/png;base64,AAAA", caption: "summit" });
+    assert.equal(add.ok, true);
+    assert.equal(add.result.photoCount, 1);
+    const photoId = add.result.photo.id;
+    assert.equal(call("activity-photo-remove", ctxA, { id, photoId }).result.photoCount, 0);
+  });
+
+  it("rejects a photo with no url or dataUrl", () => {
+    const id = call("activity-create", ctxA, { type: "run", distanceKm: 5, durationSec: 1500 }).result.activity.id;
+    assert.equal(call("activity-photo-add", ctxA, { id }).ok, false);
+  });
+
+  it("reads a comment thread and deletes a comment", () => {
+    const id = call("activity-create", ctxA, { type: "run", distanceKm: 5, durationSec: 1500 }).result.activity.id;
+    call("activity-kudos", ctxB, { id, ownerUserId: "user_a", comment: "great pace!" });
+    const thread = call("activity-comments", ctxA, { id });
+    assert.equal(thread.ok, true);
+    assert.equal(thread.result.comments.length, 1);
+    assert.equal(call("activity-comment-delete", ctxA, { id, index: 0 }).result.commentCount, 0);
+  });
+});
+
+describe("fitness.beacon-* (live activity sharing)", () => {
+  it("starts a beacon, pings position, exposes a share token", () => {
+    const start = call("beacon-start", ctxA, { type: "run" });
+    assert.equal(start.ok, true);
+    assert.ok(start.result.beacon.shareToken.startsWith("bcn_"));
+    const id = start.result.beacon.id;
+    const ping = call("beacon-ping", ctxA, { id, lat: 48.85, lon: 2.35, distanceKm: 1.2, durationSec: 400 });
+    assert.equal(ping.ok, true);
+    assert.equal(ping.result.pingCount, 1);
+  });
+
+  it("a follower reads live status via the share token", () => {
+    const start = call("beacon-start", ctxA, { type: "ride" });
+    call("beacon-ping", ctxA, { id: start.result.beacon.id, lat: 1, lon: 1 });
+    const status = call("beacon-status", ctxB, { shareToken: start.result.beacon.shareToken });
+    assert.equal(status.ok, true);
+    assert.equal(status.result.isOwner, false);
+    assert.equal(status.result.beacon.status, "live");
+  });
+
+  it("stops a beacon and blocks non-owner control", () => {
+    const start = call("beacon-start", ctxA, { type: "run" });
+    assert.equal(call("beacon-ping", ctxB, { id: start.result.beacon.id, lat: 1, lon: 1 }).ok, false);
+    assert.equal(call("beacon-stop", ctxA, { id: start.result.beacon.id }).result.beacon.status, "ended");
+  });
+});
+
+describe("fitness.plan-* (training-plan calendar + adaptive reschedule)", () => {
+  it("creates a plan and computes adherence against logged activities", () => {
+    call("activity-create", ctxA, { type: "run", distanceKm: 8, durationSec: 2400, date: daysAgoISO(1) });
+    const r = call("plan-create", ctxA, {
+      name: "Marathon block",
+      sessions: [
+        { date: daysAgoISO(1), type: "easy", title: "Easy 8k", targetDistanceKm: 8 },
+        { date: daysAgoISO(3), type: "long", title: "Long run", targetDistanceKm: 20 },
+        { date: daysAgoISO(-2), type: "tempo", title: "Tempo", targetDistanceKm: 10 },
+      ],
+    });
+    assert.equal(r.ok, true);
+    const list = call("plan-list", ctxA, {});
+    const plan = list.result.plans[0];
+    assert.equal(plan.adherence.completed, 1); // the day-1 run matches
+    assert.equal(plan.adherence.missed, 1);    // day-3 long run missed
+    assert.equal(plan.adherence.upcoming, 1);  // future tempo
+  });
+
+  it("rejects a plan with no sessions", () => {
+    assert.equal(call("plan-create", ctxA, { name: "Empty" }).ok, false);
+  });
+
+  it("plan-reschedule slides missed sessions forward and deletes plans", () => {
+    const r = call("plan-create", ctxB, {
+      name: "Base",
+      sessions: [{ date: daysAgoISO(5), type: "long", targetDistanceKm: 15 }],
+    });
+    const planId = r.result.plan.id;
+    const resched = call("plan-reschedule", ctxB, { planId, shiftDays: 3 });
+    assert.equal(resched.ok, true);
+    assert.equal(resched.result.moved, 1);
+    assert.equal(call("plan-delete", ctxB, { id: planId }).ok, true);
+    assert.equal(call("plan-list", ctxB, {}).result.count, 0);
+  });
+});
+
+describe("fitness.fitness-freshness (relative effort + fitness/freshness trend)", () => {
+  it("returns daily CTL/ATL/TSB, weekly RE rollup, and a form trend", () => {
+    for (let i = 30; i >= 0; i--) {
+      call("activity-create", ctxA, { type: "run", distanceKm: 8, durationSec: 2400, avgHr: 150, maxHr: 185, date: daysAgoISO(i) });
+    }
+    const r = call("fitness-freshness", ctxA, { days: 90 });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.daily.length > 0);
+    assert.ok(r.result.weeklyEffort.length > 0);
+    assert.ok(r.result.fitness > 0);
+    assert.ok(["freshening", "fatiguing", "stable"].includes(r.result.formTrend));
+    assert.equal(typeof r.result.rampRate, "number");
+  });
+
+  it("empty history yields a zeroed trend", () => {
+    const r = call("fitness-freshness", ctxB, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.fitness, 0);
+    assert.deepEqual(r.result.weeklyEffort, []);
+  });
+});

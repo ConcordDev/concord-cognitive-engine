@@ -336,4 +336,461 @@ export default function registerDIYActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Project workshop substrate (per-user, STATE-backed) ────────────
+  // Powers: illustrated step-builder, BOM cost rollup, progress tracking,
+  // tool-availability gate, gallery browse facets, project forking/remix.
+
+  function getDIYState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.diyLens) STATE.diyLens = {};
+    if (!(STATE.diyLens.projects instanceof Map)) STATE.diyLens.projects = new Map(); // userId -> Array<project>
+    if (!(STATE.diyLens.published instanceof Map)) STATE.diyLens.published = new Map(); // projectId -> {project, owner}
+    return STATE.diyLens;
+  }
+  function saveDIY() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const diyId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const diyActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const diyClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
+  const diyNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const diyProjects = (s, userId) => { if (!s.projects.has(userId)) s.projects.set(userId, []); return s.projects.get(userId); };
+  const DIFFICULTIES = ["beginner", "intermediate", "advanced", "expert"];
+
+  function findProject(s, userId, projectId) {
+    return diyProjects(s, userId).find((p) => p.id === projectId) || null;
+  }
+  // Derived rollup so the UI never re-implements project math.
+  function projectSummary(p) {
+    const bom = p.bom || [];
+    const steps = p.steps || [];
+    const materialsCost = bom.reduce((sum, b) => sum + (diyNum(b.quantity) * diyNum(b.unitPrice)), 0);
+    const ownedCount = bom.filter((b) => b.owned).length;
+    const toBuyCost = bom.filter((b) => !b.owned).reduce((sum, b) => sum + (diyNum(b.quantity) * diyNum(b.unitPrice)), 0);
+    const doneSteps = steps.filter((st) => st.complete).length;
+    return {
+      ...p,
+      stepCount: steps.length,
+      completeSteps: doneSteps,
+      progressPct: steps.length > 0 ? Math.round((doneSteps / steps.length) * 100) : 0,
+      bomLineCount: bom.length,
+      bomOwnedCount: ownedCount,
+      materialsCost: Math.round(materialsCost * 100) / 100,
+      toBuyCost: Math.round(toBuyCost * 100) / 100,
+    };
+  }
+
+  // project-create — start a workshop project (optionally a remix of a published one)
+  registerLensAction("diy", "project-create", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const name = diyClean(params.name, 200);
+    if (!name) return { ok: false, error: "project name required" };
+    const project = {
+      id: diyId("proj"),
+      name,
+      category: diyClean(params.category, 60) || "Other",
+      difficulty: DIFFICULTIES.includes(String(params.difficulty).toLowerCase()) ? String(params.difficulty).toLowerCase() : "intermediate",
+      description: diyClean(params.description, 2000),
+      estimatedHours: Math.max(0, diyNum(params.estimatedHours)),
+      tags: Array.isArray(params.tags) ? params.tags.map((t) => diyClean(t, 40)).filter(Boolean).slice(0, 12) : [],
+      steps: [],
+      bom: [],
+      status: "planning",
+      forkedFrom: null,
+      createdAt: new Date().toISOString(),
+    };
+    diyProjects(s, diyActor(ctx)).push(project);
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(project) } };
+  });
+
+  // project-list — all projects for the user, with derived rollups
+  registerLensAction("diy", "project-list", (ctx, _a, _params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const projects = diyProjects(s, diyActor(ctx)).map(projectSummary);
+    return {
+      ok: true,
+      result: {
+        projects,
+        count: projects.length,
+        totalToBuyCost: Math.round(projects.reduce((n, p) => n + p.toBuyCost, 0) * 100) / 100,
+      },
+    };
+  });
+
+  // project-get — full project detail
+  registerLensAction("diy", "project-get", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    return { ok: true, result: { project: projectSummary(p) } };
+  });
+
+  // project-delete
+  registerLensAction("diy", "project-delete", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = diyProjects(s, diyActor(ctx));
+    const i = arr.findIndex((p) => p.id === params.projectId);
+    if (i < 0) return { ok: false, error: "project not found" };
+    arr.splice(i, 1);
+    saveDIY();
+    return { ok: true, result: { deleted: params.projectId } };
+  });
+
+  // Feature: Step-by-step illustrated guide builder ───────────────────
+  // step-add — append an ordered step with optional photo
+  registerLensAction("diy", "step-add", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const text = diyClean(params.text, 2000);
+    if (!text) return { ok: false, error: "step text required" };
+    const step = {
+      id: diyId("step"),
+      order: p.steps.length + 1,
+      title: diyClean(params.title, 160) || `Step ${p.steps.length + 1}`,
+      text,
+      photoUrl: diyClean(params.photoUrl, 600) || "",
+      resultPhotoUrl: "",
+      estimatedMinutes: Math.max(0, Math.round(diyNum(params.estimatedMinutes))),
+      complete: false,
+      completedAt: null,
+    };
+    p.steps.push(step);
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(p), step } };
+  });
+
+  // step-update — edit step text / title / photo / time
+  registerLensAction("diy", "step-update", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const step = (p.steps || []).find((st) => st.id === params.stepId);
+    if (!step) return { ok: false, error: "step not found" };
+    if (params.title !== undefined) step.title = diyClean(params.title, 160);
+    if (params.text !== undefined) step.text = diyClean(params.text, 2000);
+    if (params.photoUrl !== undefined) step.photoUrl = diyClean(params.photoUrl, 600);
+    if (params.estimatedMinutes !== undefined) step.estimatedMinutes = Math.max(0, Math.round(diyNum(params.estimatedMinutes)));
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(p), step } };
+  });
+
+  // step-delete — remove a step and re-number the rest
+  registerLensAction("diy", "step-delete", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const i = (p.steps || []).findIndex((st) => st.id === params.stepId);
+    if (i < 0) return { ok: false, error: "step not found" };
+    p.steps.splice(i, 1);
+    p.steps.forEach((st, idx) => { st.order = idx + 1; });
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(p) } };
+  });
+
+  // step-reorder — move a step to a new position
+  registerLensAction("diy", "step-reorder", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const from = (p.steps || []).findIndex((st) => st.id === params.stepId);
+    if (from < 0) return { ok: false, error: "step not found" };
+    let to = Math.round(diyNum(params.toIndex));
+    to = Math.max(0, Math.min(p.steps.length - 1, to));
+    const [moved] = p.steps.splice(from, 1);
+    p.steps.splice(to, 0, moved);
+    p.steps.forEach((st, idx) => { st.order = idx + 1; });
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(p) } };
+  });
+
+  // Feature: Project progress tracking ────────────────────────────────
+  // step-progress — mark a step complete/incomplete, attach a result photo
+  registerLensAction("diy", "step-progress", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const step = (p.steps || []).find((st) => st.id === params.stepId);
+    if (!step) return { ok: false, error: "step not found" };
+    step.complete = params.complete === undefined ? !step.complete : !!params.complete;
+    step.completedAt = step.complete ? new Date().toISOString() : null;
+    if (params.resultPhotoUrl !== undefined) step.resultPhotoUrl = diyClean(params.resultPhotoUrl, 600);
+    // Auto-advance project status from the progress signal.
+    const done = p.steps.filter((st) => st.complete).length;
+    if (done === 0) p.status = "planning";
+    else if (done >= p.steps.length && p.steps.length > 0) p.status = "completed";
+    else p.status = "in_progress";
+    saveDIY();
+    const summary = projectSummary(p);
+    return { ok: true, result: { project: summary, step, progressPct: summary.progressPct } };
+  });
+
+  // Feature: Bill of materials with cost rollup + shopping links ───────
+  // Shopping links are generated as real, deterministic search URLs (no
+  // affiliate fakery) — a search query against the named retailer.
+  function shoppingLinks(itemName) {
+    const q = encodeURIComponent(String(itemName || "").trim());
+    if (!q) return [];
+    return [
+      { retailer: "Home Depot", url: `https://www.homedepot.com/s/${q}` },
+      { retailer: "Lowe's", url: `https://www.lowes.com/search?searchTerm=${q}` },
+      { retailer: "Amazon", url: `https://www.amazon.com/s?k=${q}` },
+    ];
+  }
+
+  // bom-add — add a material line to a project's bill of materials
+  registerLensAction("diy", "bom-add", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const item = diyClean(params.item, 200);
+    if (!item) return { ok: false, error: "material name required" };
+    const line = {
+      id: diyId("bom"),
+      item,
+      quantity: Math.max(0, diyNum(params.quantity) || 1),
+      unit: diyClean(params.unit, 20) || "pcs",
+      unitPrice: Math.max(0, diyNum(params.unitPrice)),
+      supplier: diyClean(params.supplier, 120) || "",
+      owned: !!params.owned,
+      links: shoppingLinks(item),
+    };
+    p.bom.push(line);
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(p), line } };
+  });
+
+  // bom-update — edit a BOM line (qty, price, owned flag)
+  registerLensAction("diy", "bom-update", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const line = (p.bom || []).find((b) => b.id === params.lineId);
+    if (!line) return { ok: false, error: "BOM line not found" };
+    if (params.item !== undefined) { line.item = diyClean(params.item, 200); line.links = shoppingLinks(line.item); }
+    if (params.quantity !== undefined) line.quantity = Math.max(0, diyNum(params.quantity));
+    if (params.unit !== undefined) line.unit = diyClean(params.unit, 20);
+    if (params.unitPrice !== undefined) line.unitPrice = Math.max(0, diyNum(params.unitPrice));
+    if (params.supplier !== undefined) line.supplier = diyClean(params.supplier, 120);
+    if (params.owned !== undefined) line.owned = !!params.owned;
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(p), line } };
+  });
+
+  // bom-delete — remove a BOM line
+  registerLensAction("diy", "bom-delete", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const i = (p.bom || []).findIndex((b) => b.id === params.lineId);
+    if (i < 0) return { ok: false, error: "BOM line not found" };
+    p.bom.splice(i, 1);
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(p) } };
+  });
+
+  // bom-rollup — full cost rollup: per-line totals, owned vs to-buy, links
+  registerLensAction("diy", "bom-rollup", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const lines = (p.bom || []).map((b) => ({
+      ...b,
+      lineTotal: Math.round(diyNum(b.quantity) * diyNum(b.unitPrice) * 100) / 100,
+    }));
+    const totalCost = Math.round(lines.reduce((n, l) => n + l.lineTotal, 0) * 100) / 100;
+    const toBuy = lines.filter((l) => !l.owned);
+    const toBuyCost = Math.round(toBuy.reduce((n, l) => n + l.lineTotal, 0) * 100) / 100;
+    const bySupplier = {};
+    for (const l of toBuy) {
+      const k = l.supplier || "Unassigned";
+      bySupplier[k] = Math.round(((bySupplier[k] || 0) + l.lineTotal) * 100) / 100;
+    }
+    return {
+      ok: true,
+      result: {
+        projectName: p.name,
+        lines,
+        lineCount: lines.length,
+        totalCost,
+        ownedValue: Math.round((totalCost - toBuyCost) * 100) / 100,
+        toBuyCost,
+        toBuyCount: toBuy.length,
+        bySupplier,
+        budgetTip: toBuyCost > p.estimatedHours * 25
+          ? "Materials outweigh labor — shop around or buy in stages"
+          : "Material spend is reasonable for the project size",
+      },
+    };
+  });
+
+  // Feature: Tool-availability check against inventory ─────────────────
+  // project-tool-gate — given the project's required tools and a live
+  // tool inventory snapshot, decide whether the build can start.
+  registerLensAction("diy", "project-tool-gate", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const required = Array.isArray(params.requiredTools)
+      ? params.requiredTools.map((t) => diyClean(t, 80)).filter(Boolean)
+      : [];
+    if (required.length === 0) return { ok: false, error: "list requiredTools to gate the project" };
+    const inventory = Array.isArray(params.inventory) ? params.inventory : [];
+    const owned = inventory.map((t) => ({
+      name: String(t.name || t || "").toLowerCase(),
+      condition: String(t.condition || "good").toLowerCase(),
+    }));
+    const checks = required.map((tool) => {
+      const tl = tool.toLowerCase();
+      const match = owned.find((o) => o.name && (o.name.includes(tl) || tl.includes(o.name)));
+      const blocked = match && ["needs repair", "out of service"].includes(match.condition);
+      return {
+        tool,
+        owned: !!match,
+        condition: match ? match.condition : null,
+        usable: !!match && !blocked,
+      };
+    });
+    const missing = checks.filter((c) => !c.owned).map((c) => c.tool);
+    const unusable = checks.filter((c) => c.owned && !c.usable).map((c) => c.tool);
+    const cleared = missing.length === 0 && unusable.length === 0;
+    if (params.persist) { p.toolGateClear = cleared; saveDIY(); }
+    return {
+      ok: true,
+      result: {
+        projectName: p.name,
+        checks,
+        readyToStart: cleared,
+        missing,
+        unusable,
+        verdict: cleared
+          ? "All required tools are on hand and usable — clear to start"
+          : `Blocked: ${missing.length} missing, ${unusable.length} need repair`,
+      },
+    };
+  });
+
+  // Feature: Difficulty/time/cost browse facets ───────────────────────
+  // project-facets — aggregate counts for browse-by-filter chips
+  registerLensAction("diy", "project-facets", (ctx, _a, _params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const projects = diyProjects(s, diyActor(ctx)).map(projectSummary);
+    const byDifficulty = {};
+    const byCategory = {};
+    const byStatus = {};
+    const costBands = { "under $50": 0, "$50–200": 0, "$200–500": 0, "over $500": 0 };
+    const timeBands = { "under 2h": 0, "2–8h": 0, "8–24h": 0, "over 24h": 0 };
+    for (const p of projects) {
+      byDifficulty[p.difficulty] = (byDifficulty[p.difficulty] || 0) + 1;
+      byCategory[p.category] = (byCategory[p.category] || 0) + 1;
+      byStatus[p.status] = (byStatus[p.status] || 0) + 1;
+      const c = p.materialsCost;
+      if (c < 50) costBands["under $50"]++;
+      else if (c < 200) costBands["$50–200"]++;
+      else if (c < 500) costBands["$200–500"]++;
+      else costBands["over $500"]++;
+      const h = p.estimatedHours;
+      if (h < 2) timeBands["under 2h"]++;
+      else if (h < 8) timeBands["2–8h"]++;
+      else if (h < 24) timeBands["8–24h"]++;
+      else timeBands["over 24h"]++;
+    }
+    return { ok: true, result: { total: projects.length, byDifficulty, byCategory, byStatus, costBands, timeBands } };
+  });
+
+  // Feature: Project forking / remix ──────────────────────────────────
+  // project-publish — make a finished project remixable by others
+  registerLensAction("diy", "project-publish", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const owner = diyActor(ctx);
+    const p = findProject(s, owner, params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    p.published = true;
+    s.published.set(p.id, { project: JSON.parse(JSON.stringify(p)), owner, publishedAt: new Date().toISOString() });
+    saveDIY();
+    return { ok: true, result: { projectId: p.id, published: true } };
+  });
+
+  // project-unpublish — withdraw from the remixable catalog
+  registerLensAction("diy", "project-unpublish", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const owner = diyActor(ctx);
+    const p = findProject(s, owner, params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    p.published = false;
+    s.published.delete(p.id);
+    saveDIY();
+    return { ok: true, result: { projectId: p.id, published: false } };
+  });
+
+  // project-browse-published — the remixable catalog (own + others')
+  registerLensAction("diy", "project-browse-published", (ctx, _a, _params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const me = diyActor(ctx);
+    const catalog = [...s.published.values()].map((entry) => {
+      const sum = projectSummary(entry.project);
+      return {
+        projectId: entry.project.id,
+        name: sum.name,
+        category: sum.category,
+        difficulty: sum.difficulty,
+        estimatedHours: sum.estimatedHours,
+        stepCount: sum.stepCount,
+        bomLineCount: sum.bomLineCount,
+        materialsCost: sum.materialsCost,
+        publishedAt: entry.publishedAt,
+        isMine: entry.owner === me,
+      };
+    });
+    return { ok: true, result: { catalog, count: catalog.length } };
+  });
+
+  // project-fork — clone a published project into the caller's workshop
+  registerLensAction("diy", "project-fork", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = s.published.get(params.projectId);
+    if (!entry) return { ok: false, error: "published project not found" };
+    const src = entry.project;
+    const fork = {
+      id: diyId("proj"),
+      name: `${src.name} (remix)`,
+      category: src.category,
+      difficulty: src.difficulty,
+      description: src.description,
+      estimatedHours: src.estimatedHours,
+      tags: [...(src.tags || [])],
+      steps: (src.steps || []).map((st, idx) => ({
+        id: diyId("step"),
+        order: idx + 1,
+        title: st.title,
+        text: st.text,
+        photoUrl: st.photoUrl || "",
+        resultPhotoUrl: "",
+        estimatedMinutes: st.estimatedMinutes || 0,
+        complete: false,
+        completedAt: null,
+      })),
+      bom: (src.bom || []).map((b) => ({
+        id: diyId("bom"),
+        item: b.item,
+        quantity: b.quantity,
+        unit: b.unit,
+        unitPrice: b.unitPrice,
+        supplier: b.supplier || "",
+        owned: false,
+        links: shoppingLinks(b.item),
+      })),
+      status: "planning",
+      forkedFrom: { projectId: src.id, name: src.name },
+      createdAt: new Date().toISOString(),
+    };
+    diyProjects(s, diyActor(ctx)).push(fork);
+    saveDIY();
+    return { ok: true, result: { project: projectSummary(fork), forkedFrom: fork.forkedFrom } };
+  });
 }

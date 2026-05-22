@@ -28,6 +28,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import ChemWorkbench from '@/components/chem/ChemWorkbench';
+import ChemStructureLab from '@/components/chem/ChemStructureLab';
 import { ChemActionPanel } from '@/components/chem/ChemActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -655,6 +656,12 @@ export default function ChemLensPage() {
         Chem Workbench
       </button>
       <ChemWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+
+      {/* 2026 parity backlog — structure editor, 3D viewer, SMILES/InChI,
+          stoichiometry, spectroscopy, mechanisms, lab notebook. */}
+      <div className="mt-6">
+        <ChemStructureLab />
+      </div>
 
       {/* Bespoke 118-element periodic table with click-to-detail + Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

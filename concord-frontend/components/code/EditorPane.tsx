@@ -58,6 +58,7 @@ export function EditorPane({
       })
       .catch(e => console.error('[Editor] open', e))
       .finally(() => setLoadingFile(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-fetches only on openPath/projectId change
   }, [openPath, projectId]);
 
   const active = files.find(f => f.path === openPath);

@@ -9,23 +9,19 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LineChart, RefreshCw, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Point {
   year: number;
   value: number | null;
-  country: string;
-  indicator: string;
+  country?: string;
+  indicator?: string;
 }
 
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
-  try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
-  } catch {
-    return null;
-  }
+interface TimeseriesResult {
+  points: Point[];
+  indicatorName?: string;
 }
 
 const POPULAR_INDICATORS = [
@@ -75,13 +71,21 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
   const fetchData = useCallback(async (c: string, i: string) => {
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; points?: Point[]; indicatorName?: string; reason?: string }>(
-      domain, 'live_worldbank', { country: c, indicator: i, yearsBack: 15 },
-    );
-    if (r?.ok) {
-      setPoints(r.points || []);
-      setIndicatorName(r.indicatorName || null);
-    } else setError(r?.reason || 'fetch_failed');
+    try {
+      const r = await lensRun<TimeseriesResult>(domain, 'indicatorTimeseries', {
+        country: c, indicator: i, yearsBack: 15,
+      });
+      if (r.data.ok && r.data.result) {
+        setPoints(r.data.result.points || []);
+        setIndicatorName(r.data.result.indicatorName || null);
+      } else {
+        setPoints([]);
+        setError(r.data.error || 'fetch_failed');
+      }
+    } catch (e) {
+      setPoints([]);
+      setError(e instanceof Error ? e.message : 'fetch_failed');
+    }
     setLoading(false);
   }, [domain]);
 

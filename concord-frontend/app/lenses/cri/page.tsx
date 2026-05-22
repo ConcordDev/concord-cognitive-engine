@@ -8,6 +8,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { QualityDistribution } from '@/components/cri/QualityDistribution';
+import { QualityLoopPanel } from '@/components/cri/QualityLoopPanel';
 import { CrisisActionPanel } from '@/components/cri/CrisisActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -748,6 +749,11 @@ export default function CRILensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <QualityDistribution />
+      </section>
+
+      {/* Quality-loop workbench: trend / score-rules / remediation / alerts / root-cause / compare */}
+      <section className="mt-6">
+        <QualityLoopPanel />
       </section>
 
       {/* Crisis-response workbench: severity / timeline / impact + actions */}

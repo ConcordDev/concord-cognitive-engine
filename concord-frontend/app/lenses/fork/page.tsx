@@ -11,11 +11,10 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { GitFork, GitBranch, GitMerge, Layers, Loader2, ChevronDown, ArrowLeftRight, Eye, GitPullRequest, Network, Scale, Diff, RefreshCw, X, Zap, Activity } from 'lucide-react';
+import { GitFork, GitBranch, GitMerge, Layers, Loader2, ChevronDown, ArrowLeftRight, RefreshCw, X, Zap, Activity } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { api } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -23,8 +22,9 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { showToast } from '@/components/common/Toasts';
 import { ForkNetworkExplorer } from '@/components/fork/ForkNetworkExplorer';
+import { RepoWatchlist } from '@/components/fork/RepoWatchlist';
+import { ForkInsights } from '@/components/fork/ForkInsights';
 
 interface ForkData {
   parentId: string | null;
@@ -606,135 +606,9 @@ export default function ForkLensPage() {
       )}
       </div>
 
-      {/* Fork Explorer — Tree Visualization, Merge Tools, Comparison View */}
-      <div className="panel p-6 space-y-5">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <Network className="w-5 h-5 text-neon-purple" />
-          Fork Explorer
-        </h2>
-        <p className="text-sm text-gray-400">
-          Visualize fork lineage trees, compare divergent branches, and manage merge operations across workspaces.
-        </p>
-
-        {/* Fork Tree Visualization */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-4">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-neon-cyan" />
-            Lineage Tree
-          </h3>
-          <div className="space-y-1">
-            {/* Root node */}
-            <div className="flex items-center gap-2 p-2 rounded bg-neon-purple/10 border border-neon-purple/30">
-              <GitFork className="w-4 h-4 text-neon-purple" />
-              <span className="text-sm font-mono text-white">main</span>
-              <span className="ml-auto text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">origin</span>
-            </div>
-            {/* Branch level 1 */}
-            <div className="ml-6 border-l-2 border-white/10 pl-4 space-y-1">
-              <div className="flex items-center gap-2 p-2 rounded bg-black/40 border border-white/10 hover:border-neon-cyan/40 transition-colors">
-                <GitBranch className="w-3 h-3 text-neon-cyan" />
-                <span className="text-sm font-mono text-gray-300">workspace-alpha</span>
-                <span className="ml-auto text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">active</span>
-              </div>
-              {/* Branch level 2 */}
-              <div className="ml-6 border-l-2 border-white/10 pl-4 space-y-1">
-                <div className="flex items-center gap-2 p-2 rounded bg-black/40 border border-white/10 hover:border-neon-cyan/40 transition-colors">
-                  <GitBranch className="w-3 h-3 text-gray-500" />
-                  <span className="text-sm font-mono text-gray-400">alpha-experiment-1</span>
-                  <span className="ml-auto text-xs px-2 py-0.5 rounded bg-neon-blue/20 text-neon-blue">merged</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded bg-black/40 border border-white/10 hover:border-neon-cyan/40 transition-colors">
-                  <GitBranch className="w-3 h-3 text-neon-green" />
-                  <span className="text-sm font-mono text-gray-300">alpha-experiment-2</span>
-                  <span className="ml-auto text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">active</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded bg-black/40 border border-white/10 hover:border-neon-cyan/40 transition-colors">
-                <GitBranch className="w-3 h-3 text-neon-cyan" />
-                <span className="text-sm font-mono text-gray-300">workspace-beta</span>
-                <span className="ml-auto text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">active</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded bg-black/40 border border-white/10 opacity-60">
-                <GitBranch className="w-3 h-3 text-gray-600" />
-                <span className="text-sm font-mono text-gray-500">workspace-gamma</span>
-                <span className="ml-auto text-xs px-2 py-0.5 rounded bg-gray-500/20 text-gray-500">abandoned</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Merge Tools & Fork Comparison */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Merge Tools */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <GitPullRequest className="w-4 h-4 text-neon-green" />
-              Merge Tools
-            </h3>
-            <div className="space-y-2">
-              <button onClick={() => { api.post('/api/lens/run', { domain: 'fork', action: 'merge', strategy: 'fast-forward' }).then(() => showToast('success', 'Fast-forward merge initiated')).catch(() => showToast('error', 'Merge failed — no eligible forks')); }} className="w-full flex items-center gap-2 p-2.5 rounded bg-black/30 border border-white/10 hover:border-neon-green/40 transition-colors text-left">
-                <GitMerge className="w-4 h-4 text-neon-green" />
-                <div>
-                  <p className="text-sm text-white">Fast-Forward Merge</p>
-                  <p className="text-xs text-gray-500">No conflicts, linear history</p>
-                </div>
-              </button>
-              <button onClick={() => { api.post('/api/lens/run', { domain: 'fork', action: 'merge', strategy: 'three-way' }).then(() => showToast('success', 'Three-way merge initiated')).catch(() => showToast('error', 'Merge failed — no eligible forks')); }} className="w-full flex items-center gap-2 p-2.5 rounded bg-black/30 border border-white/10 hover:border-neon-purple/40 transition-colors text-left">
-                <Scale className="w-4 h-4 text-neon-purple" />
-                <div>
-                  <p className="text-sm text-white">Three-Way Merge</p>
-                  <p className="text-xs text-gray-500">Resolve conflicts interactively</p>
-                </div>
-              </button>
-              <button onClick={() => { api.post('/api/lens/run', { domain: 'fork', action: 'cherry-pick' }).then(() => showToast('success', 'Cherry-pick mode activated')).catch(() => showToast('error', 'Cherry-pick failed — no DTUs selected')); }} className="w-full flex items-center gap-2 p-2.5 rounded bg-black/30 border border-white/10 hover:border-neon-cyan/40 transition-colors text-left">
-                <ArrowLeftRight className="w-4 h-4 text-neon-cyan" />
-                <div>
-                  <p className="text-sm text-white">Cherry-Pick</p>
-                  <p className="text-xs text-gray-500">Select specific DTUs to merge</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Fork Comparison View */}
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Diff className="w-4 h-4 text-neon-cyan" />
-              Fork Comparison
-            </h3>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 p-2 rounded bg-black/30 border border-white/10">
-                <Eye className="w-3 h-3 text-neon-cyan" />
-                <span className="text-xs text-gray-400">Base:</span>
-                <span className="text-xs font-mono text-white">workspace-alpha</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded bg-black/30 border border-white/10">
-                <Eye className="w-3 h-3 text-neon-purple" />
-                <span className="text-xs text-gray-400">Compare:</span>
-                <span className="text-xs font-mono text-white">workspace-beta</span>
-              </div>
-              <div className="border-t border-white/10 pt-2 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">DTUs added</span>
-                  <span className="text-neon-green font-mono">+12</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">DTUs removed</span>
-                  <span className="text-red-400 font-mono">-3</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">DTUs modified</span>
-                  <span className="text-yellow-400 font-mono">~7</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">Conflicts</span>
-                  <span className="text-red-400 font-mono">2</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Fork Insights — six GitHub-parity surfaces (commit compare, PR
+          overlay, network graph, stale-fork scan, releases, file diff). */}
+      <ForkInsights />
 
       {/* ConnectiveTissueBar */}
       <ConnectiveTissueBar lensId="fork" />
@@ -759,6 +633,11 @@ export default function ForkLensPage() {
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ForkNetworkExplorer />
+      </section>
+
+      {/* Repo-watchlist workbench: watch repos + refresh stats + GitHub events feed */}
+      <section className="mt-4">
+        <RepoWatchlist />
       </section>
     </div>
           <RecentMineCard domain="fork" limit={10} hideWhenEmpty className="mt-4" />

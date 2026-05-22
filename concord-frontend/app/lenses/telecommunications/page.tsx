@@ -9,6 +9,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TelcoRepos } from '@/components/telecommunications/TelcoRepos';
 import { TelecommunicationsActionPanel } from '@/components/telecommunications/TelecommunicationsActionPanel';
+import { RFPlanner } from '@/components/telecommunications/RFPlanner';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -353,6 +354,10 @@ export default function TelecommunicationsLensPage() {
       <UniversalActions domain="telecommunications" artifactId={items[0]?.id} />
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <TelcoRepos />
+      </section>
+
+      <section className="mt-6">
+        <RFPlanner />
       </section>
 
       <PipingProvider>

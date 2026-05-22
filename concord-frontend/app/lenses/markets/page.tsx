@@ -23,6 +23,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import QuoteCardList, { type QuoteCardItem } from '@/components/lens/QuoteCardList';
 import MarketsWorkbench from '@/components/markets/MarketsWorkbench';
 import { MarketsQuoteDetail } from '@/components/markets/MarketsQuoteDetail';
+import PredictionMarkets from '@/components/markets/PredictionMarkets';
 
 interface Market {
   id: number;
@@ -120,6 +121,12 @@ export default function MarketsPage() {
         {/* Bespoke quote research — lightweight-charts + percent-rebase compare + Save-as-DTU */}
         <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <MarketsQuoteDetail />
+        </div>
+
+        {/* Polymarket / Kalshi parity — user-created event markets, live odds,
+            price-history charts, limit orders, cash-out, resolution, leaderboard */}
+        <div className="mb-8">
+          <PredictionMarkets />
         </div>
 
         {status && (

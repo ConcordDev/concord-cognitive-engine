@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Calendar } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
@@ -18,16 +18,16 @@ export function RunwayForecast() {
   const [loading, setLoading] = useState(true);
   const [months, setMonths] = useState(12);
 
-  useEffect(() => { refresh(); }, [months]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'accounting', action: 'runway-forecast', input: { months } });
       setData((r.data?.result as Runway) || null);
     } catch (e) { console.error('[Runway] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [months]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   return (
     <div className="bg-[#0d1117] border border-emerald-500/15 rounded-lg overflow-hidden">

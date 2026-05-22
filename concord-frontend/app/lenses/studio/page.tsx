@@ -20,6 +20,14 @@ import TempoMap from '@/components/studio/TempoMap';
 import PresetsLibraryPanel from '@/components/studio/PresetsLibraryPanel';
 import SendsRouting from '@/components/studio/SendsRouting';
 import ScenesLauncher from '@/components/studio/ScenesLauncher';
+import ClipEditorPanel from '@/components/studio/ClipEditorPanel';
+import DrumRackPanel from '@/components/studio/DrumRackPanel';
+import FxRackPanel from '@/components/studio/FxRackPanel';
+import MidiMapPanel from '@/components/studio/MidiMapPanel';
+import QuantizePanel from '@/components/studio/QuantizePanel';
+import RecordingPanel from '@/components/studio/RecordingPanel';
+import ProjectIOPanel from '@/components/studio/ProjectIOPanel';
+import CollabPanel from '@/components/studio/CollabPanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
@@ -2730,22 +2738,34 @@ export default function StudioLensPage() {
 /*  Logic / Ableton-parity workbench section                            */
 /* ------------------------------------------------------------------ */
 
+type WorkbenchTab =
+  | 'clips' | 'midi' | 'automation' | 'bounce' | 'markers' | 'tempo' | 'presets' | 'sends' | 'scenes'
+  | 'clipEdit' | 'drumRack' | 'fxRack' | 'midiMap' | 'quantize' | 'recording' | 'projectIO' | 'collab';
+
 function DawWorkbenchSection() {
-  const [active, setActive] = useState<'clips' | 'midi' | 'automation' | 'bounce' | 'markers' | 'tempo' | 'presets' | 'sends' | 'scenes'>('clips');
+  const [active, setActive] = useState<WorkbenchTab>('clips');
   const [projectId, setProjId] = useState<string>('');
   const [trackId, setTrackId] = useState<string>('');
   const [clipId, setClipId] = useState<string>('');
-  const TABS = [
+  const TABS: { id: WorkbenchTab; label: string }[] = [
     { id: 'clips', label: 'Clips' },
+    { id: 'clipEdit', label: 'Clip editor' },
     { id: 'midi', label: 'Piano roll' },
+    { id: 'quantize', label: 'Quantize' },
     { id: 'automation', label: 'Automation' },
+    { id: 'drumRack', label: 'Drum rack' },
+    { id: 'fxRack', label: 'FX racks' },
+    { id: 'midiMap', label: 'MIDI map' },
+    { id: 'recording', label: 'Recording' },
     { id: 'bounce', label: 'Bounce' },
+    { id: 'projectIO', label: 'Stems & I/O' },
     { id: 'markers', label: 'Markers' },
     { id: 'tempo', label: 'Tempo' },
     { id: 'presets', label: 'Presets' },
     { id: 'sends', label: 'Sends' },
     { id: 'scenes', label: 'Scenes' },
-  ] as const;
+    { id: 'collab', label: 'Collaborate' },
+  ];
   return (
     <section className="mt-6 space-y-3">
       <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wider">Logic/Ableton-parity workbench</h2>
@@ -2772,14 +2792,22 @@ function DawWorkbenchSection() {
       </nav>
       <div>
         {active === 'clips' && <ClipsTimelinePanel projectId={projectId || undefined} trackId={trackId || undefined} />}
+        {active === 'clipEdit' && <ClipEditorPanel projectId={projectId || undefined} trackId={trackId || undefined} />}
         {active === 'midi' && <MidiPianoRoll clipId={clipId || undefined} />}
+        {active === 'quantize' && <QuantizePanel clipId={clipId || undefined} />}
         {active === 'automation' && <AutomationLanesPanel trackId={trackId || undefined} />}
+        {active === 'drumRack' && <DrumRackPanel projectId={projectId || undefined} />}
+        {active === 'fxRack' && <FxRackPanel />}
+        {active === 'midiMap' && <MidiMapPanel projectId={projectId || undefined} />}
+        {active === 'recording' && <RecordingPanel projectId={projectId || undefined} trackId={trackId || undefined} />}
         {active === 'bounce' && <BouncePanel projectId={projectId || undefined} />}
+        {active === 'projectIO' && <ProjectIOPanel projectId={projectId || undefined} />}
         {active === 'markers' && <MarkersPanel projectId={projectId || undefined} />}
         {active === 'tempo' && <TempoMap projectId={projectId || undefined} />}
         {active === 'presets' && <PresetsLibraryPanel />}
         {active === 'sends' && <SendsRouting projectId={projectId || undefined} />}
         {active === 'scenes' && <ScenesLauncher projectId={projectId || undefined} />}
+        {active === 'collab' && <CollabPanel projectId={projectId || undefined} />}
       </div>
     </section>
   );

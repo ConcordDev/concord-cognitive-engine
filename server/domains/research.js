@@ -3,6 +3,7 @@
 // reproducibility assessment, and literature gap detection.
 
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import { cachedFetchJson } from "../lib/external-fetch.js";
 
 export default function registerResearchActions(registerLensAction) {
   registerLensAction("research", "vision", async (ctx, artifact, _params) => {
@@ -880,5 +881,541 @@ export default function registerResearchActions(registerLensAction) {
         byType, byStatus,
       },
     };
+  });
+
+  // ─── 2026 parity backlog — Obsidian graph + Elicit + live search ────
+  // Backfill the extra STATE buckets used by the backlog macros.
+  function getResearchStateExt() {
+    const s = getResearchState();
+    if (!s) return null;
+    for (const k of ["snapshots", "canvases", "pdfs", "reviews"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+  // Extract [[wikilink]] targets from note body.
+  function wikiLinksOf(body) {
+    const out = [];
+    const re = /\[\[([^\]]{1,200})\]\]/g;
+    let m;
+    while ((m = re.exec(String(body || ""))) !== null) {
+      const t = m[1].trim();
+      if (t) out.push(t);
+    }
+    return out;
+  }
+
+  // ── Note graph — backlink network for Obsidian-style graph view ─────
+  registerLensAction("research", "note-graph", (ctx, _a, _params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const map = s.notes.get(userId);
+    if (!map || map.size === 0) return { ok: true, result: { nodes: [], edges: [], orphans: [] } };
+    const notes = [...map.values()];
+    const byTitle = new Map();
+    for (const n of notes) byTitle.set(n.title, n);
+    const nodes = notes.map((n) => ({
+      id: n.id,
+      title: n.title,
+      tags: n.tags || [],
+      degree: 0,
+      updatedAt: n.updatedAt,
+    }));
+    const nodeById = new Map(nodes.map((n) => [n.id, n]));
+    const edges = [];
+    const edgeSeen = new Set();
+    for (const n of notes) {
+      for (const link of wikiLinksOf(n.body)) {
+        const target = byTitle.get(link);
+        if (!target || target.id === n.id) continue;
+        const key = `${n.id}->${target.id}`;
+        if (edgeSeen.has(key)) continue;
+        edgeSeen.add(key);
+        edges.push({ source: n.id, target: target.id, sourceTitle: n.title, targetTitle: target.title });
+        const a = nodeById.get(n.id); const b = nodeById.get(target.id);
+        if (a) a.degree++;
+        if (b) b.degree++;
+      }
+    }
+    const orphans = nodes.filter((n) => n.degree === 0).map((n) => ({ id: n.id, title: n.title }));
+    return {
+      ok: true,
+      result: {
+        nodes: nodes.sort((a, b) => b.degree - a.degree),
+        edges,
+        orphans,
+        stats: { noteCount: nodes.length, linkCount: edges.length, orphanCount: orphans.length },
+      },
+    };
+  });
+
+  // ── Note titles — autocomplete source for inline [[wikilinks]] ──────
+  registerLensAction("research", "note-titles", (ctx, _a, params = {}) => {
+    const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const map = s.notes.get(userId);
+    if (!map) return { ok: true, result: { titles: [] } };
+    const q = String(params.query || "").trim().toLowerCase();
+    let titles = [...map.values()].map((n) => ({ id: n.id, title: n.title, updatedAt: n.updatedAt }));
+    if (q) titles = titles.filter((t) => t.title.toLowerCase().includes(q));
+    titles.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { titles: titles.slice(0, 30), count: titles.length } };
+  });
+
+  // ── Note snapshots — version history per note ───────────────────────
+  registerLensAction("research", "note-snapshot", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const noteId = String(params.noteId || params.id || "");
+    if (!noteId) return { ok: false, error: "noteId required" };
+    const map = s.notes.get(userId);
+    if (!map || !map.has(noteId)) return { ok: false, error: "note not found" };
+    const n = map.get(noteId);
+    if (!s.snapshots.has(userId)) s.snapshots.set(userId, new Map());
+    const userSnaps = s.snapshots.get(userId);
+    if (!userSnaps.has(noteId)) userSnaps.set(noteId, []);
+    const list = userSnaps.get(noteId);
+    const snap = {
+      id: nextResId("snap"),
+      noteId,
+      title: n.title,
+      body: n.body,
+      tags: [...(n.tags || [])],
+      label: String(params.label || "").trim().slice(0, 120) || null,
+      createdAt: nowIsoRes(),
+    };
+    list.unshift(snap);
+    if (list.length > 50) list.length = 50; // cap version history
+    saveResearchState();
+    return { ok: true, result: { snapshot: { ...snap, body: undefined, bodyLength: snap.body.length } } };
+  });
+
+  registerLensAction("research", "note-snapshots", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const noteId = String(params.noteId || params.id || "");
+    if (!noteId) return { ok: false, error: "noteId required" };
+    const list = (s.snapshots.get(userId) || new Map()).get(noteId) || [];
+    return {
+      ok: true,
+      result: {
+        snapshots: list.map((sn) => ({
+          id: sn.id, noteId: sn.noteId, title: sn.title, label: sn.label,
+          createdAt: sn.createdAt, bodyLength: sn.body.length, tags: sn.tags,
+        })),
+        count: list.length,
+      },
+    };
+  });
+
+  registerLensAction("research", "note-snapshot-get", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const noteId = String(params.noteId || "");
+    const snapshotId = String(params.snapshotId || params.id || "");
+    if (!noteId || !snapshotId) return { ok: false, error: "noteId and snapshotId required" };
+    const list = (s.snapshots.get(userId) || new Map()).get(noteId) || [];
+    const snap = list.find((sn) => sn.id === snapshotId);
+    if (!snap) return { ok: false, error: "snapshot not found" };
+    return { ok: true, result: { snapshot: snap } };
+  });
+
+  registerLensAction("research", "note-restore", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const noteId = String(params.noteId || "");
+    const snapshotId = String(params.snapshotId || "");
+    if (!noteId || !snapshotId) return { ok: false, error: "noteId and snapshotId required" };
+    const map = s.notes.get(userId);
+    if (!map || !map.has(noteId)) return { ok: false, error: "note not found" };
+    const list = (s.snapshots.get(userId) || new Map()).get(noteId) || [];
+    const snap = list.find((sn) => sn.id === snapshotId);
+    if (!snap) return { ok: false, error: "snapshot not found" };
+    const n = map.get(noteId);
+    // Snapshot the current state before overwriting so restore is reversible.
+    if (!s.snapshots.has(userId)) s.snapshots.set(userId, new Map());
+    if (!s.snapshots.get(userId).has(noteId)) s.snapshots.get(userId).set(noteId, []);
+    s.snapshots.get(userId).get(noteId).unshift({
+      id: nextResId("snap"), noteId, title: n.title, body: n.body,
+      tags: [...(n.tags || [])], label: "auto: before restore", createdAt: nowIsoRes(),
+    });
+    n.title = snap.title;
+    n.body = snap.body;
+    n.tags = [...snap.tags];
+    n.updatedAt = nowIsoRes();
+    saveResearchState();
+    return { ok: true, result: { note: n, restoredFrom: snapshotId } };
+  });
+
+  // ── Canvas / spatial board for arranging notes ──────────────────────
+  registerLensAction("research", "canvas-save", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 120) return { ok: false, error: "name too long (max 120)" };
+    const rawCards = Array.isArray(params.cards) ? params.cards : [];
+    if (rawCards.length > 200) return { ok: false, error: "too many cards (max 200)" };
+    const cards = rawCards.map((c) => ({
+      id: String(c.id || nextResId("card")),
+      kind: ["note", "text", "link"].includes(String(c.kind)) ? String(c.kind) : "text",
+      noteId: c.noteId ? String(c.noteId) : null,
+      text: String(c.text || "").slice(0, 2000),
+      x: Number.isFinite(Number(c.x)) ? Math.round(Number(c.x)) : 0,
+      y: Number.isFinite(Number(c.y)) ? Math.round(Number(c.y)) : 0,
+      w: Number.isFinite(Number(c.w)) ? Math.max(80, Math.round(Number(c.w))) : 200,
+      h: Number.isFinite(Number(c.h)) ? Math.max(60, Math.round(Number(c.h))) : 120,
+      color: String(c.color || "slate"),
+    }));
+    const rawEdges = Array.isArray(params.edges) ? params.edges : [];
+    const edges = rawEdges.slice(0, 400).map((e) => ({
+      id: String(e.id || nextResId("cedge")),
+      from: String(e.from || ""),
+      to: String(e.to || ""),
+      label: String(e.label || "").slice(0, 80),
+    })).filter((e) => e.from && e.to);
+    if (!s.canvases.has(userId)) s.canvases.set(userId, new Map());
+    const userCanvases = s.canvases.get(userId);
+    let canvas;
+    const id = String(params.id || "");
+    if (id && userCanvases.has(id)) {
+      canvas = userCanvases.get(id);
+      canvas.name = name;
+      canvas.cards = cards;
+      canvas.edges = edges;
+      canvas.updatedAt = nowIsoRes();
+    } else {
+      canvas = {
+        id: nextResId("canvas"), name, cards, edges,
+        createdAt: nowIsoRes(), updatedAt: nowIsoRes(),
+      };
+      userCanvases.set(canvas.id, canvas);
+    }
+    saveResearchState();
+    return { ok: true, result: { canvas } };
+  });
+
+  registerLensAction("research", "canvas-list", (ctx, _a, _params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const map = s.canvases.get(userId);
+    if (!map) return { ok: true, result: { canvases: [] } };
+    const canvases = [...map.values()]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .map((c) => ({ id: c.id, name: c.name, cardCount: c.cards.length, edgeCount: c.edges.length, updatedAt: c.updatedAt }));
+    return { ok: true, result: { canvases, count: canvases.length } };
+  });
+
+  registerLensAction("research", "canvas-get", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.canvases.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "canvas not found" };
+    return { ok: true, result: { canvas: map.get(id) } };
+  });
+
+  registerLensAction("research", "canvas-delete", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = researchActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.canvases.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "canvas not found" };
+    map.delete(id);
+    saveResearchState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── PDF attachment for references ───────────────────────────────────
+  registerLensAction("research", "reference-attach-pdf", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const ref = findRef(s, userId, params.referenceId);
+    if (!ref) return { ok: false, error: "reference not found" };
+    const url = rfClean(params.url, 1000);
+    const filename = rfClean(params.filename, 240);
+    if (!url) return { ok: false, error: "url required" };
+    if (!/^https?:\/\//i.test(url)) return { ok: false, error: "url must be http(s)" };
+    const attachment = {
+      id: rfId("pdf"),
+      referenceId: ref.id,
+      url,
+      filename: filename || url.split("/").pop() || "document.pdf",
+      pages: Number.isFinite(Number(params.pages)) ? Math.max(0, Math.round(Number(params.pages))) : null,
+      createdAt: rfNow(),
+    };
+    rfListB(s.pdfs, userId).push(attachment);
+    ref.hasPdf = true;
+    saveResearchState();
+    return { ok: true, result: { attachment } };
+  });
+
+  registerLensAction("research", "reference-pdfs", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    let pdfs = [...(s.pdfs.get(userId) || [])];
+    if (params.referenceId) pdfs = pdfs.filter((p) => p.referenceId === String(params.referenceId));
+    pdfs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { ok: true, result: { pdfs, count: pdfs.length } };
+  });
+
+  registerLensAction("research", "reference-pdf-delete", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const arr = s.pdfs.get(userId) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "attachment not found" };
+    const removed = arr.splice(i, 1)[0];
+    const stillHas = arr.some((p) => p.referenceId === removed.referenceId);
+    const ref = findRef(s, userId, removed.referenceId);
+    if (ref && !stillHas) ref.hasPdf = false;
+    saveResearchState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Live academic search — OpenAlex / arXiv (free, keyless) ─────────
+  function mapOpenAlexWork(w) {
+    const authors = (w.authorships || [])
+      .map((a) => a.author?.display_name)
+      .filter(Boolean);
+    let abstract = null;
+    if (w.abstract_inverted_index && typeof w.abstract_inverted_index === "object") {
+      const positions = [];
+      for (const [word, idxs] of Object.entries(w.abstract_inverted_index)) {
+        for (const i of idxs) positions[i] = word;
+      }
+      abstract = positions.filter(Boolean).join(" ").slice(0, 4000) || null;
+    }
+    const doi = w.doi ? String(w.doi).replace(/^https?:\/\/doi\.org\//i, "") : null;
+    return {
+      id: w.id || null,
+      title: w.display_name || w.title || "Untitled",
+      authors,
+      year: w.publication_year || null,
+      venue: w.primary_location?.source?.display_name || w.host_venue?.display_name || null,
+      doi,
+      citationCount: typeof w.cited_by_count === "number" ? w.cited_by_count : 0,
+      openAccessUrl: w.open_access?.oa_url || w.primary_location?.pdf_url || null,
+      url: w.id || (doi ? `https://doi.org/${doi}` : null),
+      abstract,
+      source: "openalex",
+    };
+  }
+
+  function mapArxivWork(xml) {
+    const entries = [];
+    const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
+    let m;
+    while ((m = entryRe.exec(xml)) !== null) {
+      const e = m[1];
+      const get = (tag) => {
+        const mm = e.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
+        return mm ? mm[1].replace(/\s+/g, " ").trim() : null;
+      };
+      const id = get("id");
+      const authors = [];
+      const ar = /<author>\s*<name>([^<]+)<\/name>/g;
+      let am;
+      while ((am = ar.exec(e)) !== null) authors.push(am[1].trim());
+      const published = get("published");
+      const arxivId = id?.match(/arxiv\.org\/abs\/(.+)$/)?.[1] || null;
+      entries.push({
+        id, title: get("title"), authors,
+        year: published ? Number(published.slice(0, 4)) : null,
+        venue: "arXiv", doi: null, citationCount: null,
+        openAccessUrl: arxivId ? `https://arxiv.org/pdf/${arxivId}.pdf` : null,
+        url: id, abstract: get("summary"), source: "arxiv",
+      });
+    }
+    return entries;
+  }
+
+  registerLensAction("research", "academic-search", async (_ctx, _a, params = {}) => {
+    const query = String(params.query || "").trim();
+    if (!query) return { ok: false, error: "query required" };
+    if (query.length < 2) return { ok: false, error: "query too short" };
+    const limit = Math.min(Math.max(Number(params.limit) || 15, 1), 25);
+    const provider = ["openalex", "arxiv"].includes(String(params.provider))
+      ? String(params.provider) : "openalex";
+    try {
+      if (provider === "arxiv") {
+        const url = `http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}&sortBy=relevance`;
+        const xml = await (await fetch(url, { signal: AbortSignal.timeout(9000) })).text();
+        const results = mapArxivWork(xml);
+        return { ok: true, result: { provider, query, count: results.length, results } };
+      }
+      const fields = "id,display_name,publication_year,authorships,cited_by_count,primary_location,host_venue,open_access,doi,abstract_inverted_index";
+      const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}&select=${fields}&sort=relevance_score:desc`;
+      const data = await cachedFetchJson(url, { ttlMs: 10 * 60 * 1000, timeoutMs: 9000 });
+      const results = (data.results || []).map(mapOpenAlexWork);
+      return { ok: true, result: { provider, query, count: results.length, results } };
+    } catch (e) {
+      return { ok: false, error: `academic search failed: ${String(e?.message || e)}` };
+    }
+  });
+
+  // ── Import a search result straight into the reference library ──────
+  registerLensAction("research", "academic-import", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const w = params.work || params;
+    const title = rfClean(w.title, 400);
+    if (!title) return { ok: false, error: "title required" };
+    const authors = Array.isArray(w.authors) ? w.authors.join(", ") : rfClean(w.authors, 400);
+    const ref = {
+      id: rfId("ref"), title,
+      authors: rfClean(authors, 400) || null,
+      year: Number.isFinite(Number(w.year)) ? Math.round(Number(w.year)) : null,
+      type: w.source === "arxiv" ? "preprint" : "article",
+      journal: rfClean(w.venue, 200) || null,
+      doi: rfClean(w.doi, 120) || null,
+      url: rfClean(w.url || w.openAccessUrl, 500) || null,
+      abstract: rfClean(w.abstract, 4000) || null,
+      tags: normTags(params.tags),
+      status: "to_read",
+      relatedIds: [],
+      citationCount: Number.isFinite(Number(w.citationCount)) ? Number(w.citationCount) : null,
+      createdAt: rfNow(),
+    };
+    rfListB(s.references, rfAid(ctx)).push(ref);
+    saveResearchState();
+    return { ok: true, result: { reference: ref } };
+  });
+
+  // ── LLM literature review — comparison table across many papers ─────
+  // Builds an Elicit-style finding-extraction matrix. Without an LLM it
+  // falls back to a deterministic heuristic extraction (no fake data —
+  // every value is derived from the real paper input).
+  function heuristicExtract(paper, dimension) {
+    const text = `${paper.abstract || ""} ${paper.title || ""}`.toLowerCase();
+    const sentences = String(paper.abstract || "").split(/(?<=[.!?])\s+/).filter(Boolean);
+    const dim = String(dimension).toLowerCase();
+    const cueMap = {
+      method: ["method", "approach", "model", "framework", "algorithm", "technique", "architecture"],
+      finding: ["find", "result", "show", "demonstrate", "achiev", "report", "observ", "improv"],
+      sample: ["participant", "sample", "subject", "dataset", "n =", "patients", "respondents"],
+      limitation: ["limit", "however", "caveat", "weakness", "constrain", "future work"],
+      outcome: ["outcome", "effect", "impact", "performance", "accuracy", "score"],
+    };
+    const cues = cueMap[dim] || dim.split(/\s+/);
+    const hit = sentences.find((sn) => cues.some((c) => sn.toLowerCase().includes(c)));
+    return hit ? hit.trim().slice(0, 280) : (sentences[0]?.slice(0, 200) || "Not reported in abstract");
+  }
+
+  registerLensAction("research", "literature-review", async (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    let papers = Array.isArray(params.papers) ? params.papers : null;
+    // Pull from the library if reference IDs were given instead of raw papers.
+    if (!papers && Array.isArray(params.referenceIds)) {
+      papers = params.referenceIds
+        .map((id) => findRef(s, userId, id))
+        .filter(Boolean)
+        .map((r) => ({ id: r.id, title: r.title, authors: r.authors, year: r.year, abstract: r.abstract }));
+    }
+    if (!papers || papers.length === 0) {
+      return { ok: false, error: "papers or referenceIds required" };
+    }
+    if (papers.length > 30) papers = papers.slice(0, 30);
+    const rawDims = Array.isArray(params.dimensions) && params.dimensions.length
+      ? params.dimensions : ["method", "finding", "sample", "limitation"];
+    const dimensions = rawDims.map((d) => String(d).trim().slice(0, 60)).filter(Boolean).slice(0, 8);
+    const usableForLlm = papers.filter((p) => p.abstract && p.abstract.length > 40);
+    const llm = ctx?.llm;
+    let matrix = null;
+    let summary = null;
+    let mode = "heuristic";
+    if (llm && typeof llm.chat === "function" && usableForLlm.length > 0
+        && process.env.CONCORD_LITERATURE_REVIEW_LLM !== "0") {
+      try {
+        const corpus = papers.map((p, i) =>
+          `[${i + 1}] ${p.title || "Untitled"} (${p.year || "n.d."})\nAbstract: ${(p.abstract || "no abstract").slice(0, 1200)}`
+        ).join("\n\n");
+        const prompt = `You are a research synthesis assistant. For each paper below, extract these dimensions: ${dimensions.join(", ")}.
+Respond ONLY with strict JSON: {"rows":[{"paper":<index 1-based>,${dimensions.map((d) => `"${d}":"..."`).join(",")}}],"synthesis":"2-3 sentence cross-paper synthesis"}.
+Keep each cell under 200 characters. Use only information present in the abstract; write "Not reported" if absent.
+
+${corpus}`;
+        const out = await llm.chat(prompt, { maxTokens: 2000, temperature: 0.2 });
+        const txt = typeof out === "string" ? out : (out?.content || out?.text || "");
+        const jsonMatch = txt.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed.rows)) {
+            matrix = parsed.rows.map((r) => {
+              const idx = Math.max(0, Math.min(papers.length - 1, (Number(r.paper) || 1) - 1));
+              const cells = {};
+              for (const d of dimensions) cells[d] = String(r[d] || "Not reported").slice(0, 280);
+              return { paperIndex: idx, title: papers[idx]?.title || "Untitled", year: papers[idx]?.year || null, cells };
+            });
+            summary = String(parsed.synthesis || "").slice(0, 800) || null;
+            mode = "llm";
+          }
+        }
+      } catch (_e) { /* fall through to heuristic */ }
+    }
+    if (!matrix) {
+      matrix = papers.map((p, idx) => {
+        const cells = {};
+        for (const d of dimensions) cells[d] = heuristicExtract(p, d);
+        return { paperIndex: idx, title: p.title || "Untitled", year: p.year || null, cells };
+      });
+      const yearsKnown = papers.map((p) => p.year).filter((y) => Number.isFinite(Number(y)));
+      const span = yearsKnown.length ? `${Math.min(...yearsKnown)}–${Math.max(...yearsKnown)}` : "unknown period";
+      summary = `Compared ${papers.length} paper(s) spanning ${span} across ${dimensions.length} dimension(s). Heuristic extraction — open an LLM-enabled session for deeper synthesis.`;
+    }
+    const review = {
+      id: nextResId("review"),
+      title: String(params.title || "Literature review").trim().slice(0, 200),
+      dimensions,
+      paperCount: papers.length,
+      matrix,
+      summary,
+      mode,
+      createdAt: nowIsoRes(),
+    };
+    if (params.save === true) {
+      if (!s.reviews.has(userId)) s.reviews.set(userId, []);
+      const list = s.reviews.get(userId);
+      list.unshift(review);
+      if (list.length > 50) list.length = 50;
+      saveResearchState();
+    }
+    return { ok: true, result: { review } };
+  });
+
+  registerLensAction("research", "literature-reviews-list", (ctx, _a, _params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.reviews.get(rfAid(ctx)) || [];
+    return {
+      ok: true,
+      result: {
+        reviews: list.map((r) => ({
+          id: r.id, title: r.title, dimensions: r.dimensions,
+          paperCount: r.paperCount, mode: r.mode, createdAt: r.createdAt,
+        })),
+        count: list.length,
+      },
+    };
+  });
+
+  registerLensAction("research", "literature-review-get", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.reviews.get(rfAid(ctx)) || [];
+    const review = list.find((r) => r.id === String(params.id || ""));
+    if (!review) return { ok: false, error: "review not found" };
+    return { ok: true, result: { review } };
+  });
+
+  registerLensAction("research", "literature-review-delete", (ctx, _a, params = {}) => {
+    const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = rfAid(ctx);
+    const list = s.reviews.get(userId) || [];
+    const i = list.findIndex((r) => r.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "review not found" };
+    list.splice(i, 1);
+    saveResearchState();
+    return { ok: true, result: { deleted: params.id } };
   });
 }

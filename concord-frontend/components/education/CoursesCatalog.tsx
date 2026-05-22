@@ -26,6 +26,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [form, setForm] = useState({ title: '', description: '', category: 'general', level: 'beginner', kind: 'course', durationHours: '', instructor: '', institution: '' });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [filterCategory]);
 
   async function refresh() {

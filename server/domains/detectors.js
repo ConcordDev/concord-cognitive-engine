@@ -25,6 +25,7 @@ import {
 } from "../lib/detectors/macro-telemetry.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import registerCodeQualityActions from "./code-quality.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../");
@@ -248,4 +249,25 @@ export default function registerDetectorMacros(register) {
       })),
     };
   }, { note: "lightweight detector totals" });
+
+  // ---------------------------------------------------------------------
+  // Code-quality static-analysis surface.
+  //
+  // server/domains/code-quality.js exports a `registerLensAction`-style
+  // registrar — handler signature (ctx, artifact, params). The canonical
+  // macro registry here uses (ctx, input). We bridge the two with a thin
+  // adapter so the code-quality.* macros resolve through /api/lens/run
+  // without touching server.js or domains/index.js. The code-quality
+  // handlers already return { ok, result?, error? } envelopes; the macro
+  // path passes that straight through to the lens-run response.
+  // ---------------------------------------------------------------------
+  const codeQualityAdapter = (domain, action, handler, spec = {}) => {
+    register(
+      domain,
+      action,
+      async (ctx, input = {}) => handler(ctx, { data: input }, input),
+      { ...spec, note: spec.note || `code-quality:${action}` },
+    );
+  };
+  registerCodeQualityActions(codeQualityAdapter);
 }

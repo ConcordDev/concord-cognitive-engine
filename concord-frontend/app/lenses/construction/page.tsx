@@ -40,6 +40,7 @@ import { LensPageShell } from '@/components/lens/LensPageShell';
 import { OshaIncidentSearch } from '@/components/construction/OshaIncidentSearch';
 import { ProcorePanel } from '@/components/construction/ProcorePanel';
 import { ConstructionActionPanel } from '@/components/construction/ConstructionActionPanel';
+import { FieldManagementPanel } from '@/components/construction/FieldManagementPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -791,6 +792,11 @@ export default function ConstructionLensPage() {
         renderLibrary()
       )}
       {renderEditor()}
+
+      <section className="mt-6">
+        <FieldManagementPanel />
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OshaIncidentSearch />
       </section>

@@ -13,6 +13,7 @@ import { NewsActionPanel } from '@/components/news/NewsActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import HeadlineFeed from '@/components/news/HeadlineFeed';
 import NewsBriefing from '@/components/news/NewsBriefing';
+import { NewsParitySuite } from '@/components/news/NewsParitySuite';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
@@ -1042,6 +1043,12 @@ export default function NewsLensPage() {
           <NewsActionPanel />
         </section>
       </PipingProvider>
+
+      {/* Ground News + Apple News parity suite: bias spectrum, story clusters,
+          source transparency, audio mode, push alerts, offline sync, digest scheduling */}
+      <section className="mt-6 mx-4">
+        <NewsParitySuite />
+      </section>
     </div>
           <RecentMineCard domain="news" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="news" hideWhenEmpty className="mt-3" title="More actions" />

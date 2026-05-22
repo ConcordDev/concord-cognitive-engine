@@ -233,6 +233,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
     return () => {
       cancelled = true;
       try { emit('audio-room:leave', { roomId }); } catch { /* */ }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- peersRef is a stable ref; teardown intentionally reads its current peers
       for (const id of Array.from(peersRef.current.keys())) cleanupPeer(id);
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(t => t.stop());

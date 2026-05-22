@@ -11,6 +11,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { MathStackFeed } from '@/components/math/MathStackFeed';
 import { MathActionPanel } from '@/components/math/MathActionPanel';
+import { SymbolicWorkbench } from '@/components/math/SymbolicWorkbench';
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo } from 'react';
@@ -465,6 +466,9 @@ export default function MathLensPage() {
               <p className="text-sm text-gray-400">Accuracy</p>
             </div>
           </div>
+
+          {/* ── Computational Math Engine (CAS) — symbolic, step-solve, plot, units, number theory ── */}
+          <SymbolicWorkbench />
 
           {/* ── STSVK Theorem Explorer ── */}
           <STSVKExplorer />

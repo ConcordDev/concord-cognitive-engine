@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Gauge, Plus, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -11,9 +11,7 @@ export function TempoMap({ projectId }: { projectId?: string }) {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ bpm: '120', atBeats: '0', tsNum: '4', tsDen: '4' });
 
-  useEffect(() => { refresh(); }, [projectId]);
-
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!projectId) { setChanges([]); setLoading(false); return; }
     setLoading(true);
     try {
@@ -21,7 +19,9 @@ export function TempoMap({ projectId }: { projectId?: string }) {
       setChanges((res.data?.result?.changes || []) as Change[]);
     } catch (e) { console.error('[Tempo] failed', e); }
     finally { setLoading(false); }
-  }
+  }, [projectId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function add() {
     if (!projectId) return;

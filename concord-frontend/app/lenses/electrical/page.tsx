@@ -9,6 +9,12 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenHardwarePulse } from '@/components/electrical/OpenHardwarePulse';
 import { NecCodeCalc } from '@/components/electrical/NecCodeCalc';
+import { NecCalculators } from '@/components/electrical/NecCalculators';
+import { PanelScheduleBuilder } from '@/components/electrical/PanelScheduleBuilder';
+import { EstimateInvoiceFlow } from '@/components/electrical/EstimateInvoiceFlow';
+import { OneLineDiagram } from '@/components/electrical/OneLineDiagram';
+import { InspectionChecklists } from '@/components/electrical/InspectionChecklists';
+import { MaterialPriceList } from '@/components/electrical/MaterialPriceList';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -46,7 +52,13 @@ type ModeTab =
   | 'clients'
   | 'invoices'
   | 'inspections'
-  | 'certs';
+  | 'certs'
+  | 'panels'
+  | 'calculators'
+  | 'estimating'
+  | 'diagrams'
+  | 'checklists'
+  | 'pricelist';
 type ArtifactType =
   | 'Job'
   | 'Estimate'
@@ -116,6 +128,17 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof Zap; artifactType: A
   { id: 'inspections', label: 'Inspections', icon: ClipboardList, artifactType: 'Inspection' },
   { id: 'certs', label: 'Certs', icon: Award, artifactType: 'Certification' },
 ];
+
+// Trade-tool tabs — purpose-built calculators & workflows, not artifact CRUD.
+const TOOL_TABS: { id: ModeTab; label: string; icon: typeof Zap }[] = [
+  { id: 'panels', label: 'Panel Schedule', icon: Bolt },
+  { id: 'calculators', label: 'NEC Calculators', icon: Calculator },
+  { id: 'estimating', label: 'Estimate→Invoice', icon: Receipt },
+  { id: 'diagrams', label: 'One-Line', icon: ShieldCheck },
+  { id: 'checklists', label: 'Inspections', icon: ClipboardList },
+  { id: 'pricelist', label: 'Price List', icon: DollarSign },
+];
+const TOOL_TAB_IDS = TOOL_TABS.map((t) => t.id);
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   scheduled: { label: 'Scheduled', color: 'blue-400' },
@@ -704,7 +727,7 @@ export default function ElectricalLensPage() {
       })()}
 
       <UniversalActions domain="electrical" artifactId={items[0]?.id} compact />
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-2 flex-wrap">
         {MODE_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -724,7 +747,41 @@ export default function ElectricalLensPage() {
           </button>
         ))}
       </nav>
-      {showDashboard ? renderDashboard() : renderLibrary()}
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
+        <span className="px-2 text-[10px] uppercase tracking-wider text-gray-500">Trade Tools</span>
+        {TOOL_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setShowDashboard(false);
+            }}
+            className={cn(
+              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap',
+              activeTab === tab.id && !showDashboard
+                ? 'bg-yellow-500/20 text-yellow-300'
+                : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
+            )}
+          >
+            <tab.icon className="w-3.5 h-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+      {showDashboard ? (
+        renderDashboard()
+      ) : TOOL_TAB_IDS.includes(activeTab) ? (
+        <div className="space-y-4">
+          {activeTab === 'panels' && <PanelScheduleBuilder />}
+          {activeTab === 'calculators' && <NecCalculators />}
+          {activeTab === 'estimating' && <EstimateInvoiceFlow />}
+          {activeTab === 'diagrams' && <OneLineDiagram />}
+          {activeTab === 'checklists' && <InspectionChecklists />}
+          {activeTab === 'pricelist' && <MaterialPriceList />}
+        </div>
+      ) : (
+        renderLibrary()
+      )}
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <OpenHardwarePulse />

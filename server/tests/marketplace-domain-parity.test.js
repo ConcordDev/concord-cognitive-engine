@@ -252,3 +252,264 @@ describe("marketplace — dashboard summary", () => {
     void l2;
   });
 });
+
+// ════════════════════════════════════════════════════════════════
+//  Etsy seller-surface parity backlog — storefront, reviews,
+//  messaging, variations, shipping, coupons, inventory, checkout.
+// ════════════════════════════════════════════════════════════════
+
+describe("marketplace — buyer-facing storefront (item 1)", () => {
+  it("storefront-browse aggregates only published listings across sellers", () => {
+    const a = call("listings-create", ctxA, { title: "Alice mug", priceUsd: 18, kind: "physical_good" }).result.listing;
+    call("listings-publish", ctxA, { id: a.id });
+    const aDraft = call("listings-create", ctxA, { title: "Alice draft", priceUsd: 9 }).result.listing;
+    const b = call("listings-create", ctxB, { title: "Bob print", priceUsd: 40, kind: "merch_print" }).result.listing;
+    call("listings-publish", ctxB, { id: b.id });
+    const r = call("storefront-browse", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 2);
+    assert.ok(r.result.listings.every(l => l.title !== "Alice draft"));
+    assert.ok(r.result.categories.includes("physical_good"));
+    void aDraft;
+  });
+
+  it("storefront-browse honours search + price filters + sort", () => {
+    const cheap = call("listings-create", ctxA, { title: "Cheap ring", priceUsd: 5 }).result.listing;
+    const dear = call("listings-create", ctxA, { title: "Dear ring", priceUsd: 200 }).result.listing;
+    call("listings-publish", ctxA, { id: cheap.id });
+    call("listings-publish", ctxA, { id: dear.id });
+    const filtered = call("storefront-browse", ctxA, { search: "ring", minPrice: 100, sort: "price_asc" });
+    assert.equal(filtered.result.total, 1);
+    assert.equal(filtered.result.listings[0].title, "Dear ring");
+  });
+
+  it("storefront-shop returns one seller's public catalog", () => {
+    call("shop-get", ctxA);
+    const l = call("listings-create", ctxA, { title: "Featured", priceUsd: 30 }).result.listing;
+    call("listings-publish", ctxA, { id: l.id });
+    const r = call("storefront-shop", ctxA, { sellerId: "seller_a" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.listingCount, 1);
+    assert.equal(r.result.shop.id ? true : false, true);
+  });
+});
+
+describe("marketplace — reviews & ratings (item 2)", () => {
+  it("reviews-create + list computes avg + distribution", () => {
+    const l = call("listings-create", ctxA, { title: "Reviewed", priceUsd: 12 }).result.listing;
+    call("listings-publish", ctxA, { id: l.id });
+    const r1 = call("reviews-create", ctxB, { sellerId: "seller_a", targetType: "listing", targetId: l.id, rating: 5, body: "Great" });
+    assert.equal(r1.ok, true);
+    const r2 = call("reviews-create", { actor: { userId: "buyer_c" }, userId: "buyer_c" }, { sellerId: "seller_a", targetType: "listing", targetId: l.id, rating: 3, body: "Okay" });
+    assert.equal(r2.ok, true);
+    const list = call("reviews-list", ctxA, { sellerId: "seller_a" });
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.avgRating, 4);
+    assert.equal(list.result.distribution["5"], 1);
+    assert.equal(list.result.distribution["3"], 1);
+  });
+
+  it("reviews-create rejects out-of-range rating + duplicate review", () => {
+    const l = call("listings-create", ctxA, { title: "X", priceUsd: 5 }).result.listing;
+    call("listings-publish", ctxA, { id: l.id });
+    const bad = call("reviews-create", ctxB, { sellerId: "seller_a", targetType: "listing", targetId: l.id, rating: 9, body: "x" });
+    assert.equal(bad.ok, false);
+    call("reviews-create", ctxB, { sellerId: "seller_a", targetType: "shop", rating: 4, body: "good shop" });
+    const dup = call("reviews-create", ctxB, { sellerId: "seller_a", targetType: "shop", rating: 5, body: "again" });
+    assert.equal(dup.ok, false);
+  });
+
+  it("reviews-reply attaches a seller response", () => {
+    call("reviews-create", ctxB, { sellerId: "seller_a", targetType: "shop", rating: 4, body: "nice" });
+    const rev = call("reviews-list", ctxA).result.reviews[0];
+    const r = call("reviews-reply", ctxA, { id: rev.id, reply: "Thank you!" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.review.sellerReply, "Thank you!");
+  });
+});
+
+describe("marketplace — messaging threads (item 3)", () => {
+  it("messages-thread-open creates a thread + messages-send appends", () => {
+    const open = call("messages-thread-open", ctxA, { subject: "Hello" });
+    assert.equal(open.ok, true);
+    const id = open.result.thread.id;
+    const sent = call("messages-send", ctxA, { id, text: "Hi there", from: "seller" });
+    assert.equal(sent.ok, true);
+    assert.equal(sent.result.thread.messages.length, 1);
+    assert.equal(sent.result.thread.messages[0].from, "seller");
+  });
+
+  it("messages-threads lists threads with unread flag from buyer messages", () => {
+    const open = call("messages-thread-open", ctxA, { subject: "Order question" });
+    call("messages-send", ctxA, { id: open.result.thread.id, text: "Where is my order?", from: "buyer" });
+    const list = call("messages-threads", ctxA);
+    assert.equal(list.ok, true);
+    const t = list.result.threads.find(x => x.id === open.result.thread.id);
+    assert.equal(t.unread, true);
+    assert.equal(t.messageCount, 1);
+  });
+
+  it("messages-thread-open binds to an order", () => {
+    const l = call("listings-create", ctxA, { title: "X", priceUsd: 10 }).result.listing;
+    call("listings-publish", ctxA, { id: l.id });
+    const o = call("orders-create", ctxA, { listingId: l.id, buyerName: "Bob" }).result.order;
+    const r = call("messages-thread-open", ctxA, { orderId: o.id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.thread.orderId, o.id);
+  });
+});
+
+describe("marketplace — listing variations (item 4)", () => {
+  it("variations-set persists + variations-list round-trips", () => {
+    const l = call("listings-create", ctxA, { title: "Shirt", priceUsd: 25, kind: "merch_apparel" }).result.listing;
+    const r = call("variations-set", ctxA, { listingId: l.id, variations: [
+      { optionName: "Size", optionValue: "S", priceUsd: 25, stockQty: 4 },
+      { optionName: "Size", optionValue: "L", priceUsd: 28, stockQty: 2 },
+    ] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.variations.length, 2);
+    const list = call("variations-list", ctxA, { listingId: l.id });
+    assert.equal(list.result.variations.length, 2);
+    assert.equal(list.result.variations[1].optionValue, "L");
+  });
+
+  it("variations-set rejects unknown listing", () => {
+    const r = call("variations-set", ctxA, { listingId: "nope", variations: [] });
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("marketplace — shipping profiles (item 5)", () => {
+  it("shipping-profiles-save creates + list + delete", () => {
+    const r = call("shipping-profiles-save", ctxA, { name: "Standard", originCountry: "US", processingDaysMin: 1, processingDaysMax: 3, zones: [
+      { region: "Domestic", rateUsd: 5, additionalItemUsd: 2 },
+    ] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.profile.zones.length, 1);
+    const list = call("shipping-profiles-list", ctxA);
+    assert.equal(list.result.profiles.length, 1);
+    const del = call("shipping-profiles-delete", ctxA, { id: r.result.profile.id });
+    assert.equal(del.result.deleted, true);
+    assert.equal(call("shipping-profiles-list", ctxA).result.profiles.length, 0);
+  });
+
+  it("shipping-profiles-save edits an existing profile by id", () => {
+    const created = call("shipping-profiles-save", ctxA, { name: "Express" }).result.profile;
+    const edited = call("shipping-profiles-save", ctxA, { id: created.id, name: "Express Plus" });
+    assert.equal(edited.ok, true);
+    assert.equal(edited.result.profile.name, "Express Plus");
+  });
+
+  it("shipping-profiles-save requires a name", () => {
+    const r = call("shipping-profiles-save", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+});
+
+describe("marketplace — coupons / sales events (item 6)", () => {
+  it("coupons-create tiered + coupons-apply picks the right tier", () => {
+    const r = call("coupons-create", ctxA, { code: "tiered1", kind: "tiered", tiers: [
+      { minSpendUsd: 50, percentOff: 10 },
+      { minSpendUsd: 100, percentOff: 20 },
+    ] });
+    assert.equal(r.ok, true);
+    const apply = call("coupons-apply", ctxA, { sellerId: "seller_a", code: "TIERED1", subtotalUsd: 120, qty: 1 });
+    assert.equal(apply.ok, true);
+    assert.equal(apply.result.discountUsd, 24);
+    assert.equal(apply.result.totalAfterDiscountUsd, 96);
+  });
+
+  it("coupons-create bogo + apply computes free units", () => {
+    call("coupons-create", ctxA, { code: "bogo1", kind: "bogo", buyQty: 1, getQty: 1 });
+    const apply = call("coupons-apply", ctxA, { sellerId: "seller_a", code: "BOGO1", subtotalUsd: 40, qty: 4, unitPriceUsd: 10 });
+    assert.equal(apply.ok, true);
+    assert.equal(apply.result.discountUsd, 20);
+  });
+
+  it("coupons-toggle pauses + apply rejects inactive code", () => {
+    const c = call("coupons-create", ctxA, { code: "pct1", kind: "percent", amount: 15 }).result.coupon;
+    call("coupons-toggle", ctxA, { id: c.id });
+    const apply = call("coupons-apply", ctxA, { sellerId: "seller_a", code: "PCT1", subtotalUsd: 100 });
+    assert.equal(apply.ok, false);
+    const list = call("coupons-list", ctxA);
+    assert.equal(list.result.coupons[0].active, false);
+  });
+
+  it("coupons-delete removes the coupon", () => {
+    const c = call("coupons-create", ctxA, { code: "del1", kind: "fixed", amount: 5 }).result.coupon;
+    assert.equal(call("coupons-delete", ctxA, { id: c.id }).result.deleted, true);
+    assert.equal(call("coupons-list", ctxA).result.coupons.length, 0);
+  });
+});
+
+describe("marketplace — inventory alerts (item 7)", () => {
+  it("inventory-alerts flags out-of-stock + low-stock listings", () => {
+    const out = call("listings-create", ctxA, { title: "Sold out", priceUsd: 10, kind: "physical_good", stockQty: 0 }).result.listing;
+    const low = call("listings-create", ctxA, { title: "Running low", priceUsd: 10, kind: "physical_good", stockQty: 2 }).result.listing;
+    const fine = call("listings-create", ctxA, { title: "Plenty", priceUsd: 10, kind: "physical_good", stockQty: 50 }).result.listing;
+    const r = call("inventory-alerts", ctxA, { lowStockThreshold: 5 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.outOfStock, 1);
+    assert.equal(r.result.lowStock, 1);
+    assert.ok(r.result.alerts.some(a => a.listingId === out.id && a.level === "out_of_stock"));
+    assert.ok(r.result.alerts.some(a => a.listingId === low.id && a.level === "low_stock"));
+    assert.ok(!r.result.alerts.some(a => a.listingId === fine.id));
+  });
+
+  it("inventory-alerts includes variation stock", () => {
+    const l = call("listings-create", ctxA, { title: "Variant listing", priceUsd: 20, kind: "merch_apparel" }).result.listing;
+    call("variations-set", ctxA, { listingId: l.id, variations: [
+      { optionName: "Size", optionValue: "S", priceUsd: 20, stockQty: 0 },
+    ] });
+    const r = call("inventory-alerts", ctxA, { lowStockThreshold: 3 });
+    assert.ok(r.result.alerts.some(a => a.scope === "variation" && a.level === "out_of_stock"));
+  });
+});
+
+describe("marketplace — cart & checkout (item 8)", () => {
+  it("cart-add + cart-get + cart-update flow", () => {
+    const l = call("listings-create", ctxB, { title: "Cartable", priceUsd: 15, kind: "physical_good", stockQty: 10 }).result.listing;
+    call("listings-publish", ctxB, { id: l.id });
+    const add = call("cart-add", ctxA, { sellerId: "seller_b", listingId: l.id, qty: 2 });
+    assert.equal(add.ok, true);
+    const cart = call("cart-get", ctxA);
+    assert.equal(cart.result.itemCount, 2);
+    const lineId = cart.result.shops[0].lines[0].id;
+    call("cart-update", ctxA, { lineId, qty: 5 });
+    assert.equal(call("cart-get", ctxA).result.itemCount, 5);
+    call("cart-update", ctxA, { lineId, remove: true });
+    assert.equal(call("cart-get", ctxA).result.itemCount, 0);
+  });
+
+  it("checkout-create places per-shop orders + decrements stock + clears cart", () => {
+    const l = call("listings-create", ctxB, { title: "Buyable", priceUsd: 30, kind: "physical_good", stockQty: 8 }).result.listing;
+    call("listings-publish", ctxB, { id: l.id });
+    call("cart-add", ctxA, { sellerId: "seller_b", listingId: l.id, qty: 3 });
+    const co = call("checkout-create", ctxA, { buyerName: "Alice", buyerEmail: "a@x.com" });
+    assert.equal(co.ok, true);
+    assert.equal(co.result.checkout.orders.length, 1);
+    assert.equal(co.result.checkout.grandTotalUsd, 90);
+    // stock decremented on seller listing
+    const after = call("listings-list", ctxB).result.listings.find(x => x.id === l.id);
+    assert.equal(after.stockQty, 5);
+    // cart cleared
+    assert.equal(call("cart-get", ctxA).result.itemCount, 0);
+    // checkout recorded in buyer history
+    assert.equal(call("checkout-history", ctxA).result.checkouts.length, 1);
+  });
+
+  it("checkout-create applies a per-seller coupon", () => {
+    const l = call("listings-create", ctxB, { title: "Discounted", priceUsd: 100, kind: "physical_good", stockQty: 5 }).result.listing;
+    call("listings-publish", ctxB, { id: l.id });
+    call("coupons-create", ctxB, { code: "save20", kind: "percent", amount: 20 });
+    call("cart-add", ctxA, { sellerId: "seller_b", listingId: l.id, qty: 1 });
+    const co = call("checkout-create", ctxA, { coupons: { seller_b: "SAVE20" } });
+    assert.equal(co.ok, true);
+    assert.equal(co.result.checkout.grandTotalUsd, 80);
+  });
+
+  it("checkout-create rejects an empty cart", () => {
+    const r = call("checkout-create", ctxA, {});
+    assert.equal(r.ok, false);
+  });
+});

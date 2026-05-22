@@ -27,11 +27,17 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { BrainPoolStatus } from '@/components/cognition/BrainPoolStatus';
+import { ReasoningTraceTree, type ReasoningTrace } from '@/components/cognition/ReasoningTraceTree';
+import { ModeRecommender } from '@/components/cognition/ModeRecommender';
+import { ModeComparison } from '@/components/cognition/ModeComparison';
+import { TraceExports } from '@/components/cognition/TraceExports';
+import { LatticeTopologyGraph, type Topology } from '@/components/cognition/LatticeTopologyGraph';
+import { DriftTimeline, type DriftFeed } from '@/components/cognition/DriftTimeline';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Sparkles, Activity, Trash2, Eye,
-  RefreshCw, Loader2, ChevronDown, ChevronRight,
+  RefreshCw, Loader2, ChevronRight,
   Zap, Network, Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
@@ -68,16 +74,35 @@ export default function CognitionLensPage() {
     ],
     { lensId: 'cognition' }
   );
-  const [hlrResult, setHlrResult] = useState<unknown>(null);
-  const [traceExpanded, setTraceExpanded] = useState<string | null>(null);
+  const [hlrTrace, setHlrTrace] = useState<ReasoningTrace | null>(null);
+  const [reasoningView, setReasoningView] = useState<'run' | 'compare' | 'export'>('run');
+  const [driftSeverity, setDriftSeverity] = useState('');
 
   // ── HLR ────────────────────────────────────────────────────────────────
+  // Run HLR, then re-fetch the persisted trace so the inference tree can
+  // render the full per-step detail (the run response carries only
+  // summary chains).
   const runHLR = useMutation({
     mutationFn: async () => {
-      const r = await apiHelpers.lens.runDomain('hlr', 'run', { claim: hlrInput, mode: hlrMode });
-      return r.data?.result ?? r.data;
+      const r = await apiHelpers.lens.runDomain('hlr', 'run', { question: hlrInput, mode: hlrMode });
+      const run = (r.data?.result ?? r.data) as { traceId?: string } | null;
+      if (run?.traceId) {
+        const t = await apiHelpers.lens.runDomain('hlr', 'trace', { traceId: run.traceId });
+        const full = (t.data?.result ?? t.data) as ReasoningTrace | null;
+        if (full && Array.isArray(full.chains)) return full;
+      }
+      return run as ReasoningTrace | null;
     },
-    onSuccess: (data) => setHlrResult(data),
+    onSuccess: (data) => setHlrTrace(data),
+  });
+
+  // Load a previously-run trace (full per-step detail) into the inspector.
+  const loadTrace = useMutation({
+    mutationFn: async (traceId: string) => {
+      const t = await apiHelpers.lens.runDomain('hlr', 'trace', { traceId });
+      return (t.data?.result ?? t.data) as ReasoningTrace | null;
+    },
+    onSuccess: (data) => setHlrTrace(data),
   });
 
   const traces = useQuery({
@@ -94,7 +119,7 @@ export default function CognitionLensPage() {
     queryKey: ['hlm-topology'],
     queryFn: async () => {
       const r = await apiHelpers.lens.runDomain('hlm', 'topology', {});
-      return (r.data?.result ?? r.data) as { clusters?: unknown[]; gaps?: unknown[]; redundancies?: unknown[] };
+      return (r.data?.result ?? r.data) as Topology & { gaps?: unknown[]; redundancies?: unknown[] };
     },
     refetchInterval: 60_000,
   });
@@ -144,12 +169,17 @@ export default function CognitionLensPage() {
   });
 
   // ── Drift ────────────────────────────────────────────────────────────
-  const driftScan = useQuery({
-    queryKey: ['drift-findings'],
+  // The lattice drift-monitor's alert stream, severity-filterable.
+  const driftFeed = useQuery({
+    queryKey: ['cognition-drift', driftSeverity],
     queryFn: async () => {
-      const r = await apiHelpers.lens.runDomain('system', 'cartograph', { section: 'drift' });
-      return (r.data?.result ?? r.data) as { data?: unknown[] };
+      const r = await apiHelpers.lens.runDomain('cognition', 'driftAlerts', {
+        severity: driftSeverity || undefined,
+        limit: 150,
+      });
+      return (r.data?.result ?? r.data) as DriftFeed;
     },
+    refetchInterval: 60_000,
   });
 
   const tabs: { key: TabKey; label: string; icon: LucideIcon; count?: number }[] = [
@@ -157,7 +187,7 @@ export default function CognitionLensPage() {
     { key: 'topology',     label: 'Lattice Topology',   icon: Network, count: topology.data?.clusters?.length },
     { key: 'breakthrough', label: 'Breakthroughs',  icon: Lightbulb, count: breakthroughMetrics.data?.activeClusters },
     { key: 'forgetting',   label: 'Forgetting',  icon: Trash2,  count: forgettingCandidates.data?.length },
-    { key: 'drift',        label: 'Drift', icon: Activity, count: (driftScan.data?.data as unknown[] | undefined)?.length },
+    { key: 'drift',        label: 'Drift', icon: Activity, count: driftFeed.data?.alerts?.length },
   ];
 
   return (
@@ -199,7 +229,25 @@ export default function CognitionLensPage() {
         <AnimatePresence mode="wait">
           {activeTab === 'reasoning' && (
             <motion.section key="reasoning" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <h2 className="mb-3 text-base font-semibold text-violet-200">Run a reasoning trace</h2>
+              <div className="mb-3 flex flex-wrap items-center gap-1">
+                {([
+                  ['run', 'Run & inspect'],
+                  ['compare', 'Compare modes'],
+                  ['export', 'Saved exports'],
+                ] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setReasoningView(key)}
+                    className={`rounded px-3 py-1.5 text-xs font-medium ${
+                      reasoningView === key
+                        ? 'bg-violet-700/40 text-violet-100'
+                        : 'bg-violet-950/30 text-violet-500 hover:text-violet-300'
+                    }`}
+                    aria-pressed={reasoningView === key}
+                  >{label}</button>
+                ))}
+              </div>
+
               <div className="rounded-lg border border-violet-900/40 bg-violet-950/10 p-4">
                 <label className="block text-xs uppercase tracking-wider text-violet-700" htmlFor="hlr-claim">Claim or question</label>
                 <textarea
@@ -209,57 +257,81 @@ export default function CognitionLensPage() {
                   className="mt-1.5 h-24 w-full rounded border border-violet-900/40 bg-black/40 p-2 font-mono text-sm text-violet-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                   placeholder="What do you want HLR to reason about?"
                 />
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-violet-700">Mode:</span>
-                  {REASONING_MODES.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setHlrMode(m.id)}
-                      title={m.desc}
-                      className={`rounded px-2 py-1 text-xs ${hlrMode === m.id ? 'bg-violet-700/40 text-violet-100' : 'bg-violet-950/30 text-violet-500 hover:text-violet-300'}`}
-                      aria-pressed={hlrMode === m.id}
-                    >{m.label}</button>
-                  ))}
-                </div>
-                <div className="mt-3 flex justify-end">
-                  <button
-                    onClick={() => runHLR.mutate()}
-                    disabled={!hlrInput || runHLR.isPending}
-                    className="inline-flex items-center gap-2 rounded bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                  >
-                    {runHLR.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                    Run HLR
-                  </button>
-                </div>
-                {hlrResult != null && (
-                  <motion.pre initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 max-h-80 overflow-auto rounded border border-violet-900/40 bg-black/60 p-3 font-mono text-xs text-violet-300">
-                    {JSON.stringify(hlrResult, null, 2)}
-                  </motion.pre>
+                {reasoningView === 'run' && (
+                  <>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-violet-700">Mode:</span>
+                      {REASONING_MODES.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => setHlrMode(m.id)}
+                          title={m.desc}
+                          className={`rounded px-2 py-1 text-xs ${hlrMode === m.id ? 'bg-violet-700/40 text-violet-100' : 'bg-violet-950/30 text-violet-500 hover:text-violet-300'}`}
+                          aria-pressed={hlrMode === m.id}
+                        >{m.label}</button>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={() => runHLR.mutate()}
+                        disabled={!hlrInput || runHLR.isPending}
+                        className="inline-flex items-center gap-2 rounded bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      >
+                        {runHLR.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                        Run HLR
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
 
-              <h3 className="mt-6 mb-2 text-sm font-semibold text-violet-300">Recent traces</h3>
-              {traces.isLoading && <Loader2 className="h-4 w-4 animate-spin text-violet-500" />}
-              {(traces.data?.traces ?? []).length === 0 && !traces.isLoading && <p className="text-xs text-violet-700">No traces yet — run one above.</p>}
-              <ul className="space-y-1">
-                {(traces.data?.traces ?? []).map((t) => (
-                  <li key={t.id}>
-                    <button
-                      onClick={() => setTraceExpanded(traceExpanded === t.id ? null : t.id)}
-                      className="flex w-full items-center gap-2 rounded border border-violet-900/30 bg-violet-950/10 px-3 py-2 text-left text-xs hover:bg-violet-900/20"
-                      aria-expanded={traceExpanded === t.id}
-                    >
-                      {traceExpanded === t.id ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                      <span className="font-mono text-violet-300">{t.id}</span>
-                      <span className="rounded bg-violet-700/30 px-1.5 py-0.5 text-[10px]">{t.mode}</span>
-                      <span className="ml-auto text-[10px] text-violet-700">{new Date(t.createdAt).toLocaleTimeString()}</span>
-                    </button>
-                    {traceExpanded === t.id && t.chains && (
-                      <pre className="mt-1 max-h-60 overflow-auto rounded border border-violet-900/30 bg-black/60 p-2 font-mono text-[11px] text-violet-400">{JSON.stringify(t.chains, null, 2)}</pre>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              {reasoningView === 'run' && (
+                <>
+                  <div className="mt-4">
+                    <ModeRecommender question={hlrInput} onPickMode={setHlrMode} />
+                  </div>
+                  {runHLR.isError && (
+                    <p className="mt-3 text-xs text-rose-400">HLR run failed — try again.</p>
+                  )}
+                  {hlrTrace != null && (
+                    <div className="mt-4">
+                      <h3 className="mb-2 text-sm font-semibold text-violet-300">Inference tree</h3>
+                      <ReasoningTraceTree trace={hlrTrace} />
+                    </div>
+                  )}
+
+                  <h3 className="mt-6 mb-2 text-sm font-semibold text-violet-300">Recent traces</h3>
+                  {traces.isLoading && <Loader2 className="h-4 w-4 animate-spin text-violet-500" />}
+                  {(traces.data?.traces ?? []).length === 0 && !traces.isLoading && <p className="text-xs text-violet-700">No traces yet — run one above.</p>}
+                  <ul className="space-y-1">
+                    {(traces.data?.traces ?? []).map((t) => (
+                      <li key={t.id}>
+                        <button
+                          onClick={() => loadTrace.mutate(t.id)}
+                          className="flex w-full items-center gap-2 rounded border border-violet-900/30 bg-violet-950/10 px-3 py-2 text-left text-xs hover:bg-violet-900/20"
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                          <span className="font-mono text-violet-300">{t.id}</span>
+                          <span className="rounded bg-violet-700/30 px-1.5 py-0.5 text-[10px]">{t.mode}</span>
+                          <span className="ml-auto text-[10px] text-violet-700">{new Date(t.createdAt).toLocaleTimeString()}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {reasoningView === 'compare' && (
+                <div className="mt-4">
+                  <ModeComparison prompt={hlrInput} />
+                </div>
+              )}
+
+              {reasoningView === 'export' && (
+                <div className="mt-4">
+                  <TraceExports pendingTrace={hlrTrace} />
+                </div>
+              )}
             </motion.section>
           )}
 
@@ -279,6 +351,13 @@ export default function CognitionLensPage() {
                 <TopoCard label="Clusters" value={topology.data?.clusters?.length ?? 0} hint="Cohesive DTU groupings" />
                 <TopoCard label="Gaps" value={topology.data?.gaps?.length ?? 0} hint="Domains thinly populated" tone="warn" />
                 <TopoCard label="Redundancies" value={topology.data?.redundancies?.length ?? 0} hint="Likely-duplicate substrate" tone="warn" />
+              </div>
+              <div className="mt-4">
+                {topology.isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
+                ) : (
+                  <LatticeTopologyGraph topology={topology.data ?? null} />
+                )}
               </div>
               {topology.data?.clusters && topology.data.clusters.length > 0 && (
                 <details className="mt-4 rounded border border-violet-900/30 bg-violet-950/10">
@@ -346,31 +425,22 @@ export default function CognitionLensPage() {
 
           {activeTab === 'drift' && (
             <motion.section key="drift" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <h2 className="mb-3 text-base font-semibold text-violet-200">Drift surface</h2>
-              {driftScan.isLoading && <Loader2 className="h-4 w-4 animate-spin text-violet-500" />}
-              {Array.isArray(driftScan.data?.data) && driftScan.data.data.length === 0 && (
-                <p className="text-sm text-emerald-400">✓ No drift detected. Documentation matches reality.</p>
-              )}
-              {Array.isArray(driftScan.data?.data) && driftScan.data.data.length > 0 && (
-                <div className="overflow-x-auto rounded border border-yellow-700/40">
-                  <table className="w-full font-mono text-xs">
-                    <thead className="bg-yellow-950/30 text-yellow-300"><tr><th className="px-3 py-2 text-left">File</th><th className="px-3 py-2">Line</th><th className="px-3 py-2 text-left">Claim</th><th className="px-3 py-2 text-right">Actual</th><th className="px-3 py-2 text-right">Δ</th></tr></thead>
-                    <tbody>
-                      {(driftScan.data.data as Array<{ file: string; line: number; claim: string; actual: number; delta: number }>).map((d, i) => (
-                        <tr key={`${d.file}:${i}`} className="border-t border-yellow-900/20">
-                          <td className="px-3 py-1.5 text-cyan-300">{d.file}</td>
-                          <td className="px-3 py-1.5 text-center text-cyan-600">{d.line}</td>
-                          <td className="px-3 py-1.5 text-yellow-400">{d.claim}</td>
-                          <td className="px-3 py-1.5 text-right text-emerald-400">{d.actual}</td>
-                          <td className={`px-3 py-1.5 text-right ${d.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{d.delta > 0 ? '+' : ''}{d.delta}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {!driftScan.data && !driftScan.isLoading && (
-                <p className="text-xs text-violet-700">Drift section unavailable. Run <code className="rounded bg-violet-950/40 px-1 text-violet-300">npm run cartograph:static</code> from the server dir.</p>
+              <h2 className="mb-3 text-base font-semibold text-violet-200">Lattice drift alerts</h2>
+              <p className="mb-3 text-xs text-violet-700">
+                Findings from the drift-monitor&apos;s scan of the live DTU corpus —
+                Goodhart gaming, memetic drift, capability creep, circular evidence,
+                echo chambers, metric divergence.
+              </p>
+              {driftFeed.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
+              ) : driftFeed.isError ? (
+                <p className="text-xs text-rose-400">Drift feed unavailable.</p>
+              ) : (
+                <DriftTimeline
+                  feed={driftFeed.data ?? null}
+                  severityFilter={driftSeverity}
+                  onSeverityChange={setDriftSeverity}
+                />
               )}
             </motion.section>
           )}

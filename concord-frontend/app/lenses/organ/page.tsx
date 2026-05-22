@@ -9,6 +9,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { AnatomyExplorer } from '@/components/organ/AnatomyExplorer';
+import { OrgDesigner } from '@/components/organ/OrgDesigner';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -227,6 +228,12 @@ export default function OrganLensPage() {
           </button>
         </div>
       </header>
+
+      {/* ChartHop-parity org-design platform: visual chart, drag-reassign,
+          HRIS import, headcount scenarios, comp rollups, tenure, snapshots */}
+      <section className="panel p-4">
+        <OrgDesigner />
+      </section>
 
       {/* Critical Alerts */}
       {criticalOrgans.length > 0 && (

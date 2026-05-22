@@ -446,28 +446,39 @@ export default function registerFinanceActions(registerLensAction) {
   });
 
   /**
-   * subscriptions-detect — Detect recurring charges from synthetic ledger.
-   * The lens doesn't have real Plaid data; we seed a demo set so the UI
-   * has something to render.
+   * subscriptions-detect — Detect recurring charges from the user's real
+   * transaction ledger. Groups same-merchant debits, looks for ≥2 charges
+   * at a regular cadence, and surfaces them as candidate subscriptions.
+   * No synthetic seed — empty ledger returns an empty list.
    */
   registerLensAction("finance", "subscriptions-detect", (ctx, _artifact, _params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
-    if (!state.subscriptions.has(userId)) {
-      state.subscriptions.set(userId, seedSubscriptions());
+    const ledger = ensureBucket(state, "ledger", userId);
+    // Manual user-marked cancellations persist across re-detection.
+    const cancelled = state.subscriptions.get(userId) || [];
+    const cancelledIds = new Set(cancelled.filter(s => s.status === "cancelled").map(s => s.id));
+
+    const detected = detectRecurringCharges(ledger);
+    for (const s of detected) {
+      if (cancelledIds.has(s.id)) s.status = "cancelled";
     }
-    const subs = state.subscriptions.get(userId);
-    return { ok: true, result: { subscriptions: subs } };
+    state.subscriptions.set(userId, detected);
+    saveStateIfAvailable();
+    return { ok: true, result: { subscriptions: detected } };
   });
 
   registerLensAction("finance", "subscriptions-cancel", (ctx, _artifact, params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const id = String(params.id || "");
-    const subs = state.subscriptions.get(userId) || [];
+    // Detect against the current ledger so the cancel target is fresh.
+    const ledger = ensureBucket(state, "ledger", userId);
+    const subs = detectRecurringCharges(ledger);
     const sub = subs.find(s => s.id === id);
     if (!sub) return { ok: false, error: "subscription not found" };
     sub.status = "cancelled";
+    state.subscriptions.set(userId, subs);
     saveStateIfAvailable();
     return { ok: true, result: { id, status: "cancelled" } };
   });
@@ -1229,6 +1240,603 @@ Generate the summary.`;
       },
     };
   });
+
+  // ═══ Parity backlog (Monarch / Empower gap) ════════════════════════
+  // Seven buildable items: bank aggregation, auto-categorised ingest,
+  // household shared budgets, credit-score monitoring, cash-flow Sankey,
+  // bill reminders, custom rollover rules. All per-user, real-input only.
+
+  // ── Item 1: Bank aggregation (Plaid/MX-style link + auto-sync) ─────
+  //
+  // No fake account data. accounts-sync-link records a real user-named
+  // institution as a "synced" account; accounts-sync-pull ingests the
+  // user-supplied transaction batch from that institution and feeds it
+  // through the same auto-categorisation pipeline as a real aggregator.
+
+  registerLensAction("finance", "accounts-sync-link", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const institution = String(params.institution || "").trim();
+    const name = String(params.name || "").trim();
+    const kind = ["checking", "savings", "credit", "investment", "loan", "mortgage", "crypto"].includes(params.kind) ? params.kind : "checking";
+    if (!institution || !name) return { ok: false, error: "institution and name required" };
+    const acct = {
+      id: uid("acct"), institution, name, kind,
+      mask: String(params.mask || "0000").slice(-4),
+      balance: Number(params.balance) || 0,
+      currency: "USD",
+      status: "active",
+      synced: true,
+      provider: ["plaid", "mx", "manual"].includes(params.provider) ? params.provider : "plaid",
+      lastSyncedAt: new Date().toISOString(),
+      linkedAt: new Date().toISOString(),
+    };
+    ensureBucket(state, "accounts", userId).push(acct);
+    saveStateIfAvailable();
+    return { ok: true, result: { account: acct, syncEnabled: true } };
+  });
+
+  registerLensAction("finance", "accounts-sync-pull", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const accountId = String(params.accountId || "");
+    const accounts = ensureBucket(state, "accounts", userId);
+    const acct = accounts.find(a => a.id === accountId);
+    if (!acct) return { ok: false, error: "account not found" };
+    if (!acct.synced) return { ok: false, error: "account is not sync-enabled — use accounts-sync-link" };
+    const incoming = Array.isArray(params.transactions) ? params.transactions : [];
+    if (incoming.length === 0) return { ok: false, error: "no transactions supplied to sync" };
+    const ledger = ensureBucket(state, "ledger", userId);
+    const seen = new Set(ledger.map(t => t.externalId).filter(Boolean));
+    const rules = ensureBucket(state, "rules", userId).slice().sort((a, b) => a.priority - b.priority);
+    let added = 0, deduped = 0;
+    const ingested = [];
+    for (const raw of incoming) {
+      const externalId = raw.externalId ? String(raw.externalId) : `${accountId}:${raw.date}:${raw.description}:${raw.amount}`;
+      if (seen.has(externalId)) { deduped++; continue; }
+      seen.add(externalId);
+      const description = String(raw.description || "").trim();
+      const amount = Number(raw.amount) || 0;
+      const category = applyRules(rules, description) || ruleBasedCategorize(description);
+      const t = {
+        id: uid("tx"), externalId, accountId,
+        date: raw.date || new Date().toISOString().slice(0, 10),
+        description, amount,
+        category, autoCategorised: true,
+        source: acct.provider,
+        ingestedAt: new Date().toISOString(),
+      };
+      ledger.push(t);
+      ingested.push(t);
+      added++;
+    }
+    acct.lastSyncedAt = new Date().toISOString();
+    saveStateIfAvailable();
+    return { ok: true, result: { added, deduped, transactions: ingested, accountId } };
+  });
+
+  // ── Item 2: Transaction feed + AI auto-categorisation at ingest ────
+
+  registerLensAction("finance", "transactions-list", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const ledger = ensureBucket(state, "ledger", userId);
+    const limit = Math.max(1, Math.min(500, Number(params.limit) || 200));
+    const sorted = [...ledger].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, limit);
+    const totalSpend = ledger.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const totalIncome = ledger.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    return {
+      ok: true,
+      result: {
+        transactions: sorted, count: ledger.length,
+        totalSpend: Math.round(totalSpend * 100) / 100,
+        totalIncome: Math.round(totalIncome * 100) / 100,
+      },
+    };
+  });
+
+  registerLensAction("finance", "transactions-ingest", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const description = String(params.description || "").trim();
+    const amount = Number(params.amount);
+    if (!description) return { ok: false, error: "description required" };
+    if (Number.isNaN(amount)) return { ok: false, error: "amount required" };
+    const ledger = ensureBucket(state, "ledger", userId);
+    const rules = ensureBucket(state, "rules", userId).slice().sort((a, b) => a.priority - b.priority);
+    const ruleHit = applyRules(rules, description);
+    const category = params.category ? String(params.category) : (ruleHit || ruleBasedCategorize(description));
+    const t = {
+      id: uid("tx"),
+      date: params.date || new Date().toISOString().slice(0, 10),
+      description, amount,
+      category,
+      autoCategorised: !params.category,
+      categorySource: params.category ? "manual" : (ruleHit ? "user_rule" : "rules"),
+      accountId: params.accountId ? String(params.accountId) : null,
+      ingestedAt: new Date().toISOString(),
+    };
+    ledger.push(t);
+    saveStateIfAvailable();
+    return { ok: true, result: { transaction: t } };
+  });
+
+  registerLensAction("finance", "transactions-recategorise", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const category = String(params.category || "").trim();
+    if (!category) return { ok: false, error: "category required" };
+    const ledger = ensureBucket(state, "ledger", userId);
+    const t = ledger.find(x => x.id === id);
+    if (!t) return { ok: false, error: "transaction not found" };
+    t.category = category;
+    t.autoCategorised = false;
+    t.categorySource = "manual";
+    saveStateIfAvailable();
+    return { ok: true, result: { transaction: t } };
+  });
+
+  registerLensAction("finance", "transactions-delete", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const ledger = ensureBucket(state, "ledger", userId);
+    const idx = ledger.findIndex(t => t.id === id);
+    if (idx < 0) return { ok: false, error: "transaction not found" };
+    ledger.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── Item 3: Joint / household shared budgets ───────────────────────
+  //
+  // A household is keyed by the creating user; members are added by
+  // their real userId. Shared budgets carry a household-wide target and
+  // accumulate member contributions/spend. Stored under state.households.
+
+  function getHousehold(state, userId) {
+    if (!state.households) state.households = new Map();
+    if (!state.households.has(userId)) return null;
+    return state.households.get(userId);
+  }
+
+  registerLensAction("finance", "household-get", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const hh = getHousehold(state, userId);
+    return { ok: true, result: { household: hh || null } };
+  });
+
+  registerLensAction("finance", "household-create", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (!state.households) state.households = new Map();
+    if (state.households.has(userId)) return { ok: false, error: "household already exists" };
+    const hh = {
+      id: uid("hh"), name, ownerId: userId,
+      members: [{ userId, role: "owner", joinedAt: new Date().toISOString() }],
+      sharedBudgets: [],
+      createdAt: new Date().toISOString(),
+    };
+    state.households.set(userId, hh);
+    saveStateIfAvailable();
+    return { ok: true, result: { household: hh } };
+  });
+
+  registerLensAction("finance", "household-add-member", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const hh = getHousehold(state, userId);
+    if (!hh) return { ok: false, error: "no household — create one first" };
+    const memberId = String(params.memberId || "").trim();
+    if (!memberId) return { ok: false, error: "memberId required" };
+    if (hh.members.some(m => m.userId === memberId)) return { ok: false, error: "member already in household" };
+    const member = { userId: memberId, role: "member", joinedAt: new Date().toISOString() };
+    hh.members.push(member);
+    saveStateIfAvailable();
+    return { ok: true, result: { household: hh, member } };
+  });
+
+  registerLensAction("finance", "household-remove-member", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const hh = getHousehold(state, userId);
+    if (!hh) return { ok: false, error: "no household" };
+    const memberId = String(params.memberId || "");
+    if (memberId === hh.ownerId) return { ok: false, error: "cannot remove the household owner" };
+    const idx = hh.members.findIndex(m => m.userId === memberId);
+    if (idx < 0) return { ok: false, error: "member not found" };
+    hh.members.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { household: hh } };
+  });
+
+  registerLensAction("finance", "household-budget-create", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const hh = getHousehold(state, userId);
+    if (!hh) return { ok: false, error: "no household — create one first" };
+    const category = String(params.category || "").trim();
+    const monthlyTarget = Math.max(0, Number(params.monthlyTarget) || 0);
+    if (!category) return { ok: false, error: "category required" };
+    const budget = {
+      id: uid("shb"), category, monthlyTarget,
+      contributions: [], spent: 0,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+    };
+    hh.sharedBudgets.push(budget);
+    saveStateIfAvailable();
+    return { ok: true, result: { budget } };
+  });
+
+  registerLensAction("finance", "household-budget-spend", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const hh = getHousehold(state, userId);
+    if (!hh) return { ok: false, error: "no household" };
+    const budgetId = String(params.budgetId || "");
+    const amount = Math.max(0, Number(params.amount) || 0);
+    const budget = hh.sharedBudgets.find(b => b.id === budgetId);
+    if (!budget) return { ok: false, error: "shared budget not found" };
+    if (amount <= 0) return { ok: false, error: "amount must be positive" };
+    budget.spent = Math.round((budget.spent + amount) * 100) / 100;
+    budget.contributions.push({ memberId: userId, amount, note: String(params.note || ""), at: new Date().toISOString() });
+    saveStateIfAvailable();
+    return {
+      ok: true,
+      result: {
+        budget,
+        remaining: Math.round((budget.monthlyTarget - budget.spent) * 100) / 100,
+        overBudget: budget.spent > budget.monthlyTarget,
+      },
+    };
+  });
+
+  // ── Item 4: Credit-score monitoring ───────────────────────────────
+  //
+  // Real user-reported scores (from their bureau / card issuer). No fake
+  // pulls. record-score logs a dated reading; report computes the trend
+  // and surfaces the standard five-factor mix the user can input.
+
+  registerLensAction("finance", "credit-score-record", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const score = Math.round(Number(params.score));
+    if (Number.isNaN(score) || score < 300 || score > 850) return { ok: false, error: "score must be 300-850" };
+    const bureau = ["equifax", "experian", "transunion", "vantagescore", "fico"].includes(params.bureau) ? params.bureau : "fico";
+    const history = ensureBucket(state, "creditScores", userId);
+    const entry = {
+      id: uid("cs"), score, bureau,
+      date: params.date || new Date().toISOString().slice(0, 10),
+      factors: {
+        paymentHistoryPct: clampPct(params.paymentHistoryPct),
+        utilisationPct: clampPct(params.utilisationPct),
+        creditAgeMonths: Math.max(0, Number(params.creditAgeMonths) || 0),
+        inquiries12mo: Math.max(0, Number(params.inquiries12mo) || 0),
+        accountMix: Math.max(0, Number(params.accountMix) || 0),
+      },
+      recordedAt: new Date().toISOString(),
+    };
+    history.push(entry);
+    history.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    saveStateIfAvailable();
+    return { ok: true, result: { entry } };
+  });
+
+  registerLensAction("finance", "credit-score-delete", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const history = ensureBucket(state, "creditScores", userId);
+    const idx = history.findIndex(e => e.id === id);
+    if (idx < 0) return { ok: false, error: "entry not found" };
+    history.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("finance", "credit-score-report", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const history = ensureBucket(state, "creditScores", userId);
+    if (history.length === 0) {
+      return { ok: true, result: { history: [], latest: null, notes: "No credit-score readings logged yet." } };
+    }
+    const latest = history[history.length - 1];
+    const first = history[0];
+    const delta = latest.score - first.score;
+    const prior = history.length >= 2 ? history[history.length - 2] : null;
+    const band = latest.score >= 800 ? "exceptional"
+      : latest.score >= 740 ? "very good"
+      : latest.score >= 670 ? "good"
+      : latest.score >= 580 ? "fair" : "poor";
+    const advice = [];
+    const f = latest.factors || {};
+    if (f.utilisationPct != null && f.utilisationPct > 30) advice.push(`Credit utilisation is ${f.utilisationPct}% — pay down balances below 30% to lift your score.`);
+    if (f.inquiries12mo != null && f.inquiries12mo >= 3) advice.push(`${f.inquiries12mo} hard inquiries in 12 months — pause new credit applications.`);
+    if (f.paymentHistoryPct != null && f.paymentHistoryPct < 100) advice.push(`On-time payment rate is ${f.paymentHistoryPct}% — payment history is the largest scoring factor.`);
+    return {
+      ok: true,
+      result: {
+        history,
+        latest, band,
+        delta, deltaFromPrior: prior ? latest.score - prior.score : 0,
+        advice,
+      },
+    };
+  });
+
+  // ── Item 5: Cash-flow Sankey + month-over-month trend ─────────────
+  //
+  // Built from the user's real ledger. Sankey: Income → Net → category
+  // outflows. monthly-trend: per-month income/spend/net series.
+
+  registerLensAction("finance", "cashflow-sankey", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const ledger = ensureBucket(state, "ledger", userId);
+    const month = params.month ? String(params.month) : null;
+    const txns = ledger.filter(t => !month || String(t.date).slice(0, 7) === month);
+    const income = txns.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const byCategory = new Map();
+    for (const t of txns) {
+      if (t.amount >= 0) continue;
+      const cat = String(t.category || "Other");
+      byCategory.set(cat, (byCategory.get(cat) || 0) + Math.abs(t.amount));
+    }
+    const totalSpend = [...byCategory.values()].reduce((s, v) => s + v, 0);
+    const nodes = [{ id: "income", label: "Income" }];
+    const links = [];
+    if (totalSpend > 0) {
+      nodes.push({ id: "spending", label: "Spending" });
+      links.push({ source: "income", target: "spending", value: Math.round(totalSpend * 100) / 100 });
+    }
+    const savings = income - totalSpend;
+    if (savings > 0) {
+      nodes.push({ id: "savings", label: "Savings" });
+      links.push({ source: "income", target: "savings", value: Math.round(savings * 100) / 100 });
+    }
+    for (const [cat, amt] of [...byCategory.entries()].sort((a, b) => b[1] - a[1])) {
+      const nodeId = `cat:${cat}`;
+      nodes.push({ id: nodeId, label: cat });
+      links.push({ source: "spending", target: nodeId, value: Math.round(amt * 100) / 100 });
+    }
+    return {
+      ok: true,
+      result: {
+        nodes, links,
+        income: Math.round(income * 100) / 100,
+        totalSpend: Math.round(totalSpend * 100) / 100,
+        netCashFlow: Math.round(savings * 100) / 100,
+        month,
+      },
+    };
+  });
+
+  registerLensAction("finance", "monthly-trend", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const ledger = ensureBucket(state, "ledger", userId);
+    const months = Math.max(2, Math.min(24, Number(params.months) || 12));
+    const byMonth = new Map();
+    for (const t of ledger) {
+      const m = String(t.date).slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(m)) continue;
+      if (!byMonth.has(m)) byMonth.set(m, { month: m, income: 0, spend: 0 });
+      const b = byMonth.get(m);
+      if (t.amount >= 0) b.income += t.amount;
+      else b.spend += Math.abs(t.amount);
+    }
+    const series = [...byMonth.values()]
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-months)
+      .map(b => ({
+        month: b.month,
+        income: Math.round(b.income * 100) / 100,
+        spend: Math.round(b.spend * 100) / 100,
+        net: Math.round((b.income - b.spend) * 100) / 100,
+        savingsRate: b.income > 0 ? Math.round(((b.income - b.spend) / b.income) * 1000) / 10 : 0,
+      }));
+    const avgSpend = series.length ? series.reduce((s, m) => s + m.spend, 0) / series.length : 0;
+    const avgIncome = series.length ? series.reduce((s, m) => s + m.income, 0) / series.length : 0;
+    return {
+      ok: true,
+      result: {
+        series,
+        avgMonthlySpend: Math.round(avgSpend * 100) / 100,
+        avgMonthlyIncome: Math.round(avgIncome * 100) / 100,
+        avgNet: Math.round((avgIncome - avgSpend) * 100) / 100,
+      },
+    };
+  });
+
+  // ── Item 6: Bill-pay reminders + payment notifications ────────────
+
+  registerLensAction("finance", "bill-reminders", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const bills = ensureBucket(state, "bills", userId);
+    const leadDays = Math.max(0, Math.min(30, Number(params.leadDays) || 5));
+    const today = new Date();
+    const todayMs = today.getTime();
+    const reminders = [];
+    for (const b of bills) {
+      if (b.cadence !== "monthly" && b.cadence !== "annual") continue;
+      const due = new Date(today.getFullYear(), today.getMonth(), Math.min(b.dueDay, 28));
+      if (due.getTime() < todayMs - 86400000) due.setMonth(due.getMonth() + 1);
+      const daysUntil = Math.ceil((due.getTime() - todayMs) / 86400000);
+      const status = b.paidThisCycle ? "paid"
+        : daysUntil < 0 ? "overdue"
+        : daysUntil <= leadDays ? "due_soon" : "scheduled";
+      if (status === "scheduled") continue;
+      reminders.push({
+        billId: b.id, name: b.name, amount: b.amount,
+        dueDate: due.toISOString().slice(0, 10), daysUntil, status,
+        autopay: !!b.autopay,
+        notify: !b.autopay && (status === "due_soon" || status === "overdue"),
+        message: status === "overdue"
+          ? `${b.name} is overdue by ${Math.abs(daysUntil)} day(s) — $${b.amount.toFixed(2)}`
+          : status === "due_soon"
+          ? `${b.name} due in ${daysUntil} day(s) — $${b.amount.toFixed(2)}`
+          : `${b.name} marked paid this cycle`,
+      });
+    }
+    reminders.sort((a, b) => a.daysUntil - b.daysUntil);
+    return {
+      ok: true,
+      result: {
+        reminders,
+        actionable: reminders.filter(r => r.notify),
+        overdueCount: reminders.filter(r => r.status === "overdue").length,
+        dueSoonCount: reminders.filter(r => r.status === "due_soon").length,
+        leadDays,
+      },
+    };
+  });
+
+  registerLensAction("finance", "bill-reminder-snooze", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const days = Math.max(1, Math.min(14, Number(params.days) || 3));
+    const bills = ensureBucket(state, "bills", userId);
+    const b = bills.find(x => x.id === id);
+    if (!b) return { ok: false, error: "bill not found" };
+    b.snoozedUntil = new Date(Date.now() + days * 86400000).toISOString();
+    saveStateIfAvailable();
+    return { ok: true, result: { bill: b, snoozedUntil: b.snoozedUntil } };
+  });
+
+  // ── Item 7: Custom budget rollover rules + category goals ─────────
+  //
+  // Each rule attaches to an envelope: rollover mode (full / capped /
+  // reset) + an optional savings goal. apply-rollover runs the period
+  // close, moving leftover into the next cycle per the rule.
+
+  registerLensAction("finance", "rollover-rules-list", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const rules = ensureBucket(state, "rolloverRules", userId);
+    return { ok: true, result: { rules } };
+  });
+
+  registerLensAction("finance", "rollover-rule-set", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const envelopeId = String(params.envelopeId || "").trim();
+    if (!envelopeId) return { ok: false, error: "envelopeId required" };
+    const envelopes = state.envelopes.get(userId) || [];
+    if (!envelopes.some(e => e.id === envelopeId)) return { ok: false, error: "envelope not found" };
+    const mode = ["full", "capped", "reset"].includes(params.mode) ? params.mode : "full";
+    const cap = Math.max(0, Number(params.cap) || 0);
+    const goalTarget = Math.max(0, Number(params.goalTarget) || 0);
+    const rules = ensureBucket(state, "rolloverRules", userId);
+    let rule = rules.find(r => r.envelopeId === envelopeId);
+    if (rule) {
+      rule.mode = mode; rule.cap = cap; rule.goalTarget = goalTarget;
+      rule.updatedAt = new Date().toISOString();
+    } else {
+      rule = {
+        id: uid("rr"), envelopeId, mode, cap, goalTarget,
+        accumulatedGoal: 0,
+        createdAt: new Date().toISOString(),
+      };
+      rules.push(rule);
+    }
+    saveStateIfAvailable();
+    return { ok: true, result: { rule } };
+  });
+
+  registerLensAction("finance", "rollover-rule-delete", (ctx, _a, params = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.id || "");
+    const rules = ensureBucket(state, "rolloverRules", userId);
+    const idx = rules.findIndex(r => r.id === id);
+    if (idx < 0) return { ok: false, error: "rule not found" };
+    rules.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("finance", "rollover-apply", (ctx, _a, _p = {}) => {
+    const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const envelopes = state.envelopes.get(userId) || [];
+    const rules = ensureBucket(state, "rolloverRules", userId);
+    const applied = [];
+    for (const env of envelopes) {
+      const leftover = Math.round((env.monthlyTarget - env.spentThisMonth) * 100) / 100;
+      const rule = rules.find(r => r.envelopeId === env.id);
+      let carried = 0, toGoal = 0;
+      if (rule && leftover > 0) {
+        if (rule.mode === "reset") {
+          carried = 0;
+        } else if (rule.mode === "capped") {
+          carried = Math.min(leftover, rule.cap);
+          toGoal = leftover - carried;
+        } else {
+          carried = leftover;
+        }
+        if (rule.goalTarget > 0) {
+          // Surplus beyond the cap flows to the attached savings goal.
+          rule.accumulatedGoal = Math.round((rule.accumulatedGoal + toGoal) * 100) / 100;
+        }
+      } else if (env.rolloverEnabled && leftover > 0) {
+        carried = leftover;
+      }
+      env.currentBalance = Math.round((env.currentBalance + carried) * 100) / 100;
+      env.spentThisMonth = 0;
+      applied.push({
+        envelopeId: env.id, category: env.category,
+        leftover, carried, toGoal,
+        mode: rule ? rule.mode : (env.rolloverEnabled ? "full" : "reset"),
+        newBalance: env.currentBalance,
+        goalProgress: rule && rule.goalTarget > 0
+          ? { accumulated: rule.accumulatedGoal, target: rule.goalTarget, pct: Math.min(100, Math.round((rule.accumulatedGoal / rule.goalTarget) * 1000) / 10) }
+          : null,
+      });
+    }
+    saveStateIfAvailable();
+    return { ok: true, result: { applied, envelopesProcessed: applied.length } };
+  });
+
+  // feed — ingest real ECB foreign-exchange reference rates from the
+  // Frankfurter API as visible DTUs. Free, no key.
+  registerLensAction("finance", "feed", async (ctx, _a, params = {}) => {
+    const s = getFinState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
+    try {
+      const r = await fetch("https://api.frankfurter.app/latest?from=USD");
+      if (!r.ok) return { ok: false, error: `frankfurter ${r.status}` };
+      const data = await r.json();
+      const rates = data?.rates && typeof data.rates === "object" ? data.rates : {};
+      const entries = Object.entries(rates).slice(0, limit);
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const [code, rate] of entries) {
+        const id = `fx_USD_${code}_${data.date}`;
+        if (s.feedSeen.has(id)) { skipped++; continue; }
+        const title = `FX rate: USD/${code} = ${rate} (${data.date})`;
+        const res = await ctx.macro.run("dtu", "create", {
+          title,
+          creti: `${title}\n\n1 USD = ${rate} ${code}\nAs of: ${data.date}\nSource: European Central Bank reference rates (Frankfurter API)`,
+          tags: ["finance", "feed", "forex", "ecb"],
+          source: "frankfurter-feed",
+          meta: { base: "USD", quote: code, rate, date: data.date },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+      }
+      saveStateIfAvailable();
+      return { ok: true, result: { ingested, skipped, source: "ecb-fx-rates", dtuIds } };
+    } catch (e) {
+      return { ok: false, error: `frankfurter unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────
@@ -1240,17 +1848,81 @@ function filterByRange(snapshots, range) {
 }
 
 
-function seedSubscriptions() {
-  const now = Date.now();
-  return [
-    { id: "sub_netflix", merchant: "Netflix", monthlyAmount: 15.49, cadence: "monthly", lastChargedAt: new Date(now - 5 * 86400000).toISOString(), nextEstimated: new Date(now + 25 * 86400000).toISOString(), category: "Entertainment", status: "active" },
-    { id: "sub_spotify", merchant: "Spotify", monthlyAmount: 10.99, cadence: "monthly", lastChargedAt: new Date(now - 12 * 86400000).toISOString(), nextEstimated: new Date(now + 18 * 86400000).toISOString(), category: "Entertainment", status: "active" },
-    { id: "sub_iphone", merchant: "iCloud+ 200GB", monthlyAmount: 2.99, cadence: "monthly", lastChargedAt: new Date(now - 8 * 86400000).toISOString(), nextEstimated: new Date(now + 22 * 86400000).toISOString(), category: "Subscriptions", status: "active" },
-    { id: "sub_gym", merchant: "24 Hour Fitness", monthlyAmount: 49.99, cadence: "monthly", lastChargedAt: new Date(now - 18 * 86400000).toISOString(), nextEstimated: new Date(now + 12 * 86400000).toISOString(), category: "Health", status: "active", insight: "You haven't checked in for 47 days — consider cancelling." },
-    { id: "sub_aws", merchant: "AWS", monthlyAmount: 18.20, cadence: "monthly", lastChargedAt: new Date(now - 2 * 86400000).toISOString(), nextEstimated: new Date(now + 28 * 86400000).toISOString(), category: "Subscriptions", status: "active" },
-    { id: "sub_news", merchant: "NYT Digital", monthlyAmount: 22, cadence: "monthly", lastChargedAt: new Date(now - 20 * 86400000).toISOString(), nextEstimated: new Date(now + 10 * 86400000).toISOString(), category: "Subscriptions", status: "active", insight: "Auto-renewed at full price after promo ended." },
-    { id: "sub_domain", merchant: "Namecheap (yearly)", monthlyAmount: 1.08, cadence: "annual", lastChargedAt: new Date(now - 60 * 86400000).toISOString(), nextEstimated: new Date(now + 305 * 86400000).toISOString(), category: "Subscriptions", status: "active" },
-  ];
+// detectRecurringCharges — finds recurring subscriptions from a real
+// transaction ledger. Groups debits by normalised merchant name; a group
+// of ≥2 charges with a roughly-regular gap (monthly / annual / weekly /
+// biweekly) and a stable amount is surfaced as a subscription candidate.
+function detectRecurringCharges(ledger) {
+  const debits = (Array.isArray(ledger) ? ledger : [])
+    .filter(t => Number(t.amount) < 0 && t.description)
+    .map(t => ({
+      merchant: normaliseMerchant(t.description),
+      raw: String(t.description),
+      amount: Math.abs(Number(t.amount)),
+      date: t.date || (t.ingestedAt || "").slice(0, 10),
+      category: t.category || ruleBasedCategorize(t.description || ""),
+    }))
+    .filter(t => t.merchant && /^\d{4}-\d{2}-\d{2}$/.test(t.date));
+
+  const groups = new Map();
+  for (const d of debits) {
+    if (!groups.has(d.merchant)) groups.set(d.merchant, []);
+    groups.get(d.merchant).push(d);
+  }
+
+  const subs = [];
+  for (const [merchant, charges] of groups.entries()) {
+    if (charges.length < 2) continue;
+    charges.sort((a, b) => a.date.localeCompare(b.date));
+    // Median inter-charge gap in days.
+    const gaps = [];
+    for (let i = 1; i < charges.length; i++) {
+      gaps.push((new Date(charges[i].date).getTime() - new Date(charges[i - 1].date).getTime()) / 86400000);
+    }
+    gaps.sort((a, b) => a - b);
+    const medianGap = gaps[Math.floor(gaps.length / 2)];
+    let cadence = null;
+    if (medianGap >= 5 && medianGap <= 9) cadence = "weekly";
+    else if (medianGap >= 11 && medianGap <= 18) cadence = "biweekly";
+    else if (medianGap >= 25 && medianGap <= 38) cadence = "monthly";
+    else if (medianGap >= 330 && medianGap <= 400) cadence = "annual";
+    if (!cadence) continue;
+    // Amounts should be stable (within 15% of the median).
+    const amounts = charges.map(c => c.amount).sort((a, b) => a - b);
+    const medianAmount = amounts[Math.floor(amounts.length / 2)];
+    const stable = amounts.every(a => Math.abs(a - medianAmount) <= medianAmount * 0.15 + 0.01);
+    if (!stable || medianAmount <= 0) continue;
+    const last = charges[charges.length - 1];
+    const periodDays = cadence === "weekly" ? 7 : cadence === "biweekly" ? 14 : cadence === "annual" ? 365 : 30;
+    const next = new Date(new Date(last.date).getTime() + periodDays * 86400000);
+    const monthlyAmount = cadence === "annual" ? medianAmount / 12 : cadence === "weekly" ? medianAmount * 52 / 12 : cadence === "biweekly" ? medianAmount * 26 / 12 : medianAmount;
+    subs.push({
+      id: `sub_${normaliseMerchant(merchant).replace(/[^a-z0-9]/g, "_")}`,
+      merchant: last.raw,
+      monthlyAmount: Math.round(monthlyAmount * 100) / 100,
+      chargeAmount: Math.round(medianAmount * 100) / 100,
+      cadence,
+      occurrences: charges.length,
+      lastChargedAt: new Date(last.date).toISOString(),
+      nextEstimated: next.toISOString(),
+      category: last.category,
+      status: "active",
+    });
+  }
+  return subs.sort((a, b) => b.monthlyAmount - a.monthlyAmount);
+}
+
+// normaliseMerchant — strips trailing transaction codes / store numbers /
+// dates so "NETFLIX.COM 8009999999" and "Netflix.com" collapse together.
+function normaliseMerchant(desc) {
+  return String(desc || "")
+    .toLowerCase()
+    .replace(/[#*]/g, " ")
+    .replace(/\b\d{2,}\b/g, " ")
+    .replace(/\b(inc|llc|com|co|ltd|recurring|payment|autopay|subscription)\b/g, " ")
+    .replace(/[^a-z ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function ruleBasedCategorize(desc) {
@@ -1285,5 +1957,28 @@ function hashStr(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
   return h;
+}
+
+// applyRules — runs a user's pre-sorted categorisation rules against a
+// transaction description; returns the matched category or null.
+function applyRules(sortedRules, description) {
+  const lower = String(description || "").toLowerCase();
+  for (const r of sortedRules) {
+    if (r.matchKind === "contains" && lower.includes(r.matchText)) return r.category;
+    if (r.matchKind === "starts_with" && lower.startsWith(r.matchText)) return r.category;
+    if (r.matchKind === "regex") {
+      try { if (new RegExp(r.matchText, "i").test(description)) return r.category; }
+      catch (_e) { /* invalid regex; skip */ }
+    }
+  }
+  return null;
+}
+
+// clampPct — coerce a possibly-undefined percentage into [0,100] or null.
+function clampPct(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  if (Number.isNaN(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n * 10) / 10));
 }
 

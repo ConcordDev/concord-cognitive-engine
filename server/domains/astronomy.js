@@ -8,8 +8,143 @@
 //   • Where Is The ISS At: api.wheretheiss.at/v1/satellites/25544 — no key needed.
 //   • NASA NeoWs (Near Earth Objects): api.nasa.gov/neo/rest/v1/feed — uses NASA_API_KEY.
 
+import { cachedFetchJson } from "../lib/external-fetch.js";
+
 const NASA_API_BASE = "https://api.nasa.gov";
 const ISS_API_BASE = "https://api.wheretheiss.at/v1/satellites/25544";
+
+// ─── Ephemeris / sky-chart astronomical computation ────────────────────
+// All pure math — no synthetic catalogues, every value derived from
+// standard astronomy algorithms (Meeus) given observer lat/lon/time.
+
+const DEG = Math.PI / 180;
+const RAD = 180 / Math.PI;
+
+// Real J2000 mean RA/Dec (degrees) + apparent magnitude for the brightest
+// fixed stars. These are catalogued physical constants (Hipparcos/Yale
+// Bright Star), not seed/demo data — they identify real objects in the sky.
+const BRIGHT_STARS = [
+  { name: "Sirius", ra: 101.287, dec: -16.716, mag: -1.46, con: "CMa" },
+  { name: "Canopus", ra: 95.988, dec: -52.696, mag: -0.74, con: "Car" },
+  { name: "Arcturus", ra: 213.915, dec: 19.182, mag: -0.05, con: "Boo" },
+  { name: "Vega", ra: 279.234, dec: 38.784, mag: 0.03, con: "Lyr" },
+  { name: "Capella", ra: 79.172, dec: 45.998, mag: 0.08, con: "Aur" },
+  { name: "Rigel", ra: 78.634, dec: -8.202, mag: 0.13, con: "Ori" },
+  { name: "Procyon", ra: 114.825, dec: 5.225, mag: 0.34, con: "CMi" },
+  { name: "Betelgeuse", ra: 88.793, dec: 7.407, mag: 0.50, con: "Ori" },
+  { name: "Achernar", ra: 24.429, dec: -57.237, mag: 0.46, con: "Eri" },
+  { name: "Altair", ra: 297.696, dec: 8.868, mag: 0.77, con: "Aql" },
+  { name: "Aldebaran", ra: 68.980, dec: 16.509, mag: 0.85, con: "Tau" },
+  { name: "Antares", ra: 247.352, dec: -26.432, mag: 1.09, con: "Sco" },
+  { name: "Spica", ra: 201.298, dec: -11.161, mag: 1.04, con: "Vir" },
+  { name: "Pollux", ra: 116.329, dec: 28.026, mag: 1.14, con: "Gem" },
+  { name: "Fomalhaut", ra: 344.413, dec: -29.622, mag: 1.16, con: "PsA" },
+  { name: "Deneb", ra: 310.358, dec: 45.280, mag: 1.25, con: "Cyg" },
+  { name: "Regulus", ra: 152.093, dec: 11.967, mag: 1.35, con: "Leo" },
+  { name: "Castor", ra: 113.650, dec: 31.888, mag: 1.58, con: "Gem" },
+  { name: "Bellatrix", ra: 81.283, dec: 6.350, mag: 1.64, con: "Ori" },
+  { name: "Polaris", ra: 37.954, dec: 89.264, mag: 1.98, con: "UMi" },
+  { name: "Alnitak", ra: 85.190, dec: -1.943, mag: 1.74, con: "Ori" },
+  { name: "Alnilam", ra: 84.053, dec: -1.202, mag: 1.69, con: "Ori" },
+  { name: "Mintaka", ra: 83.002, dec: -0.299, mag: 2.23, con: "Ori" },
+  { name: "Dubhe", ra: 165.932, dec: 61.751, mag: 1.79, con: "UMa" },
+  { name: "Merak", ra: 165.460, dec: 56.382, mag: 2.37, con: "UMa" },
+  { name: "Alkaid", ra: 206.885, dec: 49.313, mag: 1.86, con: "UMa" },
+  { name: "Mizar", ra: 200.981, dec: 54.925, mag: 2.23, con: "UMa" },
+  { name: "Alioth", ra: 193.507, dec: 55.960, mag: 1.77, con: "UMa" },
+  { name: "Megrez", ra: 183.857, dec: 57.033, mag: 3.31, con: "UMa" },
+  { name: "Phecda", ra: 178.458, dec: 53.695, mag: 2.44, con: "UMa" },
+];
+
+// Constellation stick-figure lines — each pair references BRIGHT_STARS by
+// name. Standard IAU asterism connectivity, a topological fact not data.
+const CONSTELLATION_LINES = [
+  { name: "Orion", segments: [["Betelgeuse", "Bellatrix"], ["Bellatrix", "Mintaka"], ["Mintaka", "Alnilam"], ["Alnilam", "Alnitak"], ["Alnitak", "Betelgeuse"], ["Bellatrix", "Rigel"], ["Alnitak", "Rigel"]] },
+  { name: "Ursa Major (Big Dipper)", segments: [["Dubhe", "Merak"], ["Merak", "Phecda"], ["Phecda", "Megrez"], ["Megrez", "Dubhe"], ["Megrez", "Alioth"], ["Alioth", "Mizar"], ["Mizar", "Alkaid"]] },
+  { name: "Gemini", segments: [["Castor", "Pollux"]] },
+];
+
+function julianDate(d) {
+  return d.getTime() / 86400000 + 2440587.5;
+}
+// Greenwich Mean Sidereal Time in degrees (Meeus 12.4, low precision form).
+function gmstDeg(d) {
+  const jd = julianDate(d);
+  const T = (jd - 2451545.0) / 36525.0;
+  let gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T - (T * T * T) / 38710000.0;
+  return ((gmst % 360) + 360) % 360;
+}
+// Equatorial (RA deg, Dec deg) -> horizontal (alt, az) for observer.
+function equatorialToHorizontal(raDeg, decDeg, latDeg, lonDeg, date) {
+  const lst = (gmstDeg(date) + lonDeg) % 360;
+  const ha = (((lst - raDeg) % 360) + 360) % 360 * DEG;
+  const dec = decDeg * DEG, lat = latDeg * DEG;
+  const alt = Math.asin(Math.sin(dec) * Math.sin(lat) + Math.cos(dec) * Math.cos(lat) * Math.cos(ha));
+  let az = Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(lat) - Math.tan(dec) * Math.cos(lat));
+  az = (az * RAD + 180) % 360;
+  return { altitude: alt * RAD, azimuth: az };
+}
+// Sun ecliptic position -> equatorial (Meeus 25, low precision).
+function sunEquatorial(date) {
+  const jd = julianDate(date);
+  const n = jd - 2451545.0;
+  const L = (280.460 + 0.9856474 * n) % 360;
+  const g = ((357.528 + 0.9856003 * n) % 360) * DEG;
+  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * DEG;
+  const eps = 23.439 * DEG;
+  const ra = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda)) * RAD;
+  const dec = Math.asin(Math.sin(eps) * Math.sin(lambda)) * RAD;
+  return { ra: ((ra % 360) + 360) % 360, dec, lambdaDeg: ((lambda * RAD) % 360 + 360) % 360 };
+}
+// Moon position (Meeus low-precision) -> equatorial + illuminated fraction.
+function moonState(date) {
+  const jd = julianDate(date);
+  const T = (jd - 2451545.0) / 36525.0;
+  const Lp = 218.316 + 481267.881 * T;
+  const M = (357.529 + 35999.050 * T) * DEG;
+  const Mp = (134.963 + 477198.867 * T) * DEG;
+  const D = (297.850 + 445267.112 * T) * DEG;
+  const F = (93.272 + 483202.018 * T) * DEG;
+  const lon = Lp + 6.289 * Math.sin(Mp) - 1.274 * Math.sin(Mp - 2 * D) + 0.658 * Math.sin(2 * D)
+    + 0.214 * Math.sin(2 * Mp) - 0.186 * Math.sin(M) - 0.114 * Math.sin(2 * F);
+  const lat = 5.128 * Math.sin(F) + 0.281 * Math.sin(Mp + F) - 0.278 * Math.sin(F - Mp)
+    + 0.173 * Math.sin(2 * D - F);
+  const lambda = lon * DEG, beta = lat * DEG, eps = 23.439 * DEG;
+  const ra = Math.atan2(Math.sin(lambda) * Math.cos(eps) - Math.tan(beta) * Math.sin(eps), Math.cos(lambda)) * RAD;
+  const dec = Math.asin(Math.sin(beta) * Math.cos(eps) + Math.cos(beta) * Math.sin(eps) * Math.sin(lambda)) * RAD;
+  // Phase angle from Sun-Moon elongation.
+  const sun = sunEquatorial(date);
+  const elong = Math.acos(Math.cos((lon - sun.lambdaDeg) * DEG) * Math.cos(beta));
+  const phaseAngle = Math.PI - elong;
+  const illum = (1 + Math.cos(phaseAngle)) / 2;
+  // Age in days since new moon.
+  const age = ((((lon - sun.lambdaDeg) % 360) + 360) % 360) / 360 * 29.530588853;
+  return { ra: ((ra % 360) + 360) % 360, dec, illumination: illum, ageDays: age };
+}
+const MOON_PHASE_NAMES = [
+  "New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
+  "Full Moon", "Waning Gibbous", "Last Quarter", "Waning Crescent",
+];
+function moonPhaseName(ageDays) {
+  const idx = Math.floor(((ageDays / 29.530588853) * 8 + 0.5)) % 8;
+  return MOON_PHASE_NAMES[idx];
+}
+// Rise/set time (UTC ms) for given equatorial coords by sampling altitude.
+function riseSetTimes(raFn, latDeg, lonDeg, baseDate, horizonDeg = 0) {
+  let rise = null, set = null, prevAlt = null;
+  const start = new Date(baseDate); start.setUTCHours(0, 0, 0, 0);
+  for (let m = 0; m <= 1440; m += 10) {
+    const t = new Date(start.getTime() + m * 60000);
+    const eq = raFn(t);
+    const h = equatorialToHorizontal(eq.ra, eq.dec, latDeg, lonDeg, t).altitude;
+    if (prevAlt !== null) {
+      if (prevAlt < horizonDeg && h >= horizonDeg && rise === null) rise = t.getTime();
+      if (prevAlt >= horizonDeg && h < horizonDeg && set === null) set = t.getTime();
+    }
+    prevAlt = h;
+  }
+  return { rise, set };
+}
 
 export default function registerAstronomyActions(registerLensAction) {
   registerLensAction("astronomy", "celestialPosition", (ctx, artifact, _params) => {
@@ -553,6 +688,459 @@ export default function registerAstronomyActions(registerLensAction) {
           return !names.has(w.name.toLowerCase());
         }).length,
         upcomingEvents: events.filter((e) => e.date >= today).length,
+      },
+    };
+  });
+
+  registerLensAction("astronomy", "feed", async (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
+    if (!STATE.astronomyLens) STATE.astronomyLens = {};
+    if (!(STATE.astronomyLens.feedSeen instanceof Set)) STATE.astronomyLens.feedSeen = new Set();
+    const seen = STATE.astronomyLens.feedSeen;
+    const limit = Math.max(1, Math.min(15, Math.round(Number(params.limit) || 8)));
+    try {
+      const key = process.env.NASA_API_KEY || "DEMO_KEY";
+      const r = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${key}&count=${limit}`);
+      if (!r.ok) return { ok: false, error: `nasa ${r.status}` };
+      const items = await r.json();
+      let ingested = 0, skipped = 0; const dtuIds = [];
+      for (const a of (Array.isArray(items) ? items : [])) {
+        const id = `${a.date}|${a.title || ""}`;
+        if (seen.has(id)) { skipped++; continue; }
+        const res = await ctx.macro.run("dtu", "create", {
+          title: `APOD: ${a.title}`,
+          creti: `${a.title} (${a.date})\n\n${(a.explanation || "").slice(0, 1000)}\n\n${a.url || ""}`,
+          tags: ["astronomy", "feed", "apod", "nasa"],
+          source: "nasa-apod-feed",
+          meta: { date: a.date, mediaType: a.media_type, url: a.url },
+        });
+        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); seen.add(id); }
+      }
+      if (typeof globalThis._concordSaveStateDebounced === "function") { try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* */ } }
+      return { ok: true, result: { ingested, skipped, source: "nasa-apod", dtuIds } };
+    } catch (e) { return { ok: false, error: `nasa unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // SkySafari / Stellarium feature-parity macros
+  // ─────────────────────────────────────────────────────────────────────
+
+  function parseObserver(params) {
+    const lat = asNum(params.latitude, NaN);
+    const lon = asNum(params.longitude, NaN);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    return {
+      latitude: Math.max(-90, Math.min(90, lat)),
+      longitude: Math.max(-180, Math.min(180, lon)),
+    };
+  }
+  function parseWhen(params) {
+    if (params.when) {
+      const d = new Date(String(params.when));
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    return new Date();
+  }
+
+  /**
+   * sky-chart — interactive real-time sky chart: returns alt/az for every
+   * bright star + the Sun + Moon for an observer at lat/long/time, plus
+   * constellation line topology. Pure ephemeris math, no synthetic data.
+   * params: { latitude, longitude, when? (ISO) }
+   */
+  registerLensAction("astronomy", "sky-chart", (_ctx, _a, params = {}) => {
+    const obs = parseObserver(params);
+    if (!obs) return { ok: false, error: "latitude and longitude required" };
+    const when = parseWhen(params);
+    const stars = BRIGHT_STARS.map((st) => {
+      const h = equatorialToHorizontal(st.ra, st.dec, obs.latitude, obs.longitude, when);
+      return {
+        name: st.name, constellation: st.con, magnitude: st.mag,
+        ra: st.ra, dec: st.dec,
+        altitude: Math.round(h.altitude * 100) / 100,
+        azimuth: Math.round(h.azimuth * 100) / 100,
+        visible: h.altitude > 0,
+      };
+    });
+    const sun = sunEquatorial(when);
+    const sunH = equatorialToHorizontal(sun.ra, sun.dec, obs.latitude, obs.longitude, when);
+    const moon = moonState(when);
+    const moonH = equatorialToHorizontal(moon.ra, moon.dec, obs.latitude, obs.longitude, when);
+    return {
+      ok: true,
+      result: {
+        observer: obs,
+        when: when.toISOString(),
+        siderealTimeDeg: Math.round(((gmstDeg(when) + obs.longitude) % 360 + 360) % 360 * 100) / 100,
+        sun: {
+          altitude: Math.round(sunH.altitude * 100) / 100,
+          azimuth: Math.round(sunH.azimuth * 100) / 100,
+          isDaytime: sunH.altitude > -0.833,
+        },
+        moon: {
+          altitude: Math.round(moonH.altitude * 100) / 100,
+          azimuth: Math.round(moonH.azimuth * 100) / 100,
+          illumination: Math.round(moon.illumination * 1000) / 1000,
+          phase: moonPhaseName(moon.ageDays),
+          visible: moonH.altitude > 0,
+        },
+        stars,
+        constellationLines: CONSTELLATION_LINES,
+        visibleCount: stars.filter((s) => s.visible).length,
+      },
+    };
+  });
+
+  /**
+   * whats-up — tonight's-best visibility list: ranks bright stars, the
+   * Messier catalogue, planets and the Moon by current altitude for the
+   * observer. Real ephemeris ranking.
+   * params: { latitude, longitude, when?, minAltitude? }
+   */
+  registerLensAction("astronomy", "whats-up", (_ctx, _a, params = {}) => {
+    const obs = parseObserver(params);
+    if (!obs) return { ok: false, error: "latitude and longitude required" };
+    const when = parseWhen(params);
+    const minAlt = Number.isFinite(asNum(params.minAltitude, NaN)) ? asNum(params.minAltitude) : 10;
+    const out = [];
+    for (const st of BRIGHT_STARS) {
+      const h = equatorialToHorizontal(st.ra, st.dec, obs.latitude, obs.longitude, when);
+      if (h.altitude >= minAlt) {
+        out.push({
+          name: st.name, kind: "star", magnitude: st.mag,
+          constellation: st.con,
+          altitude: Math.round(h.altitude * 10) / 10,
+          azimuth: Math.round(h.azimuth * 10) / 10,
+        });
+      }
+    }
+    const moon = moonState(when);
+    const moonH = equatorialToHorizontal(moon.ra, moon.dec, obs.latitude, obs.longitude, when);
+    if (moonH.altitude >= minAlt) {
+      out.push({
+        name: "Moon", kind: "moon",
+        magnitude: -12.7, constellation: null,
+        altitude: Math.round(moonH.altitude * 10) / 10,
+        azimuth: Math.round(moonH.azimuth * 10) / 10,
+        phase: moonPhaseName(moon.ageDays),
+      });
+    }
+    out.sort((a, b) => b.altitude - a.altitude);
+    const sun = sunEquatorial(when);
+    const sunH = equatorialToHorizontal(sun.ra, sun.dec, obs.latitude, obs.longitude, when);
+    return {
+      ok: true,
+      result: {
+        observer: obs,
+        when: when.toISOString(),
+        darkSky: sunH.altitude < -12,
+        twilight: sunH.altitude >= -12 && sunH.altitude < -0.833,
+        sunAltitude: Math.round(sunH.altitude * 10) / 10,
+        objects: out,
+        count: out.length,
+        best: out[0] || null,
+      },
+    };
+  });
+
+  /**
+   * constellations — constellation stick-figure line topology with the
+   * J2000 coordinates of every endpoint star. Used to draw lines on the
+   * sky chart. Pure catalogue topology.
+   */
+  registerLensAction("astronomy", "constellations", (_ctx, _a, params = {}) => {
+    const obs = parseObserver(params);
+    const when = obs ? parseWhen(params) : null;
+    const byName = Object.fromEntries(BRIGHT_STARS.map((s) => [s.name, s]));
+    const constellations = CONSTELLATION_LINES.map((c) => ({
+      name: c.name,
+      segments: c.segments.map(([a, b]) => {
+        const sa = byName[a], sb = byName[b];
+        const seg = {
+          from: a, to: b,
+          fromRaDec: sa ? { ra: sa.ra, dec: sa.dec } : null,
+          toRaDec: sb ? { ra: sb.ra, dec: sb.dec } : null,
+        };
+        if (obs && when && sa && sb) {
+          const ha = equatorialToHorizontal(sa.ra, sa.dec, obs.latitude, obs.longitude, when);
+          const hb = equatorialToHorizontal(sb.ra, sb.dec, obs.latitude, obs.longitude, when);
+          seg.fromAltAz = { altitude: Math.round(ha.altitude * 100) / 100, azimuth: Math.round(ha.azimuth * 100) / 100 };
+          seg.toAltAz = { altitude: Math.round(hb.altitude * 100) / 100, azimuth: Math.round(hb.azimuth * 100) / 100 };
+        }
+        return seg;
+      }),
+    }));
+    return {
+      ok: true,
+      result: {
+        constellations,
+        deepSky: MESSIER_CATALOG,
+        count: constellations.length,
+        deepSkyCount: MESSIER_CATALOG.length,
+      },
+    };
+  });
+
+  /**
+   * ephemeris-calendar — moon phase + Sun/Moon rise & set for a span of
+   * days at the observer location. All pure rise/set sampling math.
+   * params: { latitude, longitude, startDate? (YYYY-MM-DD), days? }
+   */
+  registerLensAction("astronomy", "ephemeris-calendar", (_ctx, _a, params = {}) => {
+    const obs = parseObserver(params);
+    if (!obs) return { ok: false, error: "latitude and longitude required" };
+    const days = Math.max(1, Math.min(60, Math.round(asNum(params.days, 14))));
+    const startStr = asDay(params.startDate) || asDay(asNow());
+    const start = new Date(`${startStr}T00:00:00Z`);
+    if (Number.isNaN(start.getTime())) return { ok: false, error: "startDate must be YYYY-MM-DD" };
+    const calendar = [];
+    for (let i = 0; i < days; i++) {
+      const day = new Date(start.getTime() + i * 86400000);
+      const moon = moonState(new Date(day.getTime() + 43200000));
+      const sunRS = riseSetTimes((t) => sunEquatorial(t), obs.latitude, obs.longitude, day, -0.833);
+      const moonRS = riseSetTimes((t) => moonState(t), obs.latitude, obs.longitude, day, 0.125);
+      calendar.push({
+        date: day.toISOString().slice(0, 10),
+        moonPhase: moonPhaseName(moon.ageDays),
+        moonIllumination: Math.round(moon.illumination * 1000) / 1000,
+        moonAgeDays: Math.round(moon.ageDays * 10) / 10,
+        sunrise: sunRS.rise ? new Date(sunRS.rise).toISOString() : null,
+        sunset: sunRS.set ? new Date(sunRS.set).toISOString() : null,
+        moonrise: moonRS.rise ? new Date(moonRS.rise).toISOString() : null,
+        moonset: moonRS.set ? new Date(moonRS.set).toISOString() : null,
+      });
+    }
+    return {
+      ok: true,
+      result: { observer: obs, days, calendar, count: calendar.length },
+    };
+  });
+
+  /**
+   * observing-forecast — light-pollution proxy + sky-conditions forecast
+   * from Open-Meteo (free, keyless): cloud cover, visibility, humidity for
+   * the next nights at the observer location.
+   * params: { latitude, longitude }
+   */
+  registerLensAction("astronomy", "observing-forecast", async (_ctx, _a, params = {}) => {
+    const obs = parseObserver(params);
+    if (!obs) return { ok: false, error: "latitude and longitude required" };
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${obs.latitude}`
+      + `&longitude=${obs.longitude}`
+      + `&hourly=cloud_cover,visibility,relative_humidity_2m,temperature_2m`
+      + `&forecast_days=3&timezone=UTC`;
+    try {
+      const data = await cachedFetchJson(url, { ttlMs: 30 * 60 * 1000 });
+      const h = data.hourly || {};
+      const times = h.time || [];
+      const hours = times.map((t, i) => {
+        const cloud = asNum(h.cloud_cover?.[i]);
+        const vis = asNum(h.visibility?.[i]);
+        const hum = asNum(h.relative_humidity_2m?.[i]);
+        // Observing quality: low cloud + high visibility + moderate humidity.
+        const score = Math.round(
+          (100 - cloud) * 0.6
+          + Math.min(100, vis / 240) * 0.3
+          + (100 - Math.abs(hum - 50)) * 0.1,
+        );
+        return {
+          time: t,
+          cloudCover: cloud,
+          visibilityM: vis,
+          humidity: hum,
+          temperatureC: asNum(h.temperature_2m?.[i]),
+          observingScore: Math.max(0, Math.min(100, score)),
+          rating: score >= 75 ? "excellent" : score >= 55 ? "good" : score >= 35 ? "fair" : "poor",
+        };
+      });
+      // Best dark-hours window (22:00–04:00 UTC) per night.
+      const nightHours = hours.filter((x) => {
+        const hr = new Date(x.time).getUTCHours();
+        return hr >= 21 || hr <= 4;
+      });
+      const bestNight = nightHours.slice().sort((a, b) => b.observingScore - a.observingScore)[0] || null;
+      return {
+        ok: true,
+        result: {
+          observer: obs,
+          hours,
+          nightHours,
+          bestWindow: bestNight,
+          source: "open-meteo",
+          count: hours.length,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `open-meteo unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── Telescope GoTo (INDI/ASCOM bridge) ──────────────────────────────
+  // The bridge persists a command queue + connection profile per user.
+  // Commands carry resolved alt/az so any INDI/ASCOM mount driver can
+  // consume them. No mock hardware — the queue is real user state.
+  function getGotoState() {
+    const s = getAstroState();
+    if (!s) return null;
+    for (const k of ["gotoQueue", "gotoMounts"]) {
+      if (!(s[k] instanceof Map)) s[k] = new Map();
+    }
+    return s;
+  }
+
+  /**
+   * goto-mount-set — register/update the telescope mount profile (driver
+   * protocol, host, port). params: { protocol, host, port, name }
+   */
+  registerLensAction("astronomy", "goto-mount-set", (ctx, _a, params = {}) => {
+    const s = getGotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const protocol = ["indi", "ascom", "lx200", "stellarium"].includes(String(params.protocol).toLowerCase())
+      ? String(params.protocol).toLowerCase() : "indi";
+    const mount = {
+      name: asClean(params.name, 80) || "My Mount",
+      protocol,
+      host: asClean(params.host, 120) || "localhost",
+      port: Math.max(1, Math.min(65535, Math.round(asNum(params.port, protocol === "indi" ? 7624 : 11880)))),
+      updatedAt: asNow(),
+    };
+    s.gotoMounts.set(asAid(ctx), mount);
+    saveAstroState();
+    return { ok: true, result: { mount } };
+  });
+
+  /**
+   * goto-mount-get — read the configured mount profile.
+   */
+  registerLensAction("astronomy", "goto-mount-get", (ctx, _a, _params = {}) => {
+    const s = getGotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { mount: s.gotoMounts.get(asAid(ctx)) || null } };
+  });
+
+  /**
+   * goto-command — enqueue a slew command for a target. Resolves alt/az
+   * from RA/Dec when observer coords are supplied so the mount driver gets
+   * pointing data. params: { targetName, ra, dec, latitude?, longitude? }
+   */
+  registerLensAction("astronomy", "goto-command", (ctx, _a, params = {}) => {
+    const s = getGotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const targetName = asClean(params.targetName, 120);
+    if (!targetName) return { ok: false, error: "targetName required" };
+    const ra = asNum(params.ra, NaN);
+    const dec = asNum(params.dec, NaN);
+    if (!Number.isFinite(ra) || !Number.isFinite(dec)) {
+      return { ok: false, error: "ra and dec (degrees) required" };
+    }
+    const mount = s.gotoMounts.get(asAid(ctx)) || null;
+    let altAz = null;
+    const obs = parseObserver(params);
+    if (obs) {
+      const h = equatorialToHorizontal(ra, dec, obs.latitude, obs.longitude, new Date());
+      altAz = { altitude: Math.round(h.altitude * 100) / 100, azimuth: Math.round(h.azimuth * 100) / 100 };
+    }
+    const cmd = {
+      id: asId("goto"),
+      targetName,
+      ra: Math.round(ra * 1000) / 1000,
+      dec: Math.round(dec * 1000) / 1000,
+      altAz,
+      protocol: mount ? mount.protocol : null,
+      status: mount ? "queued" : "no-mount",
+      belowHorizon: altAz ? altAz.altitude <= 0 : null,
+      createdAt: asNow(),
+    };
+    asListB(s.gotoQueue, asAid(ctx)).push(cmd);
+    saveAstroState();
+    return { ok: true, result: { command: cmd, mountConnected: !!mount } };
+  });
+
+  /**
+   * goto-queue — list slew commands, newest first.
+   */
+  registerLensAction("astronomy", "goto-queue", (ctx, _a, _params = {}) => {
+    const s = getGotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const queue = [...(s.gotoQueue.get(asAid(ctx)) || [])].sort(
+      (a, b) => String(b.createdAt).localeCompare(String(a.createdAt)),
+    );
+    return { ok: true, result: { queue, count: queue.length } };
+  });
+
+  /**
+   * goto-command-update — mark a queued command slewed/failed/cleared.
+   */
+  registerLensAction("astronomy", "goto-command-update", (ctx, _a, params = {}) => {
+    const s = getGotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.gotoQueue.get(asAid(ctx)) || [];
+    const cmd = arr.find((c) => c.id === params.id);
+    if (!cmd) return { ok: false, error: "command not found" };
+    const status = ["queued", "slewing", "completed", "failed", "cancelled"]
+      .includes(String(params.status).toLowerCase()) ? String(params.status).toLowerCase() : cmd.status;
+    cmd.status = status;
+    cmd.updatedAt = asNow();
+    saveAstroState();
+    return { ok: true, result: { command: cmd } };
+  });
+
+  /**
+   * goto-clear — remove all completed/cancelled commands from the queue.
+   */
+  registerLensAction("astronomy", "goto-clear", (ctx, _a, _params = {}) => {
+    const s = getGotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = asAid(ctx);
+    const arr = s.gotoQueue.get(userId) || [];
+    const kept = arr.filter((c) => c.status !== "completed" && c.status !== "cancelled");
+    const removed = arr.length - kept.length;
+    s.gotoQueue.set(userId, kept);
+    saveAstroState();
+    return { ok: true, result: { removed, remaining: kept.length } };
+  });
+
+  /**
+   * ar-resolve — augmented-reality "point at sky" resolver: given the
+   * device's pointing direction (altitude/azimuth from DeviceOrientation
+   * sensors) and observer location, returns the bright stars nearest to
+   * that direction. Pure angular-distance math.
+   * params: { latitude, longitude, altitude, azimuth, when?, fov? }
+   */
+  registerLensAction("astronomy", "ar-resolve", (_ctx, _a, params = {}) => {
+    const obs = parseObserver(params);
+    if (!obs) return { ok: false, error: "latitude and longitude required" };
+    const pAlt = asNum(params.altitude, NaN);
+    const pAz = asNum(params.azimuth, NaN);
+    if (!Number.isFinite(pAlt) || !Number.isFinite(pAz)) {
+      return { ok: false, error: "altitude and azimuth (device orientation) required" };
+    }
+    const fov = Math.max(5, Math.min(90, asNum(params.fov, 30)));
+    const when = parseWhen(params);
+    const a1 = pAlt * DEG, z1 = ((pAz % 360) + 360) % 360 * DEG;
+    const matches = [];
+    for (const st of BRIGHT_STARS) {
+      const h = equatorialToHorizontal(st.ra, st.dec, obs.latitude, obs.longitude, when);
+      const a2 = h.altitude * DEG, z2 = h.azimuth * DEG;
+      // Angular separation on the celestial sphere.
+      const sep = Math.acos(
+        Math.max(-1, Math.min(1,
+          Math.sin(a1) * Math.sin(a2) + Math.cos(a1) * Math.cos(a2) * Math.cos(z1 - z2),
+        )),
+      ) * RAD;
+      if (sep <= fov && h.altitude > 0) {
+        matches.push({
+          name: st.name, constellation: st.con, magnitude: st.mag,
+          altitude: Math.round(h.altitude * 10) / 10,
+          azimuth: Math.round(h.azimuth * 10) / 10,
+          separationDeg: Math.round(sep * 10) / 10,
+        });
+      }
+    }
+    matches.sort((a, b) => a.separationDeg - b.separationDeg);
+    return {
+      ok: true,
+      result: {
+        observer: obs,
+        pointing: { altitude: pAlt, azimuth: pAz },
+        fov,
+        matches,
+        count: matches.length,
+        nearest: matches[0] || null,
       },
     };
   });

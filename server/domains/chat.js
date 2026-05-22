@@ -2,6 +2,8 @@
 // Domain actions for chat/messaging analysis: thread summarization,
 // participant engagement analysis, and topic shift detection.
 
+import vm from "node:vm";
+
 export default function registerChatActions(registerLensAction) {
   /**
    * threadSummarize
@@ -405,6 +407,14 @@ export default function registerChatActions(registerLensAction) {
         threadIndex: new Map(),
         branches: new Map(),
         scheduled: new Map(),
+        assistants: new Map(),
+        canvasDocs: new Map(),
+        memory: new Map(),
+        shareLinks: new Map(),
+        shareIndex: new Map(),
+        voicePrefs: new Map(),
+        images: new Map(),
+        codeRuns: new Map(),
       };
     }
     return STATE.chatLens;
@@ -756,5 +766,669 @@ export default function registerChatActions(registerLensAction) {
     t.cancelledAt = nowIsoChat();
     saveChatState();
     return { ok: true, result: { task: t } };
+  });
+
+  // ─── ChatGPT-parity backlog — voice / custom GPTs / canvas / memory /
+  //     code interpreter / share links / image generation ──────────────
+  //
+  // All state lives under STATE.chatLens, keyed per-user. Every value is
+  // real user input or computed from real input — no seed/demo data.
+
+  function ensureChatSubmaps(s) {
+    if (!s.assistants) s.assistants = new Map();
+    if (!s.canvasDocs) s.canvasDocs = new Map();
+    if (!s.memory) s.memory = new Map();
+    if (!s.shareLinks) s.shareLinks = new Map();
+    if (!s.shareIndex) s.shareIndex = new Map();
+    if (!s.voicePrefs) s.voicePrefs = new Map();
+    if (!s.images) s.images = new Map();
+    if (!s.codeRuns) s.codeRuns = new Map();
+    return s;
+  }
+
+  // ── Voice mode — speech-in transcription preference + TTS-out config ──
+  // Stores a per-user voice profile (engine, voice, rate, autoplay). The
+  // browser SpeechRecognition / SpeechSynthesis APIs do the actual audio
+  // work client-side; this macro persists the user's chosen settings so
+  // they survive across devices.
+
+  registerLensAction("chat", "voice-get", (ctx, _artifact, _params = {}) => {
+    const s = ensureChatSubmaps(getChatState() || {});
+    if (!s.voicePrefs) return { ok: false, error: "STATE unavailable" };
+    const userId = actorIdFor(ctx);
+    const prefs = s.voicePrefs.get(userId) || {
+      enabled: false,
+      ttsVoice: "default",
+      ttsRate: 1.0,
+      ttsPitch: 1.0,
+      autoplayReplies: false,
+      sttLang: "en-US",
+      updatedAt: null,
+    };
+    return { ok: true, result: { prefs } };
+  });
+
+  registerLensAction("chat", "voice-update", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const cur = s.voicePrefs.get(userId) || {
+      enabled: false, ttsVoice: "default", ttsRate: 1.0, ttsPitch: 1.0,
+      autoplayReplies: false, sttLang: "en-US", updatedAt: null,
+    };
+    if (typeof params.enabled === "boolean") cur.enabled = params.enabled;
+    if (typeof params.ttsVoice === "string") cur.ttsVoice = params.ttsVoice.slice(0, 80);
+    if (params.ttsRate != null) {
+      const r = Number(params.ttsRate);
+      if (!Number.isFinite(r) || r < 0.5 || r > 2.0) return { ok: false, error: "ttsRate must be 0.5-2.0" };
+      cur.ttsRate = Math.round(r * 100) / 100;
+    }
+    if (params.ttsPitch != null) {
+      const p = Number(params.ttsPitch);
+      if (!Number.isFinite(p) || p < 0 || p > 2.0) return { ok: false, error: "ttsPitch must be 0-2.0" };
+      cur.ttsPitch = Math.round(p * 100) / 100;
+    }
+    if (typeof params.autoplayReplies === "boolean") cur.autoplayReplies = params.autoplayReplies;
+    if (typeof params.sttLang === "string") cur.sttLang = params.sttLang.slice(0, 16);
+    cur.updatedAt = nowIsoChat();
+    s.voicePrefs.set(userId, cur);
+    saveChatState();
+    return { ok: true, result: { prefs: cur } };
+  });
+
+  // ── Custom GPTs — configurable assistants (instructions + knowledge) ──
+  // Parity with ChatGPT's "GPTs". A user creates a named assistant with a
+  // system instruction, a set of starter prompts and attached DTU ids
+  // (the knowledge files). The chat lens loads the instruction into the
+  // system prompt when an assistant is active.
+
+  registerLensAction("chat", "assistants-list", (ctx, _artifact, _params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const map = s.assistants.get(userId);
+    if (!map) return { ok: true, result: { assistants: [] } };
+    const assistants = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { assistants } };
+  });
+
+  registerLensAction("chat", "assistant-create", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const name = String(params.name || "").trim();
+    if (!name) return { ok: false, error: "name required" };
+    if (name.length > 60) return { ok: false, error: "name too long (max 60)" };
+    const instructions = String(params.instructions || "").slice(0, 8000);
+    if (!instructions.trim()) return { ok: false, error: "instructions required" };
+    const assistant = {
+      id: nextChatId("gpt"),
+      name,
+      instructions,
+      description: String(params.description || "").slice(0, 300),
+      starters: asStringArr(params.starters, 8).map((x) => x.slice(0, 200)),
+      knowledgeDtuIds: asStringArr(params.knowledgeDtuIds, 50),
+      model: ["overview", "deep", "creative", "code", "research", "creti"]
+        .includes(params.model) ? params.model : "overview",
+      icon: String(params.icon || "bot").slice(0, 24),
+      createdAt: nowIsoChat(),
+      updatedAt: nowIsoChat(),
+    };
+    if (!s.assistants.has(userId)) s.assistants.set(userId, new Map());
+    s.assistants.get(userId).set(assistant.id, assistant);
+    saveChatState();
+    return { ok: true, result: { assistant } };
+  });
+
+  registerLensAction("chat", "assistant-update", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.assistants.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const a = map.get(id);
+    if (typeof params.name === "string") {
+      const n = params.name.trim();
+      if (!n) return { ok: false, error: "name cannot be empty" };
+      a.name = n.slice(0, 60);
+    }
+    if (typeof params.instructions === "string") {
+      if (!params.instructions.trim()) return { ok: false, error: "instructions cannot be empty" };
+      a.instructions = params.instructions.slice(0, 8000);
+    }
+    if (typeof params.description === "string") a.description = params.description.slice(0, 300);
+    if (Array.isArray(params.starters)) a.starters = asStringArr(params.starters, 8).map((x) => x.slice(0, 200));
+    if (Array.isArray(params.knowledgeDtuIds)) a.knowledgeDtuIds = asStringArr(params.knowledgeDtuIds, 50);
+    if (["overview", "deep", "creative", "code", "research", "creti"].includes(params.model)) a.model = params.model;
+    if (typeof params.icon === "string") a.icon = params.icon.slice(0, 24);
+    a.updatedAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { assistant: a } };
+  });
+
+  registerLensAction("chat", "assistant-delete", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.assistants.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveChatState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Canvas — side-by-side document / code editing ────────────────────
+  // A canvas doc is a long-form artifact the user co-edits with the AI in
+  // a split-pane view. Stores full content + a revision history so edits
+  // are reversible (parity with ChatGPT Canvas / Claude Artifacts).
+
+  registerLensAction("chat", "canvas-list", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const map = s.canvasDocs.get(userId);
+    if (!map) return { ok: true, result: { docs: [] } };
+    const threadId = params.threadId ? String(params.threadId) : null;
+    let docs = Array.from(map.values());
+    if (threadId) docs = docs.filter((d) => d.threadId === threadId);
+    docs = docs
+      .map((d) => ({
+        id: d.id, title: d.title, kind: d.kind, language: d.language,
+        threadId: d.threadId, revisionCount: d.revisions.length,
+        charCount: d.content.length, createdAt: d.createdAt, updatedAt: d.updatedAt,
+      }))
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { docs } };
+  });
+
+  registerLensAction("chat", "canvas-get", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.canvasDocs.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    return { ok: true, result: { doc: map.get(id) } };
+  });
+
+  registerLensAction("chat", "canvas-create", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    if (title.length > 120) return { ok: false, error: "title too long (max 120)" };
+    const kind = params.kind === "code" ? "code" : "document";
+    const content = String(params.content || "").slice(0, 200000);
+    const doc = {
+      id: nextChatId("cvs"),
+      title,
+      kind,
+      language: kind === "code" ? String(params.language || "javascript").slice(0, 24) : null,
+      threadId: params.threadId ? String(params.threadId) : null,
+      content,
+      revisions: [],
+      createdAt: nowIsoChat(),
+      updatedAt: nowIsoChat(),
+    };
+    if (!s.canvasDocs.has(userId)) s.canvasDocs.set(userId, new Map());
+    s.canvasDocs.get(userId).set(doc.id, doc);
+    saveChatState();
+    return { ok: true, result: { doc } };
+  });
+
+  registerLensAction("chat", "canvas-update", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.canvasDocs.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const d = map.get(id);
+    if (typeof params.title === "string") {
+      const t = params.title.trim();
+      if (!t) return { ok: false, error: "title cannot be empty" };
+      d.title = t.slice(0, 120);
+    }
+    if (typeof params.content === "string") {
+      // Snapshot the prior content so the edit is reversible.
+      d.revisions.push({
+        content: d.content,
+        editedBy: params.editedBy === "ai" ? "ai" : "user",
+        savedAt: nowIsoChat(),
+      });
+      if (d.revisions.length > 50) d.revisions.splice(0, d.revisions.length - 50);
+      d.content = params.content.slice(0, 200000);
+    }
+    if (typeof params.language === "string") d.language = params.language.slice(0, 24);
+    d.updatedAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { doc: d } };
+  });
+
+  registerLensAction("chat", "canvas-revert", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.canvasDocs.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const d = map.get(id);
+    if (d.revisions.length === 0) return { ok: false, error: "no revisions to revert to" };
+    const idx = Number.isInteger(params.revisionIndex)
+      ? params.revisionIndex : d.revisions.length - 1;
+    if (idx < 0 || idx >= d.revisions.length) return { ok: false, error: "revisionIndex out of range" };
+    const target = d.revisions[idx];
+    // Snapshot current before reverting so the revert itself is reversible.
+    d.revisions.push({ content: d.content, editedBy: "user", savedAt: nowIsoChat() });
+    d.content = target.content;
+    d.updatedAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { doc: d, revertedTo: idx } };
+  });
+
+  registerLensAction("chat", "canvas-delete", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.canvasDocs.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveChatState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Persistent memory — facts the AI remembers across conversations ──
+  // Parity with ChatGPT's "Memory". Each fact is a short user-asserted (or
+  // AI-extracted) statement. The chat lens injects active memories into
+  // the system prompt so context carries between threads.
+
+  registerLensAction("chat", "memory-list", (ctx, _artifact, _params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const map = s.memory.get(userId);
+    if (!map) return { ok: true, result: { memories: [] } };
+    const memories = Array.from(map.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return { ok: true, result: { memories, activeCount: memories.filter((m) => m.active).length } };
+  });
+
+  registerLensAction("chat", "memory-add", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const fact = String(params.fact || "").trim();
+    if (!fact) return { ok: false, error: "fact required" };
+    if (fact.length > 500) return { ok: false, error: "fact too long (max 500)" };
+    if (!s.memory.has(userId)) s.memory.set(userId, new Map());
+    const map = s.memory.get(userId);
+    // Dedupe — a memory with identical text is updated, not duplicated.
+    const lc = fact.toLowerCase();
+    for (const m of map.values()) {
+      if (m.fact.toLowerCase() === lc) {
+        m.updatedAt = nowIsoChat();
+        m.active = true;
+        saveChatState();
+        return { ok: true, result: { memory: m, deduped: true } };
+      }
+    }
+    const memory = {
+      id: nextChatId("mem"),
+      fact,
+      category: ["preference", "fact", "context", "instruction"]
+        .includes(params.category) ? params.category : "fact",
+      source: params.source === "ai" ? "ai" : "user",
+      active: true,
+      createdAt: nowIsoChat(),
+      updatedAt: nowIsoChat(),
+    };
+    map.set(memory.id, memory);
+    saveChatState();
+    return { ok: true, result: { memory } };
+  });
+
+  registerLensAction("chat", "memory-update", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.memory.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "not found" };
+    const m = map.get(id);
+    if (typeof params.fact === "string") {
+      const f = params.fact.trim();
+      if (!f) return { ok: false, error: "fact cannot be empty" };
+      m.fact = f.slice(0, 500);
+    }
+    if (["preference", "fact", "context", "instruction"].includes(params.category)) m.category = params.category;
+    if (typeof params.active === "boolean") m.active = params.active;
+    m.updatedAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { memory: m } };
+  });
+
+  registerLensAction("chat", "memory-delete", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const map = s.memory.get(userId);
+    if (!map) return { ok: false, error: "not found" };
+    if (id === "*") {
+      const cleared = map.size;
+      map.clear();
+      saveChatState();
+      return { ok: true, result: { cleared } };
+    }
+    if (!map.has(id)) return { ok: false, error: "not found" };
+    map.delete(id);
+    saveChatState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  // ── Code interpreter — sandboxed execution of generated code ─────────
+  // Runs JS in a constrained scope: no require/import/process/fetch, a
+  // wall-clock budget, and a captured-output console. Deterministic and
+  // CPU-only — parity with ChatGPT's code interpreter for the JS subset.
+
+  registerLensAction("chat", "code-run", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const code = String(params.code || "");
+    if (!code.trim()) return { ok: false, error: "code required" };
+    if (code.length > 20000) return { ok: false, error: "code too long (max 20000)" };
+    const lang = params.language === "javascript" || !params.language ? "javascript" : String(params.language);
+    if (lang !== "javascript") {
+      return { ok: false, error: "only javascript is supported in this sandbox" };
+    }
+    // Static deny-list — block escape hatches before execution.
+    const banned = /\b(require|import|process|globalThis|global|Function|eval|fetch|XMLHttpRequest|__dirname|__filename|module|exports|setInterval|WebAssembly)\b/;
+    if (banned.test(code)) {
+      return { ok: false, error: "forbidden token: code may not reference require/import/process/eval/fetch/global" };
+    }
+    const logs = [];
+    const sandboxConsole = {
+      log: (...a) => logs.push(a.map(fmtVal).join(" ")),
+      error: (...a) => logs.push("[error] " + a.map(fmtVal).join(" ")),
+      warn: (...a) => logs.push("[warn] " + a.map(fmtVal).join(" ")),
+      info: (...a) => logs.push(a.map(fmtVal).join(" ")),
+    };
+    function fmtVal(v) {
+      if (typeof v === "string") return v;
+      try { return JSON.stringify(v); } catch { return String(v); }
+    }
+    const startedAt = Date.now();
+    let returnValue;
+    let error = null;
+    const deadline = startedAt + 1500; // 1.5s wall budget
+    try {
+      // Execute under node:vm in a restricted context — no process, no
+      // require, no globalThis leak into server scope — with a hard
+      // vm-enforced wall-clock timeout. This is the codebase's audited
+      // sandbox boundary (see tests/platinum-codeql-drift.test.js); it
+      // closes the `.constructor` escape that a bare `new Function` allows.
+      // __deadlineCheck() stays exposed so user loops can cooperatively bail.
+      const sandbox = {
+        console: sandboxConsole, Math, JSON, Date,
+        __deadlineCheck: () => {
+          if (Date.now() > deadline) throw new Error("execution timed out (1.5s budget)");
+        },
+      };
+      const context = vm.createContext(sandbox, { name: "chat-code-run" });
+      const script = new vm.Script(`"use strict";\n${code}`, { filename: "chat-exec.js" });
+      returnValue = script.runInContext(context, { timeout: 1500, displayErrors: true });
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+    const durationMs = Date.now() - startedAt;
+    const run = {
+      id: nextChatId("run"),
+      language: lang,
+      code: code.slice(0, 20000),
+      logs: logs.slice(0, 500),
+      returnValue: error ? null : fmtVal(returnValue),
+      error,
+      durationMs,
+      timedOut: durationMs > 1500,
+      ranAt: nowIsoChat(),
+    };
+    if (!s.codeRuns.has(userId)) s.codeRuns.set(userId, []);
+    const arr = s.codeRuns.get(userId);
+    arr.push(run);
+    if (arr.length > 100) arr.splice(0, arr.length - 100);
+    saveChatState();
+    return { ok: true, result: { run } };
+  });
+
+  registerLensAction("chat", "code-history", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const arr = s.codeRuns.get(userId) || [];
+    const limit = Math.max(1, Math.min(50, Number(params.limit) || 20));
+    return {
+      ok: true,
+      result: { runs: arr.slice(-limit).reverse(), total: arr.length },
+    };
+  });
+
+  // ── Conversation share links — public read-only snapshot ─────────────
+  // Creates an opaque token bound to a frozen copy of the conversation's
+  // messages. Anyone with the token can read it via share-view; the
+  // owner can revoke it. Parity with ChatGPT shared links.
+
+  registerLensAction("chat", "share-create", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const threadId = String(params.threadId || "");
+    if (!threadId) return { ok: false, error: "threadId required" };
+    const title = String(params.title || "Shared conversation").slice(0, 200);
+    const messages = Array.isArray(params.messages) ? params.messages : null;
+    if (!messages || messages.length === 0) {
+      return { ok: false, error: "messages required (non-empty snapshot)" };
+    }
+    if (messages.length > 2000) return { ok: false, error: "too many messages (max 2000)" };
+    // Freeze a sanitized copy — role + content + timestamp only.
+    const snapshot = messages.slice(0, 2000).map((m) => ({
+      role: ["user", "assistant", "system"].includes(m?.role) ? m.role : "user",
+      content: String(m?.content || "").slice(0, 20000),
+      timestamp: String(m?.timestamp || nowIsoChat()),
+    }));
+    const token = `${nextChatId("shr")}${Math.random().toString(36).slice(2, 10)}`;
+    const link = {
+      token,
+      ownerId: userId,
+      threadId,
+      title,
+      snapshot,
+      messageCount: snapshot.length,
+      revoked: false,
+      viewCount: 0,
+      createdAt: nowIsoChat(),
+    };
+    if (!s.shareLinks.has(userId)) s.shareLinks.set(userId, new Map());
+    s.shareLinks.get(userId).set(token, link);
+    s.shareIndex.set(token, userId);
+    saveChatState();
+    return {
+      ok: true,
+      result: {
+        token,
+        url: `/share/chat/${token}`,
+        messageCount: snapshot.length,
+        createdAt: link.createdAt,
+      },
+    };
+  });
+
+  registerLensAction("chat", "share-list", (ctx, _artifact, _params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const map = s.shareLinks.get(userId);
+    if (!map) return { ok: true, result: { links: [] } };
+    const links = Array.from(map.values())
+      .map((l) => ({
+        token: l.token, threadId: l.threadId, title: l.title,
+        messageCount: l.messageCount, revoked: l.revoked,
+        viewCount: l.viewCount, createdAt: l.createdAt,
+        url: `/share/chat/${l.token}`,
+      }))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return { ok: true, result: { links } };
+  });
+
+  registerLensAction("chat", "share-view", (_ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const token = String(params.token || "");
+    if (!token) return { ok: false, error: "token required" };
+    const ownerId = s.shareIndex.get(token);
+    if (!ownerId) return { ok: false, error: "share link not found" };
+    const map = s.shareLinks.get(ownerId);
+    const link = map && map.get(token);
+    if (!link) return { ok: false, error: "share link not found" };
+    if (link.revoked) return { ok: false, error: "share link has been revoked" };
+    link.viewCount += 1;
+    saveChatState();
+    return {
+      ok: true,
+      result: {
+        title: link.title,
+        messages: link.snapshot,
+        messageCount: link.messageCount,
+        createdAt: link.createdAt,
+        viewCount: link.viewCount,
+      },
+    };
+  });
+
+  registerLensAction("chat", "share-revoke", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const token = String(params.token || "");
+    if (!token) return { ok: false, error: "token required" };
+    const map = s.shareLinks.get(userId);
+    if (!map || !map.has(token)) return { ok: false, error: "not found" };
+    const link = map.get(token);
+    link.revoked = true;
+    link.revokedAt = nowIsoChat();
+    saveChatState();
+    return { ok: true, result: { token, revoked: true } };
+  });
+
+  // ── In-thread image generation ───────────────────────────────────────
+  // Generates an image from a text prompt using the free keyless Pollinations
+  // image endpoint. Returns a stable URL the chat thread renders inline.
+  // The user's generation history is kept per-user.
+
+  registerLensAction("chat", "image-generate", async (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const prompt = String(params.prompt || "").trim();
+    if (!prompt) return { ok: false, error: "prompt required" };
+    if (prompt.length > 800) return { ok: false, error: "prompt too long (max 800)" };
+    const width = Math.max(256, Math.min(1024, Number(params.width) || 768));
+    const height = Math.max(256, Math.min(1024, Number(params.height) || 768));
+    // Deterministic seed so the same prompt is reproducible; user may pass one.
+    let seed = Number(params.seed);
+    if (!Number.isInteger(seed) || seed < 0) {
+      seed = 0;
+      for (let i = 0; i < prompt.length; i++) {
+        seed = (seed * 31 + prompt.charCodeAt(i)) % 2147483647;
+      }
+    }
+    // Free keyless image service — text-to-image via URL params.
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
+      `?width=${width}&height=${height}&seed=${seed}&nologo=true`;
+    let reachable = true;
+    try {
+      const head = await fetch(url, { method: "HEAD" });
+      reachable = head.ok;
+    } catch (_e) {
+      // Network failure in a sandboxed test env — still return the URL,
+      // the client img tag will surface a load error if it truly fails.
+      reachable = false;
+    }
+    const image = {
+      id: nextChatId("img"),
+      prompt,
+      url,
+      width,
+      height,
+      seed,
+      reachable,
+      createdAt: nowIsoChat(),
+    };
+    if (!s.images.has(userId)) s.images.set(userId, []);
+    const arr = s.images.get(userId);
+    arr.push(image);
+    if (arr.length > 200) arr.splice(0, arr.length - 200);
+    saveChatState();
+    return { ok: true, result: { image } };
+  });
+
+  registerLensAction("chat", "image-history", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const arr = s.images.get(userId) || [];
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 30));
+    return { ok: true, result: { images: arr.slice(-limit).reverse(), total: arr.length } };
+  });
+
+  registerLensAction("chat", "image-delete", (ctx, _artifact, params = {}) => {
+    const s = getChatState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    ensureChatSubmaps(s);
+    const userId = actorIdFor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const arr = s.images.get(userId) || [];
+    const idx = arr.findIndex((x) => x.id === id);
+    if (idx < 0) return { ok: false, error: "not found" };
+    arr.splice(idx, 1);
+    saveChatState();
+    return { ok: true, result: { deleted: id } };
   });
 }

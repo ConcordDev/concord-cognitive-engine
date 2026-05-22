@@ -442,4 +442,435 @@ export default function registerMetacognitionActions(registerLensAction) {
       },
     };
   });
+
+  // ─── Decision journal + reflection substrate (per-user, STATE-backed) ──────
+
+  function getMetaState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.metacognitionLens) STATE.metacognitionLens = {};
+    const m = STATE.metacognitionLens;
+    if (!(m.decisions instanceof Map)) m.decisions = new Map(); // userId -> Array<decision>
+    if (!(m.reflections instanceof Map)) m.reflections = new Map(); // userId -> Array<reflection>
+    if (!(m.streaks instanceof Map)) m.streaks = new Map(); // userId -> streak record
+    return m;
+  }
+  function saveMeta() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const mcId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const mcActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const mcClean = (v, max = 600) => String(v == null ? "" : v).trim().slice(0, max);
+  const mcNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const mcClamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const mcDecisions = (m, u) => { if (!m.decisions.has(u)) m.decisions.set(u, []); return m.decisions.get(u); };
+  const mcReflections = (m, u) => { if (!m.reflections.has(u)) m.reflections.set(u, []); return m.reflections.get(u); };
+  const round = (v) => Math.round(v * 10000) / 10000;
+  const dayKey = (ts) => new Date(ts).toISOString().slice(0, 10);
+
+  // Reflection prompt templates — structured after-action review questions.
+  const REFLECTION_PROMPTS = [
+    "What did I expect to happen, and what actually happened?",
+    "What information did I have, and what did I wish I had?",
+    "What was the single biggest factor in this outcome?",
+    "If I faced this decision again, what would I do differently?",
+    "Was my confidence justified by the evidence at the time?",
+    "What surprised me, and what does that surprise tell me?",
+    "Which assumption, if wrong, would have changed everything?",
+    "How will I recognize a similar situation in the future?",
+  ];
+
+  // Pre-decision bias checklist — common biases to surface before deciding.
+  const BIAS_CHECKLIST = [
+    { id: "anchoring", name: "Anchoring", prompt: "Am I over-weighting the first number or option I encountered?" },
+    { id: "confirmation", name: "Confirmation bias", prompt: "Have I genuinely looked for evidence I'm wrong?" },
+    { id: "sunk_cost", name: "Sunk cost", prompt: "Am I continuing because of past investment rather than future value?" },
+    { id: "availability", name: "Availability", prompt: "Am I over-weighting a recent or vivid example?" },
+    { id: "overconfidence", name: "Overconfidence", prompt: "Could I be wrong? What would a calibrated forecaster say?" },
+    { id: "groupthink", name: "Groupthink", prompt: "Am I deferring to consensus instead of reasoning independently?" },
+    { id: "loss_aversion", name: "Loss aversion", prompt: "Am I avoiding a good option only because it risks a small loss?" },
+    { id: "planning_fallacy", name: "Planning fallacy", prompt: "Have I considered how similar plans actually turned out?" },
+  ];
+
+  // Thinking-strategy library — named reasoning techniques + when to use them.
+  const THINKING_STRATEGIES = [
+    { id: "premortem", name: "Pre-mortem", category: "decision", when: "Before committing to a plan, imagine it has failed and explain why.", how: "Assume failure 6 months out; list every plausible cause; harden against the top ones." },
+    { id: "inversion", name: "Inversion", category: "problem-solving", when: "When the path forward is unclear.", how: "Instead of asking how to succeed, ask what would guarantee failure — then avoid it." },
+    { id: "base_rates", name: "Base-rate reasoning", category: "forecasting", when: "When estimating the odds of an outcome.", how: "Start from how often this class of event happens, then adjust for specifics." },
+    { id: "second_order", name: "Second-order thinking", category: "decision", when: "When a choice has downstream consequences.", how: "Ask 'and then what?' at least twice for each option." },
+    { id: "steelman", name: "Steelmanning", category: "reasoning", when: "When evaluating an opposing view.", how: "State the strongest version of the other side before critiquing it." },
+    { id: "fermi", name: "Fermi estimation", category: "estimation", when: "When you need a rough number fast.", how: "Decompose into factors you can estimate, multiply, sanity-check the order of magnitude." },
+    { id: "occam", name: "Occam's razor", category: "explanation", when: "When choosing between explanations.", how: "Prefer the explanation requiring the fewest unsupported assumptions." },
+    { id: "red_team", name: "Red teaming", category: "decision", when: "Before a high-stakes commitment.", how: "Assign someone (or yourself) to actively attack the plan." },
+    { id: "five_whys", name: "Five whys", category: "problem-solving", when: "When diagnosing a root cause.", how: "Ask 'why' repeatedly until you reach a cause you can act on." },
+    { id: "outside_view", name: "Outside view", category: "forecasting", when: "When your plan feels uniquely promising.", how: "Compare against a reference class of similar past efforts." },
+    { id: "decision_tree", name: "Decision tree", category: "decision", when: "When outcomes branch on uncertain events.", how: "Map options, chance nodes and payoffs; compute expected value per branch." },
+    { id: "rubber_duck", name: "Rubber-duck explanation", category: "reasoning", when: "When stuck on a problem.", how: "Explain the problem step-by-step out loud as if to a novice." },
+  ];
+
+  /**
+   * journalLog — log a decision with predicted outcome + confidence.
+   * params: { title, context?, predictedOutcome?, confidence (0-1), domain?, options?, biasChecklist? }
+   */
+  registerLensAction("metacognition", "journalLog", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const title = mcClean(params.title, 200);
+      if (!title) return { ok: false, error: "decision title required" };
+      const decision = {
+        id: mcId("dec"),
+        title,
+        context: mcClean(params.context, 2000),
+        predictedOutcome: mcClean(params.predictedOutcome, 1000),
+        confidence: mcClamp(mcNum(params.confidence) || 0.5, 0, 1),
+        domain: mcClean(params.domain, 80) || "general",
+        options: Array.isArray(params.options) ? params.options.slice(0, 12).map((o) => mcClean(o, 200)).filter(Boolean) : [],
+        biasChecks: Array.isArray(params.biasChecklist)
+          ? params.biasChecklist.slice(0, 12).map((b) => mcClean(b, 80)).filter(Boolean) : [],
+        status: "open",
+        actualOutcome: null,
+        correct: null,
+        reflection: null,
+        createdAt: new Date().toISOString(),
+        resolvedAt: null,
+      };
+      mcDecisions(m, mcActor(ctx)).push(decision);
+      saveMeta();
+      return { ok: true, result: { decision } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * journalList — list a user's decision-journal entries.
+   * params: { status?: 'open'|'resolved'|'all', domain? }
+   */
+  registerLensAction("metacognition", "journalList", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      let list = mcDecisions(m, mcActor(ctx)).slice();
+      const statusFilter = mcClean(params.status, 20);
+      if (statusFilter === "open") list = list.filter((d) => d.status === "open");
+      else if (statusFilter === "resolved") list = list.filter((d) => d.status === "resolved");
+      const domainFilter = mcClean(params.domain, 80);
+      if (domainFilter) list = list.filter((d) => d.domain === domainFilter);
+      list.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+      const open = list.filter((d) => d.status === "open").length;
+      const resolved = list.filter((d) => d.status === "resolved").length;
+      return { ok: true, result: { decisions: list, total: list.length, open, resolved } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * journalResolve — record the actual outcome of a logged decision + optional reflection.
+   * params: { id, actualOutcome, correct (bool), reflection?, lesson? }
+   */
+  registerLensAction("metacognition", "journalResolve", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const id = mcClean(params.id, 80);
+      const list = mcDecisions(m, mcActor(ctx));
+      const decision = list.find((d) => d.id === id);
+      if (!decision) return { ok: false, error: "decision not found" };
+      decision.actualOutcome = mcClean(params.actualOutcome, 1000);
+      decision.correct = params.correct === true || params.correct === "true";
+      decision.reflection = mcClean(params.reflection, 2000) || null;
+      decision.lesson = mcClean(params.lesson, 600) || null;
+      decision.status = "resolved";
+      decision.resolvedAt = new Date().toISOString();
+      saveMeta();
+      return { ok: true, result: { decision } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * journalDelete — remove a decision-journal entry.
+   * params: { id }
+   */
+  registerLensAction("metacognition", "journalDelete", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const id = mcClean(params.id, 80);
+      const list = mcDecisions(m, mcActor(ctx));
+      const idx = list.findIndex((d) => d.id === id);
+      if (idx < 0) return { ok: false, error: "decision not found" };
+      list.splice(idx, 1);
+      saveMeta();
+      return { ok: true, result: { removed: id, remaining: list.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * calibrationReport — Brier score, accuracy and a reliability diagram
+   * computed from the user's resolved decision-journal entries.
+   * params: { bins? (default 5) }
+   */
+  registerLensAction("metacognition", "calibrationReport", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const resolved = mcDecisions(m, mcActor(ctx))
+        .filter((d) => d.status === "resolved" && typeof d.correct === "boolean" && typeof d.confidence === "number");
+      const n = resolved.length;
+      if (n === 0) {
+        return { ok: true, result: { n: 0, message: "Resolve decisions in the journal to build a calibration report.", reliability: [], history: [] } };
+      }
+      const numBins = mcClamp(Math.round(mcNum(params.bins) || 5), 2, 10);
+
+      // Brier score: mean (confidence - actual)^2
+      const brierScore = resolved.reduce((s, d) => s + Math.pow(d.confidence - (d.correct ? 1 : 0), 2), 0) / n;
+      const baseRate = resolved.reduce((s, d) => s + (d.correct ? 1 : 0), 0) / n;
+      const brierClimatology = baseRate * (1 - baseRate);
+      const brierSkillScore = brierClimatology > 0 ? 1 - brierScore / brierClimatology : 0;
+      const accuracy = baseRate;
+
+      // Reliability diagram (binned predicted vs observed)
+      const reliability = [];
+      for (let i = 0; i < numBins; i++) {
+        const lower = i / numBins;
+        const upper = (i + 1) / numBins;
+        const inBin = resolved.filter((d) => d.confidence >= lower && (i === numBins - 1 ? d.confidence <= upper : d.confidence < upper));
+        if (inBin.length === 0) {
+          reliability.push({ binRange: [round(lower), round(upper)], midpoint: round((lower + upper) / 2), count: 0, predicted: null, observed: null, gap: null });
+          continue;
+        }
+        const predicted = inBin.reduce((s, d) => s + d.confidence, 0) / inBin.length;
+        const observed = inBin.reduce((s, d) => s + (d.correct ? 1 : 0), 0) / inBin.length;
+        reliability.push({
+          binRange: [round(lower), round(upper)],
+          midpoint: round((lower + upper) / 2),
+          count: inBin.length,
+          predicted: round(predicted),
+          observed: round(observed),
+          gap: round(Math.abs(predicted - observed)),
+        });
+      }
+      const ece = reliability.reduce((s, b) => (b.count === 0 ? s : s + (b.count / n) * (b.gap || 0)), 0);
+
+      // Over/under-confidence summary
+      const overconfident = resolved.filter((d) => d.confidence > 0.5 && !d.correct).length;
+      const underconfident = resolved.filter((d) => d.confidence < 0.5 && d.correct).length;
+      const avgConfidence = resolved.reduce((s, d) => s + d.confidence, 0) / n;
+      const calibrationGap = avgConfidence - accuracy;
+
+      // Running Brier history (chronological) for trend chart
+      const chrono = resolved.slice().sort((a, b) => (a.resolvedAt > b.resolvedAt ? 1 : -1));
+      let cumBrier = 0;
+      const history = chrono.map((d, i) => {
+        cumBrier += Math.pow(d.confidence - (d.correct ? 1 : 0), 2);
+        return {
+          index: i + 1,
+          title: d.title,
+          confidence: round(d.confidence),
+          correct: d.correct,
+          runningBrier: round(cumBrier / (i + 1)),
+          resolvedAt: d.resolvedAt,
+        };
+      });
+
+      return {
+        ok: true,
+        result: {
+          n,
+          brierScore: round(brierScore),
+          brierSkillScore: round(brierSkillScore),
+          accuracy: round(accuracy),
+          avgConfidence: round(avgConfidence),
+          calibrationGap: round(calibrationGap),
+          ece: round(ece),
+          quality: ece < 0.05 ? "excellent" : ece < 0.1 ? "good" : ece < 0.2 ? "moderate" : "poor",
+          tendency: calibrationGap > 0.08 ? "overconfident" : calibrationGap < -0.08 ? "underconfident" : "well-calibrated",
+          overconfident,
+          underconfident,
+          reliability,
+          history,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * reflectionPrompts — structured after-action review questions for a decision.
+   * params: { decisionId? }  (when given, attaches the decision title for context)
+   */
+  registerLensAction("metacognition", "reflectionPrompts", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      let decision = null;
+      const id = mcClean(params.decisionId, 80);
+      if (id) {
+        decision = mcDecisions(m, mcActor(ctx)).find((d) => d.id === id) || null;
+      }
+      return {
+        ok: true,
+        result: {
+          decisionId: id || null,
+          decisionTitle: decision ? decision.title : null,
+          prompts: REFLECTION_PROMPTS.map((p, i) => ({ id: `rp_${i}`, question: p })),
+          count: REFLECTION_PROMPTS.length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * reflectionSave — save a free-form reflection / after-action review.
+   * params: { decisionId?, title?, answers? [{ question, answer }], note? }
+   */
+  registerLensAction("metacognition", "reflectionSave", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const userId = mcActor(ctx);
+      const answers = Array.isArray(params.answers)
+        ? params.answers.slice(0, 20).map((a) => ({
+            question: mcClean(a?.question, 300),
+            answer: mcClean(a?.answer, 2000),
+          })).filter((a) => a.question && a.answer)
+        : [];
+      const note = mcClean(params.note, 2000);
+      if (answers.length === 0 && !note) return { ok: false, error: "reflection requires at least one answer or a note" };
+      const reflection = {
+        id: mcId("ref"),
+        decisionId: mcClean(params.decisionId, 80) || null,
+        title: mcClean(params.title, 200) || "Reflection",
+        answers,
+        note,
+        createdAt: new Date().toISOString(),
+      };
+      mcReflections(m, userId).push(reflection);
+      // Link to decision if referenced.
+      if (reflection.decisionId) {
+        const dec = mcDecisions(m, userId).find((d) => d.id === reflection.decisionId);
+        if (dec) dec.reflection = reflection.id;
+      }
+      // Update reflection streak.
+      const streak = m.streaks.get(userId) || { current: 0, longest: 0, lastDay: null, totalDays: 0 };
+      const today = dayKey(Date.now());
+      if (streak.lastDay !== today) {
+        const yesterday = dayKey(Date.now() - 86400000);
+        streak.current = streak.lastDay === yesterday ? streak.current + 1 : 1;
+        streak.longest = Math.max(streak.longest, streak.current);
+        streak.totalDays += 1;
+        streak.lastDay = today;
+        m.streaks.set(userId, streak);
+      }
+      saveMeta();
+      return { ok: true, result: { reflection, streak: m.streaks.get(userId) || streak } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * reflectionList — list saved reflections for the user.
+   */
+  registerLensAction("metacognition", "reflectionList", (ctx, _a, _params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const list = mcReflections(m, mcActor(ctx)).slice().sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+      return { ok: true, result: { reflections: list, total: list.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * biasChecklist — pre-decision prompt to surface likely biases.
+   * Static checklist; safe public read.
+   */
+  registerLensAction("metacognition", "biasChecklist", (_ctx, _a, _params = {}) => {
+    return { ok: true, result: { checklist: BIAS_CHECKLIST, count: BIAS_CHECKLIST.length } };
+  });
+
+  /**
+   * strategyLibrary — named reasoning techniques with when-to-use guidance.
+   * params: { category? }
+   */
+  registerLensAction("metacognition", "strategyLibrary", (_ctx, _a, params = {}) => {
+    try {
+      const category = mcClean(params.category, 60).toLowerCase();
+      let list = THINKING_STRATEGIES;
+      if (category && category !== "all") list = list.filter((s) => s.category === category);
+      const categories = Array.from(new Set(THINKING_STRATEGIES.map((s) => s.category))).sort();
+      return { ok: true, result: { strategies: list, count: list.length, categories } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * streakStatus — reflection habit / streak tracking for the user.
+   */
+  registerLensAction("metacognition", "streakStatus", (ctx, _a, _params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const userId = mcActor(ctx);
+      const streak = m.streaks.get(userId) || { current: 0, longest: 0, lastDay: null, totalDays: 0 };
+      const today = dayKey(Date.now());
+      const yesterday = dayKey(Date.now() - 86400000);
+      // A streak counts as broken if last reflection was before yesterday.
+      const effectiveCurrent = (streak.lastDay === today || streak.lastDay === yesterday) ? streak.current : 0;
+      const reflectedToday = streak.lastDay === today;
+
+      // Build a 14-day activity calendar from reflection timestamps.
+      const refDays = new Set(mcReflections(m, userId).map((r) => dayKey(r.createdAt)));
+      const calendar = [];
+      for (let i = 13; i >= 0; i--) {
+        const day = dayKey(Date.now() - i * 86400000);
+        calendar.push({ day, active: refDays.has(day) });
+      }
+      return {
+        ok: true,
+        result: {
+          current: effectiveCurrent,
+          longest: streak.longest || 0,
+          totalDays: streak.totalDays || 0,
+          lastDay: streak.lastDay || null,
+          reflectedToday,
+          calendar,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * accuracyHistory — Brier score / accuracy over the prediction history,
+   * grouped by domain, for trend tracking.
+   */
+  registerLensAction("metacognition", "accuracyHistory", (ctx, _a, _params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const resolved = mcDecisions(m, mcActor(ctx))
+        .filter((d) => d.status === "resolved" && typeof d.correct === "boolean")
+        .sort((a, b) => (a.resolvedAt > b.resolvedAt ? 1 : -1));
+      const n = resolved.length;
+      const byDomain = {};
+      for (const d of resolved) {
+        const dom = d.domain || "general";
+        if (!byDomain[dom]) byDomain[dom] = { domain: dom, n: 0, correct: 0, brierSum: 0 };
+        byDomain[dom].n += 1;
+        byDomain[dom].correct += d.correct ? 1 : 0;
+        byDomain[dom].brierSum += Math.pow((d.confidence || 0.5) - (d.correct ? 1 : 0), 2);
+      }
+      const domains = Object.values(byDomain).map((g) => ({
+        domain: g.domain,
+        n: g.n,
+        accuracy: round(g.correct / g.n),
+        brierScore: round(g.brierSum / g.n),
+      })).sort((a, b) => b.n - a.n);
+
+      // Rolling 5-prediction accuracy window.
+      const rolling = [];
+      const W = 5;
+      for (let i = 0; i < n; i++) {
+        const start = Math.max(0, i - W + 1);
+        const window = resolved.slice(start, i + 1);
+        const acc = window.reduce((s, d) => s + (d.correct ? 1 : 0), 0) / window.length;
+        rolling.push({ index: i + 1, title: resolved[i].title, rollingAccuracy: round(acc) });
+      }
+      const overallBrier = n > 0
+        ? round(resolved.reduce((s, d) => s + Math.pow((d.confidence || 0.5) - (d.correct ? 1 : 0), 2), 0) / n) : null;
+      const overallAccuracy = n > 0
+        ? round(resolved.reduce((s, d) => s + (d.correct ? 1 : 0), 0) / n) : null;
+
+      return {
+        ok: true,
+        result: { n, overallBrier, overallAccuracy, domains, rolling },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
 }

@@ -314,6 +314,40 @@ export default function registerGovernmentActions(registerLensAction) {
     return state[key].get(userId);
   }
 
+  // Append a case-status notification; honours active subscriptions so
+  // the notification carries the channel + contact the citizen chose.
+  function queueGovNotification(state, userId, { kind, subjectKind, subjectId, message }) {
+    const list = ensureGovBucket(state, "notifications", userId);
+    let channel = "in_app";
+    let contact = "";
+    if (state.notificationSubs instanceof Map) {
+      const subs = state.notificationSubs.get(userId) || [];
+      const sub = subs.find(x => x.subjectKind === subjectKind && x.subjectId === subjectId);
+      if (sub) { channel = sub.channel; contact = sub.contact; }
+    }
+    const notification = {
+      id: `notif_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      kind, subjectKind, subjectId, message,
+      channel, contact,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    list.push(notification);
+    return notification;
+  }
+
+  // Deterministic non-cryptographic fingerprint for e-signature
+  // tamper-evidence (FNV-1a over the canonicalised payload).
+  function signatureFingerprint(input) {
+    let h = 0x811c9dc5;
+    const str = String(input);
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return `sig-${h.toString(16).padStart(8, "0")}`;
+  }
+
   // ── Departments ──────────────────────────────────────────────
 
   registerLensAction("government", "departments-list", (ctx, _a, _p = {}) => {
@@ -438,6 +472,10 @@ export default function registerGovernmentActions(registerLensAction) {
       req.closedAt = new Date().toISOString();
       req.resolution = String(params.note || "");
     }
+    queueGovNotification(s, userId, {
+      kind: "status_update", subjectKind: "service_request", subjectId: req.id,
+      message: `${req.referenceNumber} status changed to "${status.replace(/_/g, " ")}".`,
+    });
     saveGovState();
     return { ok: true, result: { request: req } };
   });
@@ -546,6 +584,10 @@ export default function registerGovernmentActions(registerLensAction) {
     if (!permit.paid) return { ok: false, error: "fee must be paid before approval" };
     permit.status = "approved";
     permit.approvedAt = new Date().toISOString();
+    queueGovNotification(s, userId, {
+      kind: "status_update", subjectKind: "permit", subjectId: permit.id,
+      message: `Permit ${permit.recordNumber} was approved.`,
+    });
     saveGovState();
     return { ok: true, result: { permit } };
   });
@@ -560,6 +602,10 @@ export default function registerGovernmentActions(registerLensAction) {
     permit.status = "denied";
     permit.deniedAt = new Date().toISOString();
     permit.denialReason = reason || "no reason provided";
+    queueGovNotification(s, userId, {
+      kind: "status_update", subjectKind: "permit", subjectId: permit.id,
+      message: `Permit ${permit.recordNumber} was denied: ${permit.denialReason}`,
+    });
     saveGovState();
     return { ok: true, result: { permit } };
   });
@@ -575,6 +621,10 @@ export default function registerGovernmentActions(registerLensAction) {
     permit.issuedAt = new Date().toISOString();
     const expiresDays = Math.max(1, Number(params.validForDays) || 365);
     permit.expiresAt = new Date(Date.now() + expiresDays * 86400000).toISOString();
+    queueGovNotification(s, userId, {
+      kind: "status_update", subjectKind: "permit", subjectId: permit.id,
+      message: `Permit ${permit.recordNumber} has been issued — valid until ${permit.expiresAt.slice(0, 10)}.`,
+    });
     saveGovState();
     return { ok: true, result: { permit } };
   });
@@ -725,6 +775,543 @@ export default function registerGovernmentActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `data.gov unreachable: ${e instanceof Error ? e.message : "network"}` };
     }
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Parity backlog — 7 buildable civic-portal features.
+  // All persist in globalThis._concordSTATE.governmentLens, per-user.
+  // ─────────────────────────────────────────────────────────────
+
+  // ── (1) Online payment processing — permit fees / fines ─────
+  // No external gateway is wired (no key shipped); this is a real
+  // in-platform payment ledger: a checkout intent is created, then
+  // confirmed with a tokenized payment method. Records every cent.
+
+  function findPayableAcrossBuckets(s, userId, kind, refId) {
+    if (kind === "permit") {
+      return ensureGovBucket(s, "permits", userId).find(p => p.id === refId) || null;
+    }
+    if (kind === "fine") {
+      // fines live on violations the operator logged via the artifact
+      // store; we keep a lightweight fine ledger keyed by refId.
+      const fines = ensureGovBucket(s, "fines", userId);
+      return fines.find(f => f.id === refId) || null;
+    }
+    return null;
+  }
+
+  registerLensAction("government", "fines-list", (ctx, _a, _p = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    return { ok: true, result: { fines: ensureGovBucket(s, "fines", userId) } };
+  });
+
+  registerLensAction("government", "fines-create", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const payerName = String(params.payerName || "").trim();
+    const reason = String(params.reason || "").trim();
+    const amountUsd = Math.round((Number(params.amountUsd) || 0) * 100) / 100;
+    if (!payerName || !reason) return { ok: false, error: "payerName and reason required" };
+    if (!(amountUsd > 0)) return { ok: false, error: "amountUsd must be positive" };
+    const fine = {
+      id: uidGov("fine"),
+      payerName, reason, amountUsd,
+      caseNumber: String(params.caseNumber || ""),
+      paid: false,
+      issuedAt: new Date().toISOString(),
+    };
+    ensureGovBucket(s, "fines", userId).push(fine);
+    saveGovState();
+    return { ok: true, result: { fine } };
+  });
+
+  registerLensAction("government", "payments-list", (ctx, _a, _p = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    return { ok: true, result: { payments: ensureGovBucket(s, "payments", userId).slice().reverse() } };
+  });
+
+  registerLensAction("government", "payments-checkout", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const kind = String(params.kind || "");
+    const refId = String(params.refId || "");
+    if (!["permit", "fine"].includes(kind)) return { ok: false, error: "kind must be permit or fine" };
+    const target = findPayableAcrossBuckets(s, userId, kind, refId);
+    if (!target) return { ok: false, error: `${kind} not found` };
+    if (target.paid) return { ok: false, error: `${kind} already paid` };
+    const amountUsd = kind === "permit"
+      ? Math.max(0, Number(target.feeUsd) || 0)
+      : Math.max(0, Number(target.amountUsd) || 0);
+    if (!(amountUsd > 0)) return { ok: false, error: "nothing to pay (amount is zero)" };
+    const intent = {
+      id: uidGov("pay"),
+      kind, refId,
+      amountUsd,
+      description: kind === "permit"
+        ? `Permit fee — ${target.recordNumber || refId}`
+        : `Fine — ${target.reason || refId}`,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    ensureGovBucket(s, "payments", userId).push(intent);
+    saveGovState();
+    return { ok: true, result: { payment: intent } };
+  });
+
+  registerLensAction("government", "payments-confirm", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const paymentId = String(params.paymentId || "");
+    const methodToken = String(params.methodToken || "").trim();
+    const cardLast4 = String(params.cardLast4 || "").replace(/\D/g, "").slice(-4);
+    if (!methodToken) return { ok: false, error: "methodToken required (tokenized payment method)" };
+    if (cardLast4.length !== 4) return { ok: false, error: "cardLast4 must be 4 digits" };
+    const payment = ensureGovBucket(s, "payments", userId).find(p => p.id === paymentId);
+    if (!payment) return { ok: false, error: "payment not found" };
+    if (payment.status === "succeeded") return { ok: false, error: "payment already confirmed" };
+    const target = findPayableAcrossBuckets(s, userId, payment.kind, payment.refId);
+    if (!target) return { ok: false, error: "payable record no longer exists" };
+    payment.status = "succeeded";
+    payment.confirmedAt = new Date().toISOString();
+    payment.cardLast4 = cardLast4;
+    payment.receiptNumber = `RCPT-${new Date().getFullYear()}-${payment.id.slice(-6).toUpperCase()}`;
+    target.paid = true;
+    target.paidAt = payment.confirmedAt;
+    target.paymentId = payment.id;
+    if (payment.kind === "permit" && target.status === "applied") target.status = "under_review";
+    // case-status notification on payment
+    queueGovNotification(s, userId, {
+      kind: "payment_received",
+      subjectKind: payment.kind, subjectId: payment.refId,
+      message: `Payment of $${payment.amountUsd.toFixed(2)} received — receipt ${payment.receiptNumber}.`,
+    });
+    saveGovState();
+    return { ok: true, result: { payment } };
+  });
+
+  registerLensAction("government", "payments-refund", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const paymentId = String(params.paymentId || "");
+    const reason = String(params.reason || "").trim();
+    const payment = ensureGovBucket(s, "payments", userId).find(p => p.id === paymentId);
+    if (!payment) return { ok: false, error: "payment not found" };
+    if (payment.status !== "succeeded") return { ok: false, error: "only succeeded payments can be refunded" };
+    payment.status = "refunded";
+    payment.refundedAt = new Date().toISOString();
+    payment.refundReason = reason || "no reason provided";
+    const target = findPayableAcrossBuckets(s, userId, payment.kind, payment.refId);
+    if (target) { target.paid = false; target.paymentId = null; }
+    saveGovState();
+    return { ok: true, result: { payment } };
+  });
+
+  // ── (2) Public meeting calendar + agenda / minutes ──────────
+
+  registerLensAction("government", "meetings-list", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const upcoming = params.upcoming === true;
+    let meetings = ensureGovBucket(s, "meetings", userId).slice();
+    if (upcoming) {
+      const now = Date.now();
+      meetings = meetings.filter(m => new Date(m.scheduledAt).getTime() >= now);
+    }
+    meetings.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+    return { ok: true, result: { meetings } };
+  });
+
+  registerLensAction("government", "meetings-schedule", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const title = String(params.title || "").trim();
+    const body = String(params.body || "").trim();
+    const scheduledAt = String(params.scheduledAt || "").trim();
+    if (!title || !body || !scheduledAt) return { ok: false, error: "title, body, scheduledAt required" };
+    if (Number.isNaN(new Date(scheduledAt).getTime())) return { ok: false, error: "scheduledAt must be a valid ISO date/time" };
+    const allowedBodies = ["city_council", "planning_commission", "school_board", "zoning_board", "budget_committee", "public_hearing", "special_session", "other"];
+    if (!allowedBodies.includes(body)) return { ok: false, error: `body must be one of: ${allowedBodies.join(", ")}` };
+    const meeting = {
+      id: uidGov("mtg"),
+      title, body, scheduledAt,
+      location: String(params.location || ""),
+      virtualUrl: String(params.virtualUrl || ""),
+      agenda: Array.isArray(params.agenda)
+        ? params.agenda.map(a => String(a)).filter(Boolean)
+        : [],
+      minutes: "",
+      status: "scheduled",
+      createdAt: new Date().toISOString(),
+    };
+    ensureGovBucket(s, "meetings", userId).push(meeting);
+    saveGovState();
+    return { ok: true, result: { meeting } };
+  });
+
+  registerLensAction("government", "meetings-set-agenda", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const id = String(params.id || "");
+    const meeting = ensureGovBucket(s, "meetings", userId).find(m => m.id === id);
+    if (!meeting) return { ok: false, error: "meeting not found" };
+    if (!Array.isArray(params.agenda)) return { ok: false, error: "agenda must be an array of strings" };
+    meeting.agenda = params.agenda.map(a => String(a)).filter(Boolean);
+    saveGovState();
+    return { ok: true, result: { meeting } };
+  });
+
+  registerLensAction("government", "meetings-publish-minutes", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const id = String(params.id || "");
+    const minutes = String(params.minutes || "").trim();
+    if (!minutes) return { ok: false, error: "minutes text required" };
+    const meeting = ensureGovBucket(s, "meetings", userId).find(m => m.id === id);
+    if (!meeting) return { ok: false, error: "meeting not found" };
+    meeting.minutes = minutes;
+    meeting.status = "minutes_published";
+    meeting.minutesPublishedAt = new Date().toISOString();
+    saveGovState();
+    return { ok: true, result: { meeting } };
+  });
+
+  registerLensAction("government", "meetings-delete", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureGovBucket(s, "meetings", userId);
+    const idx = list.findIndex(m => m.id === id);
+    if (idx < 0) return { ok: false, error: "meeting not found" };
+    list.splice(idx, 1);
+    saveGovState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── (3) Voter registration / election info + polling place ──
+  // Election dates pulled live from Google's free Civic Information
+  // election list when GOOGLE_CIVIC_API_KEY is set; voter-registration
+  // status is a real per-user record the citizen self-files.
+
+  registerLensAction("government", "voter-registration-status", (ctx, _a, _p = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const reg = s.voterRegistrations instanceof Map ? s.voterRegistrations.get(userId) : null;
+    return { ok: true, result: { registration: reg || null } };
+  });
+
+  registerLensAction("government", "voter-registration-submit", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const fullName = String(params.fullName || "").trim();
+    const residentialAddress = String(params.residentialAddress || "").trim();
+    const dateOfBirth = String(params.dateOfBirth || "").trim();
+    const stateCode = String(params.stateCode || "").trim().toUpperCase();
+    if (!fullName || !residentialAddress || !dateOfBirth) {
+      return { ok: false, error: "fullName, residentialAddress, dateOfBirth required" };
+    }
+    if (stateCode.length !== 2) return { ok: false, error: "stateCode must be a 2-letter code" };
+    if (Number.isNaN(new Date(dateOfBirth).getTime())) return { ok: false, error: "dateOfBirth must be a valid date" };
+    const ageYears = (Date.now() - new Date(dateOfBirth).getTime()) / (365.25 * 86400000);
+    if (ageYears < 18) return { ok: false, error: "registrant must be at least 18 years old" };
+    if (!(s.voterRegistrations instanceof Map)) s.voterRegistrations = new Map();
+    const registration = {
+      id: uidGov("voter"),
+      fullName, residentialAddress, dateOfBirth, stateCode,
+      partyPreference: String(params.partyPreference || "unaffiliated"),
+      mailInRequested: params.mailInRequested === true,
+      status: "submitted",
+      submittedAt: new Date().toISOString(),
+    };
+    s.voterRegistrations.set(userId, registration);
+    saveGovState();
+    return { ok: true, result: { registration } };
+  });
+
+  registerLensAction("government", "elections-upcoming", async (_ctx, _a, params = {}) => {
+    const apiKey = process.env.GOOGLE_CIVIC_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: "GOOGLE_CIVIC_API_KEY env var required for live election dates (free signup at https://console.cloud.google.com — enable Civic Information API). Concord ships no hardcoded election calendar.",
+      };
+    }
+    try {
+      const url = `https://www.googleapis.com/civicinfo/v2/elections?key=${encodeURIComponent(apiKey)}`;
+      const data = await fetchJsonGov(url);
+      const elections = (data?.elections || []).map(e => ({
+        id: e.id,
+        name: e.name,
+        electionDay: e.electionDay,
+        ocdDivisionId: e.ocdDivisionId,
+      }));
+      const stateCode = String(params.stateCode || "").trim().toUpperCase();
+      const filtered = stateCode
+        ? elections.filter(e => String(e.ocdDivisionId || "").includes(`/state:${stateCode.toLowerCase()}`) || String(e.name || "").toUpperCase().includes(stateCode))
+        : elections;
+      return { ok: true, result: { elections: filtered, total: filtered.length, source: "Google Civic Information API" } };
+    } catch (e) {
+      return { ok: false, error: `election lookup failed: ${e instanceof Error ? e.message : "network"}` };
+    }
+  });
+
+  registerLensAction("government", "polling-place-lookup", async (_ctx, _a, params = {}) => {
+    const apiKey = process.env.GOOGLE_CIVIC_API_KEY;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: "GOOGLE_CIVIC_API_KEY env var required for polling-place lookup (free Civic Information API). No hardcoded polling data is shipped.",
+      };
+    }
+    const address = String(params.address || "").trim();
+    const electionId = String(params.electionId || "").trim();
+    if (!address) return { ok: false, error: "address required" };
+    try {
+      let url = `https://www.googleapis.com/civicinfo/v2/voterinfo?key=${encodeURIComponent(apiKey)}&address=${encodeURIComponent(address)}`;
+      if (electionId) url += `&electionId=${encodeURIComponent(electionId)}`;
+      const data = await fetchJsonGov(url);
+      const pollingLocations = (data?.pollingLocations || []).map(p => ({
+        name: p.address?.locationName || "",
+        line1: p.address?.line1 || "",
+        city: p.address?.city || "",
+        state: p.address?.state || "",
+        zip: p.address?.zip || "",
+        pollingHours: p.pollingHours || "",
+        notes: p.notes || "",
+      }));
+      const earlyVoteSites = (data?.earlyVoteSites || []).map(p => ({
+        name: p.address?.locationName || "",
+        line1: p.address?.line1 || "",
+        city: p.address?.city || "",
+        state: p.address?.state || "",
+      }));
+      return {
+        ok: true,
+        result: {
+          address,
+          election: data?.election || null,
+          pollingLocations,
+          earlyVoteSites,
+          source: "Google Civic Information API",
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `polling-place lookup failed: ${e instanceof Error ? e.message : "network"}` };
+    }
+  });
+
+  // ── (5) Bill comment / call-your-rep advocacy actions ───────
+
+  registerLensAction("government", "advocacy-list", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const billId = params.billId ? String(params.billId) : null;
+    let actions = ensureGovBucket(s, "advocacyActions", userId).slice().reverse();
+    if (billId) actions = actions.filter(a => a.billId === billId);
+    return { ok: true, result: { actions } };
+  });
+
+  registerLensAction("government", "advocacy-record", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const billId = String(params.billId || "").trim();
+    const billTitle = String(params.billTitle || "").trim();
+    const stance = String(params.stance || "").trim();
+    const channel = String(params.channel || "").trim();
+    if (!billId) return { ok: false, error: "billId required" };
+    if (!["support", "oppose", "comment"].includes(stance)) return { ok: false, error: "stance must be support, oppose, or comment" };
+    if (!["comment", "call", "email", "letter"].includes(channel)) return { ok: false, error: "channel must be comment, call, email, or letter" };
+    const message = String(params.message || "").trim();
+    if ((channel === "comment" || channel === "email" || channel === "letter") && !message) {
+      return { ok: false, error: "message required for comment/email/letter channels" };
+    }
+    const action = {
+      id: uidGov("adv"),
+      billId, billTitle, stance, channel, message,
+      representative: String(params.representative || ""),
+      bioguideId: String(params.bioguideId || ""),
+      contactedAt: new Date().toISOString(),
+    };
+    ensureGovBucket(s, "advocacyActions", userId).push(action);
+    saveGovState();
+    return { ok: true, result: { action } };
+  });
+
+  registerLensAction("government", "advocacy-bill-tally", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const billId = String(params.billId || "").trim();
+    if (!billId) return { ok: false, error: "billId required" };
+    const actions = ensureGovBucket(s, "advocacyActions", userId).filter(a => a.billId === billId);
+    const tally = { support: 0, oppose: 0, comment: 0 };
+    for (const a of actions) tally[a.stance] = (tally[a.stance] || 0) + 1;
+    return { ok: true, result: { billId, total: actions.length, tally } };
+  });
+
+  registerLensAction("government", "advocacy-delete", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureGovBucket(s, "advocacyActions", userId);
+    const idx = list.findIndex(a => a.id === id);
+    if (idx < 0) return { ok: false, error: "advocacy action not found" };
+    list.splice(idx, 1);
+    saveGovState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── (6) Document / form library with e-signature ────────────
+
+  registerLensAction("government", "documents-list", (ctx, _a, _p = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    return { ok: true, result: { documents: ensureGovBucket(s, "documents", userId) } };
+  });
+
+  registerLensAction("government", "documents-publish", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const title = String(params.title || "").trim();
+    const category = String(params.category || "").trim();
+    const bodyText = String(params.bodyText || "").trim();
+    if (!title || !bodyText) return { ok: false, error: "title and bodyText required" };
+    const allowed = ["application_form", "permit_form", "tax_form", "policy", "ordinance", "notice", "agreement", "other"];
+    if (!allowed.includes(category)) return { ok: false, error: `category must be one of: ${allowed.join(", ")}` };
+    const document = {
+      id: uidGov("doc"),
+      title, category, bodyText,
+      fileUrl: String(params.fileUrl || ""),
+      requiresSignature: params.requiresSignature !== false,
+      signatures: [],
+      publishedAt: new Date().toISOString(),
+    };
+    ensureGovBucket(s, "documents", userId).push(document);
+    saveGovState();
+    return { ok: true, result: { document } };
+  });
+
+  registerLensAction("government", "documents-sign", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const id = String(params.id || "");
+    const signerName = String(params.signerName || "").trim();
+    const signerEmail = String(params.signerEmail || "").trim();
+    const typedSignature = String(params.typedSignature || "").trim();
+    const doc = ensureGovBucket(s, "documents", userId).find(d => d.id === id);
+    if (!doc) return { ok: false, error: "document not found" };
+    if (!doc.requiresSignature) return { ok: false, error: "this document does not require a signature" };
+    if (!signerName || !signerEmail || !typedSignature) {
+      return { ok: false, error: "signerName, signerEmail, typedSignature all required" };
+    }
+    if (typedSignature.trim().toLowerCase() !== signerName.trim().toLowerCase()) {
+      return { ok: false, error: "typed signature must exactly match the signer's full name" };
+    }
+    const now = new Date().toISOString();
+    // tamper-evident signature hash over the document body + signer + time
+    const fingerprint = signatureFingerprint(`${doc.id}|${doc.bodyText}|${signerName}|${signerEmail}|${now}`);
+    const signature = {
+      id: uidGov("sig"),
+      signerName, signerEmail,
+      signedAt: now,
+      fingerprint,
+    };
+    doc.signatures.push(signature);
+    saveGovState();
+    return { ok: true, result: { document: doc, signature } };
+  });
+
+  registerLensAction("government", "documents-delete", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureGovBucket(s, "documents", userId);
+    const idx = list.findIndex(d => d.id === id);
+    if (idx < 0) return { ok: false, error: "document not found" };
+    list.splice(idx, 1);
+    saveGovState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  // ── (7) Case-status notifications ────────────────────────────
+
+  registerLensAction("government", "notifications-list", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const unreadOnly = params.unreadOnly === true;
+    let notifications = ensureGovBucket(s, "notifications", userId).slice().reverse();
+    if (unreadOnly) notifications = notifications.filter(n => !n.read);
+    const unreadCount = ensureGovBucket(s, "notifications", userId).filter(n => !n.read).length;
+    return { ok: true, result: { notifications, unreadCount } };
+  });
+
+  registerLensAction("government", "notifications-subscribe", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const subjectKind = String(params.subjectKind || "");
+    const subjectId = String(params.subjectId || "");
+    const channel = String(params.channel || "email");
+    if (!["permit", "service_request", "fine", "court_case"].includes(subjectKind)) {
+      return { ok: false, error: "subjectKind must be permit, service_request, fine, or court_case" };
+    }
+    if (!subjectId) return { ok: false, error: "subjectId required" };
+    if (!["email", "sms", "both"].includes(channel)) return { ok: false, error: "channel must be email, sms, or both" };
+    const contact = String(params.contact || "").trim();
+    if (!contact) return { ok: false, error: "contact (email/phone) required" };
+    if (!(s.notificationSubs instanceof Map)) s.notificationSubs = new Map();
+    if (!s.notificationSubs.has(userId)) s.notificationSubs.set(userId, []);
+    const subs = s.notificationSubs.get(userId);
+    const existing = subs.find(x => x.subjectKind === subjectKind && x.subjectId === subjectId);
+    if (existing) {
+      existing.channel = channel;
+      existing.contact = contact;
+      saveGovState();
+      return { ok: true, result: { subscription: existing, updated: true } };
+    }
+    const subscription = {
+      id: uidGov("sub"),
+      subjectKind, subjectId, channel, contact,
+      createdAt: new Date().toISOString(),
+    };
+    subs.push(subscription);
+    saveGovState();
+    return { ok: true, result: { subscription, updated: false } };
+  });
+
+  registerLensAction("government", "notifications-mark-read", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const list = ensureGovBucket(s, "notifications", userId);
+    if (params.id) {
+      const n = list.find(x => x.id === String(params.id));
+      if (!n) return { ok: false, error: "notification not found" };
+      n.read = true;
+      saveGovState();
+      return { ok: true, result: { id: n.id, read: true } };
+    }
+    // mark all
+    let count = 0;
+    for (const n of list) { if (!n.read) { n.read = true; count++; } }
+    saveGovState();
+    return { ok: true, result: { markedRead: count } };
+  });
+
+  // emit a case-status notification when a permit / SR / fine changes.
+  registerLensAction("government", "notifications-emit", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = govActor(ctx);
+    const subjectKind = String(params.subjectKind || "");
+    const subjectId = String(params.subjectId || "");
+    const message = String(params.message || "").trim();
+    if (!["permit", "service_request", "fine", "court_case"].includes(subjectKind)) {
+      return { ok: false, error: "subjectKind must be permit, service_request, fine, or court_case" };
+    }
+    if (!subjectId || !message) return { ok: false, error: "subjectId and message required" };
+    const notification = queueGovNotification(s, userId, {
+      kind: "status_update", subjectKind, subjectId, message,
+    });
+    saveGovState();
+    return { ok: true, result: { notification } };
   });
 
   // ── Dashboard summary (CityGovShell data source) ────────────

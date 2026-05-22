@@ -30,6 +30,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { AttentionThreads } from '@/components/attention/AttentionThreads';
+import { FocusToolkit } from '@/components/attention/FocusToolkit';
 import { AttentionPanel as EmergentAttentionPanel } from '@/components/emergent/AttentionPanel';
 import { DreamPanel } from '@/components/emergent/DreamPanel';
 import { ForgettingPanel } from '@/components/emergent/ForgettingPanel';
@@ -269,6 +270,14 @@ export default function AttentionLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="attention" artifactId={bridge.selectedId} compact />
+
+      {/* ── Focus Toolkit — Pomodoro / planner / analytics / focus-mode / calendar ── */}
+      <section data-tour="focus-toolkit">
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-white">
+          <Focus className="h-5 w-5 text-neon-cyan" /> Focus Toolkit
+        </h2>
+        <FocusToolkit />
+      </section>
 
       {/* Computational Actions */}
       <div className="panel p-4">

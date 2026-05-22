@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, BookMarked, ChevronLeft, Trash2, Copy } from 'lucide-react';
+import { Loader2, Plus, BookMarked, ChevronLeft, Trash2, Copy, FileText, ExternalLink } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,7 @@ interface Reference {
   type: string; journal: string | null; doi: string | null; tags: string[]; status: string;
 }
 interface Annotation { id: string; page: number | null; quote: string | null; text: string | null; color: string }
+interface PdfAttachment { id: string; referenceId: string; url: string; filename: string; pages: number | null }
 
 const TYPES = ['article', 'book', 'chapter', 'conference', 'thesis', 'report', 'preprint', 'dataset'];
 const STATUS_COLOR: Record<string, string> = {
@@ -32,6 +33,8 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const [citations, setCitations] = useState<{ apa: string; mla: string; bibtex: string } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annForm, setAnnForm] = useState({ page: '', quote: '', text: '' });
+  const [pdfs, setPdfs] = useState<PdfAttachment[]>([]);
+  const [pdfForm, setPdfForm] = useState({ url: '', filename: '', pages: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -47,7 +50,29 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
     const r = await lensRun('research', 'reference-detail', { id: ref.id });
     setCitations(r.data?.result?.citations || null);
     setAnnotations(r.data?.result?.annotations || []);
+    const p = await lensRun<{ pdfs: PdfAttachment[] }>('research', 'reference-pdfs', { referenceId: ref.id });
+    setPdfs(p.data?.result?.pdfs || []);
   }, []);
+
+  const attachPdf = async () => {
+    if (!selected) return;
+    if (!pdfForm.url.trim()) { setError('Provide a PDF URL.'); return; }
+    const r = await lensRun('research', 'reference-attach-pdf', {
+      referenceId: selected.id, url: pdfForm.url.trim(),
+      filename: pdfForm.filename.trim() || undefined,
+      pages: pdfForm.pages ? Number(pdfForm.pages) : undefined,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to attach PDF'); return; }
+    setPdfForm({ url: '', filename: '', pages: '' });
+    setError(null);
+    await openRef(selected);
+  };
+
+  const deletePdf = async (id: string) => {
+    if (!selected) return;
+    await lensRun('research', 'reference-pdf-delete', { id });
+    await openRef(selected);
+  };
 
   const add = async () => {
     if (!form.title.trim()) { setError('Title is required.'); return; }
@@ -126,6 +151,40 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             ))}
           </div>
         )}
+
+        <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+          <h4 className="text-xs font-semibold text-zinc-300 mb-2">PDF attachments</h4>
+          <div className="grid grid-cols-6 gap-2 mb-2">
+            <input placeholder="PDF URL (https://…)" value={pdfForm.url} onChange={(e) => setPdfForm({ ...pdfForm, url: e.target.value })}
+              className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input placeholder="Filename" value={pdfForm.filename} onChange={(e) => setPdfForm({ ...pdfForm, filename: e.target.value })}
+              className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <input placeholder="Pages" inputMode="numeric" value={pdfForm.pages} onChange={(e) => setPdfForm({ ...pdfForm, pages: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <button type="button" onClick={attachPdf}
+              className="col-span-6 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Attach PDF</button>
+          </div>
+          {pdfs.length === 0 ? (
+            <p className="text-[11px] text-zinc-600 italic">No PDFs attached.</p>
+          ) : (
+            <ul className="space-y-1">
+              {pdfs.map((p) => (
+                <li key={p.id} className="flex items-center justify-between text-[11px] bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-1.5">
+                  <a href={p.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-zinc-300 hover:text-red-300 min-w-0">
+                    <FileText className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{p.filename}</span>
+                    {p.pages ? <span className="text-zinc-600">· {p.pages}p</span> : null}
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
+                  <button type="button" onClick={() => deletePdf(p.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h4 className="text-xs font-semibold text-zinc-300 mb-2">Annotations</h4>

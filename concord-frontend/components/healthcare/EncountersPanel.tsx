@@ -34,6 +34,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
   const [signing, setSigning] = useState(false);
   const [avsText, setAvsText] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only patientId should retrigger
   useEffect(() => { refresh(); }, [patientId]);
 
   async function refresh() {

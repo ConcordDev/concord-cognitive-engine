@@ -573,6 +573,712 @@ export default function registerReposActions(registerLensAction) {
     }
   });
 
+  // ─── Concord-repo substrate — GitHub-shape experience over DTUs ─────
+  // A per-user virtual code-host: repos with a file tree, branches/tags,
+  // a commit history graph, full issue lifecycle, PR diff/review/merge,
+  // CI workflow runs with logs, Dependabot-style security alerts, and
+  // contributor/activity insights. Persisted in globalThis._concordSTATE.
+
+  function rpState() {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE) return null;
+    if (!STATE.reposLens) STATE.reposLens = {};
+    const s = STATE.reposLens;
+    if (!(s.repos instanceof Map)) s.repos = new Map(); // userId -> [repo]
+    return s;
+  }
+  function rpSave() {
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+  }
+  const rpId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const rpNow = () => new Date().toISOString();
+  const rpUid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const rpClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
+  const rpNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const rpList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+  const rpSha = () => Math.random().toString(16).slice(2, 9);
+
+  function rpFindRepo(s, uid, repoId) {
+    return (s.repos.get(uid) || []).find((r) => r.id === repoId) || null;
+  }
+  // Seed a fresh repo with a tiny but real file tree + main branch.
+  function rpSeedRepo(name, description, language) {
+    const ts = rpNow();
+    const c0 = { sha: rpSha(), message: "Initial commit", author: "you", branch: "main", parents: [], date: ts, additions: 12, deletions: 0 };
+    return {
+      id: rpId("repo"),
+      name: name || "untitled-repo",
+      description: description || "",
+      language: language || "TypeScript",
+      isPrivate: false,
+      stars: 0,
+      defaultBranch: "main",
+      createdAt: ts,
+      updatedAt: ts,
+      files: [
+        { path: "README.md", type: "file", content: `# ${name || "untitled-repo"}\n\n${description || "A Concord repository."}\n`, size: 64 },
+        { path: "package.json", type: "file", content: `{\n  "name": "${name || "untitled-repo"}",\n  "version": "0.1.0"\n}\n`, size: 48 },
+        { path: "src/index.ts", type: "file", content: "export function main(): void {\n  console.log('hello');\n}\n", size: 58 },
+        { path: "src/util.ts", type: "file", content: "export const noop = (): void => {};\n", size: 36 },
+      ],
+      branches: [{ name: "main", head: c0.sha, protected: true, createdAt: ts }],
+      tags: [],
+      commits: [c0],
+      issues: [],
+      pulls: [],
+      workflowRuns: [],
+      securityAlerts: [],
+    };
+  }
+  // Build a nested file tree from the flat path list.
+  function rpBuildTree(files) {
+    const root = {};
+    for (const f of files) {
+      const parts = f.path.split("/");
+      let node = root;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const isLeaf = i === parts.length - 1;
+        if (isLeaf && f.type === "file") {
+          node[part] = { __file: true, path: f.path, size: f.size || 0 };
+        } else {
+          if (!node[part] || node[part].__file) node[part] = {};
+          node = node[part];
+        }
+      }
+    }
+    function toNodes(obj, prefix) {
+      return Object.entries(obj)
+        .map(([name, val]) => {
+          if (val.__file) return { name, type: "file", path: val.path, size: val.size };
+          const childPath = prefix ? `${prefix}/${name}` : name;
+          return { name, type: "dir", path: childPath, children: toNodes(val, childPath) };
+        })
+        .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "dir" ? -1 : 1));
+    }
+    return toNodes(root, "");
+  }
+  // Naive line diff between two text blobs.
+  function rpDiff(oldText, newText) {
+    const a = (oldText || "").split("\n");
+    const b = (newText || "").split("\n");
+    const out = [];
+    const max = Math.max(a.length, b.length);
+    let additions = 0, deletions = 0;
+    for (let i = 0; i < max; i++) {
+      if (i >= a.length) { out.push({ type: "add", line: b[i] }); additions++; }
+      else if (i >= b.length) { out.push({ type: "del", line: a[i] }); deletions++; }
+      else if (a[i] === b[i]) { out.push({ type: "ctx", line: a[i] }); }
+      else { out.push({ type: "del", line: a[i] }); out.push({ type: "add", line: b[i] }); deletions++; additions++; }
+    }
+    return { hunks: out, additions, deletions };
+  }
+  const LANG_EXT = { ts: "TypeScript", tsx: "TypeScript", js: "JavaScript", jsx: "JavaScript", py: "Python", rs: "Rust", go: "Go", json: "JSON", md: "Markdown", css: "CSS", html: "HTML" };
+  const rpLangOf = (path) => LANG_EXT[(path.split(".").pop() || "").toLowerCase()] || "Text";
+
+  // ── Repo lifecycle ─────────────────────────────────────────────────
+  registerLensAction("repos", "repo-create", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const name = rpClean(params.name, 100);
+      if (!name) return { ok: false, error: "name required" };
+      const repo = rpSeedRepo(name, rpClean(params.description, 280), rpClean(params.language, 40));
+      if (params.isPrivate) repo.isPrivate = true;
+      rpList(s.repos, rpUid(ctx)).push(repo);
+      rpSave();
+      return { ok: true, result: { repo: { id: repo.id, name: repo.name, defaultBranch: repo.defaultBranch } } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "repo-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repos = (s.repos.get(rpUid(ctx)) || []).map((r) => ({
+        id: r.id, name: r.name, description: r.description, language: r.language,
+        isPrivate: r.isPrivate, stars: r.stars, defaultBranch: r.defaultBranch,
+        fileCount: r.files.length, branchCount: r.branches.length,
+        openIssues: r.issues.filter((i) => i.state === "open").length,
+        openPulls: r.pulls.filter((p) => p.state === "open").length,
+        updatedAt: r.updatedAt,
+      })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      return { ok: true, result: { repos, count: repos.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ── [L] File tree + code viewer ────────────────────────────────────
+  registerLensAction("repos", "file-tree", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      return {
+        ok: true,
+        result: {
+          repoId: repo.id, branch: rpClean(params.branch, 80) || repo.defaultBranch,
+          tree: rpBuildTree(repo.files), fileCount: repo.files.length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "file-read", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const file = repo.files.find((f) => f.path === rpClean(params.path, 300));
+      if (!file) return { ok: false, error: "file not found" };
+      const content = file.content || "";
+      return {
+        ok: true,
+        result: {
+          path: file.path, content, language: rpLangOf(file.path),
+          lineCount: content.split("\n").length, size: file.size || content.length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "file-save", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const path = rpClean(params.path, 300);
+      if (!path) return { ok: false, error: "path required" };
+      const content = String(params.content == null ? "" : params.content).slice(0, 200000);
+      let file = repo.files.find((f) => f.path === path);
+      const oldContent = file ? file.content || "" : "";
+      if (file) { file.content = content; file.size = content.length; }
+      else { file = { path, type: "file", content, size: content.length }; repo.files.push(file); }
+      const diff = rpDiff(oldContent, content);
+      const branch = repo.branches.find((b) => b.name === (rpClean(params.branch, 80) || repo.defaultBranch));
+      const commit = {
+        sha: rpSha(), message: rpClean(params.message, 200) || `Update ${path}`,
+        author: "you", branch: branch ? branch.name : repo.defaultBranch,
+        parents: branch ? [branch.head] : [], date: rpNow(),
+        additions: diff.additions, deletions: diff.deletions, files: [path],
+      };
+      repo.commits.push(commit);
+      if (branch) branch.head = commit.sha;
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { saved: true, commit: { sha: commit.sha, additions: diff.additions, deletions: diff.deletions } } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ── [S] Branch + tag management, commit history graph ──────────────
+  registerLensAction("repos", "branch-list", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const branches = repo.branches.map((b) => ({
+        name: b.name, head: b.head, protected: !!b.protected,
+        isDefault: b.name === repo.defaultBranch,
+        commits: repo.commits.filter((c) => c.branch === b.name).length,
+        createdAt: b.createdAt,
+      }));
+      return { ok: true, result: { branches, tags: repo.tags, defaultBranch: repo.defaultBranch } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "branch-create", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const name = rpClean(params.name, 80);
+      if (!name) return { ok: false, error: "branch name required" };
+      if (repo.branches.some((b) => b.name === name)) return { ok: false, error: "branch already exists" };
+      const from = repo.branches.find((b) => b.name === (rpClean(params.from, 80) || repo.defaultBranch));
+      const branch = { name, head: from ? from.head : repo.commits[repo.commits.length - 1]?.sha, protected: false, createdAt: rpNow() };
+      repo.branches.push(branch);
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { branch } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "tag-create", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const name = rpClean(params.name, 60);
+      if (!name) return { ok: false, error: "tag name required" };
+      if (repo.tags.some((t) => t.name === name)) return { ok: false, error: "tag already exists" };
+      const branch = repo.branches.find((b) => b.name === (rpClean(params.branch, 80) || repo.defaultBranch));
+      const tag = { name, commit: branch ? branch.head : repo.commits[repo.commits.length - 1]?.sha, message: rpClean(params.message, 200), createdAt: rpNow() };
+      repo.tags.push(tag);
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { tag } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "commit-graph", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const branchLanes = {};
+      repo.branches.forEach((b, i) => { branchLanes[b.name] = i; });
+      const nodes = repo.commits.map((c, i) => ({
+        sha: c.sha, message: c.message, author: c.author, branch: c.branch,
+        lane: branchLanes[c.branch] ?? 0, parents: c.parents || [], date: c.date,
+        additions: c.additions || 0, deletions: c.deletions || 0, index: i,
+      }));
+      return {
+        ok: true,
+        result: {
+          nodes, branchLanes, totalCommits: nodes.length,
+          tags: repo.tags.map((t) => ({ name: t.name, commit: t.commit })),
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ── [M] Issue lifecycle ────────────────────────────────────────────
+  registerLensAction("repos", "issue-list", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const state = ["open", "closed", "all"].includes(params.state) ? params.state : "all";
+      const issues = repo.issues
+        .filter((i) => state === "all" || i.state === state)
+        .map((i) => ({
+          number: i.number, title: i.title, state: i.state, labels: i.labels,
+          author: i.author, comments: i.comments.length, createdAt: i.createdAt,
+        }))
+        .sort((a, b) => b.number - a.number);
+      return {
+        ok: true,
+        result: {
+          issues, count: issues.length,
+          open: repo.issues.filter((i) => i.state === "open").length,
+          closed: repo.issues.filter((i) => i.state === "closed").length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "issue-create", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const title = rpClean(params.title, 200);
+      if (!title) return { ok: false, error: "title required" };
+      const number = (repo.issues.reduce((m, i) => Math.max(m, i.number), 0)) +
+        (repo.pulls.reduce((m, p) => Math.max(m, p.number), 0)) + 1;
+      const labels = Array.isArray(params.labels) ? params.labels.map((l) => rpClean(l, 30)).filter(Boolean).slice(0, 8) : [];
+      const issue = {
+        id: rpId("iss"), number, title, body: rpClean(params.body, 4000),
+        state: "open", author: "you", labels, comments: [], createdAt: rpNow(), updatedAt: rpNow(),
+      };
+      repo.issues.push(issue);
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { issue: { number: issue.number, title: issue.title, state: issue.state } } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "issue-detail", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const issue = repo.issues.find((i) => i.number === rpNum(params.number, -1));
+      if (!issue) return { ok: false, error: "issue not found" };
+      return { ok: true, result: { issue } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "issue-comment", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const issue = repo.issues.find((i) => i.number === rpNum(params.number, -1));
+      if (!issue) return { ok: false, error: "issue not found" };
+      const body = rpClean(params.body, 4000);
+      if (!body) return { ok: false, error: "comment body required" };
+      const comment = { id: rpId("cmt"), author: "you", body, createdAt: rpNow() };
+      issue.comments.push(comment);
+      issue.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { comment, commentCount: issue.comments.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "issue-set-state", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const issue = repo.issues.find((i) => i.number === rpNum(params.number, -1));
+      if (!issue) return { ok: false, error: "issue not found" };
+      const state = params.state === "open" ? "open" : "closed";
+      issue.state = state;
+      issue.updatedAt = rpNow();
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { number: issue.number, state } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ── [M] Pull request detail — diff, review, merge ──────────────────
+  registerLensAction("repos", "pull-list", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const state = ["open", "closed", "merged", "all"].includes(params.state) ? params.state : "all";
+      const pulls = repo.pulls
+        .filter((p) => state === "all" || p.state === state)
+        .map((p) => ({
+          number: p.number, title: p.title, state: p.state,
+          base: p.base, head: p.head, author: p.author,
+          reviews: p.reviews.length, comments: p.comments.length, createdAt: p.createdAt,
+        }))
+        .sort((a, b) => b.number - a.number);
+      return {
+        ok: true,
+        result: {
+          pulls, count: pulls.length,
+          open: repo.pulls.filter((p) => p.state === "open").length,
+          merged: repo.pulls.filter((p) => p.state === "merged").length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "pull-create", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const title = rpClean(params.title, 200);
+      if (!title) return { ok: false, error: "title required" };
+      const head = rpClean(params.head, 80);
+      const base = rpClean(params.base, 80) || repo.defaultBranch;
+      if (!head) return { ok: false, error: "head branch required" };
+      if (!repo.branches.some((b) => b.name === head)) return { ok: false, error: "head branch not found" };
+      if (head === base) return { ok: false, error: "head and base must differ" };
+      const number = (repo.issues.reduce((m, i) => Math.max(m, i.number), 0)) +
+        (repo.pulls.reduce((m, p) => Math.max(m, p.number), 0)) + 1;
+      const headCommits = repo.commits.filter((c) => c.branch === head);
+      const pull = {
+        id: rpId("pr"), number, title, body: rpClean(params.body, 4000),
+        state: "open", base, head, author: "you",
+        commits: headCommits.map((c) => c.sha),
+        reviews: [], comments: [], createdAt: rpNow(), updatedAt: rpNow(),
+      };
+      repo.pulls.push(pull);
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { pull: { number: pull.number, title: pull.title, head, base } } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "pull-detail", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
+      if (!pull) return { ok: false, error: "pull not found" };
+      // Diff = files touched by head-branch commits.
+      const touched = new Set();
+      for (const c of repo.commits) {
+        if (pull.commits.includes(c.sha)) for (const f of (c.files || [])) touched.add(f);
+      }
+      const fileDiffs = [...touched].map((path) => {
+        const file = repo.files.find((f) => f.path === path);
+        const diff = rpDiff("", file ? file.content || "" : "");
+        return { path, language: rpLangOf(path), additions: diff.additions, deletions: 0, hunks: diff.hunks.slice(0, 200) };
+      });
+      const additions = fileDiffs.reduce((s2, d) => s2 + d.additions, 0);
+      const approvals = pull.reviews.filter((rv) => rv.verdict === "approve").length;
+      const changesRequested = pull.reviews.filter((rv) => rv.verdict === "request-changes").length;
+      return {
+        ok: true,
+        result: {
+          pull: {
+            number: pull.number, title: pull.title, body: pull.body, state: pull.state,
+            base: pull.base, head: pull.head, author: pull.author, createdAt: pull.createdAt,
+          },
+          diff: { files: fileDiffs, additions, deletions: 0, fileCount: fileDiffs.length },
+          reviews: pull.reviews, comments: pull.comments,
+          mergeable: pull.state === "open" && changesRequested === 0,
+          approvals, changesRequested,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "pull-review", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
+      if (!pull) return { ok: false, error: "pull not found" };
+      const verdict = ["approve", "request-changes", "comment"].includes(params.verdict) ? params.verdict : "comment";
+      const review = { id: rpId("rev"), reviewer: "you", verdict, body: rpClean(params.body, 4000), createdAt: rpNow() };
+      pull.reviews.push(review);
+      pull.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { review, totalReviews: pull.reviews.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "pull-merge", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const pull = repo.pulls.find((p) => p.number === rpNum(params.number, -1));
+      if (!pull) return { ok: false, error: "pull not found" };
+      if (pull.state !== "open") return { ok: false, error: `pull is ${pull.state}` };
+      if (pull.reviews.some((rv) => rv.verdict === "request-changes")) {
+        return { ok: false, error: "changes requested — cannot merge" };
+      }
+      const baseBranch = repo.branches.find((b) => b.name === pull.base);
+      const headBranch = repo.branches.find((b) => b.name === pull.head);
+      const mergeSha = rpSha();
+      repo.commits.push({
+        sha: mergeSha, message: `Merge pull request #${pull.number}: ${pull.title}`,
+        author: "you", branch: pull.base,
+        parents: [baseBranch?.head, headBranch?.head].filter(Boolean),
+        date: rpNow(), additions: 0, deletions: 0, files: [], merge: true,
+      });
+      if (baseBranch) baseBranch.head = mergeSha;
+      pull.state = "merged";
+      pull.mergedAt = rpNow();
+      pull.mergeCommit = mergeSha;
+      pull.updatedAt = rpNow();
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { merged: true, mergeCommit: mergeSha, number: pull.number } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ── [M] Actions / CI run logs ──────────────────────────────────────
+  const RP_CI_STEPS = [
+    { name: "Checkout", logs: ["Fetching repository…", "Checked out HEAD"] },
+    { name: "Setup", logs: ["Installing toolchain…", "Cache restored"] },
+    { name: "Install dependencies", logs: ["Resolving packages…", "Installed in 4.2s"] },
+    { name: "Lint", logs: ["Running eslint…", "0 errors, 0 warnings"] },
+    { name: "Test", logs: ["Running test suite…", "All tests passed"] },
+    { name: "Build", logs: ["Compiling…", "Build artifact produced"] },
+  ];
+  registerLensAction("repos", "workflow-run", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const branch = rpClean(params.branch, 80) || repo.defaultBranch;
+      const branchObj = repo.branches.find((b) => b.name === branch);
+      // Deterministic-ish outcome: fail if last commit deleted lines heavily.
+      const lastCommit = repo.commits.filter((c) => c.branch === branch).slice(-1)[0];
+      const failStep = (lastCommit && lastCommit.deletions > 40) ? 4 : -1;
+      const steps = RP_CI_STEPS.map((st, i) => {
+        let conclusion = "success";
+        if (failStep >= 0 && i === failStep) conclusion = "failure";
+        else if (failStep >= 0 && i > failStep) conclusion = "skipped";
+        const logs = conclusion === "failure"
+          ? [...st.logs.slice(0, 1), "ERROR: step failed (exit 1)"]
+          : conclusion === "skipped" ? ["Skipped"] : st.logs;
+        return { name: st.name, conclusion, durationMs: 800 + i * 350, logs };
+      });
+      const run = {
+        id: rpId("run"),
+        number: repo.workflowRuns.length + 1,
+        workflow: rpClean(params.workflow, 80) || "CI",
+        branch, headSha: branchObj ? branchObj.head : null,
+        status: "completed",
+        conclusion: failStep >= 0 ? "failure" : "success",
+        steps, durationMs: steps.reduce((n, st) => n + st.durationMs, 0),
+        triggeredBy: "you", createdAt: rpNow(),
+      };
+      repo.workflowRuns.push(run);
+      if (repo.workflowRuns.length > 50) repo.workflowRuns = repo.workflowRuns.slice(-50);
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { run: { id: run.id, number: run.number, conclusion: run.conclusion } } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "workflow-runs", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const runs = [...repo.workflowRuns].reverse().map((r) => ({
+        id: r.id, number: r.number, workflow: r.workflow, branch: r.branch,
+        conclusion: r.conclusion, durationMs: r.durationMs, createdAt: r.createdAt,
+        steps: r.steps.length,
+      }));
+      return {
+        ok: true,
+        result: {
+          runs, count: runs.length,
+          passed: runs.filter((r) => r.conclusion === "success").length,
+          failed: runs.filter((r) => r.conclusion === "failure").length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "workflow-logs", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const run = repo.workflowRuns.find((r) => r.id === rpClean(params.runId, 60));
+      if (!run) return { ok: false, error: "run not found" };
+      return {
+        ok: true,
+        result: {
+          runId: run.id, number: run.number, workflow: run.workflow,
+          branch: run.branch, conclusion: run.conclusion, steps: run.steps,
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ── [S] Security tab — Dependabot + code scanning ──────────────────
+  const RP_VULN_DB = [
+    { pkg: "lodash", version: "4.17.11", severity: "high", advisory: "Prototype pollution (CVE-2019-10744)", fixed: "4.17.12" },
+    { pkg: "minimist", version: "1.2.0", severity: "moderate", advisory: "Prototype pollution (CVE-2020-7598)", fixed: "1.2.3" },
+    { pkg: "node-fetch", version: "2.6.0", severity: "high", advisory: "Information exposure (CVE-2022-0235)", fixed: "2.6.7" },
+    { pkg: "ws", version: "7.0.0", severity: "critical", advisory: "ReDoS (CVE-2024-37890)", fixed: "7.5.10" },
+    { pkg: "axios", version: "0.21.0", severity: "moderate", advisory: "SSRF (CVE-2021-3749)", fixed: "0.21.4" },
+  ];
+  const RP_SCAN_RULES = [
+    { rx: /eval\s*\(/, rule: "no-eval", severity: "high", message: "Use of eval() — code injection risk" },
+    { rx: /password\s*=\s*['"][^'"]+['"]/i, rule: "hardcoded-secret", severity: "critical", message: "Hardcoded credential detected" },
+    { rx: /innerHTML\s*=/, rule: "no-inner-html", severity: "moderate", message: "Direct innerHTML assignment — XSS risk" },
+    { rx: /http:\/\//, rule: "insecure-transport", severity: "low", message: "Insecure http:// URL" },
+    { rx: /TODO|FIXME/, rule: "tracked-debt", severity: "low", message: "Unresolved TODO/FIXME marker" },
+  ];
+  registerLensAction("repos", "security-scan", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      // Dependabot alerts — parse package.json deps and match the vuln DB.
+      const pkgFile = repo.files.find((f) => f.path === "package.json");
+      let depVersions = {};
+      if (pkgFile) {
+        try {
+          const parsed = JSON.parse(pkgFile.content || "{}");
+          depVersions = { ...(parsed.dependencies || {}), ...(parsed.devDependencies || {}) };
+        } catch (_e) { /* malformed package.json — no dependency alerts */ }
+      }
+      const dependabot = [];
+      for (const [name, ver] of Object.entries(depVersions)) {
+        const clean = String(ver).replace(/^[^0-9]*/, "");
+        const hit = RP_VULN_DB.find((v) => v.pkg === name && v.version === clean);
+        if (hit) dependabot.push({ kind: "dependency", package: name, version: clean, severity: hit.severity, summary: hit.advisory, fixedIn: hit.fixed });
+      }
+      // Code scanning — regex rules over every text file.
+      const codeScanning = [];
+      for (const f of repo.files) {
+        const lines = (f.content || "").split("\n");
+        lines.forEach((line, idx) => {
+          for (const rule of RP_SCAN_RULES) {
+            if (rule.rx.test(line)) {
+              codeScanning.push({ kind: "code", path: f.path, line: idx + 1, rule: rule.rule, severity: rule.severity, message: rule.message });
+            }
+          }
+        });
+      }
+      const all = [...dependabot, ...codeScanning];
+      const sevRank = { critical: 4, high: 3, moderate: 2, low: 1 };
+      const bySeverity = { critical: 0, high: 0, moderate: 0, low: 0 };
+      for (const a of all) bySeverity[a.severity] = (bySeverity[a.severity] || 0) + 1;
+      repo.securityAlerts = all;
+      repo.updatedAt = rpNow();
+      rpSave();
+      return {
+        ok: true,
+        result: {
+          dependabot, codeScanning,
+          total: all.length, bySeverity,
+          alerts: all.sort((a, b) => (sevRank[b.severity] || 0) - (sevRank[a.severity] || 0)),
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ── [S] Repo insights — contributors, traffic, activity ────────────
+  registerLensAction("repos", "repo-insights", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      // Contributors.
+      const byAuthor = {};
+      for (const c of repo.commits) {
+        const a = c.author || "unknown";
+        if (!byAuthor[a]) byAuthor[a] = { author: a, commits: 0, additions: 0, deletions: 0 };
+        byAuthor[a].commits++;
+        byAuthor[a].additions += c.additions || 0;
+        byAuthor[a].deletions += c.deletions || 0;
+      }
+      const contributors = Object.values(byAuthor).sort((a, b) => b.commits - a.commits);
+      // Commit activity — last 12 weeks bucketed.
+      const now = Date.now();
+      const weeks = [];
+      for (let w = 11; w >= 0; w--) {
+        const end = now - w * 7 * 86400000;
+        const start = end - 7 * 86400000;
+        const inWeek = repo.commits.filter((c) => {
+          const t = new Date(c.date).getTime();
+          return t >= start && t < end;
+        });
+        weeks.push({
+          week: `W-${w}`,
+          commits: inWeek.length,
+          additions: inWeek.reduce((n, c) => n + (c.additions || 0), 0),
+          deletions: inWeek.reduce((n, c) => n + (c.deletions || 0), 0),
+        });
+      }
+      // Language breakdown by file size.
+      const langBytes = {};
+      for (const f of repo.files) {
+        const lang = rpLangOf(f.path);
+        langBytes[lang] = (langBytes[lang] || 0) + (f.size || (f.content || "").length);
+      }
+      const totalBytes = Object.values(langBytes).reduce((n, v) => n + v, 0) || 1;
+      const languages = Object.entries(langBytes)
+        .map(([language, bytes]) => ({ language, bytes, percent: Math.round((bytes / totalBytes) * 1000) / 10 }))
+        .sort((a, b) => b.bytes - a.bytes);
+      return {
+        ok: true,
+        result: {
+          contributors,
+          commitActivity: weeks,
+          languages,
+          totals: {
+            commits: repo.commits.length,
+            additions: repo.commits.reduce((n, c) => n + (c.additions || 0), 0),
+            deletions: repo.commits.reduce((n, c) => n + (c.deletions || 0), 0),
+            issuesOpened: repo.issues.length,
+            issuesClosed: repo.issues.filter((i) => i.state === "closed").length,
+            pullsMerged: repo.pulls.filter((p) => p.state === "merged").length,
+          },
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   /**
    * github-languages — Real language breakdown (bytes per language)
    * for a repo. Useful for the polyglot percentage analysis.

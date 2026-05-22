@@ -46,7 +46,8 @@ export default function registerHiddenQuestsMacros(register) {
     const userId = ctx?.actor?.userId || null;
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "auth_required" };
-    return recordTriggerVisit(db, input.triggerId, userId);
+    const result = recordTriggerVisit(db, input.triggerId, userId);
+    return result || { ok: false, reason: "trigger_not_found" };
   }, { note: "record a visit to a non-proximity trigger (dialogue / item)" });
 
   register("hiddenQuests", "fire", async (ctx, input = {}) => {

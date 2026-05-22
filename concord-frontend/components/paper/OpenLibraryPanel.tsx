@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { Library, RefreshCw, AlertTriangle, ExternalLink, Search, BookOpen } from 'lucide-react';
+import { Library, RefreshCw, AlertTriangle, Search, BookOpen } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 

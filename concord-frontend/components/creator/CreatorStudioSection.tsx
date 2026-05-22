@@ -6,13 +6,23 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Megaphone, KanbanSquare, Users, DollarSign, CalendarDays, Loader2, Target } from 'lucide-react';
+import {
+  Megaphone, KanbanSquare, Users, DollarSign, CalendarDays, Loader2, Target,
+  LineChart, Gauge, PieChart, Crown, Banknote, CalendarClock, MessageSquare,
+} from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { CrtPipelinePanel } from './CrtPipelinePanel';
 import { CrtAudiencePanel } from './CrtAudiencePanel';
 import { CrtRevenuePanel } from './CrtRevenuePanel';
 import { CrtCalendarPanel } from './CrtCalendarPanel';
+import { CrtRevenueChartPanel } from './CrtRevenueChartPanel';
+import { CrtPerformancePanel } from './CrtPerformancePanel';
+import { CrtDemographicsPanel } from './CrtDemographicsPanel';
+import { CrtMembershipPanel } from './CrtMembershipPanel';
+import { CrtPayoutPanel } from './CrtPayoutPanel';
+import { CrtScheduledPanel } from './CrtScheduledPanel';
+import { CrtCommentsPanel } from './CrtCommentsPanel';
 
 interface Dash {
   platforms: number; totalFollowers: number; ideas: number; inProgress: number;
@@ -21,11 +31,21 @@ interface Dash {
 interface Goal {
   hasGoal: boolean; metric?: string; target?: number; current?: number; pct?: number; met?: boolean;
 }
-type TabId = 'pipeline' | 'audience' | 'revenue' | 'calendar';
+type TabId =
+  | 'pipeline' | 'audience' | 'revenue' | 'calendar'
+  | 'trends' | 'performance' | 'demographics' | 'membership'
+  | 'payouts' | 'scheduled' | 'comments';
 const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: 'pipeline', label: 'Pipeline', icon: KanbanSquare },
   { id: 'audience', label: 'Audience', icon: Users },
   { id: 'revenue', label: 'Revenue', icon: DollarSign },
+  { id: 'trends', label: 'Trends', icon: LineChart },
+  { id: 'performance', label: 'Performance', icon: Gauge },
+  { id: 'demographics', label: 'Demographics', icon: PieChart },
+  { id: 'membership', label: 'Membership', icon: Crown },
+  { id: 'payouts', label: 'Payouts', icon: Banknote },
+  { id: 'scheduled', label: 'Scheduled', icon: CalendarClock },
+  { id: 'comments', label: 'Comments', icon: MessageSquare },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
 ];
 const GOAL_METRICS = [
@@ -136,6 +156,13 @@ export function CreatorStudioSection() {
             {tab === 'pipeline' && <CrtPipelinePanel onChange={refresh} />}
             {tab === 'audience' && <CrtAudiencePanel onChange={refresh} />}
             {tab === 'revenue' && <CrtRevenuePanel onChange={refresh} />}
+            {tab === 'trends' && <CrtRevenueChartPanel />}
+            {tab === 'performance' && <CrtPerformancePanel />}
+            {tab === 'demographics' && <CrtDemographicsPanel />}
+            {tab === 'membership' && <CrtMembershipPanel onChange={refresh} />}
+            {tab === 'payouts' && <CrtPayoutPanel />}
+            {tab === 'scheduled' && <CrtScheduledPanel />}
+            {tab === 'comments' && <CrtCommentsPanel />}
             {tab === 'calendar' && <CrtCalendarPanel />}
           </div>
         </>

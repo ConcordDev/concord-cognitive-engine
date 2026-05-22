@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Route, Plus, X, Loader2, MapPin, Clock, TrendingDown } from 'lucide-react';
+import { Route, X, Loader2, MapPin, Clock, TrendingDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 export interface OptimizedStop {

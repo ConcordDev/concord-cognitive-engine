@@ -13,6 +13,7 @@ export function CourseDiscussions({ courseId }: { courseId?: string }) {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, [courseId]);
 
   async function refresh() {
