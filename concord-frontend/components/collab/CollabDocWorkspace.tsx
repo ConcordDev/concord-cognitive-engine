@@ -212,7 +212,37 @@ export function CollabDocWorkspace() {
       }
     };
     const t = setInterval(tick, 1000);
-    return () => { stop = true; clearInterval(t); };
+
+    // Phase 4 realtime push: subscribe to the `collab:doc-op` /
+    // `collab:doc-snapshot` / `collab:doc-restored` Socket.IO events the
+    // server already emits (see `server/domains/collab.js#emitToDoc`).
+    // On any event, run an immediate `tick()` so the local doc updates
+    // without waiting for the 1s poll. The poll stays as a backstop in
+    // case the WebSocket drops; with both, the sync upper-bound is 1s
+    // (poll) and the typical latency on healthy ws is single-digit ms.
+    let socket: ReturnType<typeof import('socket.io-client')['io']> | null = null;
+    if (typeof window !== 'undefined') {
+      (async () => {
+        try {
+          const { io } = await import('socket.io-client');
+          if (stop) return;
+          socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+          const room = `collab:doc:${activeDocId}`;
+          socket.emit('room:join', { room });
+          const onOp = () => { if (!stop) void tick(); };
+          socket.on('collab:doc-op', onOp);
+          socket.on('collab:doc-snapshot', onOp);
+          socket.on('collab:doc-restored', onOp);
+          socket.on('collab:comment', onOp);
+          socket.on('collab:thread-resolved', onOp);
+        } catch { /* graceful fallback: poll path keeps working */ }
+      })();
+    }
+    return () => {
+      stop = true;
+      clearInterval(t);
+      try { socket?.disconnect(); } catch { /* ignore */ }
+    };
   }, [activeDocId, docState?.ownerId]);
 
   // ── Heartbeat the cursor into presence (every 2s + on selection change) ──

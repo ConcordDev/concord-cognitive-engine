@@ -19,9 +19,9 @@ Backend: `server/domains/code.js` — 58 macros: projects, files tree/read/write
 - [x] `[M]` Codebase-wide AI chat with @-file context (Cursor's killer feature)
 - [x] `[S]` Extensions / plugin system
 - [x] `[S]` Split-pane multi-file editing
-- [x] `[M]` Real-time multiplayer / Live Share editing
+- [x] `[M]` Real-time multiplayer / Live Share editing — *server-mediated session with `liveshare-start/join/edit/poll/end` macros (`server/domains/code.js`). After Phase 4 these emit on a Socket.IO room (`code:liveshare:${code}`) so clients receive ops in real-time without polling. Conflict resolution is last-write-wins on identical-clock collisions — full CRDT (Y.js / Automerge) is on the backlog (see `docs/FEATURE_UPGRADE_BACKLOG.md`) and would replace the last-write-wins layer with conflict-free merges.*
 
 ## Parity
-~95% of Cursor's surface. Monaco, full virtual git, search/refactor, sandbox exec, AI multi-file editing plus LSP IntelliSense (hover/signature/completions), remote GitHub push/pull, a step debugger, codebase-wide AI chat, an extensions system, split-pane layouts, and Live Share all ship front-to-back.
+~95% of Cursor's surface. Monaco, full virtual git, search/refactor, sandbox exec, AI multi-file editing plus LSP IntelliSense (hover/signature/completions), remote GitHub push/pull, a step debugger, codebase-wide AI chat, an extensions system, and split-pane layouts all ship front-to-back. Live Share ships with realtime Socket.IO push (Phase 4) — CRDT-based conflict-free editing is the final gap to VS Code Live Share's full surface; see `docs/FEATURE_UPGRADE_BACKLOG.md`.
 
-_Full backlog implemented — every item above shipped backend + real UI + tests._
+_Backlog implemented except where prose explicitly flags a remaining gap — every item above ships backend + real UI + tests._

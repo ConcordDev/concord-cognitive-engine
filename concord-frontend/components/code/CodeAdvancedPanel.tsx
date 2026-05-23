@@ -794,12 +794,35 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
     } catch { /* best effort */ }
   }, []);
 
+  // Phase 4 realtime push: subscribe to `liveshare:op` on the session's
+  // Socket.IO room (the server emits there from `liveshare-edit`). On
+  // any event, run an immediate poll so ops appear without waiting for
+  // the 3s tick. The 3s poll stays as a fallback in case the socket
+  // drops; with both, typical latency drops from 3s to single-digit ms.
+  const socketRef = useRef<unknown>(null);
+  const startSocket = useCallback(async (code: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const { io } = await import('socket.io-client');
+      const s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+      s.emit('room:join', { room: `code:liveshare:${code}` });
+      s.on('liveshare:op', () => { void poll(code); });
+      socketRef.current = s;
+    } catch { /* graceful fallback to poll only */ }
+  }, [poll]);
+  const stopSocket = useCallback(() => {
+    const s = socketRef.current as { disconnect?: () => void } | null;
+    try { s?.disconnect?.(); } catch { /* ignore */ }
+    socketRef.current = null;
+  }, []);
+
   const startPoll = useCallback((code: string) => {
     stopPoll();
     pollRef.current = setInterval(() => void poll(code), 3000);
-  }, [poll, stopPoll]);
+    void startSocket(code);
+  }, [poll, stopPoll, startSocket]);
 
-  useEffect(() => () => stopPoll(), [stopPoll]);
+  useEffect(() => () => { stopPoll(); stopSocket(); }, [stopPoll, stopSocket]);
 
   const start = useCallback(async () => {
     setBusy(true); setErr(null);

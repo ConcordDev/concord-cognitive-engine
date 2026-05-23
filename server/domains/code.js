@@ -2174,6 +2174,17 @@ Rules:
     session.ops.push(op);
     if (session.ops.length > 2000) session.ops = session.ops.slice(-2000);
     saveWS();
+    // Phase 4 realtime push: broadcast the new op to every joined client on
+    // the session's room. Polling clients still work (the next `liveshare-poll`
+    // will return this op via the cursor path), but realtime clients see the
+    // edit immediately. The realtime layer is best-effort — if Socket.IO
+    // isn't wired (e.g. unit-test ctx), the polling path is the fallback.
+    try {
+      const rt = globalThis._concordREALTIME || globalThis.__CONCORD_REALTIME__;
+      if (rt?.io && typeof rt.io.to === "function") {
+        rt.io.to(`code:liveshare:${code}`).emit("liveshare:op", { code, op });
+      }
+    } catch { /* never fail the edit on emit error */ }
     return { ok: true, result: { op } };
   });
 

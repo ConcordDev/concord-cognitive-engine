@@ -16,12 +16,25 @@ function walk(dir, acc = []) {
 const serverFiles = walk(SERVER);
 
 // ---- 1. macro domains: registerLensAction("d","n") and register("d","n") ----
+// Some domain files (e.g. server/domains/personas.js, settings.js) bind an
+// alias `const reg = registerLensAction` and then call `reg("d","n", ...)`.
+// Detect those aliases per-file and treat them as registration sites too —
+// without this, the alias-using domains look unregistered and the lenses
+// that call them get PARTIAL verdicts (e.g. `personas` lens).
 const macroDomains = new Set();
 for (const f of serverFiles) {
   const src = fs.readFileSync(f, 'utf8');
+  // Build a per-file set of identifiers that alias register / registerLensAction.
+  const aliases = new Set(['register', 'registerLensAction']);
+  for (const m of src.matchAll(/\bconst\s+(\w+)\s*=\s*(?:registerLensAction|register)\b/g)) {
+    aliases.add(m[1]);
+  }
+  const aliasRe = new RegExp(
+    String.raw`\b(?:` + [...aliases].join('|') + String.raw`)\(\s*["'\`]([a-zA-Z0-9_.\-]+)["'\`]\s*,\s*["'\`]([a-zA-Z0-9_.\-]+)["'\`]`,
+    'g'
+  );
   let m;
-  const re = /\b(?:registerLensAction|register)\(\s*["'`]([a-zA-Z0-9_.\-]+)["'`]\s*,\s*["'`]([a-zA-Z0-9_.\-]+)["'`]/g;
-  while ((m = re.exec(src))) macroDomains.add(m[1]);
+  while ((m = aliasRe.exec(src))) macroDomains.add(m[1]);
 }
 
 // ---- 2. REST routes with mount mapping ----

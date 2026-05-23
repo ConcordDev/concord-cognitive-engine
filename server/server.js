@@ -30936,7 +30936,12 @@ setInterval(() => {
 
 // ===== CONNECTIVE TISSUE (economy wiring, DTU pipeline, CRETI, compression, fork, preview, search, emergent/bot auth) =====
 import createConnectiveTissueRouter from "./routes/connective-tissue.js";
+// Mounted at both prefixes — the short `/api/ct` is the historical mount,
+// `/api/connective-tissue` is what the social + feed lenses call. The
+// router instances share the same handler bodies (Express `app.use` just
+// dispatches per-prefix), so this is a wiring alias not a duplication.
 app.use("/api/ct", createConnectiveTissueRouter({ db, requireAuth }));
+app.use("/api/connective-tissue", createConnectiveTissueRouter({ db, requireAuth }));
 
 // ===== MOBILE EXTERNAL PAYMENT (iOS External Purchase Link) =====
 import mobileCheckoutRouter from "./routes/mobile-checkout.js";
