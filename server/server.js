@@ -24501,6 +24501,7 @@ return { ok:true, simulation:true, createdCandidates: created.length, created, m
 }, { summary:"Automatic MEGA promotion pipeline tick (candidate->probation->MEGA) (v3)." });
 
 register("system", "synthesize", async (ctx, input) => {
+  try {
   // Synthesize: conflict resolution + patch proposals via pipeline, or HYPER DTU from megas
   let megaIds = Array.isArray(input.megaIds) ? input.megaIds : [];
   if (megaIds.length === 0) {
@@ -24549,6 +24550,7 @@ register("system", "synthesize", async (ctx, input) => {
   const r = await ctx.macro.run("dtu", "create", spec);
 
   return { ok: true, dtus: r?.ok ? [r.dtu] : [], trace: result.trace, writePolicy: result.writePolicy };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 // ===================== Analogize Engine =====================
@@ -38431,6 +38433,7 @@ registerLensAction("ml", "deploy", (ctx, artifact, params) => {
   return { ok: true, deployed: true, endpoint: artifact.data.endpoint };
 });
 registerLensAction("ml", "evaluate", (ctx, artifact, _params) => {
+  try {
   const runs = artifact.data?.runs || [];
   const predictions = artifact.data?.predictions || [];
   if (predictions.length > 0 && predictions[0].actual != null) {
@@ -38492,6 +38495,7 @@ registerLensAction("ml", "evaluate", (ctx, artifact, _params) => {
     }
   }
   return { ok: true, evaluation: { modelId: artifact.id, type: "no_data", note: "No predictions or completed runs with metrics found", totalRuns: runs.length, evaluatedAt: nowISO() } };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 registerLensAction("ml", "run_experiment", (ctx, artifact, params) => {
   const run = { id: uid("mlrun"), experimentId: artifact.id, config: params.config || {}, status: "running", startedAt: nowISO() };

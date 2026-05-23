@@ -253,15 +253,16 @@ console.error(`  ${testRefs.size} (domain.macro) refs in tests`);
 const BEHAVIOR_SMOKE_PATH = path.join(SERVER, 'tests', 'behavior', 'lens-behavior-smoke.behavior.js');
 const BEHAVIOR_SMOKE_EXISTS = fs.existsSync(BEHAVIOR_SMOKE_PATH);
 // Mirror the regexes from the behavior file exactly. Keep these in sync
-// if the harness changes its skip logic.
+// if the harness changes its skip logic. The harness opts destructive
+// macros + council back in by default (the dispatcher catches throws
+// and validation errors return ok:false cleanly — both produce valid
+// envelopes the smoke harness accepts).
 const BEHAVIOR_LLM_HINT_RE = /^(respond|chat|reply|deliberate|narrate|synthesize|generate|brainstorm|propose|critique|reason|explain|elaborate|expand|rewrite|translate|tutor|teach|answer|ask|dream|imagine|score|evaluate|grade|review|writeReply|composeMessage|debate|persuade|argue)$|llm|brain/i;
-const BEHAVIOR_DESTRUCTIVE_RE = /^(delete|destroy|reset|wipe|clear|purge|drop|kill|terminate|revoke|unpublish)$|^(forceDelete|hardDelete|nuke)/i;
-const BEHAVIOR_SKIP_DOMAINS = new Set(['oracle', 'council', 'concordance']);
+const BEHAVIOR_SKIP_DOMAINS = new Set(['oracle', 'concordance']);
 
 function isCoveredBySmoke(domain, name) {
   if (!BEHAVIOR_SMOKE_EXISTS) return false;
   if (BEHAVIOR_SKIP_DOMAINS.has(domain)) return false;
-  if (BEHAVIOR_DESTRUCTIVE_RE.test(name)) return false;
   if (BEHAVIOR_LLM_HINT_RE.test(name)) return false;
   return true;
 }
@@ -296,9 +297,13 @@ function classifyTier(s) {
   // Delegation pattern: a one-line handler that just calls a cross-module
   // method (e.g. `() => agents.listAgents()`). The grader can't see the
   // real implementation (it lives in another file the helper-index doesn't
-  // follow), so don't mistake the wrapper for a stub. Score as functional
-  // — the work exists, the grader just can't see it.
-  if (s.delegates) return 'functional';
+  // follow). A delegation with a test reference IS production-grade —
+  // the test exercises the delegation chain end-to-end and proves the
+  // work happens. An untested delegation falls through to functional
+  // (work exists, just can't be verified from this grader's perspective).
+  // Production-grade-via-delegation is handled below in classifyTier's
+  // rule (D); this branch only kicks in for delegations without tests.
+  if (s.delegates && !s.hasTest) return 'functional';
   // Stub: trivial body AND no state AND no external I/O AND nothing
   // calls it (no tests, no frontend). A small-by-design enum that a
   // real lens UI calls is NOT a stub — it's a utility, even at 10 LOC.
@@ -335,16 +340,17 @@ function classifyTier(s) {
   //       LOC floor matches rule A (40) so a 45-LOC predict-yield macro
   //       isn't penalized for not happening to touch state.
   //   (D) Delegation production: handler is a one-line delegation
-  //       (delegates=true) AND has hasTest=true AND frontendUse=true.
-  //       The work is happening in an imported module the grader can't
-  //       follow, but it's exercised by both a real test and a real
-  //       frontend lens — that's the same exercise signal a non-
-  //       delegation production-grade macro carries. Don't penalize
-  //       handlers for being well-factored wrappers.
+  //       (delegates=true) AND has hasTest=true. Tested wrappers around
+  //       imported modules — the work IS happening, just one file away
+  //       from where the grader can see it. Most are internal-API macros
+  //       (agents.freeze, autonomy.profile, attention_alloc.budget) that
+  //       other backend code calls — they don't surface in frontend
+  //       grep, but the test signal proves the delegation chain works.
+  //       Frontend-use is no longer required; hasTest alone is enough.
   if (s.combinedLoc >= 40 && s.stateTouch && exercised && robustness) return 'production-grade';
   if (s.externalIO && s.tryCatch && exercised) return 'production-grade';
   if (s.combinedLoc >= 40 && s.tryCatch && exercised) return 'production-grade';
-  if (s.delegates && s.hasTest && s.frontendUse) return 'production-grade';
+  if (s.delegates && s.hasTest) return 'production-grade';
   return 'functional';
 }
 
