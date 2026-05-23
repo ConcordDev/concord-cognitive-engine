@@ -9,11 +9,27 @@ every lens fills its catalog/data via free public APIs + user uploads by
 design. Licensed content is the *only* acknowledged structural gap; every
 item in every "Missing" backlog is a buildable feature (no licensing walls).
 
+> **Read the claim language critically.** Every spec file has every
+> "Missing" item checked `[x]` (shipped), which is what drives the
+> 0-backlog aggregate below. May 2026 spot-checks found cases where the
+> shipped-claim language overstates actual depth: `code.md`'s
+> "Real-time multiplayer / Live Share editing — front-to-back" is a
+> polling op-log with no WebSocket sync or CRDT/OT; `healthcare.md`'s
+> "Telehealth video visit integration — front-to-back" is appointment
+> scheduling plus an optional Daily.co API hook (no video client). The
+> macros + components named in each spec exist; the question is whether
+> "shipped front-to-back" means category-leader depth or a working stub.
+> Trust the per-spec file lists of names; treat the prose-language
+> "front-to-back" boilerplate as the author's optimistic gloss.
+
 ## Aggregate
 
 - Lenses audited: **235**
-- Average feature parity: **~91%**
+- Average feature parity: **~91%** *(per the individual spec self-scores;
+  see caveat above)*
 - Total buildable features in the backlog (sum of all "Missing" items): **0**
+  *(every spec has every item `[x]`-checked; the real backlog is non-zero
+  because some `[x]` items shipped as stubs)*
 
 | Parity band | Lenses |
 |---|---|
