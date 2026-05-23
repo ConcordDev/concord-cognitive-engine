@@ -18,6 +18,18 @@ The earlier "0 broken / 0 SCAFFOLD" claim in this file relied on a verifier that
 
 **Feature-parity claim is currently contradictory** — `docs/lens-specs/README.md` says "~91% average parity, 0 buildable features in backlog" (all spec files have every Missing item checked `[x]` shipped), but spot-checks in May 2026 found cases where the spec language overstates depth (e.g. `code/Live Share` is a polling op-log not a real-time multiplayer CRDT; `healthcare/telehealth-create` is appointment scheduling + an optional Daily.co hook, not a video client). Trust the individual spec files for what's wired (they're code-verified per item), but read claim language critically — "shipped front-to-back" sometimes covers a working stub. The earlier "~50% parity / ~1,686 buildable backlog" figure in this file was from a snapshot before the May 2026 batch closeout work; it's stale.
 
+**Macro depth distribution** — reproducible via `node scripts/grade-macro-depth.mjs` (output at `audit/macro-depth.json`). Each `(domain, macro)` pair is classified on three tiers based on combined-LOC + state-touch + try/catch + realtime/cross-macro/external-IO signals + test/frontend usage. Helper-function bodies in the same source file are recursed one level so handlers that delegate (e.g. `code.debug-run` → `runDebugSession`) score against the real work. Latest run (HEAD `21c8f34`, 2026-05-23):
+
+| Tier | Count | % | Definition |
+|---|---:|---:|---|
+| stub | 1,153 | 13.7% | ≤25 combined LOC AND no state touch AND no external I/O — trivial wrapper or hardcoded-shape return |
+| functional | 7,098 | 84.1% | substantive but missing at least one production-quality signal (test coverage, robustness pattern, or sufficient LOC) |
+| production-grade | 191 | 2.3% | ≥80 combined LOC AND touches state AND exercised by tests OR a frontend lens AND has at least one robustness signal (try/catch / realtime emit / cross-macro call / external I/O) |
+
+Weighted depth score: **0.554** (1.0 = all production-grade; stub=0.2, functional=0.6, production=1.0). The 191 production-grade macros include `dtu.create` (428 LOC, the core DTU substrate entry point), `code.codebase-chat`, `code.lsp-hover`, `healthcare.telehealth-create`, the royalty cascade entries, several economy + agent macros. The 1,153 stubs include many small-scope catalog/list helpers (often delegations the grader can detect — see `delegates` field — and treats as functional), but ~185 are genuinely shallow user-visible features (`audit/macro-depth.json` → filter `tier=="stub" AND frontendUse==true`). User-visible stubs queued for upgrade in `docs/STUB_UPGRADE_BACKLOG.md`.
+
+The 84.1% functional tier is where most of the codebase sits — code that runs and is wired but doesn't have tests OR doesn't have try/catch OR sits below the 80-LOC threshold. This is the honest answer to "is everything shipped" — the macro names exist, the wiring resolves, but production-grade polish (test + state + robustness signal + non-trivial LOC) only holds across 2.3% of the surface. The remaining 84.1% is the path forward: add tests + error handling + deepen implementations to lift these into production-grade.
+
 **Source-of-truth inventory:** `docs/AUDIT_INVENTORY.md` is itself stale at HEAD `21c8f34` (it was last regenerated at HEAD `6d32663`, before migrations 193–201, the absorbed-libs work, and ~60 additional domain files landed). Numbers in this file are the post-2026-05-23 direct-grep counts; if the inventory disagrees, the inventory is the stale one. Reproduction commands sit next to every number below.
 
 ---
