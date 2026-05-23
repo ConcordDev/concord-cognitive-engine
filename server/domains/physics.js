@@ -684,6 +684,7 @@ export default function registerPhysicsActions(registerLensAction) {
   });
 
   registerLensAction("physics", "scene-save", (ctx, _artifact, params = {}) => {
+  try {
     const s = getPhysState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = physActor(ctx);
@@ -714,7 +715,8 @@ export default function registerPhysicsActions(registerLensAction) {
     map.set(id, scene);
     savePhysState();
     return { ok: true, result: { scene } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("physics", "scene-get", (ctx, _artifact, params = {}) => {
     const s = getPhysState();
@@ -1030,6 +1032,7 @@ export default function registerPhysicsActions(registerLensAction) {
   // ruler endpoint, a protractor vertex, or queries the force on a body.
 
   registerLensAction("physics", "measure", (_ctx, _artifact, params = {}) => {
+  try {
     const tool = String(params.tool || "ruler");
     if (tool === "ruler") {
       const a = params.a || {}, b = params.b || {};
@@ -1083,7 +1086,8 @@ export default function registerPhysicsActions(registerLensAction) {
       };
     }
     return { ok: false, error: `unknown tool "${tool}". use: ruler, protractor, force` };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Curriculum simulations — guided PhET-style learning modules ──
   //
@@ -1210,6 +1214,7 @@ export default function registerPhysicsActions(registerLensAction) {
   }
 
   registerLensAction("physics", "curriculum-list", (_ctx, _artifact, _params = {}) => {
+  try {
     return {
       ok: true,
       result: {
@@ -1219,13 +1224,16 @@ export default function registerPhysicsActions(registerLensAction) {
         })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("physics", "curriculum-get", (_ctx, _artifact, params = {}) => {
+  try {
     const mod = curriculumModules().find(m => m.id === String(params.id));
     if (!mod) return { ok: false, error: "module not found" };
     return { ok: true, result: { module: mod } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Pendulum analytic helper — backs the "predict then verify" curriculum loop
   registerLensAction("physics", "pendulum-period", (_ctx, _artifact, params = {}) => {

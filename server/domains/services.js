@@ -57,6 +57,7 @@ export default function registerServicesActions(registerLensAction) {
   });
 
   registerLensAction("services", "clientRetentionReport", (ctx, artifact, _params) => {
+  try {
     const clients = artifact.data?.clients || [];
     const now = new Date();
     let totalVisits = 0;
@@ -102,9 +103,11 @@ export default function registerServicesActions(registerLensAction) {
         atRiskClients: atRisk,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("services", "commissionCalc", (ctx, artifact, params) => {
+  try {
     const sales = artifact.data?.sales || [];
     const tiers = params.tiers || [
       { min: 0, max: 5000, rate: 0.05 },
@@ -169,9 +172,11 @@ export default function registerServicesActions(registerLensAction) {
         tiers,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("services", "dailyCloseReport", (ctx, artifact, params) => {
+  try {
     const appointments = artifact.data?.appointments || [];
     const dateStr = params.date || new Date().toISOString().split('T')[0];
 
@@ -217,7 +222,8 @@ export default function registerServicesActions(registerLensAction) {
         generatedAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("services", "supplyCheck", (ctx, artifact, _params) => {
     const supplies = artifact.data?.materials || artifact.data?.supplies || [];

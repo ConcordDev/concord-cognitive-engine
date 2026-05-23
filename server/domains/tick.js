@@ -12,6 +12,7 @@ export default function registerTickActions(registerLensAction) {
    * params.deadThresholdMultiplier = multiplier for dead detection (default 3)
    */
   registerLensAction("tick", "healthPulse", (ctx, artifact, params) => {
+  try {
     const ticks = artifact.data?.ticks || [];
     if (ticks.length === 0) return { ok: true, result: { message: "No tick data to analyze." } };
 
@@ -148,7 +149,8 @@ export default function registerTickActions(registerLensAction) {
         deadComponents: deadComponents.map(c => ({ componentId: c.componentId, lastSeen: c.lastSeen, timeSinceMs: c.timeSinceLastTickMs })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * loadPredict
@@ -159,6 +161,7 @@ export default function registerTickActions(registerLensAction) {
    * params.alpha = EMA smoothing factor (default 0.3)
    */
   registerLensAction("tick", "loadPredict", (ctx, artifact, params) => {
+  try {
     const history = artifact.data?.loadHistory || [];
     if (history.length < 3) return { ok: true, result: { message: "Need at least 3 data points for prediction." } };
 
@@ -267,7 +270,8 @@ export default function registerTickActions(registerLensAction) {
         dataPoints: sorted.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * rhythmAnalysis
@@ -276,6 +280,7 @@ export default function registerTickActions(registerLensAction) {
    * artifact.data.timeSeries = [{ timestamp, value }]
    */
   registerLensAction("tick", "rhythmAnalysis", (ctx, artifact, params) => {
+  try {
     const timeSeries = artifact.data?.timeSeries || [];
     if (timeSeries.length < 8) return { ok: true, result: { message: "Need at least 8 data points for rhythm analysis." } };
 
@@ -402,7 +407,8 @@ export default function registerTickActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ══════════════════════════════════════════════════════════════════════
   // Heartbeat-monitor substrate (Datadog / Better Uptime parity)

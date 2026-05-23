@@ -65,6 +65,7 @@ export default function registerMessageActions(registerLensAction) {
   // ── Saved (starred) messages ──
 
   registerLensAction("message", "saved-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
@@ -73,7 +74,8 @@ export default function registerMessageActions(registerLensAction) {
     const saved = Array.from(map.values())
       .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
     return { ok: true, result: { saved } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "save-message", (ctx, _artifact, params = {}) => {
     const s = getMessageState();
@@ -142,6 +144,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "search-messages", (ctx, _artifact, params = {}) => {
+  try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
@@ -166,7 +169,8 @@ export default function registerMessageActions(registerLensAction) {
     }
     hits.sort((a, b) => b.score - a.score || new Date(b.ts).getTime() - new Date(a.ts).getTime());
     return { ok: true, result: { hits: hits.slice(0, limit), totalMatched: hits.length, totalIndexed: arr.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reactions ──
 
@@ -212,6 +216,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "reactions-for", (ctx, _artifact, params = {}) => {
+  try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
@@ -222,7 +227,8 @@ export default function registerMessageActions(registerLensAction) {
     const reactMap = userMap.get(messageId);
     const reactions = Object.fromEntries(reactMap);
     return { ok: true, result: { messageId, reactions } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Voice note metadata registry ──
 
@@ -249,6 +255,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "voice-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
@@ -257,7 +264,8 @@ export default function registerMessageActions(registerLensAction) {
     const voices = Array.from(map.values())
       .sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime());
     return { ok: true, result: { voices } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Slack / Gmail 2026 parity — channels, DMs, threads, mentions,
@@ -302,6 +310,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "channels-create", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const name = String(params.name || "").trim().toLowerCase().replace(/\s+/g, '-');
@@ -324,7 +333,8 @@ export default function registerMessageActions(registerLensAction) {
     list.push(ch);
     saveMessageState();
     return { ok: true, result: { channel: ch } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "channels-archive", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -340,6 +350,7 @@ export default function registerMessageActions(registerLensAction) {
   // ── Messages (per-channel) ────────────────────────────────────
 
   registerLensAction("message", "messages-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
@@ -351,7 +362,8 @@ export default function registerMessageActions(registerLensAction) {
     if (before) scoped = scoped.filter(m => m.ts < before);
     const slice = scoped.slice(-limit);
     return { ok: true, result: { messages: slice, hasMore: scoped.length > limit, total: all.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "messages-send", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -466,16 +478,19 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "thread-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const rootId = String(params.rootId || "");
     const replies = listB(mapB(s.threads, userId), rootId);
     return { ok: true, result: { replies } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Mentions / Activity feed ─────────────────────────────────
 
   registerLensAction("message", "activity-feed", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     // The 'mentions' bucket key is the username (extracted from @mention) — fall back to userId here.
@@ -483,14 +498,17 @@ export default function registerMessageActions(registerLensAction) {
     const limit = Math.max(1, Math.min(200, Number(params.limit) || 50));
     const list = listB(s.mentions, handle).slice(-limit).reverse();
     return { ok: true, result: { mentions: list, handle } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Labels (Gmail-style) ──────────────────────────────────────
 
   registerLensAction("message", "labels-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { labels: listB(s.labels, msgActor(ctx)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "labels-create", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -532,12 +550,14 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "labels-for-message", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const set = mapB(s.messageLabels, userId).get(String(params.messageId || "")) || new Set();
     const labels = listB(s.labels, userId).filter(l => set.has(l.id));
     return { ok: true, result: { labels } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Snooze / unsnooze ────────────────────────────────────────
 
@@ -555,13 +575,15 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "snooze-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const now = Date.now();
     const list = listB(s.snoozed, userId);
     const active = list.filter(x => new Date(x.until).getTime() > now);
     return { ok: true, result: { snoozed: active.sort((a, b) => a.until.localeCompare(b.until)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "unsnooze", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -577,6 +599,7 @@ export default function registerMessageActions(registerLensAction) {
   // ── Schedule send (compose now → deliver later) ──────────────
 
   registerLensAction("message", "schedule-send", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
@@ -599,14 +622,17 @@ export default function registerMessageActions(registerLensAction) {
     listB(s.scheduled, userId).push(item);
     saveMessageState();
     return { ok: true, result: { scheduled: item } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "schedule-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const list = listB(s.scheduled, userId).filter(x => !x.sent);
     return { ok: true, result: { scheduled: list.slice().sort((a, b) => a.sendAt.localeCompare(b.sendAt)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "schedule-cancel", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -620,6 +646,7 @@ export default function registerMessageActions(registerLensAction) {
 
   // Flush due scheduled sends — call this on demand or wire to a heartbeat.
   registerLensAction("message", "schedule-flush-due", (ctx, _a, _p = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const list = listB(s.scheduled, userId);
@@ -648,7 +675,8 @@ export default function registerMessageActions(registerLensAction) {
     }
     if (sent.length > 0) saveMessageState();
     return { ok: true, result: { sentCount: sent.length, sent } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── AI 2026 features ──────────────────────────────────────────
 
@@ -746,6 +774,7 @@ export default function registerMessageActions(registerLensAction) {
 
   // Natural-language inbox search.
   registerLensAction("message", "ai-search-messages", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const q = String(params.query || "").trim().toLowerCase();
@@ -765,11 +794,13 @@ export default function registerMessageActions(registerLensAction) {
     }
     hits.sort((a, b) => b.ts.localeCompare(a.ts));
     return { ok: true, result: { query: q, hits, count: hits.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Inbox / dashboard summary ────────────────────────────────
 
   registerLensAction("message", "inbox-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channels = listB(s.channels, userId);
@@ -798,7 +829,8 @@ export default function registerMessageActions(registerLensAction) {
         snoozedCount,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Pinned messages (Slack-shape, channel-scoped) ──────────────
   registerLensAction("message", "pin-message", (ctx, _a, params = {}) => {
@@ -836,13 +868,15 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "pins-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
     if (!channelId) return { ok: false, error: "channelId required" };
     const pins = listB(mapB(s.pins, userId), channelId);
     return { ok: true, result: { pins, count: pins.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Channel bookmarks ──────────────────────────────────────────
   registerLensAction("message", "bookmark-add", (ctx, _a, params = {}) => {
@@ -868,13 +902,15 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "bookmark-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
     if (!channelId) return { ok: false, error: "channelId required" };
     const bookmarks = listB(mapB(s.bookmarks, userId), channelId);
     return { ok: true, result: { bookmarks, count: bookmarks.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "bookmark-remove", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -908,6 +944,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "status-get", (ctx, _a, _params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const blank = { emoji: "", text: "", presence: "active", expiresAt: null };
@@ -918,7 +955,8 @@ export default function registerMessageActions(registerLensAction) {
       return { ok: true, result: { status: blank, expired: true } };
     }
     return { ok: true, result: { status } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "status-clear", (ctx, _a, _params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1015,6 +1053,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "huddle-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = params.channelId ? String(params.channelId) : null;
@@ -1023,7 +1062,8 @@ export default function registerMessageActions(registerLensAction) {
     if (params.liveOnly) huddles = huddles.filter(h => h.status === "live");
     huddles.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     return { ok: true, result: { huddles, liveCount: huddles.filter(h => h.status === "live").length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── File sharing & attachments ────────────────────────────────
 
@@ -1067,6 +1107,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "file-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = params.channelId ? String(params.channelId) : null;
@@ -1079,7 +1120,8 @@ export default function registerMessageActions(registerLensAction) {
     files.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
     const totalBytes = files.reduce((sum, f) => sum + (f.sizeBytes || 0), 0);
     return { ok: true, result: { files, count: files.length, totalBytes } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "file-delete", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1131,6 +1173,7 @@ export default function registerMessageActions(registerLensAction) {
   // Poll-based live state: who is typing + how many new messages
   // have arrived in a channel since the caller's last-seen timestamp.
   registerLensAction("message", "channel-live-state", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
@@ -1157,7 +1200,8 @@ export default function registerMessageActions(registerLensAction) {
         serverTs: nowIsoMsg(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Slash commands + bot / app integrations ───────────────────
 
@@ -1170,12 +1214,15 @@ export default function registerMessageActions(registerLensAction) {
   ];
 
   registerLensAction("message", "command-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const custom = listB(s.commands, msgActor(ctx));
     return { ok: true, result: { commands: [...BUILTIN_COMMANDS, ...custom], builtinCount: BUILTIN_COMMANDS.length, customCount: custom.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "command-register", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     let name = String(params.name || "").trim();
@@ -1199,7 +1246,8 @@ export default function registerMessageActions(registerLensAction) {
     list.push(cmd);
     saveMessageState();
     return { ok: true, result: { command: cmd } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "command-remove", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1264,13 +1312,15 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "app-messages-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
     if (!channelId) return { ok: false, error: "channelId required" };
     const list = listB(mapB(s.appMessages, userId), channelId);
     return { ok: true, result: { appMessages: list.slice(-100), count: list.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Notification preferences ──────────────────────────────────
 
@@ -1286,6 +1336,7 @@ export default function registerMessageActions(registerLensAction) {
   }
 
   registerLensAction("message", "notif-prefs-get", (ctx, _a, _p = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const prefs = s.notifPrefs.get(userId) || defaultNotifPrefs();
@@ -1300,9 +1351,11 @@ export default function registerMessageActions(registerLensAction) {
       dndActive = start <= end ? (cur >= start && cur < end) : (cur >= start || cur < end);
     }
     return { ok: true, result: { prefs, dndActive } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "notif-prefs-set", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const prefs = s.notifPrefs.get(userId) || defaultNotifPrefs();
@@ -1326,7 +1379,8 @@ export default function registerMessageActions(registerLensAction) {
     s.notifPrefs.set(userId, prefs);
     saveMessageState();
     return { ok: true, result: { prefs } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "notif-channel-set", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1346,6 +1400,7 @@ export default function registerMessageActions(registerLensAction) {
 
   // Evaluate whether a given message text would notify the user.
   registerLensAction("message", "notif-check", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
@@ -1369,7 +1424,8 @@ export default function registerMessageActions(registerLensAction) {
       reason = "all";
     }
     return { ok: true, result: { willNotify, reason, matchedKeywords, channelLevel } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Workspace member directory + profiles ─────────────────────
 
@@ -1397,6 +1453,7 @@ export default function registerMessageActions(registerLensAction) {
   });
 
   registerLensAction("message", "profile-get", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const memberId = String(params.memberId || "").trim();
@@ -1404,9 +1461,11 @@ export default function registerMessageActions(registerLensAction) {
     const profile = mapB(s.profiles, userId).get(memberId);
     if (!profile) return { ok: true, result: { profile: null, found: false } };
     return { ok: true, result: { profile, found: true } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("message", "directory-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
     const q = String(params.query || "").trim().toLowerCase();
@@ -1419,5 +1478,6 @@ export default function registerMessageActions(registerLensAction) {
     }
     members.sort((a, b) => (a.displayName || a.memberId).localeCompare(b.displayName || b.memberId));
     return { ok: true, result: { members, count: members.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

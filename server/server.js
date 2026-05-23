@@ -11079,6 +11079,7 @@ register("tools","web_search", (ctx, input={}) => {
 // ===== GOAL SYSTEM MACROS =====
 
 register("goals", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("goals_status");
   ensureGoalSystem();
 
@@ -11105,6 +11106,7 @@ register("goals", "status", (ctx, _input = {}) => {
     config: ctx.state.goals.config,
     invariants: GOAL_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("goals", "propose", (ctx, input = {}) => {
@@ -11205,6 +11207,7 @@ register("goals", "activate", (ctx, input = {}) => {
 }, { public: false });
 
 register("goals", "progress", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("goals_progress");
   ensureGoalSystem();
 
@@ -11221,6 +11224,7 @@ register("goals", "progress", (ctx, input = {}) => {
     completed: result.completed || false,
     error: result.error
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: false });
 
 register("goals", "complete", (ctx, input = {}) => {
@@ -11245,6 +11249,7 @@ register("goals", "abandon", (ctx, input = {}) => {
 }, { public: false });
 
 register("goals", "list", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("goals_list");
   ensureGoalSystem();
 
@@ -11272,9 +11277,11 @@ register("goals", "list", (ctx, input = {}) => {
     }));
 
   return { ok: true, goals, total: ctx.state.goals.registry.size };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("goals", "get", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("goals_get");
   ensureGoalSystem();
 
@@ -11285,6 +11292,7 @@ register("goals", "get", (ctx, input = {}) => {
   if (!goal) return { ok: false, error: "Goal not found" };
 
   return { ok: true, goal };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("goals", "auto_propose", (ctx, _input = {}) => {
@@ -11324,6 +11332,7 @@ register("goals", "config", (ctx, input = {}) => {
 // ===== WORLD MODEL MACROS =====
 
 register("worldmodel", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_status");
   ensureWorldModel();
 
@@ -11337,6 +11346,7 @@ register("worldmodel", "status", (ctx, _input = {}) => {
     config: ctx.state.worldModel.config,
     invariants: WORLD_MODEL_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("worldmodel", "create_entity", (ctx, input = {}) => {
@@ -11353,6 +11363,7 @@ register("worldmodel", "create_relation", (ctx, input = {}) => {
 }, { public: false });
 
 register("worldmodel", "get_entity", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_get_entity");
   ensureWorldModel();
 
@@ -11368,9 +11379,11 @@ register("worldmodel", "get_entity", (ctx, input = {}) => {
   const entity = ctx.state.worldModel.entities.get(entityId);
   if (!entity) return { ok: false, error: "Entity not found" };
   return { ok: true, entity };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("worldmodel", "list_entities", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_list_entities");
   ensureWorldModel();
 
@@ -11400,9 +11413,11 @@ register("worldmodel", "list_entities", (ctx, input = {}) => {
     }));
 
   return { ok: true, entities, total: ctx.state.worldModel.entities.size };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("worldmodel", "list_relations", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_list_relations");
   ensureWorldModel();
 
@@ -11428,6 +11443,7 @@ register("worldmodel", "list_relations", (ctx, input = {}) => {
     }));
 
   return { ok: true, relations, total: ctx.state.worldModel.relations.size };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("worldmodel", "simulate", (ctx, input = {}) => {
@@ -11441,6 +11457,7 @@ register("worldmodel", "counterfactual", (ctx, input = {}) => {
 }, { public: false });
 
 register("worldmodel", "get_simulation", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_get_simulation");
   ensureWorldModel();
 
@@ -11451,9 +11468,11 @@ register("worldmodel", "get_simulation", (ctx, input = {}) => {
   if (!sim) return { ok: false, error: "Simulation not found" };
 
   return { ok: true, simulation: sim };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("worldmodel", "list_simulations", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_list_simulations");
   ensureWorldModel();
 
@@ -11473,6 +11492,7 @@ register("worldmodel", "list_simulations", (ctx, input = {}) => {
     }));
 
   return { ok: true, simulations, total: ctx.state.worldModel.simulations.size };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("worldmodel", "snapshot", (ctx, input = {}) => {
@@ -11481,6 +11501,7 @@ register("worldmodel", "snapshot", (ctx, input = {}) => {
 }, { public: false });
 
 register("worldmodel", "list_snapshots", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_list_snapshots");
   ensureWorldModel();
 
@@ -11493,9 +11514,11 @@ register("worldmodel", "list_snapshots", (ctx, _input = {}) => {
   }));
 
   return { ok: true, snapshots };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("worldmodel", "extract_from_dtu", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("worldmodel_extract");
 
   const dtuId = String(input.dtuId || "");
@@ -11505,6 +11528,7 @@ register("worldmodel", "extract_from_dtu", (ctx, input = {}) => {
   if (!dtu) return { ok: false, error: "DTU not found" };
 
   return extractEntitiesFromDtu(dtu);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: false });
 
 register("worldmodel", "config", (ctx, input = {}) => {
@@ -11615,6 +11639,7 @@ register("worldmodel", "delete_entity", (ctx, input = {}) => {
 // ===== SEMANTIC UNDERSTANDING MACROS =====
 
 register("semantic", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("semantic_status");
   ensureSemanticEngine();
   return {
@@ -11625,9 +11650,11 @@ register("semantic", "status", (ctx, _input = {}) => {
     config: ctx.state.semantic.config,
     invariants: SEMANTIC_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("semantic", "similar", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("semantic_similar");
   const query = String(input.query || "");
   if (!query) return { ok: false, error: "query required" };
@@ -11635,40 +11662,50 @@ register("semantic", "similar", (ctx, input = {}) => {
   const threshold = input.threshold;
   const results = findSimilarDtus(query, limit, threshold);
   return { ok: true, results, query };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("semantic", "embed", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("semantic_embed");
   const text = String(input.text || "");
   if (!text) return { ok: false, error: "text required" };
   const embedding = computeLocalEmbedding(text);
   return { ok: true, embedding, dimension: embedding.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("semantic", "classify_intent", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("semantic_classify");
   const text = String(input.text || "");
   if (!text) return { ok: false, error: "text required" };
   return { ok: true, ...classifySemanticIntent(text) };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("semantic", "extract_entities", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("semantic_extract");
   const text = String(input.text || "");
   if (!text) return { ok: false, error: "text required" };
   const entities = extractEntities(text);
   return { ok: true, entities };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("semantic", "semantic_roles", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("semantic_roles");
   const text = String(input.text || "");
   if (!text) return { ok: false, error: "text required" };
   const roles = extractSemanticRoles(text);
   return { ok: true, roles };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("semantic", "compare", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("semantic_compare");
   const text1 = String(input.text1 || input.a || "");
   const text2 = String(input.text2 || input.b || "");
@@ -11677,6 +11714,7 @@ register("semantic", "compare", (ctx, input = {}) => {
   const emb2 = computeLocalEmbedding(text2);
   const similarity = cosineSimilarity(emb1, emb2);
   return { ok: true, similarity, interpretation: similarity > 0.8 ? "very similar" : similarity > 0.6 ? "related" : similarity > 0.4 ? "somewhat related" : "different" };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END SEMANTIC UNDERSTANDING MACROS =====
@@ -11684,6 +11722,7 @@ register("semantic", "compare", (ctx, input = {}) => {
 // ===== TRANSFER LEARNING MACROS =====
 
 register("transfer", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("transfer_status");
   ensureTransferEngine();
   return {
@@ -11695,9 +11734,11 @@ register("transfer", "status", (ctx, _input = {}) => {
     config: ctx.state.transfer.config,
     invariants: TRANSFER_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("transfer", "classify_domain", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("transfer_classify");
   const dtuId = String(input.dtuId || "");
   if (!dtuId) return { ok: false, error: "dtuId required" };
@@ -11705,6 +11746,7 @@ register("transfer", "classify_domain", (ctx, input = {}) => {
   if (!dtu) return { ok: false, error: "DTU not found" };
   const domain = classifyDomain(dtu);
   return { ok: true, dtuId, domain };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("transfer", "extract_pattern", (ctx, input = {}) => {
@@ -11715,19 +11757,23 @@ register("transfer", "extract_pattern", (ctx, input = {}) => {
 }, { public: false });
 
 register("transfer", "list_patterns", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("transfer_list");
   ensureTransferEngine();
   const patterns = Array.from(ctx.state.transfer.patterns.values())
     .map(p => ({ id: p.id, name: p.name, sourceDomain: p.sourceDomain, confidence: p.confidence, dtuCount: p.structure.dtuCount }));
   return { ok: true, patterns };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("transfer", "find_analogies", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("transfer_analogies");
   const targetDomain = String(input.domain || "general");
   const query = String(input.query || "");
   const results = findAnalogousPatterns(targetDomain, query);
   return { ok: true, results };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("transfer", "apply_pattern", (ctx, input = {}) => {
@@ -11740,6 +11786,7 @@ register("transfer", "apply_pattern", (ctx, input = {}) => {
 }, { public: false });
 
 register("transfer", "list_transfers", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("transfer_list_transfers");
   ensureTransferEngine();
   const transfers = ctx.state.transfer.transfers.slice(-50).map(t => ({
@@ -11747,6 +11794,7 @@ register("transfer", "list_transfers", (ctx, _input = {}) => {
     confidence: t.confidence, status: t.status, createdAt: t.createdAt
   }));
   return { ok: true, transfers };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END TRANSFER LEARNING MACROS =====
@@ -11754,6 +11802,7 @@ register("transfer", "list_transfers", (ctx, _input = {}) => {
 // ===== EXPERIENCE LEARNING MACROS =====
 
 register("experience", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("experience_status");
   ensureExperienceLearning();
   const el = ctx.state.experienceLearning;
@@ -11765,17 +11814,21 @@ register("experience", "status", (ctx, _input = {}) => {
     stats: el.stats,
     config: el.config
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("experience", "retrieve", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("experience_retrieve");
   const domain = String(input.domain || "general");
   const topic = String(input.topic || "");
   const keywords = Array.isArray(input.keywords) ? input.keywords : [];
   return { ok: true, ...retrieveExperience(domain, topic, keywords) };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("experience", "patterns", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("experience_patterns");
   ensureExperienceLearning();
   const patterns = Array.from(ctx.state.experienceLearning.patterns.values())
@@ -11783,6 +11836,7 @@ register("experience", "patterns", (ctx, input = {}) => {
     .slice(0, Number(input.limit || 50))
     .map(p => ({ id: p.id, domain: p.domain, bestStrategy: p.bestStrategy, confidence: p.confidence, episodeCount: p.episodeCount, keywords: p.keywords }));
   return { ok: true, patterns };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("experience", "consolidate", (ctx, _input = {}) => {
@@ -11792,20 +11846,24 @@ register("experience", "consolidate", (ctx, _input = {}) => {
 }, { public: false });
 
 register("experience", "strategies", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("experience_strategies");
   ensureExperienceLearning();
   const strategies = Array.from(ctx.state.experienceLearning.strategies.values())
     .sort((a, b) => b.avgQuality - a.avgQuality)
     .slice(0, Number(input.limit || 50));
   return { ok: true, strategies };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("experience", "recent", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("experience_recent");
   ensureExperienceLearning();
   const limit = clamp(Number(input.limit || 20), 1, 100);
   const episodes = ctx.state.experienceLearning.episodes.slice(-limit).reverse();
   return { ok: true, episodes };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END EXPERIENCE LEARNING MACROS =====
@@ -11813,6 +11871,7 @@ register("experience", "recent", (ctx, input = {}) => {
 // ===== ATTENTION MANAGEMENT MACROS =====
 
 register("attention", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("attention_status");
   ensureAttentionManager();
   const attn = ctx.state.attention;
@@ -11826,6 +11885,7 @@ register("attention", "status", (ctx, _input = {}) => {
     stats: attn.stats,
     config: attn.config
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("attention", "create_thread", (ctx, input = {}) => {
@@ -11841,18 +11901,22 @@ register("attention", "complete_thread", (ctx, input = {}) => {
 }, { public: false });
 
 register("attention", "list_threads", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("attention_list");
   ensureAttentionManager();
   const threads = Array.from(ctx.state.attention.threads.values())
     .sort((a, b) => b.priority - a.priority)
     .map(t => ({ id: t.id, type: t.type, priority: t.priority, status: t.status, description: t.description, createdAt: t.createdAt }));
   return { ok: true, threads };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("attention", "queue", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("attention_queue");
   ensureAttentionManager();
   return { ok: true, queue: ctx.state.attention.queue, completed: ctx.state.attention.completed.slice(-10) };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("attention", "add_background", (ctx, input = {}) => {
@@ -11865,6 +11929,7 @@ register("attention", "add_background", (ctx, input = {}) => {
 // ===== REFLECTION ENGINE MACROS =====
 
 register("reflection", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("reflection_status");
   ensureReflectionEngine();
   const ref = ctx.state.reflection;
@@ -11876,28 +11941,35 @@ register("reflection", "status", (ctx, _input = {}) => {
     stats: ref.stats,
     config: ref.config
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("reflection", "recent", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("reflection_recent");
   ensureReflectionEngine();
   const limit = clamp(Number(input.limit || 10), 1, 50);
   const reflections = ctx.state.reflection.reflections.slice(-limit).reverse()
     .map(r => ({ id: r.id, timestamp: r.timestamp, quality: r.quality, checks: r.checks, insights: r.insights, corrections: r.corrections }));
   return { ok: true, reflections };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("reflection", "self_model", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("reflection_self_model");
   ensureReflectionEngine();
   return { ok: true, selfModel: ctx.state.reflection.selfModel };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("reflection", "insights", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("reflection_insights");
   ensureReflectionEngine();
   const insights = Array.from(ctx.state.reflection.insights.values()).slice(-50);
   return { ok: true, insights };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("reflection", "reflect_now", (ctx, input = {}) => {
@@ -11918,6 +11990,7 @@ register("reflection", "reflect_now", (ctx, input = {}) => {
 // ===== COMMONSENSE MACROS =====
 
 register("commonsense", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("commonsense_status");
   ensureCommonsenseSubstrate();
   return {
@@ -11928,14 +12001,17 @@ register("commonsense", "status", (ctx, _input = {}) => {
     stats: ctx.state.commonsense.stats,
     invariants: COMMONSENSE_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("commonsense", "query", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("commonsense_query");
   const query = String(input.query || "");
   const category = input.category;
   const results = queryCommonsense(query, category);
   return { ok: true, results, query };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("commonsense", "add_fact", (ctx, input = {}) => {
@@ -11951,6 +12027,7 @@ register("commonsense", "surface_assumptions", (ctx, input = {}) => {
 }, { public: true });
 
 register("commonsense", "list_facts", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("commonsense_list");
   ensureCommonsenseSubstrate();
   const category = input.category;
@@ -11958,9 +12035,11 @@ register("commonsense", "list_facts", (ctx, input = {}) => {
   if (category) facts = facts.filter(f => f.category === category);
   facts = facts.slice(0, 100).map(f => ({ id: f.id, fact: f.fact, category: f.category, confidence: f.confidence }));
   return { ok: true, facts };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("commonsense", "get_assumptions", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("commonsense_assumptions");
   const dtuId = String(input.dtuId || "");
   if (!dtuId) return { ok: false, error: "dtuId required" };
@@ -11968,6 +12047,7 @@ register("commonsense", "get_assumptions", (ctx, input = {}) => {
   const data = ctx.state.commonsense.assumptions.get(dtuId);
   if (!data) return { ok: true, assumptions: [], message: "No assumptions surfaced yet" };
   return { ok: true, assumptions: data.assumptions };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END COMMONSENSE MACROS =====
@@ -11975,6 +12055,7 @@ register("commonsense", "get_assumptions", (ctx, input = {}) => {
 // ===== GROUNDING MACROS =====
 
 register("grounding", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("grounding_status");
   ensureGroundingEngine();
   return {
@@ -11987,6 +12068,7 @@ register("grounding", "status", (ctx, _input = {}) => {
     stats: ctx.state.grounding.stats,
     invariants: GROUNDING_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("grounding", "register_sensor", (ctx, input = {}) => {
@@ -12003,6 +12085,7 @@ register("grounding", "record_reading", (ctx, input = {}) => {
 }, { public: false });
 
 register("grounding", "list_sensors", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("grounding_list_sensors");
   ensureGroundingEngine();
   const sensors = Array.from(ctx.state.grounding.sensors.values()).map(s => ({
@@ -12010,6 +12093,7 @@ register("grounding", "list_sensors", (ctx, _input = {}) => {
     lastReading: s.lastReading?.value, status: s.status
   }));
   return { ok: true, sensors };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("grounding", "ground_dtu", (ctx, input = {}) => {
@@ -12042,12 +12126,14 @@ register("grounding", "approve_action", (ctx, input = {}) => {
 }, { public: false });
 
 register("grounding", "pending_actions", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("grounding_pending");
   ensureGroundingEngine();
   const actions = ctx.state.grounding.pendingActions.map(a => ({
     id: a.id, type: a.type, description: a.description, goalId: a.goalId, proposedAt: a.proposedAt
   }));
   return { ok: true, actions };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("grounding", "context", (ctx, _input = {}) => {
@@ -12056,11 +12142,13 @@ register("grounding", "context", (ctx, _input = {}) => {
 }, { public: true });
 
 register("grounding", "recent_readings", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("grounding_readings");
   ensureGroundingEngine();
   const limit = clamp(Number(input.limit || 20), 1, 100);
   const readings = ctx.state.grounding.readings.slice(-limit);
   return { ok: true, readings };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END GROUNDING MACROS =====
@@ -12068,6 +12156,7 @@ register("grounding", "recent_readings", (ctx, input = {}) => {
 // ===== REASONING CHAINS MACROS =====
 
 register("reasoning", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("reasoning_status");
   ensureReasoningEngine();
   return {
@@ -12078,6 +12167,7 @@ register("reasoning", "status", (ctx, _input = {}) => {
     config: ctx.state.reasoning.config,
     invariants: REASONING_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("reasoning", "create_chain", (ctx, input = {}) => {
@@ -12100,26 +12190,32 @@ register("reasoning", "conclude", (ctx, input = {}) => {
 }, { public: false });
 
 register("reasoning", "get_trace", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("reasoning_trace");
   const chainId = String(input.chainId || "");
   if (!chainId) return { ok: false, error: "chainId required" };
   return getReasoningTrace(chainId);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("reasoning", "validate_step", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("reasoning_validate");
   const stepId = String(input.stepId || "");
   if (!stepId) return { ok: false, error: "stepId required" };
   return validateStep(stepId);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("reasoning", "list_chains", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("reasoning_list");
   ensureReasoningEngine();
   const chains = Array.from(ctx.state.reasoning.chains.values())
     .slice(-50)
     .map(c => ({ id: c.id, question: c.question, status: c.status, stepCount: c.steps.length, confidence: c.confidence }));
   return { ok: true, chains };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END REASONING CHAINS MACROS =====
@@ -12142,8 +12238,10 @@ register("inference", "add_rule", (ctx, input = {}) => {
 }, { public: true });
 
 register("inference", "query", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("inference_query");
   return queryWithInference(input);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("inference", "syllogism", (ctx, input = {}) => {
@@ -12172,6 +12270,7 @@ register("inference", "forward_chain", (ctx, input = {}) => {
 // ===== HYPOTHESIS ENGINE MACROS =====
 
 register("hypothesis", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("hypothesis_status");
   ensureHypothesisEngine();
   return {
@@ -12183,6 +12282,7 @@ register("hypothesis", "status", (ctx, _input = {}) => {
     config: ctx.state.hypothesisEngine.config,
     invariants: HYPOTHESIS_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("hypothesis", "propose", (ctx, input = {}) => {
@@ -12212,6 +12312,7 @@ register("hypothesis", "evaluate", (ctx, input = {}) => {
 }, { public: false });
 
 register("hypothesis", "get", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("hypothesis_get");
   ensureHypothesisEngine();
   const hypothesisId = String(input.hypothesisId || input.id || "");
@@ -12219,9 +12320,11 @@ register("hypothesis", "get", (ctx, input = {}) => {
   const h = ctx.state.hypothesisEngine.hypotheses.get(hypothesisId);
   if (!h) return { ok: false, error: "Hypothesis not found" };
   return { ok: true, hypothesis: h };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("hypothesis", "list", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("hypothesis_list");
   ensureHypothesisEngine();
   const state = input.state;
@@ -12232,6 +12335,7 @@ register("hypothesis", "list", (ctx, input = {}) => {
     posteriorConfidence: h.posteriorConfidence, evidenceCount: h.evidenceFor.length + h.evidenceAgainst.length
   }));
   return { ok: true, hypotheses };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // ===== END HYPOTHESIS ENGINE MACROS =====
@@ -12239,6 +12343,7 @@ register("hypothesis", "list", (ctx, input = {}) => {
 // ===== METACOGNITION MACROS =====
 
 register("metacognition", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("metacognition_status");
   ensureMetacognitionSystem();
   return {
@@ -12249,6 +12354,7 @@ register("metacognition", "status", (ctx, _input = {}) => {
     stats: ctx.state.metacognition.stats,
     invariants: METACOGNITION_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("metacognition", "assess", (ctx, input = {}) => {
@@ -12272,22 +12378,28 @@ register("metacognition", "resolve_prediction", (ctx, input = {}) => {
 }, { public: false });
 
 register("metacognition", "calibration", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("metacognition_calibration");
   return getCalibrationReport();
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("metacognition", "select_strategy", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("metacognition_strategy");
   const problem = String(input.problem || "");
   if (!problem) return { ok: false, error: "problem description required" };
   return selectStrategy(problem);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("metacognition", "blind_spots", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("metacognition_blindspots");
   ensureMetacognitionSystem();
   const spots = ctx.state.metacognition.blindSpots.slice(-20);
   return { ok: true, blindSpots: spots };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // Introspection macros
@@ -12342,11 +12454,13 @@ register("explanation", "generate", (ctx, input = {}) => {
 }, { public: true });
 
 register("explanation", "explain_dtu", (ctx, input = {}) => {
+  try {
   enforceEthosInvariant("explanation_dtu");
   const dtuId = String(input.dtuId || "");
   const changeType = String(input.changeType || "created");
   if (!dtuId) return { ok: false, error: "dtuId required" };
   return explainDtuChange(dtuId, changeType);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("explanation", "recent", (ctx, input = {}) => {
@@ -12362,6 +12476,7 @@ register("explanation", "recent", (ctx, input = {}) => {
 // ===== META-LEARNING MACROS =====
 
 register("metalearning", "status", (ctx, _input = {}) => {
+  try {
   enforceEthosInvariant("metalearning_status");
   ensureMetaLearningSystem();
   return {
@@ -12373,6 +12488,7 @@ register("metalearning", "status", (ctx, _input = {}) => {
     stats: ctx.state.metaLearning.stats,
     invariants: META_LEARNING_INVARIANTS
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("metalearning", "define_strategy", (ctx, input = {}) => {
@@ -19937,6 +20053,7 @@ register("dtu", "delete", async (ctx, input) => {
 // distribution + average richness. The /api/dtus/stats REST route
 // in routes/dtus.js delegates to this macro so the two can't drift.
 register("dtu", "stats", (ctx, _input = {}) => {
+  try {
   const userId = ctx?.actor?.id || ctx?.actor?.userId || null;
   const all = userVisibleDTUs(userId);
   const tierCounts = {};
@@ -19956,9 +20073,11 @@ register("dtu", "stats", (ctx, _input = {}) => {
     kindCounts,
     averageRichness: all.length > 0 ? totalRichness / all.length : 0,
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("dtu", "list", (ctx, input) => {
+  try {
   const limit = clamp(Number(input.limit || 5000), 1, 5000);
   const offset = clamp(Number(input.offset || 0), 0, 1e9);
   const tier = input.tier && ["regular","mega","hyper","any"].includes(input.tier) ? input.tier : "any";
@@ -20029,6 +20148,7 @@ register("dtu", "list", (ctx, input) => {
   }
 
   return { ok: true, dtus: items, limit, offset, total };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 register("dtu", "listShadow", (ctx, input) => {
   // Shadow DTUs are internal - only admins can view them
@@ -20046,6 +20166,7 @@ register("dtu", "listShadow", (ctx, input) => {
 }, { description: "List shadow DTUs (internal/hidden by default, admin only)." });
 
 register("dtu", "syncFromGlobal", (ctx, input) => {
+  try {
   const globalDtuId = String(input.dtuId || input.id || "");
   if (!globalDtuId) return { ok: false, error: "dtuId required" };
 
@@ -20083,9 +20204,11 @@ register("dtu", "syncFromGlobal", (ctx, input) => {
   upsertDTU(localCopy, { broadcast: true });
   ctx.log("dtu.syncFromGlobal", `Synced global DTU to local: ${localCopy.title}`, { globalId: globalDtuId, localId: localCopy.id, userId });
   return { ok: true, dtu: localCopy, globalId: globalDtuId };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Sync a global DTU into the user's local inventory" });
 
 register("dtu", "cluster", (ctx, input) => {
+  try {
   // group DTUs by similarity (simple jaccard on title+tags)
   const items = dtusArray().filter(d => (d.tier || "regular") === "regular");
   const threshold = Number(input.threshold ?? 0.38);
@@ -20121,6 +20244,7 @@ register("dtu", "cluster", (ctx, input) => {
       tagHints: Array.from(new Set(c.flatMap(x=>x.tags||[]))).slice(0, 20)
     }))
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Cluster regular DTUs by topic similarity." });
 
 
@@ -22070,6 +22194,7 @@ Rules for tool use:
 // New macros for the DTU-enriched context pipeline.
 
 register("chat", "tools", (ctx, _input = {}) => {
+  try {
   const flags = _c3sessionFlags(ctx);
   const globalEnabled = Boolean(STATE.__chicken3?.toolsEnabled);
   const sessionOptIn = flags.toolsOptIn;
@@ -22149,6 +22274,7 @@ register("chat", "tools", (ctx, _input = {}) => {
     computeKeys,
     usage: 'Tools are invoked by the brain via [TOOL_CALL: {"tool": "name", "params": {...}}] markers in responses.',
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "List all tools available to the chat system and their opt-in status." });
 
 register("chat", "harvest", (ctx, input) => {
@@ -22985,6 +23111,7 @@ return { ok: true, dtu: base.dtu, designScore: score };
 });
 
 register("forge", "auto", async (ctx, input) => {
+  try {
   // Auto forge can produce multiple DTUs: summary, risks, next steps
   const prompt = String(input.prompt || "");
   const tags = Array.isArray(input.tags) ? input.tags : [];
@@ -23021,10 +23148,12 @@ register("forge", "auto", async (ctx, input) => {
     if (r?.ok) created.push(r.dtu);
   }
   return { ok: true, dtus: created };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 // Swarm domain
 register("swarm", "run", (ctx, input) => {
+  try {
   const prompt = String(input.prompt || "");
   const items = dtusArray().filter(d=>d.tier==="regular");
   // de-dup by title similarity
@@ -23059,6 +23188,7 @@ register("swarm", "run", (ctx, input) => {
 
   ctx.log("swarm.run", "Swarm completed", { removed, proposed: suggestions.length });
   return { ok: true, removedDuplicates: removed, keptCount: kept.length, suggested: suggestions };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 register("dtu", "saveSuggested", async (ctx, input) => {
@@ -23138,6 +23268,7 @@ register("wrapper", "list", (ctx, _input) => {
 });
 
 register("wrapper", "run", async (ctx, input) => {
+  try {
   const id = String(input.id || "");
   const w = ctx.state.wrappers.get(id);
   if (!w) return { ok: false, error: "Wrapper not found" };
@@ -23175,6 +23306,7 @@ register("wrapper", "run", async (ctx, input) => {
 
   ctx.log("wrapper.run", "Wrapper run", { id, name: w.name });
   return { ok: true, result };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 // Layers domain
@@ -23338,6 +23470,7 @@ register("quality", "status", (_ctx, input) => {
 }, { description: "Get quality pipeline status and pattern history" });
 
 register("quality", "preview", (_ctx, input) => {
+  try {
   const query = String(input.query || "");
   if (!query) return { ok: false, error: "Missing query" };
   const mode = input.mode || "explore";
@@ -23350,6 +23483,7 @@ register("quality", "preview", (_ctx, input) => {
     domain,
     projectionRules: CRETI_PROJECTION_RULES[intent] || CRETI_PROJECTION_RULES.default
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Preview which quality pipeline patterns would apply to a query" });
 
 // Phase 3 wire-the-Lost: surface the cartographer's latest SYSTEMS.json
@@ -24092,6 +24226,7 @@ register("legal", "sign", (ctx, input = {}) => {
 // ===================== System Status =====================
 // Returns live system metrics consumed by dashboard, header bar, and status cards
 register("system", "status", (_ctx, _input) => {
+  try {
   // Real DTU count: exclude shadow, repair, system-internal, and audit DTUs
   // Users should see how much REAL content exists, not number-padded counts
   const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu"]);
@@ -24137,6 +24272,7 @@ register("system", "status", (_ctx, _input) => {
     },
     uptime: process.uptime(),
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 // System domain (dream/autogen/evolution/synthesize) — powered by 6-stage autogen pipeline
@@ -24207,6 +24343,7 @@ register("system", "autogen", async (ctx, _input) => {
 });
 
 register("system", "evolution", async (ctx, input) => {
+  try {
   // Evolution: cluster compression + mega DTU rollup via 6-stage pipeline
   if (!STATE.dtus.size) return { ok: false, error: "No DTUs to evolve." };
 
@@ -24258,6 +24395,7 @@ register("system", "evolution", async (ctx, input) => {
   const r = await ctx.macro.run("dtu", "create", spec);
 
   return { ok: true, dtus: r?.ok ? [r.dtu] : [], trace: result.trace, writePolicy: result.writePolicy };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 
@@ -24517,6 +24655,7 @@ Return JSON: {"analogy":"your analogy","metaphor":"one-sentence metaphor","domai
 
 // Lightweight continuity snapshot DTU (no invented claims; cites parent DTU ids)
 register("system", "continuity", async (ctx, input) => {
+  try {
   const sessionId = normalizeText(input.sessionId || "default");
   const window = clamp(Number(input.window ?? 20), 5, 200);
   const commit = input.commit !== false; // default true
@@ -24556,10 +24695,12 @@ ${parents.slice(-50).map(id=>`- ${id}`).join("\n")}${parents.length>50 ? `\n…(
   if (!commit) return { ok:true, committed:false, spec };
   const r = await ctx.macro.run("dtu","create", { ...spec, allowRewrite:true });
   return { ok:true, committed:true, dtu: r.dtu, sessionId, window };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { summary:"Create a Continuity DTU capturing deltas across the last N DTUs (no invented claims)." });
 
 // Gap scan (detect missing definitions / unsupported claims / coverage score). Returns report; can optionally commit as DTU.
 register("system", "gapScan", async (ctx, input) => {
+  try {
   const window = clamp(Number(input.window ?? 300), 20, 5000);
   const commit = !!input.commit;
   const domain = normalizeText(input.domain || "general");
@@ -24651,10 +24792,12 @@ ${unsupported_claims.slice(0,10).map(x=>`- ${x.title} (${x.dtuId})`).join("\n") 
   const tags = ["gaps","system","report", `domain:${domain}`].slice(0,20);
   const r = await ctx.macro.run("dtu","create", { title:`Gaps: ${domain} (${nowISO().slice(0,10)})`, creti, tags, tier:"regular", lineage: pool.slice(-50).map(d=>d.id), source:"system.gapScan", meta:{ report } });
   return { ...report, committed:true, dtu:r.dtu };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { summary:"Detect missing definitions/unsupported claims; optionally commit a Gap DTU." });
 
 // Definition DTU creator (canonical term definition for a domain)
 register("dtu", "define", async (ctx, input) => {
+  try {
   const term = normalizeText(input.term || "");
   if (!term) return { ok:false, error:"term required" };
   const domain = normalizeText(input.domain || "general");
@@ -24696,10 +24839,12 @@ ${String(input.definition||"").trim() || "(provide a definition field or edit la
     meta: { term, domain, nonGoals, related }
   });
   return { ok:true, dtu: r.dtu, reused:false };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { summary:"Create a canonical definition DTU for a term+domain." });
 
 // Contradiction reconciliation (string-heuristic; labels resolved/isolated/undecidable; never erases minority)
 register("dtu", "reconcile", async (ctx, input) => {
+  try {
   const ids = Array.isArray(input.ids) ? input.ids : [];
   const lastN = clamp(Number(input.lastN ?? 12), 2, 200);
   const pool = ids.length ? dtusByIds(ids) : dtusArray().slice(-lastN);
@@ -24763,6 +24908,7 @@ ${conflicting_claims.map(x=>`- ${x.aTitle} <-> ${x.bTitle} (overlap=${x.overlap}
   if (input.commit === false) return { ok:true, committed:false, ...spec.meta, spec };
   const r = await ctx.macro.run("dtu","create", { ...spec, allowRewrite:true });
   return { ok:true, committed:true, dtu: r.dtu, ...spec.meta };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { summary:"Detect contradictions and create a reconciliation DTU (resolved/isolated/undecidable)." });
 
 // Experiment tracker (as DTU; immutable audit-style logging)
@@ -24807,6 +24953,7 @@ Result state: ${result_state}`,
 
 // DTU semantic-ish dedupe sweeper (non-destructive; merges lineage/tags into keeper)
 register("dtu", "dedupeSweep", async (ctx, input) => {
+  try {
   const threshold = Number(input.threshold ?? 0.92);
   const limit = Number(input.limit ?? 2000);
   const items = dtusArray().slice(0, limit).map(d => ({ d, txt: tokenish(dtuText(d)) }));
@@ -24835,6 +24982,7 @@ register("dtu", "dedupeSweep", async (ctx, input) => {
   }
   ctx.log("dtu.dedupeSweep", "Dedupe sweep complete", { merges: merges.length, threshold });
   return { ok:true, merges, threshold };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Merge near-duplicate DTUs by similarity; keeps lineage." });
 
 // ── Phase C: dtu.protocol_validate ─────────────────────────────────────────
@@ -25084,6 +25232,7 @@ register("synth", "combine", async (ctx, input) => {
 }, { description: "Combine DTUs into a new synthesized DTU (local-first, optional LLM)." });
 
 register("evolution", "dedupe", async (ctx, input) => {
+  try {
   // merge near-duplicates by title+tags similarity; keep lineage
   const threshold = Number(input.threshold ?? 0.86);
   const items = dtusArray();
@@ -25113,9 +25262,11 @@ register("evolution", "dedupe", async (ctx, input) => {
 
   ctx.log("evolution.dedupe", "Deduped DTUs", { merged, threshold });
   return { ok:true, merged, total: STATE.dtus.size };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Merge near-duplicate DTUs, preserving lineage." });
 
 register("heartbeat", "tick", async (ctx, input) => {
+  try {
   // not "spawn a DTU" — run a mini debate + optional synthesis
   const reason = String(input.reason || "heartbeat");
   const llm = !!input.llm;
@@ -25144,6 +25295,7 @@ register("heartbeat", "tick", async (ctx, input) => {
     ctx.log("heartbeat.tick", "Heartbeat synthesis failed", { reason, error: made.error });
     return { ok: true, did: "noop", reason: "synthesis_failed" };
   }
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 
@@ -25789,6 +25941,7 @@ register("anon", "decryptLocal", (ctx, input) => {
 
 // council domain enhancements
 register("council", "reviewGlobal", async (ctx, input) => {
+  try {
   const dtuId = String(input.dtuId || "");
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok:false, error:"DTU not found" };
@@ -25824,6 +25977,7 @@ register("council", "reviewGlobal", async (ctx, input) => {
   });
 
   return { ok:true, decision:"approve", why, whyDTU: whyDTU.id, globalHash: h };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { summary:"Global gate with strict no-duplicates + why." });
 
 register("council", "weeklyDebateTick", async (ctx, input) => {
@@ -26443,6 +26597,7 @@ register("verify","conflictCheck", (ctx, input) => {
 
 
 register("verify","feasibility", async (ctx, input) => {
+  try {
   const query = String(input?.query||"");
   const llm = (typeof input?.llm === "boolean") ? input.llm : ctx.state.settings.llmDefault;
   const k = clamp(Number(input?.k||10), 1, 25);
@@ -26540,6 +26695,7 @@ register("verify","feasibility", async (ctx, input) => {
   }
 
   return { ok:true, classification:"undecidable", reason:"no_meaningful_anchor_evidence", relevantIds: relevant.map(d=>d.id) };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { summary:"Feasibility classification. Deterministic by default; may use LLM to refine between feasible/conditionally_feasible/undecidable. Infeasible is reserved for explicit anchor conflicts." });
 
 
@@ -32716,8 +32872,10 @@ register("search", "query", (ctx, input) => {
 });
 
 register("search", "reindex", (_ctx, _input) => {
+  try {
   rebuildSearchIndex();
   return { ok: true, documents: SEARCH_INDEX.documents.size, terms: SEARCH_INDEX.invertedIndex.size };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 // ---- Local LLM Support (Ollama) ----
@@ -33199,6 +33357,7 @@ function requireAdminRole(ctx) {
 }
 
 register("admin", "dashboard", (ctx, _input) => {
+  try {
   const denied = requireAdminRole(ctx); if (denied) return denied;
   const uptime = process.uptime();
   const memory = process.memoryUsage();
@@ -33254,6 +33413,7 @@ register("admin", "dashboard", (ctx, _input) => {
     },
     dtuStore: typeof STATE.dtus.getMetrics === "function" ? STATE.dtus.getMetrics() : { mode: "memory-only" }
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 register("admin", "logs", (ctx, input) => {
@@ -34413,6 +34573,7 @@ register("scope", "promote", async (ctx, input) => {
 // ── Creative Registry Macros ────────────────────────────────────────────────
 
 register("creative", "registry", async (ctx, input) => {
+  try {
   const { domain, contentType, limit = 50, offset = 0, sort = "newest" } = input || {};
 
   let entries = CREATIVE_REGISTRY.get(domain) || [];
@@ -34464,6 +34625,7 @@ register("creative", "registry", async (ctx, input) => {
     total: entries.length,
     hasMore: offset + limit < entries.length,
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Get creative registry for a domain." });
 
 register("creative", "domains", async (ctx, input) => {
@@ -34753,21 +34915,25 @@ register("marketplace", "royalties", async (ctx, input) => {
 // ── Citation Check Macro ────────────────────────────────────────────────────
 
 register("scope", "checkCitations", async (ctx, input) => {
+  try {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
   const result = verifyCitationIntegrity(dtu);
   return { ok: true, ...result };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Check citation integrity for a DTU." });
 
 // ── Royalty Preview Macro ───────────────────────────────────────────────────
 
 register("scope", "royaltyPreview", async (ctx, input) => {
+  try {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "dtu_not_found" };
   const royalties = computeRoyaltyCascade(dtu);
   return { ok: true, royalties, totalRate: royalties.reduce((s, r) => s + r.rate, 0) };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Preview royalty cascade for a DTU." });
 
 // ── API Routes for Dual Global & Royalties ──────────────────────────────────
@@ -34894,6 +35060,7 @@ register("graph", "visualData", (ctx, input) => {
 });
 
 register("graph", "forceGraph", (ctx, input) => {
+  try {
   if (GRAPH_INDEX.dirty) rebuildGraphIndex();
   const { centerNode, depth, maxNodes } = input;
   let nodes = [], links = [];
@@ -34915,6 +35082,7 @@ register("graph", "forceGraph", (ctx, input) => {
     links = Array.from(GRAPH_INDEX.edges.values()).filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
   return { ok: true, nodes, links };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 app.post("/api/graph/query", asyncHandler(async (req, res) => res.json(await runMacro("graph", "query", req.body, makeCtx(req)))));
@@ -36978,6 +37146,7 @@ registerLensAction("agents", "arbitrate", (ctx, artifact, params) => {
 
 // === Sim (Simulation) ===
 registerLensAction("sim", "simulate", (ctx, artifact, params) => {
+  try {
   const assumptions = artifact.data?.assumptions || params.assumptions || [];
   const _variables = artifact.data?.variables || {};
   let seed = 0;
@@ -37007,6 +37176,7 @@ registerLensAction("sim", "simulate", (ctx, artifact, params) => {
   artifact.updatedAt = nowISO();
   saveStateDebounced();
   return { ok: true, result };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 registerLensAction("sim", "analyze", (ctx, artifact, _params) => {
   const lastRun = artifact.data?.lastRun;
@@ -37290,6 +37460,7 @@ registerLensAction("whiteboard", "render", (ctx, artifact, params) => {
   return { ok: true, render: { boardId: artifact.id, format: params.format || "png", renderedAt: nowISO() } };
 });
 registerLensAction("whiteboard", "layout", (ctx, artifact, params) => {
+  try {
   const elements = artifact.data?.elements || [];
   const layoutType = params.type || "force";
   const spacing = params.spacing || 200;
@@ -37400,6 +37571,7 @@ registerLensAction("whiteboard", "layout", (ctx, artifact, params) => {
     bounds: { width, height },
     quality: { minDistance: laid.length > 1 ? Math.round(minDist) : null, spread: layoutType },
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 registerLensAction("whiteboard", "collaborate", (ctx, artifact, _params) => {
   const session = { id: uid("wbsess"), boardId: artifact.id, participants: [ctx.actor?.userId || "anon"], startedAt: nowISO() };
@@ -38032,6 +38204,7 @@ registerLensAction("thread", "extract_decisions", (ctx, artifact, _params) => {
 
 // === Music ===
 registerLensAction("music", "analyze", (ctx, artifact, _params) => {
+  try {
   const bpm = artifact.data?.bpm || null;
   const key = artifact.data?.key || null;
   const duration = artifact.data?.duration || 0;
@@ -38074,6 +38247,7 @@ registerLensAction("music", "analyze", (ctx, artifact, _params) => {
       genre, analyzedAt: nowISO()
     }
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 registerLensAction("music", "render", (ctx, artifact, params) => {
   const render = { id: uid("mrender"), trackId: artifact.id, format: params.format || "wav", status: "complete", renderedAt: nowISO() };
@@ -38151,6 +38325,7 @@ registerLensAction("finance", "alert", (ctx, artifact, params) => {
   return { ok: true, alert };
 });
 registerLensAction("finance", "simulate", (ctx, artifact, params) => {
+  try {
   const trades = artifact.data?.trades || [];
   const currentPrice = artifact.data?.currentPrice || 0;
   const scenarios = params.scenarios || 1000;
@@ -38203,6 +38378,7 @@ registerLensAction("finance", "simulate", (ctx, artifact, params) => {
       simulatedAt: nowISO()
     }
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 registerLensAction("finance", "generate_report", (ctx, artifact, params) => {
   const trades = artifact.data?.trades || [];
@@ -38610,6 +38786,7 @@ registerLensAction("game", "resolve_turn", (ctx, artifact, params) => {
   return { ok: true, turn };
 });
 registerLensAction("game", "balance", (ctx, artifact, params) => {
+  try {
   const level = artifact.data?.level || 1;
   const totalXp = artifact.data?.xp || 0;
   const turns = artifact.data?.turns || [];
@@ -38648,6 +38825,7 @@ registerLensAction("game", "balance", (ctx, artifact, params) => {
       assessment: assessment.length > 0 ? assessment : ["balanced"], balancedAt: nowISO()
     }
   };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 // Load all super-lens domain action modules
@@ -69387,6 +69565,7 @@ structuredLog("info", "phase4_player_agency_init", {
 // stream of brain activations so the cognitive-replay scrubber can render
 // what each turn did.
 register("chat", "timeline", (ctx, input = {}) => {
+  try {
   if (!STATE?.sessions) return { ok: false, reason: "no_state_sessions" };
   const userId = input.userId || ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
@@ -69426,6 +69605,7 @@ register("chat", "timeline", (ctx, input = {}) => {
     events.length = Math.min(events.length, limit);
   }
   return { ok: true, userId, sessionId, events, count: events.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { note: "Per-turn brain-activation timeline for the cognitive replay scrubber." });
 
 register("chat", "summary", (ctx, input = {}) => {

@@ -203,6 +203,7 @@ export default function registerMeditationActions(registerLensAction) {
   });
 
   registerLensAction("meditation", "streak", (ctx, _a, _params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sessions = medList(s.sessions, medActor(ctx));
     const days = new Set(sessions.map((x) => x.completedAt.slice(0, 10)));
@@ -223,7 +224,8 @@ export default function registerMeditationActions(registerLensAction) {
         practicedToday: days.has(new Date().toISOString().slice(0, 10)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("meditation", "breathwork", (_ctx, _a, params = {}) => {
     const key = ["box", "478", "coherent"].includes(String(params.pattern)) ? String(params.pattern) : "box";
@@ -247,14 +249,17 @@ export default function registerMeditationActions(registerLensAction) {
   });
 
   registerLensAction("meditation", "mood-history", (ctx, _a, _params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const moods = medList(s.moods, medActor(ctx));
     const recent = [...moods].reverse().slice(0, 30);
     const avg = moods.length > 0 ? Math.round((moods.reduce((n, m) => n + m.mood, 0) / moods.length) * 10) / 10 : null;
     return { ok: true, result: { moods: recent, averageMood: avg, count: moods.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("meditation", "meditation-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = medActor(ctx);
     const sessions = medList(s.sessions, userId);
@@ -278,7 +283,8 @@ export default function registerMeditationActions(registerLensAction) {
         moodCheckins: medList(s.moods, userId).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Audio playback — synthesized ambient soundscape descriptors ─────
   // Licensed audio is excluded by design; instead we ship deterministic
@@ -376,6 +382,7 @@ export default function registerMeditationActions(registerLensAction) {
   }
 
   registerLensAction("meditation", "courses", (ctx, _a, _params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userEnroll = courseEnrollMap(s).get(medActor(ctx)) || new Map();
     const list = COURSES.map((c) => {
@@ -389,7 +396,8 @@ export default function registerMeditationActions(registerLensAction) {
       };
     });
     return { ok: true, result: { courses: list, count: list.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("meditation", "enrollCourse", (ctx, _a, params = {}) => {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -407,6 +415,7 @@ export default function registerMeditationActions(registerLensAction) {
   });
 
   registerLensAction("meditation", "courseProgress", (ctx, _a, params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const course = COURSES.find((c) => c.id === params.courseId);
     if (!course) return { ok: false, error: "course not found" };
@@ -431,9 +440,11 @@ export default function registerMeditationActions(registerLensAction) {
         finished: completed.size >= days.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("meditation", "completeCourseDay", (ctx, _a, params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const course = COURSES.find((c) => c.id === params.courseId);
     if (!course) return { ok: false, error: "course not found" };
@@ -472,7 +483,8 @@ export default function registerMeditationActions(registerLensAction) {
         finished: e.completedDays.length >= course.days.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Reminders / scheduled practice ─────────────────────────────────
 
@@ -483,6 +495,7 @@ export default function registerMeditationActions(registerLensAction) {
   const DOW = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
   registerLensAction("meditation", "setReminder", (ctx, _a, params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const time = String(params.time || "");
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { ok: false, error: "time must be HH:MM (24h)" };
@@ -499,9 +512,11 @@ export default function registerMeditationActions(registerLensAction) {
     medList(reminderMap(s), medActor(ctx)).push(entry);
     saveMed();
     return { ok: true, result: { reminder: entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("meditation", "reminders", (ctx, _a, _params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = medList(reminderMap(s), medActor(ctx));
     const now = new Date();
@@ -530,7 +545,8 @@ export default function registerMeditationActions(registerLensAction) {
         dueToday: list.filter((r) => r.enabled && r.days.includes(todayKey)).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("meditation", "toggleReminder", (ctx, _a, params = {}) => {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -587,6 +603,7 @@ export default function registerMeditationActions(registerLensAction) {
   // ─── Personalized recommendations — mood + history adaptive ─────────
 
   registerLensAction("meditation", "recommendations", (ctx, _a, params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = medActor(ctx);
     const sessions = medList(s.sessions, userId);
@@ -635,7 +652,8 @@ export default function registerMeditationActions(registerLensAction) {
         recommendations: scored,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Milestones / achievements ──────────────────────────────────────
 
@@ -664,6 +682,7 @@ export default function registerMeditationActions(registerLensAction) {
   }
 
   registerLensAction("meditation", "milestones", (ctx, _a, _params = {}) => {
+  try {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sessions = medList(s.sessions, medActor(ctx));
     const totalSessions = sessions.length;
@@ -700,5 +719,6 @@ export default function registerMeditationActions(registerLensAction) {
         metrics,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

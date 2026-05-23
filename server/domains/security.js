@@ -46,6 +46,7 @@ export default function registerSecurityActions(registerLensAction) {
   });
 
   registerLensAction("security", "incidentEscalate", (ctx, artifact, params) => {
+  try {
     const incident = artifact.data || {};
     const severity = incident.severity || params.severity || 3;
     const impact = incident.impact || params.impact || 'medium';
@@ -94,9 +95,11 @@ export default function registerSecurityActions(registerLensAction) {
         escalatedAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("security", "threatAssessment", (ctx, artifact, _params) => {
+  try {
     const threats = artifact.data?.threats || [artifact.data];
     const assessments = threats.map(t => {
       const probability = parseFloat(t.probability || t.likelihood) || 3;
@@ -145,9 +148,11 @@ export default function registerSecurityActions(registerLensAction) {
         assessments,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("security", "vulnerabilityScan", (ctx, artifact, _params) => {
+  try {
     const systems = artifact.data?.systems || artifact.data?.assets || [artifact.data];
     const findings = [];
 
@@ -223,7 +228,8 @@ export default function registerSecurityActions(registerLensAction) {
         findings,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("security", "evidenceChain", (ctx, artifact, _params) => {
     const evidenceLog = artifact.data?.evidenceLog || [];
@@ -347,6 +353,7 @@ export default function registerSecurityActions(registerLensAction) {
   });
 
   registerLensAction("security", "vuln-update", (ctx, _a, params = {}) => {
+  try {
     const s = getSecurityState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const vuln = secVulns(s, secActor(ctx)).find((v) => v.id === params.id);
     if (!vuln) return { ok: false, error: "vulnerability not found" };
@@ -356,7 +363,8 @@ export default function registerSecurityActions(registerLensAction) {
     if (Array.isArray(params.affectedAssetIds)) vuln.affectedAssetIds = params.affectedAssetIds.map(String).slice(0, 50);
     saveSecurity();
     return { ok: true, result: { vuln } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("security", "vuln-delete", (ctx, _a, params = {}) => {
     const s = getSecurityState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -369,6 +377,7 @@ export default function registerSecurityActions(registerLensAction) {
   });
 
   registerLensAction("security", "security-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getSecurityState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = secActor(ctx);
     const vulns = secVulns(s, userId);
@@ -388,7 +397,8 @@ export default function registerSecurityActions(registerLensAction) {
         posture: riskScore >= 50 ? "at-risk" : riskScore >= 20 ? "needs-attention" : "healthy",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest the latest published CVEs (CIRCL CVE-Search, free) as DTUs.
   registerLensAction("security", "feed", async (ctx, _a, params = {}) => {
@@ -498,6 +508,7 @@ export default function registerSecurityActions(registerLensAction) {
 
   // ── SIEM: correlation — cluster events sharing srcIp/user/host ────
   registerLensAction("security", "event-correlate", (ctx, _a, params = {}) => {
+  try {
     const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const events = secEvents(s, secActor(ctx));
     const windowMin = Math.max(1, Math.min(1440, Math.round(Number(params.windowMin) || 60)));
@@ -531,7 +542,8 @@ export default function registerSecurityActions(registerLensAction) {
     correlations.sort((a, b) => sevRankE(b.peakSeverity) - sevRankE(a.peakSeverity) || b.eventCount - a.eventCount);
     saveSecurity();
     return { ok: true, result: { correlations, windowMin, eventsAnalyzed: recent.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Alert rules engine: create a detection rule ──────────────────
   registerLensAction("security", "rule-add", (ctx, _a, params = {}) => {
@@ -587,6 +599,7 @@ export default function registerSecurityActions(registerLensAction) {
   // ── Alert rules engine: evaluate all rules against the event stream
   //    matched rules that meet threshold auto-create incidents.
   registerLensAction("security", "rule-evaluate", (ctx, _a, _params = {}) => {
+  try {
     const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = secActor(ctx);
     const events = secEvents(s, userId);
@@ -630,7 +643,8 @@ export default function registerSecurityActions(registerLensAction) {
     }
     saveSecurity();
     return { ok: true, result: { triggered, rulesEvaluated: rules.filter((r) => r.enabled).length, incidentsCreated: triggered.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Incident response: list managed incidents ────────────────────
   registerLensAction("security", "incident-list", (ctx, _a, params = {}) => {
@@ -784,6 +798,7 @@ export default function registerSecurityActions(registerLensAction) {
 
   // ── Access-control / badge audit: surface anomalous access ───────
   registerLensAction("security", "badge-audit", (ctx, _a, params = {}) => {
+  try {
     const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const events = [...secBadgeEvents(s, secActor(ctx))].sort((a, b) => (a.ts > b.ts ? 1 : -1));
     const anomalies = [];
@@ -812,7 +827,8 @@ export default function registerSecurityActions(registerLensAction) {
     }
     void params;
     return { ok: true, result: { anomalies, eventsAudited: events.length, denialCount: denials.length, anomalyCount: anomalies.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Surveillance camera tiles: register a camera ─────────────────
   registerLensAction("security", "camera-add", (ctx, _a, params = {}) => {

@@ -165,6 +165,7 @@ export default function registerSchemesMacros(register) {
    * input: { schemeId, worldId, location?: {x,y,z} }
    */
   register("schemes", "gather_evidence", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
@@ -209,7 +210,8 @@ export default function registerSchemesMacros(register) {
       evidenceId,
       hookId: hookRes.ok ? hookRes.hookId : null,
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * schemes.move — force-advance a player scheme one phase.

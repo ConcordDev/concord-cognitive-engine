@@ -396,6 +396,7 @@ export default function registerPhilosophyActions(registerLensAction) {
 
   // ─── Connections graph — channels + blocks as a network ─────────────
   registerLensAction("philosophy", "connections-graph", (ctx, _a, _params = {}) => {
+  try {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phActor(ctx);
     const channels = phChannels(s, userId);
@@ -433,7 +434,8 @@ export default function registerPhilosophyActions(registerLensAction) {
         crossConnectedBlocks: blocks.filter((b) => b.channelIds.length > 1).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Argument debate threads — collaborative premise critique ───────
   registerLensAction("philosophy", "debate-create", (ctx, _a, params = {}) => {

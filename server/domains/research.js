@@ -20,6 +20,7 @@ export default function registerResearchActions(registerLensAction) {
    *   references?: string[], abstract?, keywords? }]
    */
   registerLensAction("research", "citationNetwork", (ctx, artifact, _params) => {
+  try {
     const papers = artifact.data?.papers || [];
     if (papers.length === 0) return { ok: true, result: { message: "No papers." } };
 
@@ -119,7 +120,8 @@ export default function registerResearchActions(registerLensAction) {
         networkDensity: n > 1 ? Math.round(ranked.reduce((s, p) => s + p.outDegree, 0) / (n * (n - 1)) * 10000) / 10000 : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * methodologyScore
@@ -132,6 +134,7 @@ export default function registerResearchActions(registerLensAction) {
    * }
    */
   registerLensAction("research", "methodologyScore", (ctx, artifact, _params) => {
+  try {
     const m = artifact.data?.methodology || {};
 
     // Rubric criteria with weights
@@ -225,7 +228,8 @@ export default function registerResearchActions(registerLensAction) {
         recommendations: weaknesses.map(w => `Address: ${w}`).slice(0, 5),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * reproducibilityCheck
@@ -235,6 +239,7 @@ export default function registerResearchActions(registerLensAction) {
    *   replicationAttempts? }
    */
   registerLensAction("research", "reproducibilityCheck", (ctx, artifact, _params) => {
+  try {
     const study = artifact.data?.study || {};
 
     const checks = [];
@@ -323,7 +328,8 @@ export default function registerResearchActions(registerLensAction) {
         criticalIssues: checks.filter(c => c.score < c.maxScore * 0.3).map(c => c.name),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 parity — Notion/Roam/Obsidian/Logseq second-brain ──
 
@@ -365,6 +371,7 @@ export default function registerResearchActions(registerLensAction) {
   // ── Notes CRUD ──
 
   registerLensAction("research", "note-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getResearchState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = researchActor(ctx);
@@ -384,7 +391,8 @@ export default function registerResearchActions(registerLensAction) {
     s.notes.get(userId).set(note.id, note);
     saveResearchState();
     return { ok: true, result: { note } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("research", "note-update", (ctx, _artifact, params = {}) => {
     const s = getResearchState();
@@ -485,6 +493,7 @@ export default function registerResearchActions(registerLensAction) {
   // ── Backlinks (mentions of [[note title]]) ──
 
   registerLensAction("research", "backlinks-for", (ctx, _artifact, params = {}) => {
+  try {
     const s = getResearchState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = researchActor(ctx);
@@ -509,11 +518,13 @@ export default function registerResearchActions(registerLensAction) {
       }
     }
     return { ok: true, result: { backlinks: hits, count: hits.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Note search (full-text) ──
 
   registerLensAction("research", "notes-search", (ctx, _artifact, params = {}) => {
+  try {
     const s = getResearchState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = researchActor(ctx);
@@ -538,7 +549,8 @@ export default function registerResearchActions(registerLensAction) {
     }
     hits.sort((a, b) => b.score - a.score);
     return { ok: true, result: { hits: hits.slice(0, 50), count: hits.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Zotero 2026 parity — reference manager ─────────────────────────
   // A library of references, collections, tags, reading status,
@@ -591,6 +603,7 @@ export default function registerResearchActions(registerLensAction) {
 
   // ── References ──────────────────────────────────────────────────────
   registerLensAction("research", "reference-add", (ctx, _a, params = {}) => {
+  try {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = rfClean(params.title, 400);
     if (!title) return { ok: false, error: "title required" };
@@ -611,7 +624,8 @@ export default function registerResearchActions(registerLensAction) {
     rfListB(s.references, rfAid(ctx)).push(ref);
     saveResearchState();
     return { ok: true, result: { reference: ref } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("research", "reference-list", (ctx, _a, params = {}) => {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -631,6 +645,7 @@ export default function registerResearchActions(registerLensAction) {
   });
 
   registerLensAction("research", "reference-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
     const ref = findRef(s, userId, params.id);
@@ -648,7 +663,8 @@ export default function registerResearchActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("research", "reference-update", (ctx, _a, params = {}) => {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -825,15 +841,18 @@ export default function registerResearchActions(registerLensAction) {
 
   // ── Citations + bibliography ────────────────────────────────────────
   registerLensAction("research", "cite-format", (ctx, _a, params = {}) => {
+  try {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ref = findRef(s, rfAid(ctx), params.id);
     if (!ref) return { ok: false, error: "reference not found" };
     const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
       ? String(params.style).toLowerCase() : "apa";
     return { ok: true, result: { style, citation: formatCitation(ref, style), key: citationKey(ref) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("research", "bibliography-build", (ctx, _a, params = {}) => {
+  try {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
     const style = ["apa", "mla", "chicago", "bibtex"].includes(String(params.style).toLowerCase())
@@ -856,10 +875,12 @@ export default function registerResearchActions(registerLensAction) {
         bibliography: entries.join(style === "bibtex" ? "\n\n" : "\n"),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Library stats ───────────────────────────────────────────────────
   registerLensAction("research", "library-stats", (ctx, _a, _params = {}) => {
+  try {
     const s = getResearchState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
     const refs = s.references.get(userId) || [];
@@ -881,7 +902,8 @@ export default function registerResearchActions(registerLensAction) {
         byType, byStatus,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 parity backlog — Obsidian graph + Elicit + live search ────
   // Backfill the extra STATE buckets used by the backlog macros.
@@ -907,6 +929,7 @@ export default function registerResearchActions(registerLensAction) {
 
   // ── Note graph — backlink network for Obsidian-style graph view ─────
   registerLensAction("research", "note-graph", (ctx, _a, _params = {}) => {
+  try {
     const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = researchActor(ctx);
     const map = s.notes.get(userId);
@@ -947,7 +970,8 @@ export default function registerResearchActions(registerLensAction) {
         stats: { noteCount: nodes.length, linkCount: edges.length, orphanCount: orphans.length },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Note titles — autocomplete source for inline [[wikilinks]] ──────
   registerLensAction("research", "note-titles", (ctx, _a, params = {}) => {
@@ -1049,6 +1073,7 @@ export default function registerResearchActions(registerLensAction) {
 
   // ── Canvas / spatial board for arranging notes ──────────────────────
   registerLensAction("research", "canvas-save", (ctx, _a, params = {}) => {
+  try {
     const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = researchActor(ctx);
     const name = String(params.name || "").trim();
@@ -1093,7 +1118,8 @@ export default function registerResearchActions(registerLensAction) {
     }
     saveResearchState();
     return { ok: true, result: { canvas } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("research", "canvas-list", (ctx, _a, _params = {}) => {
     const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };

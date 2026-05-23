@@ -208,6 +208,7 @@ export default function registerInvariantActions(registerLensAction) {
    * artifact.data.replicas = [{ replicaId, data: { key: value, ... } }]
    */
   registerLensAction("invariant", "consistencyProof", (ctx, artifact, params) => {
+  try {
     const replicas = artifact.data?.replicas || [];
     if (replicas.length < 2) return { ok: true, result: { message: "Need at least 2 replicas for consistency check." } };
 
@@ -344,7 +345,8 @@ export default function registerInvariantActions(registerLensAction) {
         } : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * constraintSatisfaction
@@ -354,6 +356,7 @@ export default function registerInvariantActions(registerLensAction) {
    * artifact.data.constraints = [{ variables: [name, name], relation: "eq"|"neq"|"lt"|"gt"|"lte"|"gte"|"custom", customFn?: string }]
    */
   registerLensAction("invariant", "constraintSatisfaction", (ctx, artifact, params) => {
+  try {
     const variables = artifact.data?.variables || [];
     const constraints = artifact.data?.constraints || [];
 
@@ -476,7 +479,8 @@ export default function registerInvariantActions(registerLensAction) {
         status: !feasible ? "unsatisfiable" : determined.length === variables.length ? "solved" : "reduced",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ────────────────────────────────────────────────────────────────────
   // Continuous monitoring / counterexamples / templates / temporal logic /

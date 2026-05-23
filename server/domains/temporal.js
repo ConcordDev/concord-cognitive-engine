@@ -664,6 +664,7 @@ export default function registerTemporalActions(registerLensAction) {
    * params.period (seasonal period, auto-detected if omitted)
    */
   registerLensAction("temporal", "timeSeriesDecompose", (ctx, artifact, params) => {
+  try {
     const resolved = resolveSeries(ctx, artifact, params);
     if (resolved.error) return { ok: false, error: resolved.error };
     const values = resolved.values;
@@ -786,7 +787,8 @@ export default function registerTemporalActions(registerLensAction) {
         variance: { total: r(varTotal), trend: r(varTrend), seasonal: r(varSeasonal), residual: r(varResidual) },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * anomalyDetection
@@ -795,6 +797,7 @@ export default function registerTemporalActions(registerLensAction) {
    * params.windowSize (default: auto), params.threshold (z-score threshold, default: 2.5)
    */
   registerLensAction("temporal", "anomalyDetection", (ctx, artifact, params) => {
+  try {
     const resolved = resolveSeries(ctx, artifact, params);
     if (resolved.error) return { ok: false, error: resolved.error };
     const values = resolved.values;
@@ -905,7 +908,8 @@ export default function registerTemporalActions(registerLensAction) {
         anomalyRateLabel: anomalyRate > 0.1 ? "high" : anomalyRate > 0.03 ? "moderate" : "low",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * forecast
@@ -916,6 +920,7 @@ export default function registerTemporalActions(registerLensAction) {
    * params.alpha, params.beta, params.gamma (smoothing parameters, default: auto-tuned)
    */
   registerLensAction("temporal", "forecast", (ctx, artifact, params) => {
+  try {
     const resolved = resolveSeries(ctx, artifact, params);
     if (resolved.error) return { ok: false, error: resolved.error };
     const values = resolved.values;
@@ -1062,5 +1067,6 @@ export default function registerTemporalActions(registerLensAction) {
         accuracyLabel: mape < 5 ? "excellent" : mape < 15 ? "good" : mape < 30 ? "moderate" : "poor",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

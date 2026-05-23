@@ -10,6 +10,7 @@ export default function registerQueueActions(registerLensAction) {
    * artifact.data.queue = { arrivals: [timestamp], completions: [{ arrived, completed }], servers?: number }
    */
   registerLensAction("queue", "queueAnalytics", (ctx, artifact, params) => {
+  try {
     const queue = artifact.data?.queue || {};
     const arrivals = (queue.arrivals || []).map(t => new Date(t).getTime()).filter(t => !isNaN(t)).sort((a, b) => a - b);
     const completions = (queue.completions || []).map(c => ({
@@ -149,7 +150,8 @@ export default function registerQueueActions(registerLensAction) {
         dataPoints: { arrivals: arrivals.length, completions: completions.length },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * prioritySchedule
@@ -159,6 +161,7 @@ export default function registerQueueActions(registerLensAction) {
    * params.algorithm = "weighted_fair" | "deadline_monotonic" | "priority_preemptive" (default "weighted_fair")
    */
   registerLensAction("queue", "prioritySchedule", (ctx, artifact, params) => {
+  try {
     const jobs = artifact.data?.jobs || [];
     if (jobs.length === 0) return { ok: true, result: { message: "No jobs to schedule." } };
 
@@ -310,7 +313,8 @@ export default function registerQueueActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * backpressure
@@ -319,6 +323,7 @@ export default function registerQueueActions(registerLensAction) {
    * artifact.data.metrics = { queueDepth: number, maxCapacity: number, ingressRate: number, egressRate: number, history?: [{ timestamp, depth, ingressRate, egressRate }] }
    */
   registerLensAction("queue", "backpressure", (ctx, artifact, params) => {
+  try {
     const metrics = artifact.data?.metrics || {};
     const depth = metrics.queueDepth || 0;
     const capacity = metrics.maxCapacity || 1000;
@@ -435,7 +440,8 @@ export default function registerQueueActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ───────────────────────────────────────────────────────────────────────
   // Real in-memory job-queue substrate (RabbitMQ / BullMQ-style console).

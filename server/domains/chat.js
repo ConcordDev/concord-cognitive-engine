@@ -136,6 +136,7 @@ export default function registerChatActions(registerLensAction) {
    * artifact.data.messages = [{ author, text, timestamp?, threadId? }]
    */
   registerLensAction("chat", "participantAnalysis", (ctx, artifact, _params) => {
+  try {
     const messages = artifact.data?.messages || [];
     if (messages.length === 0) {
       return { ok: true, result: { message: "No messages to analyze." } };
@@ -263,7 +264,8 @@ export default function registerChatActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * topicDetection
@@ -273,6 +275,7 @@ export default function registerChatActions(registerLensAction) {
    * params.windowSize (default 3), params.threshold (default 0.3)
    */
   registerLensAction("chat", "topicDetection", (ctx, artifact, params) => {
+  try {
     const messages = artifact.data?.messages || [];
     if (messages.length < 2) {
       return { ok: true, result: { message: "Need at least 2 messages for topic detection." } };
@@ -389,7 +392,8 @@ export default function registerChatActions(registerLensAction) {
         parameters: { windowSize, threshold },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 parity macros — Projects / Prompts / Search / Branches / Scheduled ──
   //
@@ -533,6 +537,7 @@ export default function registerChatActions(registerLensAction) {
   });
 
   registerLensAction("chat", "prompt-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actorIdFor(ctx);
@@ -556,7 +561,8 @@ export default function registerChatActions(registerLensAction) {
     s.prompts.get(userId).set(prompt.id, prompt);
     saveChatState();
     return { ok: true, result: { prompt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "prompt-update", (ctx, _artifact, params = {}) => {
     const s = getChatState();
@@ -624,6 +630,7 @@ export default function registerChatActions(registerLensAction) {
   });
 
   registerLensAction("chat", "threads-search", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actorIdFor(ctx);
@@ -659,7 +666,8 @@ export default function registerChatActions(registerLensAction) {
         totalMatched: scored.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Conversation branches (fork from a message) ──
 
@@ -727,6 +735,7 @@ export default function registerChatActions(registerLensAction) {
   });
 
   registerLensAction("chat", "scheduled-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actorIdFor(ctx);
@@ -751,7 +760,8 @@ export default function registerChatActions(registerLensAction) {
     s.scheduled.get(userId).set(task.id, task);
     saveChatState();
     return { ok: true, result: { task } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "scheduled-cancel", (ctx, _artifact, params = {}) => {
     const s = getChatState();
@@ -793,6 +803,7 @@ export default function registerChatActions(registerLensAction) {
   // they survive across devices.
 
   registerLensAction("chat", "voice-get", (ctx, _artifact, _params = {}) => {
+  try {
     const s = ensureChatSubmaps(getChatState() || {});
     if (!s.voicePrefs) return { ok: false, error: "STATE unavailable" };
     const userId = actorIdFor(ctx);
@@ -806,7 +817,8 @@ export default function registerChatActions(registerLensAction) {
       updatedAt: null,
     };
     return { ok: true, result: { prefs } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "voice-update", (ctx, _artifact, params = {}) => {
     const s = getChatState();
@@ -844,6 +856,7 @@ export default function registerChatActions(registerLensAction) {
   // system prompt when an assistant is active.
 
   registerLensAction("chat", "assistants-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -853,9 +866,11 @@ export default function registerChatActions(registerLensAction) {
     const assistants = Array.from(map.values())
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return { ok: true, result: { assistants } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "assistant-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -882,9 +897,11 @@ export default function registerChatActions(registerLensAction) {
     s.assistants.get(userId).set(assistant.id, assistant);
     saveChatState();
     return { ok: true, result: { assistant } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "assistant-update", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -911,7 +928,8 @@ export default function registerChatActions(registerLensAction) {
     a.updatedAt = nowIsoChat();
     saveChatState();
     return { ok: true, result: { assistant: a } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "assistant-delete", (ctx, _artifact, params = {}) => {
     const s = getChatState();
@@ -933,6 +951,7 @@ export default function registerChatActions(registerLensAction) {
   // are reversible (parity with ChatGPT Canvas / Claude Artifacts).
 
   registerLensAction("chat", "canvas-list", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -950,9 +969,11 @@ export default function registerChatActions(registerLensAction) {
       }))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return { ok: true, result: { docs } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "canvas-get", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -962,7 +983,8 @@ export default function registerChatActions(registerLensAction) {
     const map = s.canvasDocs.get(userId);
     if (!map || !map.has(id)) return { ok: false, error: "not found" };
     return { ok: true, result: { doc: map.get(id) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "canvas-create", (ctx, _artifact, params = {}) => {
     const s = getChatState();
@@ -1065,6 +1087,7 @@ export default function registerChatActions(registerLensAction) {
   // the system prompt so context carries between threads.
 
   registerLensAction("chat", "memory-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -1074,7 +1097,8 @@ export default function registerChatActions(registerLensAction) {
     const memories = Array.from(map.values())
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return { ok: true, result: { memories, activeCount: memories.filter((m) => m.active).length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "memory-add", (ctx, _artifact, params = {}) => {
     const s = getChatState();
@@ -1231,6 +1255,7 @@ export default function registerChatActions(registerLensAction) {
   });
 
   registerLensAction("chat", "code-history", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -1241,7 +1266,8 @@ export default function registerChatActions(registerLensAction) {
       ok: true,
       result: { runs: arr.slice(-limit).reverse(), total: arr.length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Conversation share links — public read-only snapshot ─────────────
   // Creates an opaque token bound to a frozen copy of the conversation's
@@ -1249,6 +1275,7 @@ export default function registerChatActions(registerLensAction) {
   // owner can revoke it. Parity with ChatGPT shared links.
 
   registerLensAction("chat", "share-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -1292,9 +1319,11 @@ export default function registerChatActions(registerLensAction) {
         createdAt: link.createdAt,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "share-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -1310,7 +1339,8 @@ export default function registerChatActions(registerLensAction) {
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return { ok: true, result: { links } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "share-view", (_ctx, _artifact, params = {}) => {
     const s = getChatState();
@@ -1408,6 +1438,7 @@ export default function registerChatActions(registerLensAction) {
   });
 
   registerLensAction("chat", "image-history", (ctx, _artifact, params = {}) => {
+  try {
     const s = getChatState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     ensureChatSubmaps(s);
@@ -1415,7 +1446,8 @@ export default function registerChatActions(registerLensAction) {
     const arr = s.images.get(userId) || [];
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 30));
     return { ok: true, result: { images: arr.slice(-limit).reverse(), total: arr.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("chat", "image-delete", (ctx, _artifact, params = {}) => {
     const s = getChatState();

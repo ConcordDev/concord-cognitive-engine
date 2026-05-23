@@ -61,6 +61,7 @@ export default function registerAviationActions(registerLensAction) {
   });
 
   registerLensAction("aviation", "dutyTimeCheck", (ctx, artifact, _params) => {
+  try {
     const shifts = artifact.data?.shifts || [];
     const flights = artifact.data?.flights || [];
     const now = new Date();
@@ -113,7 +114,8 @@ export default function registerAviationActions(registerLensAction) {
         remaining28day: Math.max(0, Math.round((190 - hours28days) * 10) / 10),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "flightSummary", (ctx, artifact, _params) => {
     const flights = artifact.data?.flights || [];
@@ -149,6 +151,7 @@ export default function registerAviationActions(registerLensAction) {
   });
 
   registerLensAction("aviation", "maintenanceAlert", (ctx, artifact, _params) => {
+  try {
     const items = artifact.data?.maintenanceItems || [];
     const now = new Date();
     const currentHours = artifact.data?.totalTime || artifact.data?.currentHours || 0;
@@ -208,9 +211,11 @@ export default function registerAviationActions(registerLensAction) {
         allClear: alerts.length === 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "weatherCheck", (ctx, artifact, _params) => {
+  try {
     const wind = artifact.data?.wind || {};
     const visibility = artifact.data?.visibility != null ? artifact.data.visibility : null;
     const ceiling = artifact.data?.ceiling != null ? artifact.data.ceiling : null;
@@ -262,7 +267,8 @@ export default function registerAviationActions(registerLensAction) {
         flightCategory,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "slipUtilization", (ctx, artifact, _params) => {
     const slips = artifact.data?.slips || [];
@@ -286,6 +292,7 @@ export default function registerAviationActions(registerLensAction) {
    * artifact.data.loading: [{ station, weight, arm }]
    */
   registerLensAction("aviation", "calculate-wb", (ctx, artifact, params) => {
+  try {
     const ac = artifact.data?.aircraft || params?.aircraft || {};
     const loading = artifact.data?.loading || params?.loading || [];
 
@@ -325,7 +332,8 @@ export default function registerAviationActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastWB = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * validate-wb
@@ -336,6 +344,7 @@ export default function registerAviationActions(registerLensAction) {
    * "Validate W&B" feature in lens-features.js had no handler.
    */
   registerLensAction("aviation", "validate-wb", (ctx, artifact, params) => {
+  try {
     const ac = artifact.data?.aircraft || params?.aircraft || {};
     const loading = artifact.data?.loading || params?.loading || [];
     const emptyWeight = Number(ac.emptyWeight) || 0;
@@ -390,7 +399,8 @@ export default function registerAviationActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastWBValidation = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 parity — ForeFlight/Garmin Pilot/Jeppesen FliteDeck Pro ──
   //
@@ -787,6 +797,7 @@ export default function registerAviationActions(registerLensAction) {
   });
 
   registerLensAction("aviation", "logbook-add", (ctx, _a, params = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const aircraftId = String(params.aircraftId || "");
@@ -820,7 +831,8 @@ export default function registerAviationActions(registerLensAction) {
     }
     saveAviationState();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "logbook-delete", (ctx, _a, params = {}) => {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -860,6 +872,7 @@ export default function registerAviationActions(registerLensAction) {
   // ── Currency tracking (BFR / IPC / medical / 90-day) ────────
 
   registerLensAction("aviation", "currency-status", (ctx, _a, _p = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const events = ensureAvBucket(s, "currencyEvents", userId);
@@ -895,7 +908,8 @@ export default function registerAviationActions(registerLensAction) {
         ifr180: { current: approaches180 >= 6, approaches: approaches180 },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "currency-event-add", (ctx, _a, params = {}) => {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -952,6 +966,7 @@ export default function registerAviationActions(registerLensAction) {
   });
 
   registerLensAction("aviation", "track-logs-append", (ctx, _a, params = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const trackId = String(params.trackId || "");
@@ -980,7 +995,8 @@ export default function registerAviationActions(registerLensAction) {
     if (groundSpeedKts > track.maxGroundSpeedKts) track.maxGroundSpeedKts = groundSpeedKts;
     saveAviationState();
     return { ok: true, result: { track } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "track-logs-end", (ctx, _a, params = {}) => {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1066,6 +1082,7 @@ export default function registerAviationActions(registerLensAction) {
   // ── Route advisor (suggest filed routes) ────────────────────
 
   registerLensAction("aviation", "route-advisor", (ctx, _a, params = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const from = String(params.from || "").toUpperCase();
@@ -1093,7 +1110,8 @@ export default function registerAviationActions(registerLensAction) {
       })),
     ];
     return { ok: true, result: { from, to, suggestions, altitudeFt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Live flight tracking (FlightAware-shape) ────────────────
 
@@ -1136,6 +1154,7 @@ export default function registerAviationActions(registerLensAction) {
   // ── Fuel stops calculator ───────────────────────────────────
 
   registerLensAction("aviation", "fuel-stops-calc", (ctx, _a, params = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const aircraftId = String(params.aircraftId || "");
@@ -1165,11 +1184,13 @@ export default function registerAviationActions(registerLensAction) {
         usableFuelGal: usableGal,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard summary (AvShell data source) ─────────────────
 
   registerLensAction("aviation", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const aircraft = ensureAvBucket(s, "aircraft", userId);
@@ -1192,7 +1213,8 @@ export default function registerAviationActions(registerLensAction) {
         watchedFlights: (s.watchedFlights?.get(userId) || []).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "feed", async (ctx, _a, params = {}) => {
     const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };
@@ -1471,6 +1493,7 @@ export default function registerAviationActions(registerLensAction) {
   // user's own plan — no fabricated flights.
 
   registerLensAction("aviation", "plan-file", (ctx, _a, params = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const planId = String(params.planId || "");
@@ -1511,7 +1534,8 @@ export default function registerAviationActions(registerLensAction) {
     s.flightFilings.get(userId).push(filing);
     saveAviationState();
     return { ok: true, result: { filing } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "plan-filings-list", (ctx, _a, _params = {}) => {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1615,6 +1639,7 @@ export default function registerAviationActions(registerLensAction) {
   });
 
   registerLensAction("aviation", "endorsement-add", (ctx, _a, params = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const kind = String(params.kind || "");
@@ -1643,7 +1668,8 @@ export default function registerAviationActions(registerLensAction) {
     ensureAvBucket(s, "endorsements", userId).push(endorsement);
     saveAviationState();
     return { ok: true, result: { endorsement } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("aviation", "endorsement-delete", (ctx, _a, params = {}) => {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1700,6 +1726,7 @@ export default function registerAviationActions(registerLensAction) {
   // recorded points; no synthetic flight data.
 
   registerLensAction("aviation", "efis-snapshot", (ctx, _a, params = {}) => {
+  try {
     const s = getAviationState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = avActor(ctx);
     const trackId = String(params.trackId || "");
@@ -1765,5 +1792,6 @@ export default function registerAviationActions(registerLensAction) {
         note: "Attitude derived from GPS track deltas — advisory only, not a certified ADAHRS source.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };

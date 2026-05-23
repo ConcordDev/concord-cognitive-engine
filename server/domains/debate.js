@@ -148,6 +148,7 @@ export default function registerDebateActions(registerLensAction) {
   });
 
   registerLensAction("debate", "debate-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const debate = dbList(s, dbActor(ctx)).find((d) => d.id === params.id);
     if (!debate) return { ok: false, error: "debate not found" };
@@ -167,7 +168,8 @@ export default function registerDebateActions(registerLensAction) {
         score: scoreDebateTree(debate),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("debate", "debate-delete", (ctx, _a, params = {}) => {
     const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -338,6 +340,7 @@ export default function registerDebateActions(registerLensAction) {
 
   // Public read-only fetch by share token — no owner scoping, read-only shape.
   registerLensAction("debate", "shared-view", (_ctx, _a, params = {}) => {
+  try {
     const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.shared instanceof Map)) s.shared = new Map();
     const token = dbClean(params.shareToken, 60);
@@ -359,7 +362,8 @@ export default function registerDebateActions(registerLensAction) {
         score: scoreDebateTree(debate),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("debate", "claim-edit", (ctx, _a, params = {}) => {
     const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -410,6 +414,7 @@ export default function registerDebateActions(registerLensAction) {
   });
 
   registerLensAction("debate", "debate-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getDebateState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const debates = dbList(s, dbActor(ctx));
     return {
@@ -423,5 +428,6 @@ export default function registerDebateActions(registerLensAction) {
         wellSupported: debates.filter((d) => scoreDebateTree(d).verdict === "well-supported").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

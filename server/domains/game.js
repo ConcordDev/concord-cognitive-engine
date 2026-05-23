@@ -26,6 +26,7 @@ export default function registerGameActions(registerLensAction) {
     return { ok: true, result: { startGold, earnRate, spendRate, inflationRate, finalGold: Math.round(gold), netFlow: Math.round(gold - startGold), timeline, sustainable: gold > startGold * 0.5, tip: gold < startGold * 0.3 ? "Economy deflating — increase earn rate or add gold sinks" : "Economy is stable" } };
   });
   registerLensAction("game", "levelCurve", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const maxLevel = parseInt(data.maxLevel) || 50;
     const baseXP = parseInt(data.baseXP) || 100;
@@ -34,7 +35,8 @@ export default function registerGameActions(registerLensAction) {
     let cumulative = 0;
     for (let l = 1; l <= maxLevel; l++) { const xp = Math.round(baseXP * Math.pow(growthFactor, l - 1)); cumulative += xp; levels.push({ level: l, xpRequired: xp, cumulativeXP: cumulative }); }
     return { ok: true, result: { maxLevel, baseXP, growthFactor, totalXPToMax: cumulative, levels: levels.filter((_, i) => i % Math.max(1, Math.floor(maxLevel / 10)) === 0 || i === levels.length - 1), midpointLevel: levels.find(l => l.cumulativeXP >= cumulative / 2)?.level, earlyGameFeels: growthFactor < 1.3 ? "slow-and-steady" : growthFactor < 1.8 ? "balanced" : "fast-start-hard-finish" } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("game", "dropRateCalc", (ctx, artifact, _params) => {
     const dropRate = parseFloat(artifact.data?.dropRatePercent) || 5;
     const attempts = parseInt(artifact.data?.attempts) || 100;

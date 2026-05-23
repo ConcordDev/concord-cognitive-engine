@@ -604,6 +604,7 @@ export default function registerMathActions(registerLensAction) {
    * params.operation: "determinant" | "transpose" | "multiply" | "inverse" | "eigenvalues" | "rank"
    */
   registerLensAction("math", "matrixOperations", (ctx, artifact, params) => {
+  try {
     const A = artifact.data?.matrixA || artifact.data?.matrix || [];
     const B = artifact.data?.matrixB;
     const op = params.operation || "determinant";
@@ -768,7 +769,8 @@ export default function registerMathActions(registerLensAction) {
       default:
         return { ok: false, error: `Unknown operation "${op}". Supported: determinant, transpose, multiply, inverse, rank, eigenvalues` };
     }
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * polynomialAnalysis

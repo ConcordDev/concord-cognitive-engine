@@ -12,6 +12,7 @@ export default function registerFractalActions(registerLensAction) {
    * params.method: "box-counting" | "hurst" | "auto" (default: auto)
    */
   registerLensAction("fractal", "fractalDimension", (ctx, artifact, params) => {
+  try {
     const points = artifact.data?.points || [];
     const values = artifact.data?.values || [];
     const method = params.method || "auto";
@@ -196,7 +197,8 @@ export default function registerFractalActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * selfSimilarity
@@ -207,6 +209,7 @@ export default function registerFractalActions(registerLensAction) {
    * params.numScales (default: 4)
    */
   registerLensAction("fractal", "selfSimilarity", (ctx, artifact, _params) => {
+  try {
     const values = (artifact.data?.values || []).map(Number).filter(v => !isNaN(v));
     if (values.length < 8) return { ok: false, error: "Need at least 8 data points." };
 
@@ -357,7 +360,8 @@ export default function registerFractalActions(registerLensAction) {
         bestMotif: motifs.length > 0 ? motifs.sort((a, b) => a.distance - b.distance)[0] : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * complexityMeasure
@@ -368,6 +372,7 @@ export default function registerFractalActions(registerLensAction) {
    * params.maxScale (for multi-scale entropy, default: 10)
    */
   registerLensAction("fractal", "complexityMeasure", (ctx, artifact, params) => {
+  try {
     const rawValues = artifact.data?.values || [];
     const rawSequence = artifact.data?.sequence || "";
     const numBins = params.symbolize || 8;
@@ -534,7 +539,8 @@ export default function registerFractalActions(registerLensAction) {
         compositeScore: r((normalizedLZ + normalizedEntropy) / 2),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ──────────────────────────────────────────────────────────────────────
   // Fractal renderer — escape-time computation + presets + render history

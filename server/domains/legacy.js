@@ -10,6 +10,7 @@ export default function registerLegacyActions(registerLensAction) {
    * artifact.data.modules = [{ name, linesOfCode, cyclomaticComplexity?, dependencyCount?, dependencyAgeYears?, testCoverage?, duplicateRatio?, lastModifiedDaysAgo? }]
    */
   registerLensAction("legacy", "technicalDebt", (ctx, artifact, params) => {
+  try {
     const modules = artifact.data?.modules || [];
     if (modules.length === 0) return { ok: true, result: { message: "No modules to analyze." } };
 
@@ -82,7 +83,8 @@ export default function registerLegacyActions(registerLensAction) {
         topDebtSources: analyzed.slice(0, 5).map(m => ({ name: m.name, debtScore: m.debtScore, primaryFactor: Object.entries(m.debtBreakdown).sort((a, b) => b[1] - a[1])[0] })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * migrationReadiness
@@ -91,6 +93,7 @@ export default function registerLegacyActions(registerLensAction) {
    * artifact.data.system = { modules: [{ name, dependencies: [string], apis: [{ endpoint, method?, consumers?: number }], dataStores: [{ type, sizeGb?, portable?: bool }] }] }
    */
   registerLensAction("legacy", "migrationReadiness", (ctx, artifact, params) => {
+  try {
     const system = artifact.data?.system || {};
     const modules = system.modules || [];
     if (modules.length === 0) return { ok: true, result: { message: "No system modules defined." } };
@@ -202,7 +205,8 @@ export default function registerLegacyActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * riskMap
@@ -211,6 +215,7 @@ export default function registerLegacyActions(registerLensAction) {
    * artifact.data.components = [{ name, criticality: 1-5, knowledgeHolders: [string], failures: [{ date, severity: 1-5 }], revenueImpact?: number }]
    */
   registerLensAction("legacy", "riskMap", (ctx, artifact, params) => {
+  try {
     const components = artifact.data?.components || [];
     if (components.length === 0) return { ok: true, result: { message: "No components to assess." } };
 
@@ -316,7 +321,8 @@ export default function registerLegacyActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ──────────────────────────────────────────────────────────────────
   // Codebase scanning + modernization analysis (SonarQube / CAST parity)

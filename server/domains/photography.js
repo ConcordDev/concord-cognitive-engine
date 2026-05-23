@@ -573,6 +573,7 @@ export default function registerPhotographyActions(registerLensAction) {
     };
   });
   registerLensAction("photography", "raw-decode-meta", (ctx, _a, params = {}) => {
+  try {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const photo = findPhoto(s, phaid(ctx), params.id);
     if (!photo) return { ok: false, error: "photo not found" };
@@ -595,7 +596,8 @@ export default function registerPhotographyActions(registerLensAction) {
         hasRawDevelop: !!photo.rawDevelop,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Item 2: Histogram + tone curve editor ───────────────────────────
   // Histogram is computed client-side from a sampled pixel buffer the
@@ -603,6 +605,7 @@ export default function registerPhotographyActions(registerLensAction) {
   // and derives clipping warnings. Tone curves are named, per-user,
   // reusable point sets (Lightroom point-curve idiom).
   registerLensAction("photography", "histogram-compute", (ctx, _a, params = {}) => {
+  try {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const samples = Array.isArray(params.samples) ? params.samples : null;
     if (!samples || samples.length === 0) return { ok: false, error: "samples array required (pixel luma values 0-255)" };
@@ -640,7 +643,8 @@ export default function registerPhotographyActions(registerLensAction) {
         exposureHint: mean < 85 ? "underexposed" : mean > 170 ? "overexposed" : "balanced",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   // Tone curve = ordered list of {x,y} control points, 0..255.
   function sanitizeCurvePoints(raw) {
     if (!Array.isArray(raw)) return [{ x: 0, y: 0 }, { x: 255, y: 255 }];
@@ -735,6 +739,7 @@ export default function registerPhotographyActions(registerLensAction) {
     return { autoSelect: kind };
   }
   registerLensAction("photography", "mask-create", (ctx, _a, params = {}) => {
+  try {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const photo = findPhoto(s, phaid(ctx), params.photoId);
     if (!photo) return { ok: false, error: "photo not found" };
@@ -753,7 +758,8 @@ export default function registerPhotographyActions(registerLensAction) {
     photo.masks.push(mask);
     savePhotoState();
     return { ok: true, result: { mask, maskCount: photo.masks.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("photography", "mask-list", (ctx, _a, params = {}) => {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const photo = findPhoto(s, phaid(ctx), params.photoId);
@@ -823,6 +829,7 @@ export default function registerPhotographyActions(registerLensAction) {
   // Face tags are per-photo named regions. Smart collections are saved
   // metadata queries that re-evaluate against the whole catalog.
   registerLensAction("photography", "face-tag-add", (ctx, _a, params = {}) => {
+  try {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const photo = findPhoto(s, phaid(ctx), params.photoId);
     if (!photo) return { ok: false, error: "photo not found" };
@@ -844,7 +851,8 @@ export default function registerPhotographyActions(registerLensAction) {
     }
     savePhotoState();
     return { ok: true, result: { faceTags: photo.faceTags } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("photography", "face-tag-list", (ctx, _a, _params = {}) => {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const counts = new Map();
@@ -903,6 +911,7 @@ export default function registerPhotographyActions(registerLensAction) {
     return { ok: true, result: { collection: coll } };
   });
   registerLensAction("photography", "smart-collection-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phaid(ctx);
     const photos = s.photos.get(userId) || [];
@@ -910,15 +919,18 @@ export default function registerPhotographyActions(registerLensAction) {
       ...c, matchCount: photos.filter((p) => evalSmartRules(p, c.rules)).length,
     }));
     return { ok: true, result: { collections, count: collections.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("photography", "smart-collection-eval", (ctx, _a, params = {}) => {
+  try {
     const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phaid(ctx);
     const coll = (s.smartCollections.get(userId) || []).find((c) => c.id === params.id);
     if (!coll) return { ok: false, error: "smart collection not found" };
     const photos = (s.photos.get(userId) || []).filter((p) => evalSmartRules(p, coll.rules));
     return { ok: true, result: { collection: { id: coll.id, name: coll.name }, photos, count: photos.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("photography", "smart-collection-delete", (ctx, _a, params = {}) => {
     const s = getPhotoStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const arr = s.smartCollections.get(phaid(ctx)) || [];

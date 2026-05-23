@@ -464,6 +464,7 @@ export default function registerSportsActions(registerLensAction) {
   });
 
   registerLensAction("sports", "athlete-stat-log", (ctx, _a, params = {}) => {
+  try {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = spAid(ctx);
     if (!findAthlete(s, userId, params.athleteId)) return { ok: false, error: "athlete not found" };
@@ -481,9 +482,11 @@ export default function registerSportsActions(registerLensAction) {
     spListB(s.athleteStats, userId).push(entry);
     saveSportsState();
     return { ok: true, result: { statLine: entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("sports", "athlete-stats", (ctx, _a, params = {}) => {
+  try {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = spAid(ctx);
     const athlete = findAthlete(s, userId, params.athleteId);
@@ -500,7 +503,8 @@ export default function registerSportsActions(registerLensAction) {
       for (const [k, v] of Object.entries(totals)) averages[k] = Math.round((v / lines.length) * 100) / 100;
     }
     return { ok: true, result: { athlete, statLines: lines, games: lines.length, totals, averages } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Personalized feed + dashboard ───────────────────────────────────
   registerLensAction("sports", "my-scores", (ctx, _a, _params = {}) => {
@@ -522,6 +526,7 @@ export default function registerSportsActions(registerLensAction) {
   });
 
   registerLensAction("sports", "sports-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = spAid(ctx);
     const games = s.games.get(userId) || [];
@@ -542,7 +547,8 @@ export default function registerSportsActions(registerLensAction) {
         predictionAccuracy: decided > 0 ? Math.round((correct / decided) * 100) : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest real recent sports fixtures from TheSportsDB as
   // visible DTUs. Free public API (public test key "3").
@@ -881,6 +887,7 @@ export default function registerSportsActions(registerLensAction) {
 
   // ── Bracket builder (persistent per-user, single-elimination) ───────
   registerLensAction("sports", "bracket-create", (ctx, _a, params = {}) => {
+  try {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.brackets instanceof Map)) s.brackets = new Map();
     const name = spClean(params.name, 80);
@@ -910,7 +917,8 @@ export default function registerSportsActions(registerLensAction) {
     spListB(s.brackets, spAid(ctx)).push(bracket);
     saveSportsState();
     return { ok: true, result: { bracket } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("sports", "bracket-list", (ctx, _a, _params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };

@@ -313,6 +313,7 @@ export default function registerCouncilActions(registerLensAction) {
   // ── Quorum enforcement ──
 
   registerLensAction("council", "quorum-check", (ctx, _a, params = {}) => {
+  try {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMeeting(s, cUid(ctx), params.meetingId);
@@ -334,7 +335,8 @@ export default function registerCouncilActions(registerLensAction) {
           : `Quorum not met — ${present}/${required} present. Tally blocked.`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Document packet / board book ──
 
@@ -472,6 +474,7 @@ export default function registerCouncilActions(registerLensAction) {
   // Runs IRV rounds: eliminate lowest each round, redistribute, until majority.
 
   registerLensAction("council", "ranked-choice-tabulate", (_ctx, artifact, params = {}) => {
+  try {
     const ballots = Array.isArray(params.ballots) ? params.ballots
       : Array.isArray(artifact?.data?.ballots) ? artifact.data.ballots : [];
     if (ballots.length === 0) return { ok: false, error: "no ballots provided" };
@@ -527,11 +530,13 @@ export default function registerCouncilActions(registerLensAction) {
         decided: !!winner && winner.votes >= majority,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Decision archive + full-text search ──
 
   registerLensAction("council", "decision-archive", (ctx, _a, params = {}) => {
+  try {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const title = String(params.title || "").trim();
@@ -552,7 +557,8 @@ export default function registerCouncilActions(registerLensAction) {
     cList(s.decisions, cUid(ctx)).push(record);
     cSave();
     return { ok: true, result: { decision: record } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("council", "decision-search", (ctx, _a, params = {}) => {
     const s = getCouncilState();

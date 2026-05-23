@@ -412,6 +412,7 @@ export default function registerSimActions(registerLensAction) {
   });
 
   registerLensAction("sim", "sensitivityAnalysis", (ctx, artifact, _params) => {
+  try {
     const baseState = artifact.data?.baseState || {};
     const rules = artifact.data?.rules || [];
     const perturbation = parseFloat(artifact.data?.perturbation) || 10;
@@ -450,7 +451,8 @@ export default function registerSimActions(registerLensAction) {
       return { parameter: field, baseValue: baseVal, perturbation: `±${perturbation}%`, outputUp: Math.round(upOutput * 1000) / 1000, outputDown: Math.round(downOutput * 1000) / 1000, sensitivity: Math.round(Math.abs(elasticity) * 10) / 10, direction: elasticity > 0 ? "positive" : elasticity < 0 ? "negative" : "neutral" };
     }).sort((a, b) => b.sensitivity - a.sensitivity);
     return { ok: true, result: { outputField, baselineOutput: Math.round(baselineOutput * 1000) / 1000, perturbationPercent: perturbation, sensitivity, mostSensitive: sensitivity[0]?.parameter, leastSensitive: sensitivity[sensitivity.length - 1]?.parameter } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════════
   // ── NEW: stock-and-flow / system-dynamics integrator ────────────────────

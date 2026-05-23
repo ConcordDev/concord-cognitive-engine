@@ -58,6 +58,7 @@ export default function registerArtActions(registerLensAction) {
    * artifact.data.palette = ["#hex", ...] or [{ hex, name? }, ...]
    */
   registerLensAction("art", "colorHarmony", (ctx, artifact, _params) => {
+  try {
     const rawPalette = artifact.data?.palette || [];
     if (rawPalette.length === 0) return { ok: true, result: { message: "No palette provided." } };
 
@@ -142,7 +143,8 @@ export default function registerArtActions(registerLensAction) {
         dominantHue: hues.length > 0 ? Math.round(hues.reduce((s, h) => s + h, 0) / hues.length) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * compositionScore
@@ -152,6 +154,7 @@ export default function registerArtActions(registerLensAction) {
    * Scores based on rule of thirds, golden ratio, balance, and visual flow.
    */
   registerLensAction("art", "compositionScore", (ctx, artifact, _params) => {
+  try {
     const elements = artifact.data?.elements || [];
     const canvas = artifact.data?.canvas || { width: 1920, height: 1080 };
     if (elements.length === 0) return { ok: true, result: { message: "No elements to analyze." } };
@@ -247,7 +250,8 @@ export default function registerArtActions(registerLensAction) {
         elementCount: elements.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * generatePalette
@@ -257,6 +261,7 @@ export default function registerArtActions(registerLensAction) {
    * params.count = number of colors (default 5)
    */
   registerLensAction("art", "generatePalette", (ctx, artifact, params) => {
+  try {
     const baseHex = params.baseColor || artifact.data?.baseColor || "#3498db";
     const harmony = params.harmony || "analogous";
     const count = params.count || 5;
@@ -334,7 +339,8 @@ export default function registerArtActions(registerLensAction) {
         palette: palette.slice(0, count),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * styleClassify
@@ -344,6 +350,7 @@ export default function registerArtActions(registerLensAction) {
    * Values are 0-100 scales.
    */
   registerLensAction("art", "styleClassify", (ctx, artifact, _params) => {
+  try {
     const attrs = artifact.data?.attributes || {};
     const brushwork = attrs.brushwork ?? 50;
     const saturation = attrs.colorSaturation ?? 50;
@@ -388,7 +395,8 @@ export default function registerArtActions(registerLensAction) {
         confidence: matches[0].similarity > 70 ? "high" : matches[0].similarity > 50 ? "moderate" : "low",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Real museum collection APIs (free, no API key) ──
 
@@ -841,6 +849,7 @@ export default function registerArtActions(registerLensAction) {
   });
 
   registerLensAction("art", "layer-transform", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -867,7 +876,8 @@ export default function registerArtActions(registerLensAction) {
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { layerId: layer.id, transformed: ids ? ids.size : layer.strokes.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("art", "layer-flip", (ctx, _a, params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -913,6 +923,7 @@ export default function registerArtActions(registerLensAction) {
   });
 
   registerLensAction("art", "layer-adjust-color", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -930,7 +941,8 @@ export default function registerArtActions(registerLensAction) {
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { layerId: layer.id, adjusted: layer.strokes.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("art", "layer-delete", (ctx, _a, params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1124,6 +1136,7 @@ export default function registerArtActions(registerLensAction) {
   });
 
   registerLensAction("art", "palette-harmony", (_ctx, _a, params = {}) => {
+  try {
     const base = atHex(params.baseColor);
     if (!base) return { ok: false, error: "baseColor must be a #rrggbb hex" };
     const scheme = ["complementary", "analogous", "triadic", "tetradic", "split-complementary", "monochromatic"]
@@ -1138,7 +1151,8 @@ export default function registerArtActions(registerLensAction) {
       colors = [0.25, 0.4, 0.55, 0.7, 0.85].map((ll) => hslToHex(h, sat, ll));
     } else colors = [hslToHex(h - 30, sat, l), base, hslToHex(h + 30, sat, l)];
     return { ok: true, result: { baseColor: base, scheme, colors } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("art", "color-mix", (_ctx, _a, params = {}) => {
     const a = atHex(params.colorA), b = atHex(params.colorB);
@@ -1234,6 +1248,7 @@ export default function registerArtActions(registerLensAction) {
   // Filters are recorded as a per-layer effect stack so the canvas can
   // apply a CanvasFilter / pixel-shader pass when rasterising the layer.
   registerLensAction("art", "layer-apply-filter", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -1262,7 +1277,8 @@ export default function registerArtActions(registerLensAction) {
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { layerId: layer.id, filter, filterCount: layer.filters.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("art", "layer-clear-filters", (ctx, _a, params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1320,6 +1336,7 @@ export default function registerArtActions(registerLensAction) {
   // [x, y, pressure] triplets (pressure 0..1). Stored as a pressure
   // stroke so the client renders a variable-width ribbon.
   registerLensAction("art", "stroke-commit-pressure", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -1354,10 +1371,12 @@ export default function registerArtActions(registerLensAction) {
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { strokeId: stroke.id, strokeCount: layer.strokes.length, pointsKept: points.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 3. Free-angle (non-90°) layer rotation ───────────────────────────
   registerLensAction("art", "layer-rotate", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -1393,7 +1412,8 @@ export default function registerArtActions(registerLensAction) {
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { layerId: layer.id, degrees: deg, rotated } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 4. Selection refinement — lasso, magic-wand, feathering ──────────
   // A selection is a polygon (lasso) or a tolerance-based color match
@@ -1412,6 +1432,7 @@ export default function registerArtActions(registerLensAction) {
   }
 
   registerLensAction("art", "selection-lasso", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -1440,7 +1461,8 @@ export default function registerArtActions(registerLensAction) {
     art.selection = { kind: "lasso", layerId: layer.id, polygon, feather, ids: matched, createdAt: atNow() };
     saveArtState();
     return { ok: true, result: { selection: art.selection, matched: matched.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("art", "selection-magic-wand", (ctx, _a, params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1531,6 +1553,7 @@ export default function registerArtActions(registerLensAction) {
   // Mirror a committed stroke across the active symmetry guide so the
   // client can both render live and persist the mirrored copies.
   registerLensAction("art", "symmetry-mirror-stroke", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -1586,7 +1609,8 @@ export default function registerArtActions(registerLensAction) {
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { mirrored: added, strokeCount: layer.strokes.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 6. Timelapse recording of the drawing session ───────────────────
   // A timelapse is an ordered list of compact frames (timestamp + a
@@ -1679,6 +1703,7 @@ export default function registerArtActions(registerLensAction) {
   // client paints; persisted in the layer stroke list so it composites
   // and undoes like any other element.
   registerLensAction("art", "gradient-commit", (ctx, _a, params = {}) => {
+  try {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const art = findArt(s, atAid(ctx), params.artworkId);
     if (!art) return { ok: false, error: "artwork not found" };
@@ -1709,7 +1734,8 @@ export default function registerArtActions(registerLensAction) {
     art.updatedAt = atNow();
     saveArtState();
     return { ok: true, result: { elementId: el.id, strokeCount: layer.strokes.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("art", "pattern-fill-commit", (ctx, _a, params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };

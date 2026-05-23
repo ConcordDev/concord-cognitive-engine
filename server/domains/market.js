@@ -13,6 +13,7 @@ export default function registerMarketActions(registerLensAction) {
    * params.macdSignal — MACD signal line period (default 9)
    */
   registerLensAction("market", "trendAnalysis", (ctx, artifact, params) => {
+  try {
     const prices = artifact.data?.prices || [];
     if (prices.length < 2) {
       return { ok: true, result: { message: "Insufficient price data for trend analysis.", signals: [] } };
@@ -167,7 +168,8 @@ export default function registerMarketActions(registerLensAction) {
         overallTrend,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * competitorMatrix
@@ -176,6 +178,7 @@ export default function registerMarketActions(registerLensAction) {
    * artifact.data.featureWeights: { featureName: weight } (optional, default equal weights)
    */
   registerLensAction("market", "competitorMatrix", (ctx, artifact, params) => {
+  try {
     const competitors = artifact.data?.competitors || [];
     const featureWeights = artifact.data?.featureWeights || {};
 
@@ -269,7 +272,8 @@ export default function registerMarketActions(registerLensAction) {
         competitiveGaps,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * priceElasticity
@@ -278,6 +282,7 @@ export default function registerMarketActions(registerLensAction) {
    * params.method — "arc" | "loglog" (default "loglog")
    */
   registerLensAction("market", "priceElasticity", (ctx, artifact, params) => {
+  try {
     const observations = artifact.data?.observations || [];
     const method = params.method || "loglog";
 
@@ -359,7 +364,8 @@ export default function registerMarketActions(registerLensAction) {
         classification,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros (real Yahoo Finance feeds) ──
 

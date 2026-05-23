@@ -471,6 +471,7 @@ export default function registerMusicActions(registerLensAction) {
 
   // ── Listening stats + discovery ─────────────────────────────────────
   registerLensAction("music", "recently-played", (ctx, _a, _params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const seen = new Set();
@@ -484,7 +485,8 @@ export default function registerMusicActions(registerLensAction) {
       if (recent.length >= 25) break;
     }
     return { ok: true, result: { tracks: recent, count: recent.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "top-tracks", (ctx, _a, _params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -510,6 +512,7 @@ export default function registerMusicActions(registerLensAction) {
   });
 
   registerLensAction("music", "listening-stats", (ctx, _a, _params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const plays = s.plays.get(userId) || [];
@@ -530,9 +533,11 @@ export default function registerMusicActions(registerLensAction) {
         libraryTracks: (s.tracks.get(userId) || []).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "wrapped", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const year = muClean(params.year, 4) || String(new Date().getFullYear());
@@ -557,7 +562,8 @@ export default function registerMusicActions(registerLensAction) {
       ok: true,
       result: { year, totalPlays: plays.length, minutesListened: Math.round(minutes), topTracks, topArtists },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "daily-mix", (ctx, _a, _params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -576,6 +582,7 @@ export default function registerMusicActions(registerLensAction) {
   });
 
   registerLensAction("music", "music-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const tracks = s.tracks.get(userId) || [];
@@ -592,10 +599,12 @@ export default function registerMusicActions(registerLensAction) {
         queued: (s.queue.get(userId) || []).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Lyrics (Spotify/Apple Music timed-lyrics parity) ────────────────
   registerLensAction("music", "track-lyrics-set", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const track = findTrack(s, muAid(ctx), params.id);
     if (!track) return { ok: false, error: "track not found" };
@@ -613,7 +622,8 @@ export default function registerMusicActions(registerLensAction) {
     }
     saveMusicState();
     return { ok: true, result: { id: track.id, lineCount: track.lyrics.length, synced: track.lyricsSynced } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "track-lyrics-get", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -624,6 +634,7 @@ export default function registerMusicActions(registerLensAction) {
 
   // ── Radio / autoplay station (seed → continuous queue) ──────────────
   registerLensAction("music", "radio-start", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const lib = s.tracks.get(userId) || [];
@@ -660,7 +671,8 @@ export default function registerMusicActions(registerLensAction) {
     s.radio.set(userId, { label, seedGenre, seedArtist, startedAt: muNow(), trackCount: stationTracks.length });
     saveMusicState();
     return { ok: true, result: { station: s.radio.get(userId), tracks: stationTracks } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "radio-status", (ctx, _a, _params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -669,6 +681,7 @@ export default function registerMusicActions(registerLensAction) {
 
   // ── Smart Shuffle / AI DJ — weighted favorites + discovery mix ──────
   registerLensAction("music", "smart-shuffle", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     let pool = s.tracks.get(userId) || [];
@@ -716,7 +729,8 @@ export default function registerMusicActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Sleep timer ─────────────────────────────────────────────────────
   registerLensAction("music", "sleep-timer-set", (ctx, _a, params = {}) => {
@@ -751,6 +765,7 @@ export default function registerMusicActions(registerLensAction) {
 
   // ── Blend — round-robin merge of taste sources into a playlist ──────
   registerLensAction("music", "blend", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const name = muClean(params.name, 120) || "Your Blend";
@@ -790,10 +805,12 @@ export default function registerMusicActions(registerLensAction) {
     muListB(s.playlists, userId).push(playlist);
     saveMusicState();
     return { ok: true, result: { playlist, trackCount: blended.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Recommendations (seed-based or taste-profile) ───────────────────
   registerLensAction("music", "recommend", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const lib = s.tracks.get(userId) || [];
@@ -815,7 +832,8 @@ export default function registerMusicActions(registerLensAction) {
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, 20);
     return { ok: true, result: { tracks: recs, count: recs.length, basis: seed ? `seed:${seed.title}` : "taste-profile" } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Genre browse hub ────────────────────────────────────────────────
   registerLensAction("music", "genre-hub", (ctx, _a, _params = {}) => {
@@ -1160,6 +1178,7 @@ export default function registerMusicActions(registerLensAction) {
 
   // ── 9. [M] Scheduled algorithmic playlists — Discover Weekly etc. ────
   registerLensAction("music", "scheduled-playlist-refresh", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const kind = ["discover_weekly", "release_radar", "daylist"].includes(String(params.kind)) ? String(params.kind) : "discover_weekly";
@@ -1196,7 +1215,8 @@ export default function registerMusicActions(registerLensAction) {
     saveMusicState();
     const tracks = entry.trackIds.map((id) => findTrack(s, userId, id)).filter(Boolean);
     return { ok: true, result: { kind, tracks, count: tracks.length, refreshedAt, nextRefreshAt: entry.nextRefreshAt, mood: entry.mood } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "scheduled-playlist-list", (ctx, _a, _params = {}) => {
     const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1213,6 +1233,7 @@ export default function registerMusicActions(registerLensAction) {
   // Beyond genre affinity: weights co-occurrence in play sessions,
   // recency, artist diversity, and skip behaviour.
   registerLensAction("music", "smart-recommend", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const lib = s.tracks.get(userId) || [];
@@ -1261,7 +1282,8 @@ export default function registerMusicActions(registerLensAction) {
       if (diverse.length >= Math.max(1, Math.min(40, Math.round(muNum(params.limit, 20))))) break;
     }
     return { ok: true, result: { tracks: diverse, count: diverse.length, basis: "collaborative+recency", historyDepth: plays.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 11. [M] Jam — real-time synchronized group listening ────────────
   registerLensAction("music", "jam-create", (ctx, _a, params = {}) => {
@@ -1333,6 +1355,7 @@ export default function registerMusicActions(registerLensAction) {
   // Surfaces what other users in the substrate are listening to, drawn
   // from their real now-playing + recent plays state.
   registerLensAction("music", "friend-activity", (ctx, _a, _params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const activity = [];
@@ -1361,7 +1384,8 @@ export default function registerMusicActions(registerLensAction) {
     }
     activity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
     return { ok: true, result: { activity: activity.slice(0, 30), count: Math.min(30, activity.length) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 13. [M] Collaborative playlists — multi-user live editing ────────
   registerLensAction("music", "playlist-collab-edit", (ctx, _a, params = {}) => {
@@ -1392,6 +1416,7 @@ export default function registerMusicActions(registerLensAction) {
 
   // ── 14. [S] Share to social / story cards ───────────────────────────
   registerLensAction("music", "share-card", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicExtras(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const kind = ["track", "playlist", "wrapped"].includes(String(params.kind)) ? String(params.kind) : "track";
@@ -1422,10 +1447,12 @@ export default function registerMusicActions(registerLensAction) {
     if (list.length > 50) list.length = 50;
     saveMusicState();
     return { ok: true, result: { card } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 15. [M] Streaming analytics — listener demographics/geo/source ──
   registerLensAction("music", "stream-analytics", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const myTracks = s.tracks.get(userId) || [];
@@ -1461,7 +1488,8 @@ export default function registerMusicActions(registerLensAction) {
         avgStreamsPerTrack: myTracks.length ? Math.round((totalStreams / myTracks.length) * 10) / 10 : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 16. [M] Canvas (looping visuals) + artist profile / bio / pick ──
   registerLensAction("music", "artist-profile-set", (ctx, _a, params = {}) => {
@@ -1485,6 +1513,7 @@ export default function registerMusicActions(registerLensAction) {
   });
 
   registerLensAction("music", "artist-profile-get", (ctx, _a, _params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     if (!(s.artistProfiles instanceof Map)) s.artistProfiles = new Map();
@@ -1499,7 +1528,8 @@ export default function registerMusicActions(registerLensAction) {
         totalPlays: catalog.reduce((a, t) => a + t.playCount, 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 17. [S] Concert / live-event listings (MusicBrainz events) ──────
   // MusicBrainz exposes event entities — free, no key. Lookup upcoming

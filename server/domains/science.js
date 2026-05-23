@@ -36,6 +36,7 @@ export default function registerScienceActions(registerLensAction) {
   });
 
   registerLensAction("science", "dataQualityReport", (ctx, artifact, _params) => {
+  try {
     const dataset = artifact.data?.dataset || artifact.data?.observations || artifact.data?.records || [];
     if (dataset.length === 0) return { ok: true, result: { error: 'No dataset found', totalRecords: 0 } };
 
@@ -92,9 +93,11 @@ export default function registerScienceActions(registerLensAction) {
         qualityRating: overallCompleteness >= 95 ? 'excellent' : overallCompleteness >= 80 ? 'good' : overallCompleteness >= 60 ? 'fair' : 'poor',
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("science", "sampleAudit", (ctx, artifact, _params) => {
+  try {
     const samples = artifact.data?.samples || [artifact.data];
     const now = new Date();
     const results = [];
@@ -157,9 +160,11 @@ export default function registerScienceActions(registerLensAction) {
         samples: results,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("science", "validateProtocol", (ctx, artifact, _params) => {
+  try {
     const protocol = artifact.data?.protocol || artifact.data || {};
     const steps = protocol.steps || [];
     const issues = [];
@@ -219,7 +224,8 @@ export default function registerScienceActions(registerLensAction) {
         calibrationIssues,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("science", "dataExport", (ctx, artifact, params) => {
     const observations = artifact.data?.observations || [];
@@ -402,6 +408,7 @@ export default function registerScienceActions(registerLensAction) {
   // ── t-test (one-sample, two-sample independent) ──
 
   registerLensAction("science", "stats-ttest", (_ctx, _artifact, params = {}) => {
+  try {
     const kind = String(params.kind || "two-sample");
     if (!["one-sample", "two-sample"].includes(kind)) return { ok: false, error: "kind must be one-sample | two-sample" };
     const a = Array.isArray(params.a) ? params.a.map(Number).filter(Number.isFinite) : [];
@@ -437,11 +444,13 @@ export default function registerScienceActions(registerLensAction) {
         significantAt05: p < 0.05,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Pearson correlation + linear regression ──
 
   registerLensAction("science", "stats-correlation", (_ctx, _artifact, params = {}) => {
+  try {
     const x = Array.isArray(params.x) ? params.x.map(Number).filter(Number.isFinite) : [];
     const y = Array.isArray(params.y) ? params.y.map(Number).filter(Number.isFinite) : [];
     if (x.length !== y.length) return { ok: false, error: "x and y must be same length" };
@@ -474,7 +483,8 @@ export default function registerScienceActions(registerLensAction) {
         significantAt05: p < 0.05,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dataset storage (per-user) ──
 
@@ -578,6 +588,7 @@ export default function registerScienceActions(registerLensAction) {
   }
 
   registerLensAction("science", "chart-render", (ctx, _artifact, params = {}) => {
+  try {
     const s = getScienceState();
     let columns = Array.isArray(params.columns) ? params.columns.map(String) : null;
     let rows = Array.isArray(params.rows) ? params.rows : null;
@@ -667,7 +678,8 @@ export default function registerScienceActions(registerLensAction) {
         series: yCols.map((k) => ({ key: k, label: k })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Richer statistics — ANOVA, regression, non-parametric, CI ──
 
@@ -679,6 +691,7 @@ export default function registerScienceActions(registerLensAction) {
 
   // One-way ANOVA across >= 2 groups.
   registerLensAction("science", "stats-anova", (_ctx, _artifact, params = {}) => {
+  try {
     const groups = Array.isArray(params.groups)
       ? params.groups.map((g) => (Array.isArray(g) ? g.map(Number).filter(Number.isFinite) : []))
       : [];
@@ -717,10 +730,12 @@ export default function registerScienceActions(registerLensAction) {
         significantAt05: p < 0.05,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Linear regression with confidence intervals on slope + intercept.
   registerLensAction("science", "stats-regression", (_ctx, _artifact, params = {}) => {
+  try {
     const x = Array.isArray(params.x) ? params.x.map(Number).filter(Number.isFinite) : [];
     const y = Array.isArray(params.y) ? params.y.map(Number).filter(Number.isFinite) : [];
     if (x.length !== y.length) return { ok: false, error: "x and y must be same length" };
@@ -770,7 +785,8 @@ export default function registerScienceActions(registerLensAction) {
         slopeSignificantAt05: pSlope < 0.05,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Approximate the two-sided t critical value via bisection on tCDF.
   function tCritical(conf, df) {
@@ -785,6 +801,7 @@ export default function registerScienceActions(registerLensAction) {
 
   // Mann-Whitney U — non-parametric two-sample test.
   registerLensAction("science", "stats-nonparametric", (_ctx, _artifact, params = {}) => {
+  try {
     const test = String(params.test || "mann-whitney");
     const a = Array.isArray(params.a) ? params.a.map(Number).filter(Number.isFinite) : [];
     const b = Array.isArray(params.b) ? params.b.map(Number).filter(Number.isFinite) : [];
@@ -825,7 +842,8 @@ export default function registerScienceActions(registerLensAction) {
       };
     }
     return { ok: false, error: "test must be mann-whitney" };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Confidence interval for a single sample's mean.
   registerLensAction("science", "stats-ci", (_ctx, _artifact, params = {}) => {
@@ -1141,6 +1159,7 @@ export default function registerScienceActions(registerLensAction) {
   // ── Publication export — figures + methods bundle ──
 
   registerLensAction("science", "publication-export", (ctx, _artifact, params = {}) => {
+  try {
     const title = String(params.title || "").trim();
     if (!title) return { ok: false, error: "title required" };
     const authors = Array.isArray(params.authors) ? params.authors.map(String).filter(Boolean) : [];
@@ -1200,5 +1219,6 @@ export default function registerScienceActions(registerLensAction) {
         filename: `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60)}.${format === "markdown" ? "md" : "json"}`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };

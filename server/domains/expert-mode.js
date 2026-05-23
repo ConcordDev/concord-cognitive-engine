@@ -483,6 +483,7 @@ export default function registerExpertModeMacros(register) {
 
   // ----- file / text upload as a query source ----------------------------
   register("expert_mode", "upload_source", async (ctx, input = {}) => {
+  try {
     const userId = actorId(ctx);
     if (!userId) return { ok: false, reason: "no_actor" };
     const name = String(input?.name || "Untitled").slice(0, 200);
@@ -504,7 +505,8 @@ export default function registerExpertModeMacros(register) {
       ok: true,
       upload: { id: upload.id, name: upload.name, kind: upload.kind, chars: upload.chars, createdAt: upload.createdAt },
     };
-  }, { note: "Upload pasted file/PDF text as a query source. The text is stored per-user and can be cited as source [U]." });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "Upload pasted file/PDF text as a query source. The text is stored per-user and can be cited as source [U]." });
 
   register("expert_mode", "upload_list", async (ctx) => {
     const userId = actorId(ctx);
@@ -586,6 +588,7 @@ export default function registerExpertModeMacros(register) {
   }, { note: "Render a cited answer (or whole thread title) as portable Markdown for copy/download." });
 
   register("expert_mode", "export_thread_markdown", async (ctx, input = {}) => {
+  try {
     const userId = actorId(ctx);
     if (!userId) return { ok: false, reason: "no_actor" };
     const st = store();
@@ -595,7 +598,8 @@ export default function registerExpertModeMacros(register) {
       .map((t, i) => answerToMarkdown(t, i === 0 ? thread.title : null))
       .join("\n\n---\n\n");
     return { ok: true, markdown: md, bytes: Buffer.byteLength(md, "utf8"), turnCount: thread.turns.length };
-  }, { note: "Export an entire conversation thread as one Markdown document." });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "Export an entire conversation thread as one Markdown document." });
 
   register("expert_mode", "share_answer", async (ctx, input = {}) => {
     const userId = actorId(ctx);

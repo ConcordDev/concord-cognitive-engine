@@ -11,6 +11,7 @@ export default function registerNeuroActions(registerLensAction) {
    * or artifact.data.channels = [{ name, samples, sampleRate }]
    */
   registerLensAction("neuro", "frequencyAnalysis", (ctx, artifact, _params) => {
+  try {
     const channels = artifact.data?.channels ||
       (artifact.data?.signal ? [{ name: artifact.data.signal.channel || "CH1", ...artifact.data.signal }] : []);
 
@@ -141,7 +142,8 @@ export default function registerNeuroActions(registerLensAction) {
     });
 
     return { ok: true, result: { channels: results, channelCount: results.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * connectivityAnalysis
@@ -150,6 +152,7 @@ export default function registerNeuroActions(registerLensAction) {
    * artifact.data.channels = [{ name, samples, sampleRate }]
    */
   registerLensAction("neuro", "connectivityAnalysis", (ctx, artifact, _params) => {
+  try {
     const channels = artifact.data?.channels || [];
     if (channels.length < 2) return { ok: false, error: "Need at least 2 channels for connectivity analysis." };
     if (channels.length > 32) return { ok: false, error: "Limited to 32 channels." };
@@ -247,7 +250,8 @@ export default function registerNeuroActions(registerLensAction) {
         hubs: hubs.slice(0, 5),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * erpAnalysis
@@ -257,6 +261,7 @@ export default function registerNeuroActions(registerLensAction) {
    * artifact.data.sampleRate
    */
   registerLensAction("neuro", "erpAnalysis", (ctx, artifact, _params) => {
+  try {
     const epochs = artifact.data?.epochs || [];
     const sampleRate = artifact.data?.sampleRate || 256;
     if (epochs.length === 0) return { ok: false, error: "No epoch data." };
@@ -340,7 +345,8 @@ export default function registerNeuroActions(registerLensAction) {
         })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ────────────────────────────────────────────────────────────────────
   // EEG-analysis workbench parity with EEGLAB / MNE-Python.

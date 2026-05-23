@@ -10,6 +10,7 @@ export default function registerDocsActions(registerLensAction) {
    * artifact.data.text = string (the document text)
    */
   registerLensAction("docs", "readabilityScore", (ctx, artifact, _params) => {
+  try {
     const text = artifact.data?.text || "";
     if (text.length === 0) {
       return { ok: true, result: { message: "No text provided." } };
@@ -155,7 +156,8 @@ export default function registerDocsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * crossReference
@@ -164,6 +166,7 @@ export default function registerDocsActions(registerLensAction) {
    * artifact.data.pages = [{ id, title, content?, links: [targetId], backlinks?: [sourceId] }]
    */
   registerLensAction("docs", "crossReference", (ctx, artifact, _params) => {
+  try {
     const pages = artifact.data?.pages || [];
     if (pages.length === 0) {
       return { ok: true, result: { message: "No pages provided." } };
@@ -299,7 +302,8 @@ export default function registerDocsActions(registerLensAction) {
         )),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * versionDiff
@@ -309,6 +313,7 @@ export default function registerDocsActions(registerLensAction) {
    * artifact.data.newVersion = { text, title?, version? }
    */
   registerLensAction("docs", "versionDiff", (ctx, artifact, _params) => {
+  try {
     const oldDoc = artifact.data?.oldVersion || {};
     const newDoc = artifact.data?.newVersion || {};
     const oldText = oldDoc.text || "";
@@ -491,7 +496,8 @@ export default function registerDocsActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Notion-shape page/block document substrate (per-user, STATE) ────
 
@@ -1220,6 +1226,7 @@ export default function registerDocsActions(registerLensAction) {
   }
 
   registerLensAction("docs", "backlinks", (ctx, _a, params = {}) => {
+  try {
     const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const pages = dcPages(s, dcActor(ctx));
     const target = pages.find((p) => p.id === params.pageId);
@@ -1260,9 +1267,11 @@ export default function registerDocsActions(registerLensAction) {
         outgoingCount: outgoing.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("docs", "mentions-graph", (ctx, _a, _params = {}) => {
+  try {
     const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const pages = dcPages(s, dcActor(ctx));
     const nodes = pages.map((p) => ({ id: p.id, title: p.title, icon: p.icon }));
@@ -1287,7 +1296,8 @@ export default function registerDocsActions(registerLensAction) {
       ok: true,
       result: { nodes, edges, edgeCount: edges.length, mostLinked },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Share / permission controls per page ────────────────────────────
   function dcShares(s) {

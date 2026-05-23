@@ -604,6 +604,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
   });
 
   registerLensAction("film-studios", "cut-list", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const sequence = (s.sequences.get(userId) || []).find((q) => q.id === params.sequenceId);
@@ -636,7 +637,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
         totalRuntime: fmTimecode(longest, fps),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Review — versions & timecoded notes (Frame.io shape) ────────────
   registerLensAction("film-studios", "version-create", (ctx, _a, params = {}) => {
@@ -712,6 +714,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("film-studios", "film-dashboard", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const projectId = String(params.projectId);
@@ -737,7 +740,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
         openTasks: (s.tasks.get(userId) || []).filter((x) => x.projectId === projectId && x.status !== "done").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── StudioBinder + Frame.io parity — completion modules ────────────
 
@@ -868,6 +872,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   // ── Day Out of Days ─────────────────────────────────────────────────
   registerLensAction("film-studios", "dood-report", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const projectId = String(params.projectId);
@@ -901,7 +906,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
       };
     });
     return { ok: true, result: { days: days.map((d) => d.dayNumber), rows } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Element-list report ─────────────────────────────────────────────
   registerLensAction("film-studios", "element-list-report", (ctx, _a, params = {}) => {
@@ -1062,6 +1068,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   // ── 1. Real NLE timeline — trim / ripple / reorder / transitions ────
   registerLensAction("film-studios", "clip-update", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const clip = (s.clips.get(userId) || []).find((c) => c.id === params.id);
@@ -1101,7 +1108,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     }
     saveFmState();
     return { ok: true, result: { clip } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("film-studios", "clip-reorder", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1145,6 +1153,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
     "buff", "salmon", "cherry",
   ];
   registerLensAction("film-studios", "revision-create", (ctx, _a, params = {}) => {
+  try {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
     const s = getFmState(); const userId = fmAid(ctx);
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
@@ -1162,7 +1171,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     fmListB(x.revisions, userId).push(revision);
     saveFmState();
     return { ok: true, result: { revision } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("film-studios", "revision-list", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
@@ -1249,6 +1259,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
   });
 
   registerLensAction("film-studios", "shot-board-sequence", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const scene = (s.scenes.get(userId) || []).find((sc) => sc.id === params.sceneId);
@@ -1273,10 +1284,12 @@ export default function registerFilmStudiosActions(registerLensAction) {
         framedCount: shots.filter((f) => f.hasFrame).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 4. Watch-party synced playback + chat ───────────────────────────
   registerLensAction("film-studios", "party-create", (ctx, _a, params = {}) => {
+  try {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
     const s = getFmState(); const userId = fmAid(ctx);
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
@@ -1299,7 +1312,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     x.partyChat.set(party.id, []);
     saveFmState();
     return { ok: true, result: { party } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("film-studios", "party-list", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
@@ -1400,6 +1414,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
   });
 
   registerLensAction("film-studios", "cost-report", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const projectId = String(params.projectId);
@@ -1445,12 +1460,14 @@ export default function registerFilmStudiosActions(registerLensAction) {
         topOverrun: lineReport.find((l) => l.status === "over")?.description || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 6. Multicam / proxy media handling ──────────────────────────────
   const FM_MEDIA_KIND = ["video", "audio", "image"];
   const FM_PROXY_QUALITY = ["full", "proxy", "offline"];
   registerLensAction("film-studios", "media-register", (ctx, _a, params = {}) => {
+  try {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
     const s = getFmState(); const userId = fmAid(ctx);
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
@@ -1475,7 +1492,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     fmListB(x.media, userId).push(media);
     saveFmState();
     return { ok: true, result: { media } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("film-studios", "media-list", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
@@ -1537,6 +1555,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
   });
 
   registerLensAction("film-studios", "multicam-group", (ctx, _a, params = {}) => {
+  try {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
     const s = getFmState(); const userId = fmAid(ctx);
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
@@ -1559,7 +1578,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     });
     saveFmState();
     return { ok: true, result: { group } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("film-studios", "multicam-list", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
@@ -1597,6 +1617,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
     "rejected", "screened", "awarded", "withdrawn",
   ];
   registerLensAction("film-studios", "festival-submit", (ctx, _a, params = {}) => {
+  try {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
     const s = getFmState(); const userId = fmAid(ctx);
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
@@ -1616,7 +1637,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     fmListB(x.festivals, userId).push(submission);
     saveFmState();
     return { ok: true, result: { submission } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("film-studios", "festival-list", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };

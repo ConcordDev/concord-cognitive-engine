@@ -84,6 +84,7 @@ export default function registerSocialActions(registerLensAction) {
   // Supports plain posts, polls, quote-posts and media attachments so the
   // backlog items have a real persistence target (no REST dependency).
   registerLensAction("social", "createPost", (ctx, _a, params = {}) => {
+  try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     const body = clip(params.body, 2000);
@@ -126,7 +127,8 @@ export default function registerSocialActions(registerLensAction) {
     s.posts.set(post.id, post);
     save();
     return { ok: true, result: { post: hydratePost(s, post.id, userId) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("social", "feed", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -229,6 +231,7 @@ export default function registerSocialActions(registerLensAction) {
 
   // ── 3. Full DM inbox + conversation view ────────────────────────────
   registerLensAction("social", "sendMessage", (ctx, _a, params = {}) => {
+  try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const from = actor(ctx);
     const to = String(params.to || "");
@@ -254,9 +257,11 @@ export default function registerSocialActions(registerLensAction) {
     thread.readBy[from] = thread.messages.length; // sender has read all
     save();
     return { ok: true, result: { threadKey: key, message } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("social", "inbox", (ctx, _a, _params = {}) => {
+  try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const threads = [];
@@ -280,7 +285,8 @@ export default function registerSocialActions(registerLensAction) {
     });
     const totalUnread = threads.reduce((n, t) => n + t.unread, 0);
     return { ok: true, result: { threads, count: threads.length, totalUnread } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("social", "conversation", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -303,6 +309,7 @@ export default function registerSocialActions(registerLensAction) {
 
   // ── 4. Hashtag / topic pages ────────────────────────────────────────
   registerLensAction("social", "hashtagFeed", (ctx, _a, params = {}) => {
+  try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const tag = String(params.tag || "").replace(/^#/, "").toLowerCase();
     if (!tag) return { ok: false, error: "tag required" };
@@ -316,7 +323,8 @@ export default function registerSocialActions(registerLensAction) {
       .map((p) => hydratePost(s, p.id, viewerId));
     const contributors = new Set(posts.map((p) => p.userId)).size;
     return { ok: true, result: { tag, posts, count: posts.length, contributors } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("social", "trendingHashtags", (_ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -337,6 +345,7 @@ export default function registerSocialActions(registerLensAction) {
 
   // ── 5. Post detail view with permalink + share ──────────────────────
   registerLensAction("social", "postDetail", (ctx, _a, params = {}) => {
+  try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = String(params.postId || "");
     if (!s.posts.has(postId)) return { ok: false, error: "post not found" };
@@ -360,7 +369,8 @@ export default function registerSocialActions(registerLensAction) {
         permalink: `/lenses/social/post/${postId}`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("social", "shareTargets", (_ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -459,6 +469,7 @@ export default function registerSocialActions(registerLensAction) {
   });
 
   registerLensAction("social", "moderationStatus", (ctx, _a, _params = {}) => {
+  try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const b = modBucket(s, me);
@@ -474,7 +485,8 @@ export default function registerSocialActions(registerLensAction) {
         reportCount: myReports.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 8. Live video / streaming beyond audio Spaces ───────────────────
   registerLensAction("social", "startStream", (ctx, _a, params = {}) => {
@@ -605,6 +617,7 @@ export default function registerSocialActions(registerLensAction) {
   });
 
   registerLensAction("social", "pollResults", (ctx, _a, params = {}) => {
+  try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const post = s.posts.get(String(params.postId || ""));
     if (!post) return { ok: false, error: "post not found" };
@@ -627,5 +640,6 @@ export default function registerSocialActions(registerLensAction) {
         })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

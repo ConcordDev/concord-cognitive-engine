@@ -222,6 +222,7 @@ export default function registerProjectsActions(registerLensAction) {
 
   // ── Tasks / issues ──────────────────────────────────────────────────
   registerLensAction("projects", "task-create", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const project = pjProject(s, userId, params.projectId);
@@ -264,7 +265,8 @@ export default function registerProjectsActions(registerLensAction) {
     pjLog(s, userId, task.id, "created", task.ref);
     savePjState();
     return { ok: true, result: { task } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Shared task filter+sort used by task-list and saved views.
   function pjFilterTasks(all, f) {
@@ -295,13 +297,16 @@ export default function registerProjectsActions(registerLensAction) {
   }
 
   registerLensAction("projects", "task-list", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const all = (s.tasks.get(pjAid(ctx)) || []).filter((t) => t.projectId === String(params.projectId));
     const tasks = pjFilterTasks(all, params);
     return { ok: true, result: { tasks, count: tasks.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("projects", "task-update", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const task = (s.tasks.get(userId) || []).find((t) => t.id === params.id);
@@ -349,7 +354,8 @@ export default function registerProjectsActions(registerLensAction) {
     task.updatedAt = pjNow();
     savePjState();
     return { ok: true, result: { task } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("projects", "task-move-status", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -492,6 +498,7 @@ export default function registerProjectsActions(registerLensAction) {
   });
 
   registerLensAction("projects", "sprint-burndown", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const sprint = (s.sprints.get(userId) || []).find((sp) => sp.id === params.id);
@@ -522,7 +529,8 @@ export default function registerProjectsActions(registerLensAction) {
         series,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Members ─────────────────────────────────────────────────────────
   registerLensAction("projects", "member-add", (ctx, _a, params = {}) => {
@@ -646,6 +654,7 @@ export default function registerProjectsActions(registerLensAction) {
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("projects", "project-dashboard", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const project = pjProject(s, userId, params.projectId);
@@ -671,10 +680,12 @@ export default function registerProjectsActions(registerLensAction) {
         members: (s.members.get(userId) || []).filter((m) => m.projectId === project.id).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Task detail — subtasks, relations, attachments, custom fields ────
   registerLensAction("projects", "task-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const allTasks = s.tasks.get(userId) || [];
@@ -706,7 +717,8 @@ export default function registerProjectsActions(registerLensAction) {
           .sort((a, b) => b.at.localeCompare(a.at)).slice(0, 50),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Labels ──────────────────────────────────────────────────────────
   registerLensAction("projects", "label-create", (ctx, _a, params = {}) => {
@@ -931,6 +943,7 @@ export default function registerProjectsActions(registerLensAction) {
   });
 
   registerLensAction("projects", "view-run", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const view = (s.views.get(userId) || []).find((v) => v.id === params.id);
@@ -940,7 +953,8 @@ export default function registerProjectsActions(registerLensAction) {
     for (const [k, val] of Object.entries(view.filters)) if (val) f[k] = val;
     const tasks = pjFilterTasks(all, f);
     return { ok: true, result: { view: view.name, tasks, count: tasks.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Automation rules ────────────────────────────────────────────────
   registerLensAction("projects", "rule-create", (ctx, _a, params = {}) => {
@@ -1021,6 +1035,7 @@ export default function registerProjectsActions(registerLensAction) {
   });
 
   registerLensAction("projects", "template-apply", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const template = (s.templates.get(userId) || []).find((t) => t.id === params.id);
@@ -1049,7 +1064,8 @@ export default function registerProjectsActions(registerLensAction) {
     const subtasks = template.subtasks.map((title) => mkTask({ title, parentId: parent.id }));
     savePjState();
     return { ok: true, result: { task: parent, subtasks } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("projects", "template-delete", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1063,6 +1079,7 @@ export default function registerProjectsActions(registerLensAction) {
 
   // ── Bulk operations ─────────────────────────────────────────────────
   registerLensAction("projects", "task-bulk-update", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const ids = Array.isArray(params.ids) ? params.ids.map(String) : [];
@@ -1095,7 +1112,8 @@ export default function registerProjectsActions(registerLensAction) {
     }
     savePjState();
     return { ok: true, result: { updated } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("projects", "task-bulk-delete", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1135,6 +1153,7 @@ export default function registerProjectsActions(registerLensAction) {
   });
 
   registerLensAction("projects", "board-swimlanes", (ctx, _a, params = {}) => {
+  try {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     if (!pjProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
@@ -1163,7 +1182,8 @@ export default function registerProjectsActions(registerLensAction) {
       })),
     }));
     return { ok: true, result: { groupBy, swimlanes } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reporting ───────────────────────────────────────────────────────
   registerLensAction("projects", "report-velocity", (ctx, _a, params = {}) => {
@@ -1541,6 +1561,7 @@ export default function registerProjectsActions(registerLensAction) {
   // task. Records the link as an attachment + activity entry, and — for CI
   // links carrying a status — can auto-advance the task status.
   registerLensAction("projects", "integration-link", (ctx, _a, params = {}) => {
+  try {
     const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const task = (s.tasks.get(userId) || []).find((t) => t.id === params.taskId);
@@ -1583,7 +1604,8 @@ export default function registerProjectsActions(registerLensAction) {
     }
     savePjState();
     return { ok: true, result: { link, autoAdvanced } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Notification inbox ──────────────────────────────────────────
   registerLensAction("projects", "notifications-list", (ctx, _a, params = {}) => {
@@ -1669,6 +1691,7 @@ export default function registerProjectsActions(registerLensAction) {
   // Incoming issues land in a triage queue (status backlog + isTriage flag)
   // before being accepted into the backlog.
   registerLensAction("projects", "triage-submit", (ctx, _a, params = {}) => {
+  try {
     const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const project = pjProject(s, userId, params.projectId);
@@ -1696,7 +1719,8 @@ export default function registerProjectsActions(registerLensAction) {
     });
     savePjState();
     return { ok: true, result: { task } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("projects", "triage-queue", (ctx, _a, params = {}) => {
     const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1793,6 +1817,7 @@ export default function registerProjectsActions(registerLensAction) {
   // notification. Idempotent — re-running won't double-escalate the same
   // task on the same day.
   registerLensAction("projects", "sla-escalate", (ctx, _a, params = {}) => {
+  try {
     const s = getPjExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);
     const projectId = String(params.projectId || "");
@@ -1854,5 +1879,6 @@ export default function registerProjectsActions(registerLensAction) {
         breachedCount: breached.length, atRiskCount: atRisk.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

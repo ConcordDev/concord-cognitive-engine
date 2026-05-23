@@ -11,6 +11,7 @@ export default function registerBioActions(registerLensAction) {
    * params.gapPenalty (default -2)
    */
   registerLensAction("bio", "sequenceAlign", (ctx, artifact, params) => {
+  try {
     const seqA = (artifact.data?.sequenceA || params.sequenceA || "").toUpperCase();
     const seqB = (artifact.data?.sequenceB || params.sequenceB || "").toUpperCase();
     if (!seqA || !seqB) return { ok: false, error: "Both sequenceA and sequenceB required." };
@@ -88,7 +89,8 @@ export default function registerBioActions(registerLensAction) {
         parameters: { match, mismatch, gap },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * geneExpression
@@ -97,6 +99,7 @@ export default function registerBioActions(registerLensAction) {
    * Computes fold-change, log2FC, and basic significance ranking.
    */
   registerLensAction("bio", "geneExpression", (ctx, artifact, _params) => {
+  try {
     const samples = artifact.data?.samples || [];
     if (samples.length === 0) return { ok: true, result: { message: "No expression data." } };
 
@@ -192,7 +195,8 @@ export default function registerBioActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * phylogeneticDistance
@@ -201,6 +205,7 @@ export default function registerBioActions(registerLensAction) {
    * artifact.data.sequences = [{ id, sequence }]
    */
   registerLensAction("bio", "phylogeneticDistance", (ctx, artifact, params) => {
+  try {
     const sequences = artifact.data?.sequences || [];
     if (sequences.length < 2) return { ok: false, error: "Need at least 2 sequences." };
     if (sequences.length > 50) return { ok: false, error: "Limited to 50 sequences." };
@@ -294,7 +299,8 @@ export default function registerBioActions(registerLensAction) {
         averageDistances: avgDistance,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * motifDetection
@@ -303,6 +309,7 @@ export default function registerBioActions(registerLensAction) {
    * params.motifLength (default 6), params.minOccurrences (default 2)
    */
   registerLensAction("bio", "motifDetection", (ctx, artifact, params) => {
+  try {
     const sequences = artifact.data?.sequences || [];
     if (sequences.length === 0) return { ok: true, result: { message: "No sequences provided." } };
 
@@ -363,7 +370,8 @@ export default function registerBioActions(registerLensAction) {
         sequencesAnalyzed: sequences.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * profile-organism
@@ -691,6 +699,7 @@ export default function registerBioActions(registerLensAction) {
   }
 
   registerLensAction("bio", "sequence-analyze", (_ctx, _artifact, params = {}) => {
+  try {
     const seq = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
     if (!seq) return { ok: false, error: "sequence required" };
     if (seq.length > 100_000) return { ok: false, error: "sequence too long (max 100000)" };
@@ -712,11 +721,13 @@ export default function registerBioActions(registerLensAction) {
       result.molecularWeight = Math.round(seq.length * 110); // average aa MW
     }
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Primer design (forward + reverse, length 18-24, Tm 55-65°C, GC 40-60%) ──
 
   registerLensAction("bio", "primer-design", (_ctx, _artifact, params = {}) => {
+  try {
     const seq = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
     if (!seq) return { ok: false, error: "sequence required" };
     if (seq.length < 100) return { ok: false, error: "sequence must be >= 100 bp" };
@@ -751,11 +762,13 @@ export default function registerBioActions(registerLensAction) {
           : "Use default primer pair.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Pairwise alignment (Needleman-Wunsch global) ──
 
   registerLensAction("bio", "align-pairwise", (_ctx, _artifact, params = {}) => {
+  try {
     const a = String(params.seqA || "").toUpperCase().trim();
     const b = String(params.seqB || "").toUpperCase().trim();
     if (!a || !b) return { ok: false, error: "seqA and seqB required" };
@@ -813,7 +826,8 @@ export default function registerBioActions(registerLensAction) {
         alignmentLength: alignA.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── FASTA parser ──
 

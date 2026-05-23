@@ -10,6 +10,7 @@ export default function registerCommandCenterActions(registerLensAction) {
    * artifact.data.feeds = [{ source, status, items: [{ id, severity, description, timestamp?, resolved? }], metrics?: {} }]
    */
   registerLensAction("command-center", "situationReport", (ctx, artifact, _params) => {
+  try {
     const feeds = artifact.data?.feeds || [];
     if (feeds.length === 0) {
       return { ok: true, result: { message: "No data feeds provided." } };
@@ -134,7 +135,8 @@ export default function registerCommandCenterActions(registerLensAction) {
         generatedAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * incidentCorrelation
@@ -144,6 +146,7 @@ export default function registerCommandCenterActions(registerLensAction) {
    * params.timeWindowMs (default 300000 = 5 min), params.minCorrelation (default 0.5)
    */
   registerLensAction("command-center", "incidentCorrelation", (ctx, artifact, params) => {
+  try {
     const incidents = artifact.data?.incidents || [];
     if (incidents.length < 2) {
       return { ok: true, result: { message: "Need at least 2 incidents for correlation." } };
@@ -282,7 +285,8 @@ export default function registerCommandCenterActions(registerLensAction) {
         parameters: { timeWindowMs, minCorrelation },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * escalationEngine
@@ -292,6 +296,7 @@ export default function registerCommandCenterActions(registerLensAction) {
    * artifact.data.escalationPolicy = [{ level, responders: [], slaMinutes, conditions? }]
    */
   registerLensAction("command-center", "escalationEngine", (ctx, artifact, params) => {
+  try {
     const incident = artifact.data?.incident || {};
     const policy = artifact.data?.escalationPolicy || [];
     const now = params.currentTime ? new Date(params.currentTime).getTime() : Date.now();
@@ -402,7 +407,8 @@ export default function registerCommandCenterActions(registerLensAction) {
         recommendedActions: actions,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ===========================================================================
   // Ops-cockpit substrate — per-operator persistent state. Every record below
@@ -456,6 +462,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "recordVital", (ctx, _artifact, params = {}) => {
+  try {
     const metric = String(params.metric || "").trim();
     if (!metric) return { ok: false, error: "metric_required" };
     const value = Number(params.value);
@@ -492,7 +499,8 @@ export default function registerCommandCenterActions(registerLensAction) {
       ok: true,
       result: { metric, value, t, pointCount: buf.length, rulesFired: fired },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("command-center", "vitalHistory", (ctx, _artifact, params = {}) => {
     const metric = String(params.metric || "").trim();
@@ -741,6 +749,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "correlateVitals", (ctx, _artifact, params = {}) => {
+  try {
     const series = userMap("series", ctx);
     const windowMs = clampNum(params.windowMinutes, 5, 4320, 120) * 60000;
     const cutoff = Date.now() - windowMs;
@@ -808,7 +817,8 @@ export default function registerCommandCenterActions(registerLensAction) {
         windowMinutes: windowMs / 60000,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ---------------------------------------------------------------------------
   // Feature 6 — Threshold-coloring + at-a-glance health rollup score.
@@ -817,6 +827,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "healthRollup", (ctx, _artifact, _params = {}) => {
+  try {
     const series = userMap("series", ctx);
     const rules = [...userMap("rules", ctx).values()];
     const incidents = [...userMap("incidents", ctx).values()];
@@ -894,7 +905,8 @@ export default function registerCommandCenterActions(registerLensAction) {
         generatedAt: nowIso(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ---------------------------------------------------------------------------
   // Feature 7 — Runbook actions wired to one-click remediation.
@@ -903,6 +915,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   // ---------------------------------------------------------------------------
 
   registerLensAction("command-center", "saveRunbook", (ctx, _artifact, params = {}) => {
+  try {
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name_required" };
     const steps = Array.isArray(params.steps)
@@ -937,7 +950,8 @@ export default function registerCommandCenterActions(registerLensAction) {
       runbooks.set(book.id, book);
     }
     return { ok: true, result: { runbook: book } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("command-center", "listRunbooks", (ctx, _artifact, _params = {}) => {
     const runbooks = [...userMap("runbooks", ctx).values()]
@@ -947,6 +961,7 @@ export default function registerCommandCenterActions(registerLensAction) {
   });
 
   registerLensAction("command-center", "runRunbook", (ctx, _artifact, params = {}) => {
+  try {
     const runbooks = userMap("runbooks", ctx);
     const book = runbooks.get(params.runbookId);
     if (!book) return { ok: false, error: "runbook_not_found" };
@@ -986,7 +1001,8 @@ export default function registerCommandCenterActions(registerLensAction) {
       }
     }
     return { ok: true, result: { execution, runbook: { id: book.id, name: book.name, runCount: book.runCount } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("command-center", "deleteRunbook", (ctx, _artifact, params = {}) => {
     const runbooks = userMap("runbooks", ctx);

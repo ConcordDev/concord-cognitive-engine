@@ -228,6 +228,7 @@ export default function registerTravelActions(registerLensAction) {
    * if it were comprehensive — own the gap honestly.
    */
   registerLensAction("travel", "visaCheck", (_ctx, artifact, _params) => {
+  try {
     const data = artifact?.data || {};
     const passport = (data.passportCountry || "US").toUpperCase().trim();
     const destination = (data.destination || "").toUpperCase().trim();
@@ -279,7 +280,8 @@ export default function registerTravelActions(registerLensAction) {
         disclaimer: "Visa requirements not in built-in bilateral tables. Concord does not synthesize visa requirements (legal-grade data). Consult the destination embassy's official website or use a licensed visa service (VisaHQ, iVisa).",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── TripAdvisor + Hopper 2026 parity — trip planning ───────────────
   // Trips, itineraries, saved places + reviews, bookings, Hopper-style
@@ -336,13 +338,15 @@ export default function registerTravelActions(registerLensAction) {
   });
 
   registerLensAction("travel", "trip-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const today = tvday(tvnow());
     const trips = (s.trips.get(tvaid(ctx)) || [])
       .map((t) => ({ ...t, status: !t.startDate ? "draft" : t.endDate < today ? "past" : t.startDate > today ? "upcoming" : "active" }))
       .sort((a, b) => String(a.startDate || "9999").localeCompare(String(b.startDate || "9999")));
     return { ok: true, result: { trips, count: trips.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("travel", "trip-update", (ctx, _a, params = {}) => {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -373,6 +377,7 @@ export default function registerTravelActions(registerLensAction) {
   });
 
   registerLensAction("travel", "trip-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const trip = findTrip(s, tvaid(ctx), params.id);
     if (!trip) return { ok: false, error: "trip not found" };
@@ -387,7 +392,8 @@ export default function registerTravelActions(registerLensAction) {
         checklistOpen: (s.checklists.get(trip.id) || []).filter((c) => !c.done).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Itinerary ───────────────────────────────────────────────────────
   const ITIN_CATEGORIES = ["sightseeing", "food", "transport", "lodging", "activity", "meeting", "rest"];
@@ -412,6 +418,7 @@ export default function registerTravelActions(registerLensAction) {
   });
 
   registerLensAction("travel", "itinerary-list", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
     const items = (s.itinerary.get(String(params.tripId)) || [])
@@ -424,7 +431,8 @@ export default function registerTravelActions(registerLensAction) {
       (byDay[key] = byDay[key] || []).push(it);
     }
     return { ok: true, result: { items, byDay, count: items.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("travel", "itinerary-update", (ctx, _a, params = {}) => {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -454,6 +462,7 @@ export default function registerTravelActions(registerLensAction) {
   // ── Saved places + reviews (TripAdvisor) ────────────────────────────
   const PLACE_KINDS = ["hotel", "attraction", "restaurant", "beach", "museum", "tour", "transport"];
   registerLensAction("travel", "place-add", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = tvclean(params.name, 160);
     if (!name) return { ok: false, error: "place name required" };
@@ -469,7 +478,8 @@ export default function registerTravelActions(registerLensAction) {
     s.places.set(place.id, place);
     saveTravelState();
     return { ok: true, result: { place } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   function placeView(s, place) {
     const reviews = s.placeReviews.get(place.id) || [];
@@ -547,6 +557,7 @@ export default function registerTravelActions(registerLensAction) {
   // ── Bookings ────────────────────────────────────────────────────────
   const BOOKING_TYPES = ["flight", "hotel", "car", "rail", "activity", "cruise"];
   registerLensAction("travel", "booking-add", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
     const type = String(params.type || "").toLowerCase();
@@ -563,9 +574,11 @@ export default function registerTravelActions(registerLensAction) {
     tvlistB(s.bookings, booking.tripId).push(booking);
     saveTravelState();
     return { ok: true, result: { booking } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("travel", "booking-list", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
     const bookings = (s.bookings.get(String(params.tripId)) || [])
@@ -574,7 +587,8 @@ export default function registerTravelActions(registerLensAction) {
       ok: true,
       result: { bookings, totalCost: Math.round(bookings.reduce((a, b) => a + tvnum(b.cost), 0) * 100) / 100 },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("travel", "booking-delete", (ctx, _a, params = {}) => {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -589,6 +603,7 @@ export default function registerTravelActions(registerLensAction) {
 
   // ── Hopper-style price watches ──────────────────────────────────────
   registerLensAction("travel", "price-watch-create", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const subject = tvclean(params.subject, 160);
     if (!subject) return { ok: false, error: "subject required (e.g. 'SFO→NRT' or hotel name)" };
@@ -604,7 +619,8 @@ export default function registerTravelActions(registerLensAction) {
     tvlistB(s.priceWatches, tvaid(ctx)).push(watch);
     saveTravelState();
     return { ok: true, result: { watch } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   function watchView(w) {
     const current = w.history[w.history.length - 1].price;
@@ -672,6 +688,7 @@ export default function registerTravelActions(registerLensAction) {
   });
 
   registerLensAction("travel", "budget-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
     const budget = s.budgets.get(String(params.tripId)) || { categories: {} };
@@ -687,7 +704,8 @@ export default function registerTravelActions(registerLensAction) {
         overBudget: booked > planned && planned > 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Travel documents ────────────────────────────────────────────────
   registerLensAction("travel", "travel-doc-add", (ctx, _a, params = {}) => {
@@ -709,6 +727,7 @@ export default function registerTravelActions(registerLensAction) {
   });
 
   registerLensAction("travel", "travel-doc-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const today = tvday(tvnow());
     const soon = tvday(new Date(Date.now() + 180 * TV_DAY).toISOString());
@@ -717,7 +736,8 @@ export default function registerTravelActions(registerLensAction) {
       expiryStatus: !d.expiryDate ? "none" : d.expiryDate < today ? "expired" : d.expiryDate <= soon ? "expiring_soon" : "valid",
     }));
     return { ok: true, result: { documents, count: documents.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Packing / trip checklist ────────────────────────────────────────
   registerLensAction("travel", "checklist-add", (ctx, _a, params = {}) => {
@@ -736,6 +756,7 @@ export default function registerTravelActions(registerLensAction) {
   });
 
   registerLensAction("travel", "checklist-list", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
     const items = s.checklists.get(String(params.tripId)) || [];
@@ -743,7 +764,8 @@ export default function registerTravelActions(registerLensAction) {
       ok: true,
       result: { items, total: items.length, done: items.filter((i) => i.done).length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("travel", "checklist-toggle", (ctx, _a, params = {}) => {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -766,6 +788,7 @@ export default function registerTravelActions(registerLensAction) {
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("travel", "travel-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tvaid(ctx);
     const today = tvday(tvnow());
@@ -787,7 +810,8 @@ export default function registerTravelActions(registerLensAction) {
         totalBooked: Math.round(bookedCost * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   // Feature-parity backlog vs Google Travel / TripIt — buildable layer.
@@ -832,6 +856,7 @@ export default function registerTravelActions(registerLensAction) {
   // itinerary-map — collect all geocoded itinerary points for a trip so
   // the frontend can pin + route them.
   registerLensAction("travel", "itinerary-map", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!findTrip(s, tvaid(ctx), params.tripId)) return { ok: false, error: "trip not found" };
     const items = (s.itinerary.get(String(params.tripId)) || [])
@@ -862,12 +887,14 @@ export default function registerTravelActions(registerLensAction) {
         routeKm: Math.round(routeKm * 10) / 10,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Day-by-day agenda view ──────────────────────────────────────────
   // Builds an ordered day-by-day timeline from itinerary items, one row
   // per trip day with its scheduled items sorted by time.
   registerLensAction("travel", "itinerary-agenda", (ctx, _a, params = {}) => {
+  try {
     const s = getTravelState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const trip = findTrip(s, tvaid(ctx), params.tripId);
     if (!trip) return { ok: false, error: "trip not found" };
@@ -902,7 +929,8 @@ export default function registerTravelActions(registerLensAction) {
         unscheduled, totalItems: items.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Destination weather forecast (Open-Meteo, free, no key) ──────────
   registerLensAction("travel", "weather-forecast", async (_ctx, _a, params = {}) => {

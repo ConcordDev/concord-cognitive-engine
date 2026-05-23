@@ -11,6 +11,7 @@ export default function registerAttentionActions(registerLensAction) {
    * params.contextSwitchCostMinutes — estimated cost of each context switch in minutes (default 15)
    */
   registerLensAction("attention", "focusScore", (ctx, artifact, params) => {
+  try {
     const sessions = artifact.data.sessions || [];
     if (sessions.length === 0) {
       return { ok: true, result: { message: "No session data provided." } };
@@ -146,7 +147,8 @@ export default function registerAttentionActions(registerLensAction) {
 
     artifact.data.focusScore = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * priorityMatrix
@@ -157,6 +159,7 @@ export default function registerAttentionActions(registerLensAction) {
    * params.importanceDecay — diminishing returns exponent for importance (default 0.8)
    */
   registerLensAction("attention", "priorityMatrix", (ctx, artifact, params) => {
+  try {
     const tasks = artifact.data.tasks || [];
     if (tasks.length === 0) {
       return { ok: true, result: { message: "No tasks provided for prioritization." } };
@@ -278,7 +281,8 @@ export default function registerAttentionActions(registerLensAction) {
 
     artifact.data.priorityMatrix = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * attentionBudget
@@ -290,6 +294,7 @@ export default function registerAttentionActions(registerLensAction) {
    * params.breakDurationMinutes — break duration between tasks (default 10)
    */
   registerLensAction("attention", "attentionBudget", (ctx, artifact, params) => {
+  try {
     const tasks = artifact.data.tasks || [];
     if (tasks.length === 0) {
       return { ok: true, result: { message: "No tasks provided for attention budgeting." } };
@@ -419,7 +424,8 @@ export default function registerAttentionActions(registerLensAction) {
 
     artifact.data.attentionBudget = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ───────────────────────────────────────────────────────────────────
   // Sunsama / Motion–class focus-tool substrate — per-user, STATE-backed.

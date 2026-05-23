@@ -132,6 +132,7 @@ export default function registerFeedActions(registerLensAction) {
   }
 
   registerLensAction("feed", "rank-for-you", (ctx, _artifact, params = {}) => {
+  try {
     const s = getFeedState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = feedActor(ctx);
@@ -175,7 +176,8 @@ export default function registerFeedActions(registerLensAction) {
         topReason: ranked[0]?.reasons?.[0] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("feed", "affinity-summary", (ctx, _artifact, _params = {}) => {
     const s = getFeedState();
@@ -222,6 +224,7 @@ export default function registerFeedActions(registerLensAction) {
   });
 
   registerLensAction("feed", "thread-tree", (ctx, _artifact, params = {}) => {
+  try {
     const s = getFeedState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = feedActor(ctx);
@@ -257,7 +260,8 @@ export default function registerFeedActions(registerLensAction) {
         .map(build);
     }
     return { ok: true, result: { tree: roots, totalNodes: all.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("feed", "thread-collapse", (ctx, _artifact, params = {}) => {
     const s = getFeedState();
@@ -379,6 +383,7 @@ export default function registerFeedActions(registerLensAction) {
   // ════════════════════════════════════════════════════════════════════════
 
   registerLensAction("feed", "poll-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getFeedState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = feedActor(ctx);
@@ -402,7 +407,8 @@ export default function registerFeedActions(registerLensAction) {
     map.set(poll.id, poll);
     saveFeedState();
     return { ok: true, result: { poll: pollView(poll, userId) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   function findPoll(s, pollId) {
     for (const map of s.polls.values()) {
@@ -444,15 +450,18 @@ export default function registerFeedActions(registerLensAction) {
   });
 
   registerLensAction("feed", "poll-results", (ctx, _artifact, params = {}) => {
+  try {
     const s = getFeedState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = feedActor(ctx);
     const poll = findPoll(s, String(params.pollId || ""));
     if (!poll) return { ok: false, error: "poll not found" };
     return { ok: true, result: { poll: pollView(poll, userId) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("feed", "poll-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getFeedState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = feedActor(ctx);
@@ -461,7 +470,8 @@ export default function registerFeedActions(registerLensAction) {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .map(p => pollView(p, userId));
     return { ok: true, result: { polls } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════════
   // 5. BOOKMARK FOLDERS + SAVED-SEARCH ALERTS  [S]
@@ -741,6 +751,7 @@ export default function registerFeedActions(registerLensAction) {
   // Apply the active content controls to a candidate post set — pure filter,
   // returns the kept posts plus what each control removed/flagged.
   registerLensAction("feed", "controls-apply", (ctx, _artifact, params = {}) => {
+  try {
     const s = getFeedState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const c = getControls(s, feedActor(ctx));
@@ -769,5 +780,6 @@ export default function registerFeedActions(registerLensAction) {
         sensitiveMode: c.sensitiveMedia,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

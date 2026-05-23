@@ -55,6 +55,7 @@ export default function registerCognitionActions(registerLensAction) {
   // see, side by side, how each mode frames the problem. Both runs go
   // through the real HLR engine — no synthetic output.
   registerLensAction("cognition", "compareModes", async (_ctx, _a, params = {}) => {
+  try {
     const prompt = String(params.claim || params.question || params.topic || "").trim();
     if (!prompt) return { ok: false, error: "claim_or_question_required" };
     const modeA = String(params.modeA || "deductive").toLowerCase();
@@ -117,7 +118,8 @@ export default function registerCognitionActions(registerLensAction) {
         comparedAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── recommendMode ─────────────────────────────────────────────────────
   // Given a free-text question, recommend which of the 7 reasoning modes
@@ -134,6 +136,7 @@ export default function registerCognitionActions(registerLensAction) {
     counterfactual: { label: "Counterfactual", blurb: "What if the premise were false?" },
   };
   registerLensAction("cognition", "recommendMode", (_ctx, _a, params = {}) => {
+  try {
     const q = String(params.question || params.claim || params.topic || "").trim();
     if (!q) return { ok: false, error: "question_required" };
     const lower = q.toLowerCase();
@@ -206,7 +209,8 @@ export default function registerCognitionActions(registerLensAction) {
         signals,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── exportTrace ───────────────────────────────────────────────────────
   // Persist a reasoning trace (passed whole by the client, which already

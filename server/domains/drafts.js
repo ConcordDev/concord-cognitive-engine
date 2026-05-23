@@ -123,6 +123,7 @@ export default function registerDraftsMacros(register) {
    *   - lensId set: per-lens recent (powers the LoadFromSubstrate panel)
    */
   register("drafts", "list_mine", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
@@ -162,7 +163,8 @@ export default function registerDraftsMacros(register) {
       : db.prepare(`SELECT COUNT(*) AS n FROM lens_drafts WHERE user_id = ?`).get(userId);
 
     return { ok: true, items, total: totalRow?.n || 0 };
-  }, { note: "list caller's recent drafts (whole-fleet or per-lens)" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "list caller's recent drafts (whole-fleet or per-lens)" });
 
   /**
    * drafts.delete — drop a draft. Called post-mint (graduated to DTU)

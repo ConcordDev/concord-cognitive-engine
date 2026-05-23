@@ -181,6 +181,7 @@ export default function registerHVACActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
   registerLensAction("hvac", "dispatch-board", (ctx, _a, params = {}) => {
+  try {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hvAid(ctx);
     const date = hvClean(params.date, 10);
@@ -204,7 +205,8 @@ export default function registerHVACActions(registerLensAction) {
         scheduledHours: Math.round(totalHrs * 10) / 10,
       },
     } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Customer-facing booking + confirmation ──────────────────────────
   registerLensAction("hvac", "booking-request", (ctx, _a, params = {}) => {
@@ -313,6 +315,7 @@ export default function registerHVACActions(registerLensAction) {
     return { ok: true, result: { assets: enriched, count: enriched.length } };
   });
   registerLensAction("hvac", "asset-log-service", (ctx, _a, params = {}) => {
+  try {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const asset = hvFind(s.assets, hvAid(ctx), params.assetId);
     if (!asset) return { ok: false, error: "asset not found" };
@@ -329,7 +332,8 @@ export default function registerHVACActions(registerLensAction) {
     asset.history.unshift(entry);
     saveHvacState();
     return { ok: true, result: { asset, entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("hvac", "asset-delete", (ctx, _a, params = {}) => {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = s.assets.get(hvAid(ctx)) || [];
@@ -342,6 +346,7 @@ export default function registerHVACActions(registerLensAction) {
 
   // ── Quote → approval e-sign workflow ────────────────────────────────
   registerLensAction("hvac", "estimate-request-signature", (ctx, _a, params = {}) => {
+  try {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const estimateId = hvClean(params.estimateId, 80);
     if (!estimateId) return { ok: false, error: "estimateId required" };
@@ -363,7 +368,8 @@ export default function registerHVACActions(registerLensAction) {
     list.push(rec);
     saveHvacState();
     return { ok: true, result: { signatureRequest: rec, message: `Approval request sent. Sign token ${token}.` } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("hvac", "estimate-sign", (ctx, _a, params = {}) => {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = s.payments.get(hvAid(ctx)) || [];
@@ -387,6 +393,7 @@ export default function registerHVACActions(registerLensAction) {
 
   // ── Online payment / invoice payment processing ─────────────────────
   registerLensAction("hvac", "payment-charge", (ctx, _a, params = {}) => {
+  try {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const invoiceId = hvClean(params.invoiceId, 80);
     if (!invoiceId) return { ok: false, error: "invoiceId required" };
@@ -412,7 +419,8 @@ export default function registerHVACActions(registerLensAction) {
     hvList(s.payments, hvAid(ctx)).push(rec);
     saveHvacState();
     return { ok: true, result: { payment: rec, message: `Payment of $${rec.amount} processed (${method}).` } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("hvac", "payment-list", (ctx, _a, _params = {}) => {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const all = s.payments.get(hvAid(ctx)) || [];
@@ -445,6 +453,7 @@ export default function registerHVACActions(registerLensAction) {
 
   // ── Maintenance-agreement / recurring-service contracts ─────────────
   registerLensAction("hvac", "agreement-create", (ctx, _a, params = {}) => {
+  try {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const client = hvClean(params.client, 120);
     if (!client) return { ok: false, error: "client required" };
@@ -482,7 +491,8 @@ export default function registerHVACActions(registerLensAction) {
     hvList(s.agreements, hvAid(ctx)).push(agreement);
     saveHvacState();
     return { ok: true, result: { agreement } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("hvac", "agreement-list", (ctx, _a, _params = {}) => {
     const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = s.agreements.get(hvAid(ctx)) || [];

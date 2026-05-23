@@ -749,6 +749,7 @@ export default function registerAstronomyActions(registerLensAction) {
    * params: { latitude, longitude, when? (ISO) }
    */
   registerLensAction("astronomy", "sky-chart", (_ctx, _a, params = {}) => {
+  try {
     const obs = parseObserver(params);
     if (!obs) return { ok: false, error: "latitude and longitude required" };
     const when = parseWhen(params);
@@ -789,7 +790,8 @@ export default function registerAstronomyActions(registerLensAction) {
         visibleCount: stars.filter((s) => s.visible).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * whats-up — tonight's-best visibility list: ranks bright stars, the
@@ -798,6 +800,7 @@ export default function registerAstronomyActions(registerLensAction) {
    * params: { latitude, longitude, when?, minAltitude? }
    */
   registerLensAction("astronomy", "whats-up", (_ctx, _a, params = {}) => {
+  try {
     const obs = parseObserver(params);
     if (!obs) return { ok: false, error: "latitude and longitude required" };
     const when = parseWhen(params);
@@ -841,7 +844,8 @@ export default function registerAstronomyActions(registerLensAction) {
         best: out[0] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * constellations — constellation stick-figure line topology with the
@@ -849,6 +853,7 @@ export default function registerAstronomyActions(registerLensAction) {
    * sky chart. Pure catalogue topology.
    */
   registerLensAction("astronomy", "constellations", (_ctx, _a, params = {}) => {
+  try {
     const obs = parseObserver(params);
     const when = obs ? parseWhen(params) : null;
     const byName = Object.fromEntries(BRIGHT_STARS.map((s) => [s.name, s]));
@@ -879,7 +884,8 @@ export default function registerAstronomyActions(registerLensAction) {
         deepSkyCount: MESSIER_CATALOG.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * ephemeris-calendar — moon phase + Sun/Moon rise & set for a span of
@@ -887,6 +893,7 @@ export default function registerAstronomyActions(registerLensAction) {
    * params: { latitude, longitude, startDate? (YYYY-MM-DD), days? }
    */
   registerLensAction("astronomy", "ephemeris-calendar", (_ctx, _a, params = {}) => {
+  try {
     const obs = parseObserver(params);
     if (!obs) return { ok: false, error: "latitude and longitude required" };
     const days = Math.max(1, Math.min(60, Math.round(asNum(params.days, 14))));
@@ -914,7 +921,8 @@ export default function registerAstronomyActions(registerLensAction) {
       ok: true,
       result: { observer: obs, days, calendar, count: calendar.length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * observing-forecast — light-pollution proxy + sky-conditions forecast
@@ -1022,6 +1030,7 @@ export default function registerAstronomyActions(registerLensAction) {
    * pointing data. params: { targetName, ra, dec, latitude?, longitude? }
    */
   registerLensAction("astronomy", "goto-command", (ctx, _a, params = {}) => {
+  try {
     const s = getGotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const targetName = asClean(params.targetName, 120);
     if (!targetName) return { ok: false, error: "targetName required" };
@@ -1051,7 +1060,8 @@ export default function registerAstronomyActions(registerLensAction) {
     asListB(s.gotoQueue, asAid(ctx)).push(cmd);
     saveAstroState();
     return { ok: true, result: { command: cmd, mountConnected: !!mount } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * goto-queue — list slew commands, newest first.
@@ -1102,6 +1112,7 @@ export default function registerAstronomyActions(registerLensAction) {
    * params: { latitude, longitude, altitude, azimuth, when?, fov? }
    */
   registerLensAction("astronomy", "ar-resolve", (_ctx, _a, params = {}) => {
+  try {
     const obs = parseObserver(params);
     if (!obs) return { ok: false, error: "latitude and longitude required" };
     const pAlt = asNum(params.altitude, NaN);
@@ -1143,5 +1154,6 @@ export default function registerAstronomyActions(registerLensAction) {
         nearest: matches[0] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

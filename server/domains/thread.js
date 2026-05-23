@@ -310,6 +310,7 @@ export default function registerThreadActions(registerLensAction) {
   };
 
   registerLensAction("thread", "account-connect", (ctx, _a, params = {}) => {
+  try {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const platform = PLATFORMS.includes(params.platform) ? params.platform : null;
     if (!platform) return { ok: false, error: "valid platform required" };
@@ -341,7 +342,8 @@ export default function registerThreadActions(registerLensAction) {
     list.push(account);
     saveThread();
     return { ok: true, result: { account } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("thread", "account-list", (ctx, _a, _params = {}) => {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -394,6 +396,7 @@ export default function registerThreadActions(registerLensAction) {
   });
 
   registerLensAction("thread", "restyle-preview", (_ctx, _a, params = {}) => {
+  try {
     const raw = splitThread(trClean(params.content, 25000), Math.max(80, Math.min(2000, Number(params.limit) || 270)));
     const style = NUMBERING_STYLES.includes(params.numberingStyle) ? params.numberingStyle : "slash";
     // splitThread already appends "i/n"; strip it and re-apply the chosen style.
@@ -406,7 +409,8 @@ export default function registerThreadActions(registerLensAction) {
       return { index: idx + 1, text, chars: text.length };
     });
     return { ok: true, result: { posts, postCount: posts.length, numberingStyle: style } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Media attachments — drag-reorderable per-post media ─────────────
   // Stores media references (data URL or hosted URL passed by the client
@@ -559,6 +563,7 @@ export default function registerThreadActions(registerLensAction) {
   }
 
   registerLensAction("thread", "publish-to-account", async (ctx, _a, params = {}) => {
+  try {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = trActor(ctx);
     const draft = trList(s, userId).find((d) => d.id === params.draftId);
@@ -613,7 +618,8 @@ export default function registerThreadActions(registerLensAction) {
     draft.updatedAt = trNow();
     saveThread();
     return { ok: true, result: { published: record } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Engagement analytics on published threads ───────────────────────
   // Records and aggregates per-post engagement. Metrics are supplied by
@@ -646,6 +652,7 @@ export default function registerThreadActions(registerLensAction) {
   });
 
   registerLensAction("thread", "engagement-report", (ctx, _a, params = {}) => {
+  try {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const all = trPublished(s, trActor(ctx));
     if (params.publishId) {
@@ -695,11 +702,13 @@ export default function registerThreadActions(registerLensAction) {
         topThread: threads.slice().sort((a, b) => b.engagementRate - a.engagementRate)[0] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Queue calendar view ─────────────────────────────────────────────
   // Buckets scheduled drafts into calendar days for a week/month grid.
   registerLensAction("thread", "queue-calendar", (ctx, _a, params = {}) => {
+  try {
     const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const range = params.range === "month" ? "month" : "week";
     const anchor = params.anchor && !Number.isNaN(new Date(params.anchor).getTime())
@@ -749,5 +758,6 @@ export default function registerThreadActions(registerLensAction) {
         }).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

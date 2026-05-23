@@ -14,6 +14,7 @@ export default function registerBillingActions(registerLensAction) {
    * params.exchangeRates — { currencyCode: rateToTarget } (optional)
    */
   registerLensAction("billing", "invoiceCalculation", (ctx, artifact, params) => {
+  try {
     const lineItems = artifact.data.lineItems || [];
     const pricingTiers = artifact.data.pricingTiers || [];
     const discountRules = artifact.data.discountRules || [];
@@ -195,7 +196,8 @@ export default function registerBillingActions(registerLensAction) {
 
     artifact.data.invoiceCalculation = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * revenueRecognition
@@ -205,6 +207,7 @@ export default function registerBillingActions(registerLensAction) {
    * params.recognitionDate — date to compute recognition as of (default: now)
    */
   registerLensAction("billing", "revenueRecognition", (ctx, artifact, params) => {
+  try {
     const contracts = artifact.data.contracts || [];
     if (contracts.length === 0) {
       return { ok: true, result: { message: "No contracts provided." } };
@@ -322,7 +325,8 @@ export default function registerBillingActions(registerLensAction) {
 
     artifact.data.revenueRecognition = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * churnPrediction
@@ -332,6 +336,7 @@ export default function registerBillingActions(registerLensAction) {
    * params.churnThreshold — probability threshold for churn flag (default 0.5)
    */
   registerLensAction("billing", "churnPrediction", (ctx, artifact, params) => {
+  try {
     const customers = artifact.data.customers || [];
     if (customers.length === 0) {
       return { ok: true, result: { message: "No customer data provided." } };
@@ -485,7 +490,8 @@ export default function registerBillingActions(registerLensAction) {
 
     artifact.data.churnPrediction = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ──────────────────────────────────────────────────────────────────────────
   // Parity-sprint macros — subscription billing core

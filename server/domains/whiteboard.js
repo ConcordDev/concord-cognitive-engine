@@ -764,6 +764,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   // ── Comments per element ─────────────────────────────────────
 
   registerLensAction("whiteboard", "comments-list", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -780,7 +781,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     const all = {};
     for (const [eid, list] of elementMap) all[eid] = list;
     return { ok: true, result: { comments: all } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("whiteboard", "comments-add", (ctx, _a, params = {}) => {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -851,6 +853,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   // ── Export ────────────────────────────────────────────────────
 
   registerLensAction("whiteboard", "board-export-json", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -877,7 +880,8 @@ export default function registerWhiteboardActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  2026 parity backlog — CRDT ops, raster export, frames,
@@ -977,6 +981,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "ops-since", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -991,7 +996,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     }
     const ops = entry.ops.filter(o => o.clock > since);
     return { ok: true, result: { boardId, clock: entry.clock, ops, baselineNeeded: since === 0, scene: since === 0 ? lookup.board.scene : undefined } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Raster export — PNG / SVG / PDF render plan ──────────
   //
@@ -1002,6 +1008,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   // across clients and gives the PDF path real page geometry.
 
   registerLensAction("whiteboard", "export-raster-plan", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -1065,7 +1072,8 @@ export default function registerWhiteboardActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Frames / sections ────────────────────────────────────
   //
@@ -1116,6 +1124,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "frame-list", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -1128,7 +1137,8 @@ export default function registerWhiteboardActions(registerLensAction) {
         .map(f => ({ ...f, memberIds: frameMembers(lookup.board.scene, f) }))
       : [];
     return { ok: true, result: { frames } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("whiteboard", "frame-update", (ctx, _a, params = {}) => {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1220,6 +1230,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   }
 
   registerLensAction("whiteboard", "connector-create", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -1244,9 +1255,11 @@ export default function registerWhiteboardActions(registerLensAction) {
     cb.get(boardId).set(connector.id, connector);
     saveWhiteboardState();
     return { ok: true, result: { connector: resolveConnectorRoute(lookup.board.scene, connector) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("whiteboard", "connector-list", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -1258,7 +1271,8 @@ export default function registerWhiteboardActions(registerLensAction) {
       ? Array.from(map.values()).map(c => resolveConnectorRoute(lookup.board.scene, c))
       : [];
     return { ok: true, result: { connectors } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("whiteboard", "connector-delete", (ctx, _a, params = {}) => {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1393,6 +1407,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   // members, so the front-end can pan/zoom to each frame in turn.
 
   registerLensAction("whiteboard", "presentation-build", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -1412,7 +1427,8 @@ export default function registerWhiteboardActions(registerLensAction) {
       memberIds: frameMembers(lookup.board.scene, f),
     }));
     return { ok: true, result: { boardId, slides, slideCount: slides.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Reactions / live cursors with name labels ────────────
   //
@@ -1478,6 +1494,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   });
 
   registerLensAction("whiteboard", "presence-list", (ctx, _a, params = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boardId = String(params.boardId || "");
@@ -1495,11 +1512,13 @@ export default function registerWhiteboardActions(registerLensAction) {
       }
     }
     return { ok: true, result: { boardId, participants: active, selfId: userId } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Workspace summary ────────────────────────────────────────
 
   registerLensAction("whiteboard", "workspace-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getWhiteboardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = wbActor(ctx);
     const boards = s.boards.get(userId);
@@ -1535,5 +1554,6 @@ export default function registerWhiteboardActions(registerLensAction) {
         openCommentCount,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

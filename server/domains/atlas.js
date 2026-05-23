@@ -21,6 +21,7 @@ export default function registerAtlasActions(registerLensAction) {
    * Optionally computes distance from artifact.data.origin: { lat, lon }.
    */
   registerLensAction("atlas", "geocode", (ctx, artifact, _params) => {
+  try {
     const places = artifact.data?.places || [];
     if (places.length === 0) {
       return { ok: true, result: { message: "No places provided. Supply artifact.data.places as [{ name, lat?, lon? }]. Optionally set artifact.data.origin for distance calculations.", resolved: [], count: 0 } };
@@ -144,7 +145,8 @@ export default function registerAtlasActions(registerLensAction) {
 
     artifact.data.geocodeResult = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * distanceMatrix
@@ -153,6 +155,7 @@ export default function registerAtlasActions(registerLensAction) {
    * Returns a full NxN distance matrix in km.
    */
   registerLensAction("atlas", "distanceMatrix", (ctx, artifact, _params) => {
+  try {
     const points = artifact.data?.points || [];
     if (points.length < 2) {
       return { ok: true, result: { message: "Need at least 2 points. Supply artifact.data.points as [{ name?, lat, lon }].", matrix: [], stats: null } };
@@ -235,7 +238,8 @@ export default function registerAtlasActions(registerLensAction) {
 
     artifact.data.distanceMatrix = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * regionStats
@@ -244,6 +248,7 @@ export default function registerAtlasActions(registerLensAction) {
    * Calculates totals, averages, rankings, and normalized comparisons.
    */
   registerLensAction("atlas", "regionStats", (ctx, artifact, _params) => {
+  try {
     const regions = artifact.data?.regions || [];
     if (regions.length === 0) {
       return { ok: true, result: { message: "No region data provided. Supply artifact.data.regions as [{ name, population, area, gdp, density, growth }].", summary: null, rankings: null } };
@@ -336,7 +341,8 @@ export default function registerAtlasActions(registerLensAction) {
 
     artifact.data.regionStats = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * routeOptimize
@@ -346,6 +352,7 @@ export default function registerAtlasActions(registerLensAction) {
    * Returns optimized route order with total distance.
    */
   registerLensAction("atlas", "routeOptimize", (ctx, artifact, _params) => {
+  try {
     const waypoints = artifact.data?.waypoints || [];
     if (waypoints.length < 2) {
       return { ok: true, result: { message: "Need at least 2 waypoints. Supply artifact.data.waypoints as [{ name?, lat, lon }].", route: [], totalDistanceKm: 0 } };
@@ -489,7 +496,8 @@ export default function registerAtlasActions(registerLensAction) {
 
     artifact.data.routeOptimization = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * nominatim-geocode — Real OSM Nominatim forward geocoding.
@@ -659,6 +667,7 @@ export default function registerAtlasActions(registerLensAction) {
   });
 
   registerLensAction("atlas", "places-save", (ctx, _a, params = {}) => {
+  try {
     const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAt(ctx);
     const name = String(params.name || "").trim();
@@ -684,7 +693,8 @@ export default function registerAtlasActions(registerLensAction) {
     listAt(s.places, userId).push(place);
     saveAtlas();
     return { ok: true, result: { place } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("atlas", "places-update", (ctx, _a, params = {}) => {
     const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1417,6 +1427,7 @@ export default function registerAtlasActions(registerLensAction) {
   });
 
   registerLensAction("atlas", "offline-areas-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!s.offlineAreas) s.offlineAreas = new Map();
     const userId = aidAt(ctx);
@@ -1450,7 +1461,8 @@ export default function registerAtlasActions(registerLensAction) {
     listAt(s.offlineAreas, userId).push(area);
     saveAtlas();
     return { ok: true, result: { area } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("atlas", "offline-areas-update-status", (ctx, _a, params = {}) => {
     const s = getAtlasState(); if (!s) return { ok: false, error: "STATE unavailable" };

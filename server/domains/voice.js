@@ -37,6 +37,7 @@ export default function registerVoiceActions(registerLensAction) {
   });
 
   registerLensAction("voice", "speakerDiarize", (ctx, artifact, _params) => {
+  try {
     const segments = artifact.data?.segments || [];
     const transcript = artifact.data?.transcript || "";
     if (segments.length === 0 && !transcript.trim()) return { ok: true, result: { message: "Provide segments (array of {speaker, text, startTime, endTime}) or a tagged transcript." } };
@@ -89,7 +90,8 @@ export default function registerVoiceActions(registerLensAction) {
     const dominantSpeaker = speakers[0]?.speaker || "N/A";
     const turnCount = parsed.length;
     return { ok: true, result: { speakerCount: speakers.length, totalSegments: turnCount, totalWords, totalDurationSeconds: Math.round(totalDuration * 10) / 10, speakers, dominantSpeaker, balanceRatio: speakers.length >= 2 ? Math.round((speakers[speakers.length - 1].wordCount / speakers[0].wordCount) * 100) : 100 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("voice", "sentimentScore", (ctx, artifact, _params) => {
     const segments = artifact.data?.segments || [];
@@ -202,6 +204,7 @@ export default function registerVoiceActions(registerLensAction) {
   }
 
   registerLensAction("voice", "recording-create", (ctx, _a, params = {}) => {
+  try {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = vcClean(params.title, 200);
     if (!title) return { ok: false, error: "recording title required" };
@@ -241,7 +244,8 @@ export default function registerVoiceActions(registerLensAction) {
     vcList(s, vcActor(ctx)).push(recording);
     saveVoice();
     return { ok: true, result: { recording } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("voice", "recording-list", (ctx, _a, params = {}) => {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -583,6 +587,7 @@ Only use information present in the transcript. Do not invent owners or decision
   });
 
   registerLensAction("voice", "voiceprint-identify", (ctx, _a, params = {}) => {
+  try {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const vector = normVector(params.vector);
     if (!vector) return { ok: false, error: "vector required (numeric array of acoustic features)" };
@@ -604,7 +609,8 @@ Only use information present in the transcript. Do not invent owners or decision
         candidates: ranked.slice(0, 5),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Apply identified speakers across a recording's segments by matching
   // each segment's stored acoustic vector against enrolled voice prints.
@@ -667,6 +673,7 @@ Only use information present in the transcript. Do not invent owners or decision
   });
 
   registerLensAction("voice", "meeting-list", (ctx, _a, params = {}) => {
+  try {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let meetings = [...meetList(s, vcActor(ctx))];
     if (params.upcoming) {
@@ -675,7 +682,8 @@ Only use information present in the transcript. Do not invent owners or decision
     }
     meetings.sort((a, b) => a.startAt.localeCompare(b.startAt));
     return { ok: true, result: { meetings, count: meetings.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("voice", "meeting-cancel", (ctx, _a, params = {}) => {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -716,6 +724,7 @@ Only use information present in the transcript. Do not invent owners or decision
 
   // The bot "leaves": finalise the attached live session into a recording.
   registerLensAction("voice", "meeting-bot-finalize", (ctx, _a, params = {}) => {
+  try {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = vcActor(ctx);
     const meeting = meetList(s, userId).find((m) => m.id === params.id);
@@ -753,7 +762,8 @@ Only use information present in the transcript. Do not invent owners or decision
     meeting.recordingId = recording.id;
     saveVoice();
     return { ok: true, result: { meeting, recording } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Share a recording + comment on segments ─────────────────────────
   registerLensAction("voice", "recording-share", (ctx, _a, params = {}) => {

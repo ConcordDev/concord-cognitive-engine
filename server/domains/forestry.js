@@ -160,6 +160,7 @@ export default function registerForestryActions(registerLensAction) {
   const SPECIES = ["douglas_fir", "ponderosa_pine", "loblolly_pine", "oak", "maple", "spruce", "mixed", "other"];
 
   registerLensAction("forestry", "stand-add", (ctx, _a, params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = frClean(params.name, 160);
     if (!name) return { ok: false, error: "stand name required" };
@@ -178,7 +179,8 @@ export default function registerForestryActions(registerLensAction) {
     frStands(s, frActor(ctx)).push(stand);
     saveForestry();
     return { ok: true, result: { stand } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("forestry", "stand-list", (ctx, _a, _params = {}) => {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -214,6 +216,7 @@ export default function registerForestryActions(registerLensAction) {
   });
 
   registerLensAction("forestry", "forestry-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const stands = frStands(s, frActor(ctx));
     const bySpecies = {};
@@ -227,7 +230,8 @@ export default function registerForestryActions(registerLensAction) {
         bySpecies,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Growth & yield projection over a rotation ─────────────────────
   // Per-species mean annual increment (MAI, board feet/acre/year) and the
@@ -244,6 +248,7 @@ export default function registerForestryActions(registerLensAction) {
   };
 
   registerLensAction("forestry", "growth-projection", (ctx, _a, params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const species = SPECIES.includes(params.species) ? params.species : "mixed";
     const acres = Math.max(0, frNum(params.acres));
@@ -293,7 +298,8 @@ export default function registerForestryActions(registerLensAction) {
         peakMai: peakRow?.mai || 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── GIS stand mapping — polygon drawing + acreage from coordinates ──
   // Shoelace area on a lat/lon ring → acres (uses spherical earth approx).
@@ -318,6 +324,7 @@ export default function registerForestryActions(registerLensAction) {
   function frPolys(s, userId) { if (!s.polygons.has(userId)) s.polygons.set(userId, []); return s.polygons.get(userId); }
 
   registerLensAction("forestry", "stand-polygon-save", (ctx, _a, params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.polygons instanceof Map)) s.polygons = new Map();
     const name = frClean(params.name, 160);
@@ -350,7 +357,8 @@ export default function registerForestryActions(registerLensAction) {
     frPolys(s, frActor(ctx)).push(poly);
     saveForestry();
     return { ok: true, result: { polygon: poly } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("forestry", "stand-polygon-list", (ctx, _a, _params = {}) => {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -374,6 +382,7 @@ export default function registerForestryActions(registerLensAction) {
   function frCruises(s, userId) { if (!s.cruises.has(userId)) s.cruises.set(userId, []); return s.cruises.get(userId); }
 
   registerLensAction("forestry", "cruise-plot-add", (ctx, _a, params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.cruises instanceof Map)) s.cruises = new Map();
     const standId = frClean(params.standId, 80);
@@ -407,16 +416,19 @@ export default function registerForestryActions(registerLensAction) {
     frCruises(s, frActor(ctx)).push(plot);
     saveForestry();
     return { ok: true, result: { plot } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("forestry", "cruise-plot-list", (ctx, _a, params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.cruises instanceof Map)) s.cruises = new Map();
     let plots = frCruises(s, frActor(ctx));
     const standId = frClean(params.standId, 80);
     if (standId) plots = plots.filter((p) => p.standId === standId);
     return { ok: true, result: { plots, count: plots.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("forestry", "cruise-plot-delete", (ctx, _a, params = {}) => {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -430,6 +442,7 @@ export default function registerForestryActions(registerLensAction) {
   });
 
   registerLensAction("forestry", "cruise-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.cruises instanceof Map)) s.cruises = new Map();
     let plots = frCruises(s, frActor(ctx));
@@ -470,7 +483,8 @@ export default function registerForestryActions(registerLensAction) {
         })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Pest / disease tracking with treatment scheduling ─────────────
   function frPests(s, userId) { if (!s.pests.has(userId)) s.pests.set(userId, []); return s.pests.get(userId); }
@@ -609,6 +623,7 @@ export default function registerForestryActions(registerLensAction) {
   });
 
   registerLensAction("forestry", "replant-survival-survey", (ctx, _a, params = {}) => {
+  try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.replanting instanceof Map)) s.replanting = new Map();
     const project = frReplant(s, frActor(ctx)).find((p) => p.id === params.id);
@@ -632,7 +647,8 @@ export default function registerForestryActions(registerLensAction) {
         : "Well stocked";
     saveForestry();
     return { ok: true, result: { survey, project } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Carbon-credit registry workflow ───────────────────────────────
   function frCredits(s, userId) { if (!s.carbonCredits.has(userId)) s.carbonCredits.set(userId, []); return s.carbonCredits.get(userId); }

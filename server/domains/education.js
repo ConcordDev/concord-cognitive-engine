@@ -10,6 +10,7 @@ export default function registerEducationActions(registerLensAction) {
    * params.studentId — optional single student filter
    */
   registerLensAction("education", "gradeCalculation", (_ctx, artifact, params) => {
+  try {
     const students = artifact.data.students || [];
     const weightScheme = artifact.data.weightScheme || params.weightScheme || [];
     const targetId = params.studentId || null;
@@ -114,7 +115,8 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.gradeReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * attendanceReport
@@ -124,6 +126,7 @@ export default function registerEducationActions(registerLensAction) {
    * params.startDate, params.endDate — optional period filter
    */
   registerLensAction("education", "attendanceReport", (_ctx, artifact, params) => {
+  try {
     const attendance = artifact.data.attendance || [];
     const startDate = params.startDate ? new Date(params.startDate) : null;
     const endDate = params.endDate ? new Date(params.endDate) : null;
@@ -197,7 +200,8 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.attendanceReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * progressTrack
@@ -206,6 +210,7 @@ export default function registerEducationActions(registerLensAction) {
    * artifact.data.completions: [{ requirementId, completedUnits, completedDate }]
    */
   registerLensAction("education", "progressTrack", (_ctx, artifact, params) => {
+  try {
     const requirements = artifact.data.requirements || [];
     const completions = artifact.data.completions || [];
 
@@ -265,7 +270,8 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.progressReport = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * generateReportCard
@@ -275,6 +281,7 @@ export default function registerEducationActions(registerLensAction) {
    * params.honorRollThreshold (default 3.5), params.highHonorsThreshold (default 3.8)
    */
   registerLensAction("education", "generateReportCard", (_ctx, artifact, params) => {
+  try {
     const grades = artifact.data.grades || [];
     const honorRollThreshold = params.honorRollThreshold || 3.5;
     const highHonorsThreshold = params.highHonorsThreshold || 3.8;
@@ -347,7 +354,8 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.reportCard = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * scheduleConflict
@@ -356,6 +364,7 @@ export default function registerEducationActions(registerLensAction) {
    * startTime/endTime in "HH:MM" 24-hour format
    */
   registerLensAction("education", "scheduleConflict", (_ctx, artifact, _params) => {
+  try {
     const schedules = artifact.data.schedules || [];
 
     function timeToMinutes(t) {
@@ -425,7 +434,8 @@ export default function registerEducationActions(registerLensAction) {
     artifact.data.scheduleConflicts = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros: Anki SM-2 / Khanmigo Socratic / Quizlet Magic Notes ───
 
@@ -653,6 +663,7 @@ Constraints:
    * quiz-mint-deck — Persist accepted quiz cards as a flashcard deck.
    */
   registerLensAction("education", "quiz-mint-deck", (ctx, _artifact, params = {}) => {
+  try {
     const state = getEduState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
@@ -681,7 +692,8 @@ Constraints:
     }
     saveStateIfAvailable();
     return { ok: true, result: { deck, added: cardsIn.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * lesson-plan-generate — Khan/Chalkie-style lesson plan via conscious brain.
@@ -994,6 +1006,7 @@ Constraints:
   // ── Streaks + energy points + course level ─────────────────────
 
   registerLensAction("education", "gamification-status", (ctx, _a, _p = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const points = ensureEduBucket(s, "energyPoints", userId);
@@ -1023,7 +1036,8 @@ Constraints:
         recentPoints: points.slice(-10).reverse(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("education", "points-award", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1046,6 +1060,7 @@ Constraints:
   });
 
   registerLensAction("education", "certificates-issue", (ctx, _a, params = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const courseId = String(params.courseId || "");
@@ -1067,7 +1082,8 @@ Constraints:
     ensureEduBucket(s, "certificates", userId).push(cert);
     saveStateIfAvailable();
     return { ok: true, result: { certificate: cert } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Assignments + peer review (Coursera-style) ─────────────────
 
@@ -1217,6 +1233,7 @@ Constraints:
   // ── Dashboard summary (ClassroomShell data source) ─────────────
 
   registerLensAction("education", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const courses = ensureEduBucket(s, "courses", userId);
@@ -1253,7 +1270,8 @@ Constraints:
         level: Math.floor(proficientSkills / 5) + 1,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════
   //  Parity backlog — video lessons, interactive exercises, learning
@@ -1380,6 +1398,7 @@ Constraints:
   });
 
   registerLensAction("education", "exercises-create", (ctx, _a, params = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const title = String(params.title || "").trim();
@@ -1404,7 +1423,8 @@ Constraints:
     ensureEduBucket(s, "exercises", userId).push(exercise);
     saveStateIfAvailable();
     return { ok: true, result: { exercise: { id: exercise.id, title, skillId: exercise.skillId, stepCount: steps.length } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // exercises-hint — return the next hint for a step (1-indexed escalation),
   // never the answer.
@@ -1492,6 +1512,7 @@ Constraints:
   // prior steps' courses are completed (all lessons done).
 
   registerLensAction("education", "paths-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const paths = ensureEduBucket(s, "learningPaths", userId);
@@ -1530,7 +1551,8 @@ Constraints:
       };
     });
     return { ok: true, result: { paths: enriched } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("education", "paths-create", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1665,6 +1687,7 @@ Constraints:
   // and energy points into a knowledge-state report. No fabricated data.
 
   registerLensAction("education", "mastery-dashboard", (ctx, _a, _p = {}) => {
+  try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const skills = ensureEduBucket(s, "skills", userId);
@@ -1739,7 +1762,8 @@ Constraints:
         activity,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 6. Lesson-timestamped Q&A threads ─────────────────────────────
   // Questions anchored to a specific second within a lesson video, with

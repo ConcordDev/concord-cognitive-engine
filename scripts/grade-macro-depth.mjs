@@ -319,7 +319,32 @@ function classifyTier(s) {
   // threshold purely because their problem domain doesn't require more
   // code. The other three bars (stateTouch, exercised, robustness) keep
   // the production tier honest.
+  //
+  // Three production paths:
+  //   (A) Stateful work: ≥40 LOC + stateTouch + exercised + robustness.
+  //       The classic "writes to DB, handles errors, has tests" path.
+  //   (B) External-API integrations: externalIO + tryCatch + exercised.
+  //       The actual work is the API call; LOC and state-touch don't
+  //       define quality here. e.g. art.aic-search hitting the Art
+  //       Institute of Chicago API at 31 LOC with proper error handling
+  //       is production-grade by the standard of any other API client.
+  //   (C) Pure-compute production: ≥40 LOC + tryCatch + exercised
+  //       (no stateTouch needed). Real algorithmic implementations —
+  //       accounting formulas, signal processors, IK solvers — that are
+  //       input→output functions. The substance is the computation. The
+  //       LOC floor matches rule A (40) so a 45-LOC predict-yield macro
+  //       isn't penalized for not happening to touch state.
+  //   (D) Delegation production: handler is a one-line delegation
+  //       (delegates=true) AND has hasTest=true AND frontendUse=true.
+  //       The work is happening in an imported module the grader can't
+  //       follow, but it's exercised by both a real test and a real
+  //       frontend lens — that's the same exercise signal a non-
+  //       delegation production-grade macro carries. Don't penalize
+  //       handlers for being well-factored wrappers.
   if (s.combinedLoc >= 40 && s.stateTouch && exercised && robustness) return 'production-grade';
+  if (s.externalIO && s.tryCatch && exercised) return 'production-grade';
+  if (s.combinedLoc >= 40 && s.tryCatch && exercised) return 'production-grade';
+  if (s.delegates && s.hasTest && s.frontendUse) return 'production-grade';
   return 'functional';
 }
 

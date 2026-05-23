@@ -675,6 +675,7 @@ export default function registerDatabaseActions(registerLensAction) {
   // ── query-explain: EXPLAIN / query-plan visualization ─────────────────
 
   registerLensAction("database", "query-explain", (ctx, _a, params = {}) => {
+  try {
     const s = getDbStore(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = findConn(s, ctx, params.connectionId);
     if (!c) return { ok: false, error: "connection not found" };
@@ -730,7 +731,8 @@ export default function registerDatabaseActions(registerLensAction) {
         warnings,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── query-history: persisted live-execution log ───────────────────────
 
@@ -776,6 +778,7 @@ export default function registerDatabaseActions(registerLensAction) {
   // ── sql-autocomplete: schema-aware completion suggestions ─────────────
 
   registerLensAction("database", "sql-autocomplete", (ctx, _a, params = {}) => {
+  try {
     const s = getDbStore(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = findConn(s, ctx, params.connectionId);
     const prefix = String(params.prefix || "").toLowerCase();
@@ -798,5 +801,6 @@ export default function registerDatabaseActions(registerLensAction) {
       }
     }
     return { ok: true, result: { suggestions: suggestions.slice(0, 40), count: suggestions.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

@@ -175,6 +175,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "listings-create", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const title = String(params.title || "").trim();
@@ -203,7 +204,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     arrayB(s.listings, userId).push(listing);
     saveStore();
     return { ok: true, result: { listing } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "listings-update", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -262,6 +264,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "orders-create", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const listingId = String(params.listingId || "");
@@ -300,7 +303,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     if (listing.stockQty !== null) listing.stockQty -= qty;
     saveStore();
     return { ok: true, result: { order } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "orders-mark-shipped", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -359,6 +363,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "analytics-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const days = Math.max(1, Math.min(365, Number(params.days) || 30));
@@ -401,9 +406,11 @@ export default function registerMarketplaceActions(registerLensAction) {
         series: byDay,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "analytics-by-listing", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const days = Math.max(1, Math.min(365, Number(params.days) || 30));
@@ -427,7 +434,8 @@ export default function registerMarketplaceActions(registerLensAction) {
       };
     }).sort((a, b) => b.revenueUsd - a.revenueUsd);
     return { ok: true, result: { listings: rows } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Search visibility (Etsy 2026: impressions + CTR per keyword) ─
 
@@ -449,6 +457,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "search-visibility", (ctx, _a, _p = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const impMap = mapBS(s.impressions, userId);
@@ -473,11 +482,13 @@ export default function registerMarketplaceActions(registerLensAction) {
       });
     }
     return { ok: true, result: { listings: out.sort((a, b) => b.totalImpressions - a.totalImpressions) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Marketplace Insights (Etsy 2026: keyword search w/ saved-searches) ─
 
   registerLensAction("marketplace", "insights-keyword-search", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const keyword = String(params.keyword || "").toLowerCase().trim();
@@ -500,7 +511,8 @@ export default function registerMarketplaceActions(registerLensAction) {
         ownTopMatches: listings.slice(0, 5).map(l => ({ id: l.id, title: l.title })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "saved-searches-list", (ctx, _a, _p = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -508,6 +520,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "saved-searches-save", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const keyword = String(params.keyword || "").trim();
@@ -521,7 +534,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     list.push(item);
     saveStore();
     return { ok: true, result: { savedSearch: item } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "saved-searches-delete", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -541,6 +555,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "promotions-create", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const code = String(params.code || "").trim().toUpperCase();
@@ -568,7 +583,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     list.push(promo);
     saveStore();
     return { ok: true, result: { promotion: promo } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "promotions-toggle", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -639,6 +655,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "ai-price-suggest", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const id = String(params.id || "");
@@ -674,7 +691,8 @@ export default function registerMarketplaceActions(registerLensAction) {
         positioning: listing.priceUsd > avg ? "above-market" : listing.priceUsd < avg * 0.8 ? "budget" : "competitive",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Etsy seller-surface parity backlog — storefront, reviews,
@@ -701,6 +719,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   // ── Buyer-facing storefront ───────────────────────────────────
 
   registerLensAction("marketplace", "storefront-browse", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const q = String(params.search || "").toLowerCase().trim();
@@ -743,9 +762,11 @@ export default function registerMarketplaceActions(registerLensAction) {
     });
     const kinds = Array.from(new Set(out.map(l => l.kind))).sort();
     return { ok: true, result: { listings: out, total: out.length, categories: kinds } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "storefront-shop", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const sellerId = String(params.sellerId || "").trim();
@@ -765,11 +786,13 @@ export default function registerMarketplaceActions(registerLensAction) {
         listings: listings.map(l => ({ listingId: l.id, number: l.number, title: l.title, kind: l.kind, priceUsd: l.priceUsd, images: l.images || [], stockQty: l.stockQty })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reviews & ratings ─────────────────────────────────────────
 
   registerLensAction("marketplace", "reviews-list", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const sellerId = String(params.sellerId || aidS(ctx));
@@ -782,9 +805,11 @@ export default function registerMarketplaceActions(registerLensAction) {
     const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     rated.forEach(r => { const k = Math.round(r.rating); if (dist[k] !== undefined) dist[k]++; });
     return { ok: true, result: { reviews: list, count: list.length, avgRating: avg, distribution: dist } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "reviews-create", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const userId = aidS(ctx);
@@ -820,7 +845,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     list.push(review);
     saveStore();
     return { ok: true, result: { review } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "reviews-reply", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -905,6 +931,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "variations-set", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const userId = aidS(ctx);
@@ -926,7 +953,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     mapBS(s.variations, userId).set(listingId, cleaned);
     saveStore();
     return { ok: true, result: { listingId, variations: cleaned } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Shipping profiles ─────────────────────────────────────────
 
@@ -993,6 +1021,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   const COUPON_KINDS = ['percent', 'fixed', 'free_shipping', 'bogo', 'tiered'];
 
   registerLensAction("marketplace", "coupons-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const now = Date.now();
@@ -1003,9 +1032,11 @@ export default function registerMarketplaceActions(registerLensAction) {
         (!c.endsAt || new Date(c.endsAt).getTime() >= now),
     }));
     return { ok: true, result: { coupons: list } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "coupons-create", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const userId = aidS(ctx);
@@ -1046,7 +1077,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     list.push(coupon);
     saveStore();
     return { ok: true, result: { coupon } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "coupons-toggle", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1071,6 +1103,7 @@ export default function registerMarketplaceActions(registerLensAction) {
 
   // Apply a coupon against a subtotal — pure calculation, no mutation.
   registerLensAction("marketplace", "coupons-apply", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const sellerId = String(params.sellerId || aidS(ctx));
@@ -1108,11 +1141,13 @@ export default function registerMarketplaceActions(registerLensAction) {
         totalAfterDiscountUsd: Math.round((subtotal - discount) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Inventory alerts ──────────────────────────────────────────
 
   registerLensAction("marketplace", "inventory-alerts", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const userId = aidS(ctx);
@@ -1134,11 +1169,13 @@ export default function registerMarketplaceActions(registerLensAction) {
     const outOfStock = out.filter(a => a.level === 'out_of_stock').length;
     const lowStock = out.filter(a => a.level === 'low_stock').length;
     return { ok: true, result: { threshold, alerts: out, outOfStock, lowStock, total: out.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Cart & checkout (buyer side) ──────────────────────────────
 
   registerLensAction("marketplace", "cart-get", (ctx, _a, _p = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const buyerId = aidS(ctx);
@@ -1154,9 +1191,11 @@ export default function registerMarketplaceActions(registerLensAction) {
     }
     const count = shops.reduce((n, sh) => n + sh.lines.reduce((q, ln) => q + ln.qty, 0), 0);
     return { ok: true, result: { shops, itemCount: count, grandTotalUsd: Math.round(itemTotal * 100) / 100 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "cart-add", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const buyerId = aidS(ctx);
@@ -1188,7 +1227,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     });}
     saveStore();
     return { ok: true, result: { added: true } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "cart-update", (ctx, _a, params = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1210,6 +1250,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   });
 
   registerLensAction("marketplace", "checkout-create", (ctx, _a, params = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     extendStore(s);
     const buyerId = aidS(ctx);
@@ -1294,7 +1335,8 @@ export default function registerMarketplaceActions(registerLensAction) {
     byShop.clear();
     saveStore();
     return { ok: true, result: { checkout } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketplace", "checkout-history", (ctx, _a, _p = {}) => {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1306,6 +1348,7 @@ export default function registerMarketplaceActions(registerLensAction) {
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("marketplace", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getStoreState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidS(ctx);
     const listings = arrayB(s.listings, userId);
@@ -1329,5 +1372,6 @@ export default function registerMarketplaceActions(registerLensAction) {
         activePromos: promos.filter(p => p.active).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

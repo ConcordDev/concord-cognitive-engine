@@ -441,6 +441,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
   });
 
   registerLensAction("creative-writing", "writing-stats", (ctx, _a, params = {}) => {
+  try {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = cwAid(ctx);
     const project = cwProject(s, userId, params.projectId);
@@ -473,7 +474,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
         recentSessions: [...sessions].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 14),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Corkboard view ──────────────────────────────────────────────────
   registerLensAction("creative-writing", "corkboard", (ctx, _a, params = {}) => {
@@ -647,6 +649,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
 
   // ── Compile / export ────────────────────────────────────────────────
   registerLensAction("creative-writing", "compile", (ctx, _a, params = {}) => {
+  try {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = cwAid(ctx);
     const project = cwProject(s, userId, params.projectId);
@@ -673,10 +676,12 @@ export default function registerCreativeWritingActions(registerLensAction) {
       ok: true,
       result: { title: project.title, manuscript: text, wordCount, chapters: parts },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Goal projection ─────────────────────────────────────────────────
   registerLensAction("creative-writing", "goal-projection", (ctx, _a, params = {}) => {
+  try {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = cwAid(ctx);
     const project = cwProject(s, userId, params.projectId);
@@ -702,7 +707,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
         deadline: project.deadline, daysLeft, recentPace: pace, perDayNeeded, onTrack,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Scene comments / annotations ────────────────────────────────────
   registerLensAction("creative-writing", "scene-comment-add", (ctx, _a, params = {}) => {
@@ -845,6 +851,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
       .replace(/"/g, "&quot;");
   }
   registerLensAction("creative-writing", "compile-export", (ctx, _a, params = {}) => {
+  try {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = cwAid(ctx);
     const project = cwProject(s, userId, params.projectId);
@@ -959,7 +966,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
         sceneCount: scenes.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Per-document word-count targets ─────────────────────────────────
   // scene-set-target stores a goal on one scene; target-progress rolls
@@ -975,6 +983,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
   });
 
   registerLensAction("creative-writing", "target-progress", (ctx, _a, params = {}) => {
+  try {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = cwAid(ctx);
     const project = cwProject(s, userId, params.projectId);
@@ -1008,7 +1017,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
         sceneTargetSum,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── World / setting bible — notes linked into scenes ────────────────
   // Reuses the existing note substrate (kind location/lore/worldbuilding)
@@ -1033,6 +1043,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
   });
 
   registerLensAction("creative-writing", "setting-bible", (ctx, _a, params = {}) => {
+  try {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = cwAid(ctx);
     if (!cwProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
@@ -1061,7 +1072,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
         byKind: settingKinds.map((k) => ({ kind: k, count: mapped.filter((e) => e.kind === k).length })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Revision snapshot diff ──────────────────────────────────────────
   // Line-level diff between a snapshot and either the live scene or
@@ -1088,6 +1100,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
     return out;
   }
   registerLensAction("creative-writing", "snapshot-diff", (ctx, _a, params = {}) => {
+  try {
     const s = getCwState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = cwAid(ctx);
     const snaps = s.snapshots.get(userId) || [];
@@ -1120,7 +1133,8 @@ export default function registerCreativeWritingActions(registerLensAction) {
         fromWords, toWords, wordDelta: toWords - fromWords,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Manuscript statistics — pacing, word frequency, dialogue ratio ──
   const CW_STOPWORDS = new Set([

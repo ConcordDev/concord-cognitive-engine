@@ -9,6 +9,7 @@ export default function registerLogisticsActions(registerLensAction) {
    * artifact.data.origin: { lat, lng } (starting point)
    */
   registerLensAction("logistics", "optimizeRoute", (ctx, artifact, params) => {
+  try {
     const stops = artifact.data.stops || [];
     const origin = artifact.data.origin || params.origin || (stops.length > 0 ? { lat: stops[0].lat, lng: stops[0].lng } : null);
     const returnToOrigin = params.returnToOrigin !== false;
@@ -95,7 +96,8 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.optimizedRoute = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * hosCheck
@@ -104,6 +106,7 @@ export default function registerLogisticsActions(registerLensAction) {
    * Regulations: 11-hour driving limit, 14-hour on-duty window, 60/70 hour 7/8-day limit
    */
   registerLensAction("logistics", "hosCheck", (ctx, artifact, params) => {
+  try {
     const drivers = artifact.data.drivers || [];
     const cycleType = params.cycleType || "70-8"; // "60-7" or "70-8"
     const cycleDays = cycleType === "60-7" ? 7 : 8;
@@ -180,7 +183,8 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.hosReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * maintenanceDue
@@ -188,6 +192,7 @@ export default function registerLogisticsActions(registerLensAction) {
    * artifact.data.vehicles: [{ vehicleId, name, type, currentMileage, lastServiceMileage, serviceIntervalMiles, lastServiceDate, serviceIntervalDays }]
    */
   registerLensAction("logistics", "maintenanceDue", (ctx, artifact, _params) => {
+  try {
     const vehicles = artifact.data.vehicles || [];
     const now = new Date();
 
@@ -246,7 +251,8 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.vehicleMaintenanceReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * complianceAudit
@@ -254,6 +260,7 @@ export default function registerLogisticsActions(registerLensAction) {
    * artifact.data.shipments: [{ shipmentId, weight, weightLimit, documents, hazmat, customs, ... }]
    */
   registerLensAction("logistics", "complianceAudit", (ctx, artifact, _params) => {
+  try {
     const shipments = artifact.data?.shipments || [artifact.data];
     const results = [];
     let passCount = 0;
@@ -308,7 +315,8 @@ export default function registerLogisticsActions(registerLensAction) {
         shipments: results,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * fleetReport
@@ -316,6 +324,7 @@ export default function registerLogisticsActions(registerLensAction) {
    * artifact.data.vehicles: [{ vehicleId, name, status, currentMileage, fuelConsumed, lastServiceDate, serviceIntervalDays }]
    */
   registerLensAction("logistics", "fleetReport", (ctx, artifact, _params) => {
+  try {
     const vehicles = artifact.data?.vehicles || [];
     const now = new Date();
     let totalMileage = 0;
@@ -361,7 +370,8 @@ export default function registerLogisticsActions(registerLensAction) {
         maintenanceDueCount,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * maintenanceAlert
@@ -369,6 +379,7 @@ export default function registerLogisticsActions(registerLensAction) {
    * artifact.data.vehicles: [{ vehicleId, name, currentMileage, lastServiceMileage, serviceIntervalMiles, lastServiceDate, serviceIntervalDays }]
    */
   registerLensAction("logistics", "maintenanceAlert", (ctx, artifact, _params) => {
+  try {
     const vehicles = artifact.data?.vehicles || [];
     const now = new Date();
     const alerts = [];
@@ -416,7 +427,8 @@ export default function registerLogisticsActions(registerLensAction) {
         alerts,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * inventoryAudit
@@ -425,6 +437,7 @@ export default function registerLogisticsActions(registerLensAction) {
    * params.tolerancePct (default 2) — acceptable variance percentage
    */
   registerLensAction("logistics", "inventoryAudit", (ctx, artifact, params) => {
+  try {
     const records = artifact.data.inventoryRecords || [];
     const tolerancePct = params.tolerancePct != null ? params.tolerancePct : 2;
 
@@ -485,7 +498,8 @@ export default function registerLogisticsActions(registerLensAction) {
     artifact.data.inventoryAudit = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros ──
   function getLogState() {
@@ -848,6 +862,7 @@ export default function registerLogisticsActions(registerLensAction) {
   // ── Rate quoting (multi-carrier compare, deterministic) ───────
 
   registerLensAction("logistics", "rates-quote", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const origin = String(params.origin || "").trim();
@@ -875,7 +890,8 @@ export default function registerLogisticsActions(registerLensAction) {
       ok: true,
       result: { quotes, origin, destination, weightLbs, mode, distanceMi: baseDist },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Pickup scheduling ─────────────────────────────────────────
 
@@ -995,6 +1011,7 @@ export default function registerLogisticsActions(registerLensAction) {
   });
 
   registerLensAction("logistics", "dock-appointments-book", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const dockId = String(params.dockId || "");
@@ -1027,7 +1044,8 @@ export default function registerLogisticsActions(registerLensAction) {
     ensureLogBucket(s, "dockAppointments", userId).push(apt);
     saveLogState();
     return { ok: true, result: { appointment: apt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("logistics", "dock-appointments-cancel", (ctx, _a, params = {}) => {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1186,6 +1204,7 @@ export default function registerLogisticsActions(registerLensAction) {
   // ── Dashboard summary (TmsShell data source) ──────────────────
 
   registerLensAction("logistics", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const shipments = ensureLogBucket(s, "shipments", userId);
@@ -1221,7 +1240,8 @@ export default function registerLogisticsActions(registerLensAction) {
         loadsBooked: loads.filter(l => l.status === "booked").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════
   //  Feature-parity backlog (vs Project44 / FourKites visibility)
@@ -1243,6 +1263,7 @@ export default function registerLogisticsActions(registerLensAction) {
   // the average speed measured between the last two real pings.
 
   registerLensAction("logistics", "gps-track-init", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "").trim();
@@ -1269,9 +1290,11 @@ export default function registerLogisticsActions(registerLensAction) {
     list.push(track);
     saveLogState();
     return { ok: true, result: { track } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("logistics", "gps-ping", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "").trim();
@@ -1326,7 +1349,8 @@ export default function registerLogisticsActions(registerLensAction) {
         progressPct: track.progressPct,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("logistics", "gps-track-get", (ctx, _a, params = {}) => {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1346,6 +1370,7 @@ export default function registerLogisticsActions(registerLensAction) {
   // carrier on-time history into a 0–100 delay-risk score.
 
   registerLensAction("logistics", "delay-risk-score", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "").trim();
@@ -1411,13 +1436,15 @@ export default function registerLogisticsActions(registerLensAction) {
         factors, scoredAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] VRP — multi-stop optimization with capacity constraints ─
   // Sweep-then-nearest-neighbour: splits stops across vehicles by
   // capacity, then nearest-neighbour orders each vehicle's route.
 
   registerLensAction("logistics", "vrp-optimize", (ctx, _a, params = {}) => {
+  try {
     const depot = params.depot || {};
     const dLat = Number(depot.lat), dLng = Number(depot.lng);
     if (!Number.isFinite(dLat) || !Number.isFinite(dLng)) return { ok: false, error: "depot {lat,lng} required" };
@@ -1506,7 +1533,8 @@ export default function registerLogisticsActions(registerLensAction) {
         generatedAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Carrier scorecard — on-time %, damage, tender acceptance ─
   // Computed entirely from the user's real shipments + carriers +
@@ -1552,6 +1580,7 @@ export default function registerLogisticsActions(registerLensAction) {
   });
 
   registerLensAction("logistics", "carrier-scorecard", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const carriers = ensureLogBucket(s, "carriers", userId);
@@ -1593,7 +1622,8 @@ export default function registerLogisticsActions(registerLensAction) {
     }).sort((a, b) => b.grade - a.grade);
 
     return { ok: true, result: { scorecards: cards, generatedAt: new Date().toISOString() } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Geofence / milestone auto-events (departed, arrived, dwell) ─
   // Define a circular geofence; a GPS coordinate is evaluated against
@@ -1637,6 +1667,7 @@ export default function registerLogisticsActions(registerLensAction) {
   });
 
   registerLensAction("logistics", "geofence-evaluate", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "").trim();
@@ -1683,7 +1714,8 @@ export default function registerLogisticsActions(registerLensAction) {
     }
     saveLogState();
     return { ok: true, result: { shipmentId, evaluatedAt: at, milestones: emitted } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("logistics", "milestones-list", (ctx, _a, params = {}) => {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1703,6 +1735,7 @@ export default function registerLogisticsActions(registerLensAction) {
   });
 
   registerLensAction("logistics", "freight-invoice-audit", (ctx, _a, params = {}) => {
+  try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const carrierId = String(params.carrierId || "").trim();
@@ -1750,7 +1783,8 @@ export default function registerLogisticsActions(registerLensAction) {
     ensureLogBucket(s, "freightInvoices", userId).push(invoice);
     saveLogState();
     return { ok: true, result: { invoice } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("logistics", "freight-invoice-dispute", (ctx, _a, params = {}) => {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };

@@ -167,6 +167,7 @@ export default function registerSchemaActions(registerLensAction) {
    * artifact.data.schemaB = { fields: { fieldName: { type, required?, ... } } }
    */
   registerLensAction("schema", "schemaDiff", (ctx, artifact, params) => {
+  try {
     const schemaA = artifact.data?.schemaA || {};
     const schemaB = artifact.data?.schemaB || {};
     const fieldsA = schemaA.fields || {};
@@ -303,7 +304,8 @@ export default function registerSchemaActions(registerLensAction) {
         fieldsB: keysB.size,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * schemaEvolution
@@ -312,6 +314,7 @@ export default function registerSchemaActions(registerLensAction) {
    * artifact.data.versions = [{ version: string, schema: { fields: { ... } }, timestamp? }]
    */
   registerLensAction("schema", "schemaEvolution", (ctx, artifact, params) => {
+  try {
     const versions = artifact.data?.versions || [];
     if (versions.length < 2) return { ok: true, result: { message: "Need at least 2 schema versions for evolution planning." } };
 
@@ -464,7 +467,8 @@ export default function registerSchemaActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   //  JSON-Schema-tooling / Hasura / dbdiagram parity — versioned schema

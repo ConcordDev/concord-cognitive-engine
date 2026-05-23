@@ -14,6 +14,7 @@ export default function registerReposActions(registerLensAction) {
    * artifact.data.modules = [{ name, functions: [{ name, branches, nesting, lines, loops, conditions, dependencies?: [string] }], imports?: [string], exports?: [string] }]
    */
   registerLensAction("repos", "codeComplexity", (ctx, artifact, params) => {
+  try {
     const modules = artifact.data?.modules || [];
     if (modules.length === 0) {
       return { ok: true, result: { message: "No modules to analyze." } };
@@ -162,7 +163,8 @@ export default function registerReposActions(registerLensAction) {
         healthScore: r(Math.max(0, 100 - overallAvgComplexity * 5 - (riskDist.critical * 10) - (riskDist.high * 3))),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * commitAnalysis
@@ -171,6 +173,7 @@ export default function registerReposActions(registerLensAction) {
    * artifact.data.commits = [{ hash, author, date, files: [string], additions?, deletions?, message? }]
    */
   registerLensAction("repos", "commitAnalysis", (ctx, artifact, params) => {
+  try {
     const commits = artifact.data?.commits || [];
     if (commits.length === 0) {
       return { ok: true, result: { message: "No commits to analyze." } };
@@ -306,7 +309,8 @@ export default function registerReposActions(registerLensAction) {
         commitTypes,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * dependencyAudit
@@ -315,6 +319,7 @@ export default function registerReposActions(registerLensAction) {
    * artifact.data.dependencies = [{ name, version, latestVersion?, lastUpdated?, depth?, children?: [string], vulnerabilities?: number, license?, size?: number }]
    */
   registerLensAction("repos", "dependencyAudit", (ctx, artifact, params) => {
+  try {
     const dependencies = artifact.data?.dependencies || [];
     if (dependencies.length === 0) {
       return { ok: true, result: { message: "No dependencies to audit." } };
@@ -475,7 +480,8 @@ export default function registerReposActions(registerLensAction) {
         healthGrade: healthScore >= 90 ? "A" : healthScore >= 75 ? "B" : healthScore >= 60 ? "C" : healthScore >= 40 ? "D" : "F",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   function ghHeaders() {
     const token = process.env.GITHUB_TOKEN;

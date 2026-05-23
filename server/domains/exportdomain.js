@@ -128,6 +128,7 @@ export default function registerExportActions(registerLensAction) {
   // base64 string. The text content is the caller's real records — no
   // placeholder copy. The UI base64-decodes and downloads it.
   registerLensAction("export", "pdf-generate", (ctx, _a, params = {}) => {
+  try {
     const title = clean(params.title || "Concord Export", 120);
     const records = Array.isArray(params.records) ? params.records : [];
     const lines = [title, "Generated " + now(), `${records.length} record(s)`, ""];
@@ -167,7 +168,8 @@ export default function registerExportActions(registerLensAction) {
     pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
     const base64 = Buffer.from(pdf, "latin1").toString("base64");
     return { ok: true, result: { mimeType: "application/pdf", extension: ".pdf", byteLength: pdf.length, recordCount: records.length, base64 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── [S] encrypted / password-protected archive ─────────────────────
   // XOR-stream cipher keyed by a PBKDF-style iterated hash of the
@@ -194,6 +196,7 @@ export default function registerExportActions(registerLensAction) {
   }
 
   registerLensAction("export", "encrypt-archive", (ctx, _a, params = {}) => {
+  try {
     const password = clean(params.password, 128);
     if (password.length < 4) return { ok: false, error: "password must be at least 4 characters" };
     const payload = typeof params.payload === "string"
@@ -215,7 +218,8 @@ export default function registerExportActions(registerLensAction) {
         extension: ".enc",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("export", "decrypt-archive", (ctx, _a, params = {}) => {
     const password = clean(params.password, 128);
@@ -310,6 +314,7 @@ export default function registerExportActions(registerLensAction) {
   const CLOUD_PROVIDERS = new Set(["google_drive", "dropbox", "s3", "onedrive"]);
 
   registerLensAction("export", "cloud-connect", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const provider = clean(params.provider, 30).toLowerCase();
     if (!CLOUD_PROVIDERS.has(provider)) return { ok: false, error: `provider must be one of ${[...CLOUD_PROVIDERS].join(", ")}` };
@@ -336,7 +341,8 @@ export default function registerExportActions(registerLensAction) {
     save();
     const { ...safe } = conn;
     return { ok: true, result: { connection: safe } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("export", "cloud-list", (ctx, _a, _params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -373,6 +379,7 @@ export default function registerExportActions(registerLensAction) {
   // Returns only records changed since the last recorded cursor for a
   // given data source. The cursor advances when commit !== false.
   registerLensAction("export", "incremental-pull", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const dataSource = clean(params.dataSource || "dtus", 60);
     const records = Array.isArray(params.records) ? params.records : [];
@@ -408,7 +415,8 @@ export default function registerExportActions(registerLensAction) {
         records: changed,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("export", "cursor-list", (ctx, _a, _params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -435,6 +443,7 @@ export default function registerExportActions(registerLensAction) {
   // backlog item asked for — the UI calls schedule-run-due on mount /
   // interval, supplying the current item set per schedule.
   registerLensAction("export", "schedule-create", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const frequency = clean(params.frequency || "daily", 12).toLowerCase();
     if (!FREQ_MS[frequency]) return { ok: false, error: "frequency must be daily, weekly or monthly" };
@@ -457,7 +466,8 @@ export default function registerExportActions(registerLensAction) {
     list.push(sched);
     save();
     return { ok: true, result: { schedule: sched } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("export", "schedule-list", (ctx, _a, _params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -492,6 +502,7 @@ export default function registerExportActions(registerLensAction) {
   // current item count (the UI supplies real counts for each schedule's
   // data sources). A schedule with no supplied count runs with 0 items.
   registerLensAction("export", "schedule-run-due", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = actor(ctx);
     const list = schedulesOf(s, u);
@@ -529,5 +540,6 @@ export default function registerExportActions(registerLensAction) {
     if (log.length > HISTORY_CAP) log.splice(HISTORY_CAP);
     if (executed.length) save();
     return { ok: true, result: { executedCount: executed.length, executed, schedulesEvaluated: list.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

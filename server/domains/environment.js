@@ -423,6 +423,7 @@ export default function registerEnvironmentActions(registerLensAction) {
   });
 
   registerLensAction("environment", "targets-progress", (ctx, _a, params = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const id = String(params.id || "");
@@ -449,7 +450,8 @@ export default function registerEnvironmentActions(registerLensAction) {
         gapToTarget: Math.round((currentEmissions - target.targetCo2eTonnes) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reduction projects ──────────────────────────────────────
 
@@ -649,6 +651,7 @@ export default function registerEnvironmentActions(registerLensAction) {
   // ── Dashboard summary (ClimateShell data source) ────────────
 
   registerLensAction("environment", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const activities = ensureEnvBucket(s, "activities", userId);
@@ -693,13 +696,15 @@ export default function registerEnvironmentActions(registerLensAction) {
         netEmissionsTonnes: Math.round((ytdTotal - offsetsRetiredTonnes) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Carbon footprint dashboard — Scope 1/2/3 rollup for charts ──
   // Computes per-scope totals, per-category breakdown, monthly trend and
   // verification rollup from the user's real logged activities.
 
   registerLensAction("environment", "footprint-breakdown", (ctx, _a, params = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const activities = ensureEnvBucket(s, "activities", userId);
@@ -745,13 +750,15 @@ export default function registerEnvironmentActions(registerLensAction) {
         verifiedPct: total > 0 ? Math.round((verifiedTonnes / total) * 100) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Year-over-year emissions trend + target-trajectory overlay ──
   // Returns a per-year actual series alongside the straight-line
   // reduction trajectory implied by the user's active targets.
 
   registerLensAction("environment", "emissions-trend", (ctx, _a, params = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const activities = ensureEnvBucket(s, "activities", userId);
@@ -802,13 +809,15 @@ export default function registerEnvironmentActions(registerLensAction) {
         hasTarget: !!target,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── GHG Protocol / CDP-style inventory report generation ────────
   // Produces a structured, citable inventory report from real logged
   // activities — line items grouped by scope with EPA factor sources.
 
   registerLensAction("environment", "inventory-report", (ctx, _a, params = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const activities = ensureEnvBucket(s, "activities", userId);
@@ -868,13 +877,15 @@ export default function registerEnvironmentActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Activity data import — bulk-parse rows from utility bills /
   // spreadsheets. Each row references a real EPA factor key; rows that
   // fail validation are reported, not silently dropped.
 
   registerLensAction("environment", "activities-import", (ctx, _a, params = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const rows = Array.isArray(params.rows) ? params.rows : [];
@@ -920,12 +931,14 @@ export default function registerEnvironmentActions(registerLensAction) {
         totalTonnesImported: Math.round(imported.reduce((t, a) => t + a.co2eTonnes, 0) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reduction-scenario modeling — project the effect of one or more
   // reduction projects on the current emissions total over a horizon.
 
   registerLensAction("environment", "scenario-model", (ctx, _a, params = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const activities = ensureEnvBucket(s, "activities", userId);
@@ -998,7 +1011,8 @@ export default function registerEnvironmentActions(registerLensAction) {
           : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Audit trail / verification status per activity entry ────────
 
@@ -1032,6 +1046,7 @@ export default function registerEnvironmentActions(registerLensAction) {
   });
 
   registerLensAction("environment", "audit-trail", (ctx, _a, params = {}) => {
+  try {
     const s = ensureEnvState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = envActor(ctx);
     const activities = ensureEnvBucket(s, "activities", userId);
@@ -1068,7 +1083,8 @@ export default function registerEnvironmentActions(registerLensAction) {
         totalActivities: activities.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("environment", "feed", async (ctx, _a, params = {}) => {
     const STATE = globalThis._concordSTATE; if (!STATE) return { ok: false, error: "STATE unavailable" };

@@ -9,6 +9,7 @@ export default function registerDIYActions(registerLensAction) {
    * artifact.data: { name, category, materials: [{ name, quantity, unit, unitPrice }], laborHours, hourlyRate }
    */
   registerLensAction("diy", "estimateProject", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const materials = data.materials || [];
     const laborHours = parseFloat(data.estimatedHours || data.laborHours) || 0;
@@ -56,7 +57,8 @@ export default function registerDIYActions(registerLensAction) {
         budgetTip: totalEstimate > 500 ? "Consider phasing the project — buy materials in stages" : "Project is within a reasonable single-purchase budget",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * cutList
@@ -64,6 +66,7 @@ export default function registerDIYActions(registerLensAction) {
    * artifact.data: { stockLength, cuts: [{ length, quantity, label }] }
    */
   registerLensAction("diy", "cutList", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const stockLength = parseFloat(data.stockLength) || 96; // default 8ft board in inches
     const cuts = data.cuts || [];
@@ -133,7 +136,8 @@ export default function registerDIYActions(registerLensAction) {
         wasteTip: efficiency < 70 ? "Low efficiency — try adjusting cut sizes or using different stock lengths" : "Good material utilization",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * toolCheck
@@ -141,6 +145,7 @@ export default function registerDIYActions(registerLensAction) {
    * artifact.data: { requiredTools: [string], ownedTools: [{ name, condition }] }
    */
   registerLensAction("diy", "toolCheck", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const required = data.requiredTools || [];
     const owned = data.ownedTools || [];
@@ -201,7 +206,8 @@ export default function registerDIYActions(registerLensAction) {
         recommendation: missing.length > 3 ? "Consider renting — multiple tools needed" : missing.length > 0 ? "Buy if you'll reuse, rent for one-time projects" : "All tools available — ready to build",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * safetyCheck
@@ -209,6 +215,7 @@ export default function registerDIYActions(registerLensAction) {
    * artifact.data: { category, tools: [string], materials: [string], experience }
    */
   registerLensAction("diy", "safetyCheck", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const category = (data.category || "general").toLowerCase();
     const tools = (data.tools || []).map(t => typeof t === "string" ? t.toLowerCase() : (t.name || "").toLowerCase());
@@ -269,7 +276,8 @@ export default function registerDIYActions(registerLensAction) {
         clearToStart: riskLevel !== "high" || experience === "advanced" || experience === "expert",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * buildTimeEstimate
@@ -277,6 +285,7 @@ export default function registerDIYActions(registerLensAction) {
    * artifact.data: { steps: [{ name, estimatedMinutes }], difficulty, experience }
    */
   registerLensAction("diy", "buildTimeEstimate", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const steps = data.steps || [];
     const difficulty = (data.difficulty || "intermediate").toLowerCase();
@@ -335,7 +344,8 @@ export default function registerDIYActions(registerLensAction) {
         tip: grandTotal > 480 ? "Multi-day project — plan stopping points between steps" : "Should be completable in a single session",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Project workshop substrate (per-user, STATE-backed) ────────────
   // Powers: illustrated step-builder, BOM cost rollup, progress tracking,
@@ -596,6 +606,7 @@ export default function registerDIYActions(registerLensAction) {
 
   // bom-rollup — full cost rollup: per-line totals, owned vs to-buy, links
   registerLensAction("diy", "bom-rollup", (ctx, _a, params = {}) => {
+  try {
     const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const p = findProject(s, diyActor(ctx), params.projectId);
     if (!p) return { ok: false, error: "project not found" };
@@ -627,7 +638,8 @@ export default function registerDIYActions(registerLensAction) {
           : "Material spend is reasonable for the project size",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Feature: Tool-availability check against inventory ─────────────────
   // project-tool-gate — given the project's required tools and a live
@@ -730,6 +742,7 @@ export default function registerDIYActions(registerLensAction) {
 
   // project-browse-published — the remixable catalog (own + others')
   registerLensAction("diy", "project-browse-published", (ctx, _a, _params = {}) => {
+  try {
     const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = diyActor(ctx);
     const catalog = [...s.published.values()].map((entry) => {
@@ -748,7 +761,8 @@ export default function registerDIYActions(registerLensAction) {
       };
     });
     return { ok: true, result: { catalog, count: catalog.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // project-fork — clone a published project into the caller's workshop
   registerLensAction("diy", "project-fork", (ctx, _a, params = {}) => {

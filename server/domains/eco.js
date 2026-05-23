@@ -11,6 +11,7 @@ export default function registerEcoActions(registerLensAction) {
    * artifact.data.offsets = [{ type, quantity, unit }]  (optional)
    */
   registerLensAction("eco", "carbonFootprint", (ctx, artifact, _params) => {
+  try {
     const activities = artifact.data?.activities || [];
     const offsets = artifact.data?.offsets || [];
 
@@ -176,7 +177,8 @@ export default function registerEcoActions(registerLensAction) {
         offsets: processedOffsets,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * biodiversityIndex
@@ -185,6 +187,7 @@ export default function registerEcoActions(registerLensAction) {
    * artifact.data.observations = [{ species, count }] or artifact.data.species = { speciesName: count }
    */
   registerLensAction("eco", "biodiversityIndex", (ctx, artifact, _params) => {
+  try {
     // Accept either array or object format
     let speciesCounts = {};
     if (Array.isArray(artifact.data?.observations)) {
@@ -322,7 +325,8 @@ export default function registerEcoActions(registerLensAction) {
         rarefactionCurve: rarefactionPoints,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * sustainabilityScore
@@ -336,6 +340,7 @@ export default function registerEcoActions(registerLensAction) {
    * Each indicator value: 0-100 score. params.weights (optional) to override pillar weights.
    */
   registerLensAction("eco", "sustainabilityScore", (ctx, artifact, params) => {
+  try {
     const indicators = artifact.data?.indicators || {};
     const env = indicators.environmental || {};
     const soc = indicators.social || {};
@@ -481,7 +486,8 @@ export default function registerEcoActions(registerLensAction) {
         ),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros: Joro / Klima / Windy / iNaturalist / NREL ───
 
@@ -703,6 +709,7 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
    * params: { lat, lng, systemKw, tilt?, azimuth? }
    */
   registerLensAction("eco", "energy-estimate", (_ctx, _artifact, params = {}) => {
+  try {
     const lat = Number(params.lat) || 0;
     const lng = Number(params.lng) || 0;
     const systemKw = Math.max(0.1, Number(params.systemKw) || 5);
@@ -747,7 +754,8 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
         location: { lat, lng },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * biodiversity-log / list / delete — Personal life list of species observations.
@@ -871,6 +879,7 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
    * params: { totalKgCO2e, netKgCO2e?, categoryBreakdown?, label? }
    */
   registerLensAction("eco", "footprint-record", (ctx, _artifact, params = {}) => {
+  try {
     const state = getEcoState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const total = Number(params.totalKgCO2e);
@@ -894,13 +903,15 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
     state.footprintLog.get(userId).push(entry);
     persistEco();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * footprint-history — chronological footprint snapshots + trend analysis.
    * params: { sinceDays? }
    */
   registerLensAction("eco", "footprint-history", (ctx, _artifact, params = {}) => {
+  try {
     const state = getEcoState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ecoUserId(ctx);
@@ -934,7 +945,8 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
         sinceDays,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * footprint-delete — remove one footprint snapshot.
@@ -997,6 +1009,7 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
    * params: { slug }
    */
   registerLensAction("eco", "challenges-checkin", (ctx, _artifact, params = {}) => {
+  try {
     const state = getEcoState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const slug = String(params.slug || "");
@@ -1035,7 +1048,8 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
       Math.round(enrollment.totalCheckIns * challenge.kgCo2eSavedPerCheckIn * 100) / 100;
     persistEco();
     return { ok: true, result: { enrollment, challenge, checkedInOn: today } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * challenges-mine — list the user's enrollments with progress + aggregate

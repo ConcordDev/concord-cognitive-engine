@@ -159,6 +159,7 @@ export default function registerLegalActions(registerLensAction) {
   });
 
   registerLensAction("legal", "generateInvoice", (ctx, artifact, params) => {
+  try {
     const timeEntries = artifact.data?.timeEntries || [];
     const expenses = artifact.data?.expenses || [];
     const taxRate = params.taxRate != null ? params.taxRate : 0;
@@ -208,7 +209,8 @@ export default function registerLegalActions(registerLensAction) {
         total,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "complianceScore", (ctx, artifact, _params) => {
     const items = artifact.data?.requirements || [];
@@ -282,6 +284,7 @@ Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
   });
 
   registerLensAction("legal", "case-add", (ctx, _artifact, params = {}) => {
+  try {
     const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const caption = String(params.caption || "").trim();
@@ -301,7 +304,8 @@ Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
     state.cases.get(userId).push(c);
     saveLegalState();
     return { ok: true, result: { case: c } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "legal-question", async (ctx, _artifact, params = {}) => {
     const question = String(params.question || "").trim();
@@ -363,6 +367,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   });
 
   registerLensAction("legal", "matters-create", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const name = String(params.name || "").trim();
@@ -391,7 +396,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.matters, userId).push(matter);
     saveLegalState();
     return { ok: true, result: { matter } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "matters-update", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -423,6 +429,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   });
 
   registerLensAction("legal", "matters-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const id = String(params.id || "");
@@ -453,7 +460,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         totals: { billed: totalBilled, unbilled: totalUnbilled, hours: totalHours, trustBalance },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Contacts (clients, opposing parties, etc) ──────────────────
 
@@ -514,6 +522,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   // ── Conflict check (real STATE-backed) ────────────────────────
 
   registerLensAction("legal", "conflict-search", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const query = String(params.name || params.query || "").trim().toLowerCase();
@@ -535,7 +544,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       }
     }
     return { ok: true, result: { query, hits: matches.length, matches, hasConflict: matches.length > 0 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Time tracking ──────────────────────────────────────────────
 
@@ -552,6 +562,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   });
 
   registerLensAction("legal", "time-entries-create", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const matterId = String(params.matterId || "");
@@ -581,7 +592,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.timeEntries, userId).push(entry);
     saveLegalState();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "time-entries-delete", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -665,6 +677,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   // ── IOLTA Trust Accounting ─────────────────────────────────────
 
   registerLensAction("legal", "trust-account-create", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const name = String(params.name || "Operating Trust (IOLTA)").trim();
@@ -684,7 +697,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.trustAccts, userId).push(account);
     saveLegalState();
     return { ok: true, result: { account } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "trust-accounts-list", (ctx, _a, _p = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -719,6 +733,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   });
 
   registerLensAction("legal", "trust-disburse", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const accountId = String(params.accountId || "");
@@ -751,9 +766,11 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.trustTxns, userId).push(txn);
     saveLegalState();
     return { ok: true, result: { txn } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "trust-balance", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const accountId = params.accountId ? String(params.accountId) : null;
@@ -772,7 +789,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       byMatter.set(mk, cur);
     }
     return { ok: true, result: { total, byMatter: Array.from(byMatter.values()), txnCount: txns.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "trust-reconcile", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -818,6 +836,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   // ── Invoices (matter-scoped, from time entries) ────────────────
 
   registerLensAction("legal", "invoices-from-time", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const matterId = String(params.matterId || "");
@@ -849,7 +868,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.invoices, userId).push(invoice);
     saveLegalState();
     return { ok: true, result: { invoice } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "invoices-list", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -912,6 +932,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   });
 
   registerLensAction("legal", "doc-generate", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const templateId = String(params.templateId || "");
@@ -954,7 +975,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.documents, userId).push(doc);
     saveLegalState();
     return { ok: true, result: { document: doc } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "documents-list", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -967,6 +989,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   // ── E-signature envelope ──────────────────────────────────────
 
   registerLensAction("legal", "esign-envelope-create", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const documentId = String(params.documentId || "");
@@ -1001,7 +1024,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     doc.status = 'sent_for_signature';
     saveLegalState();
     return { ok: true, result: { envelope } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "esign-envelope-sign", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1075,6 +1099,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   // Returns the calendar date for a deadline N days after a trigger event,
   // accounting for weekends and major federal holidays (FRCP 6(a)).
   registerLensAction("legal", "court-rules-deadline", (ctx, _a, params = {}) => {
+  try {
     const trigger = String(params.triggerDate || isoDay());
     const rule = String(params.rule || "").toLowerCase();
     const jurisdiction = String(params.jurisdiction || "US-Federal");
@@ -1130,7 +1155,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         days: RULES[rule].days,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Clio "Manage AI" parity — matter update + court-doc → calendar ─
 
@@ -1173,6 +1199,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
 
   // Parse a court document body for deadline language → suggest calendar events.
   registerLensAction("legal", "ai-court-doc-to-calendar", (ctx, _a, params = {}) => {
+  try {
     const text = String(params.text || "").slice(0, 12000);
     if (!text || text.length < 40) return { ok: false, error: "text too short" };
     // Deterministic regex pass — pull "within N days" / "by [date]" phrases.
@@ -1226,11 +1253,13 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       }
     }
     return { ok: true, result: { suggestions, count: suggestions.length, triggerDate } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("legal", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const matters = ensureBucket(s.matters, userId);
@@ -1261,7 +1290,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         contactCount: ensureBucket(s.contacts, userId).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   // Parity backlog (May 2026) — client intake forms, online client
@@ -1289,6 +1319,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   });
 
   registerLensAction("legal", "intake-forms-create", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const name = String(params.name || "").trim();
@@ -1317,7 +1348,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.intakeForms, userId).push(form);
     saveLegalState();
     return { ok: true, result: { form } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "intake-forms-delete", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1330,6 +1362,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   });
 
   registerLensAction("legal", "intake-submit", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const formId = String(params.formId || "");
@@ -1360,7 +1393,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.intakeSubs, userId).push(sub);
     saveLegalState();
     return { ok: true, result: { submission: sub } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "intake-submissions-list", (ctx, _a, params = {}) => {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1429,6 +1463,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
   const PAYMENT_METHODS = ['card','ach','check','wire','cash'];
 
   registerLensAction("legal", "payment-record", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const amount = Number(params.amount);
@@ -1487,9 +1522,11 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     }
     saveLegalState();
     return { ok: true, result: { payment, invoice: invoice || null } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("legal", "payments-list", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const matterId = params.matterId ? String(params.matterId) : null;
     const invoiceId = params.invoiceId ? String(params.invoiceId) : null;
@@ -1507,10 +1544,12 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         netReceived: Math.round((total - fees) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Client-facing portal view: what a given client owes + has paid.
   registerLensAction("legal", "payment-portal-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const matterId = params.matterId ? String(params.matterId) : null;
@@ -1547,7 +1586,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         paidInvoiceCount: invoices.filter(i => i.status === 'paid').length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Matter budgeting + realization / collection-rate reporting ─
 
@@ -1577,6 +1617,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
 
   // Realization report for one matter: budget vs worked vs billed vs collected.
   registerLensAction("legal", "budget-report", (ctx, _a, params = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const matterId = String(params.matterId || "");
@@ -1631,10 +1672,12 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         uncollectedValue: Math.round((billedValue - collectedValue) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Firm-wide realization rollup across every matter.
   registerLensAction("legal", "realization-rollup", (ctx, _a, _p = {}) => {
+  try {
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const matters = ensureBucket(s.matters, userId);
@@ -1677,7 +1720,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };
 
 function extractJsonLegal(text) {

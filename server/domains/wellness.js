@@ -189,6 +189,7 @@ export default function registerWellnessActions(registerLensAction) {
 
   // Trend: latest value per day for one metric type, ready for charts.
   registerLensAction("wellness", "metrics-trend", (ctx, _a, params = {}) => {
+  try {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const type = String(params.type || "");
     if (!METRIC_TYPES.includes(type)) return { ok: false, error: "valid type required" };
@@ -223,11 +224,13 @@ export default function registerWellnessActions(registerLensAction) {
         trend,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Habits + streaks (Habitify-style) ────────────────────────
 
   registerLensAction("wellness", "habits-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
     const habits = listWl(s.habits, userId);
@@ -270,7 +273,8 @@ export default function registerWellnessActions(registerLensAction) {
       };
     });
     return { ok: true, result: { habits: enriched } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wellness", "habits-create", (ctx, _a, params = {}) => {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -357,6 +361,7 @@ export default function registerWellnessActions(registerLensAction) {
 
   // Correlate activities with mood — which activities co-occur with good days.
   registerLensAction("wellness", "mood-correlate", (ctx, _a, params = {}) => {
+  try {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const days = Math.max(7, Math.min(365, Number(params.days) || 90));
     const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -385,7 +390,8 @@ export default function registerWellnessActions(registerLensAction) {
       })
       .sort((a, b) => b.delta - a.delta);
     return { ok: true, result: { overallAvgMood: Math.round(overallAvg * 100) / 100, correlations } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Workouts ──────────────────────────────────────────────────
 
@@ -439,6 +445,7 @@ export default function registerWellnessActions(registerLensAction) {
   // ── Recovery score (Whoop/Oura-style) ────────────────────────
 
   registerLensAction("wellness", "recovery-score", (ctx, _a, params = {}) => {
+  try {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
     const date = String(params.date || dayWl());
@@ -487,7 +494,8 @@ export default function registerWellnessActions(registerLensAction) {
         hasEnoughData: inputs.length >= 1,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Goals ─────────────────────────────────────────────────────
 
@@ -545,6 +553,7 @@ export default function registerWellnessActions(registerLensAction) {
   // ── Dashboard summary ────────────────────────────────────────
 
   registerLensAction("wellness", "wellness-dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
     const today = dayWl();
@@ -572,7 +581,8 @@ export default function registerWellnessActions(registerLensAction) {
         metricEntryCount: listWl(s.metrics, userId).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Whoop / Calm / Woebot 2026 parity — self-composed therapeutic
@@ -697,6 +707,7 @@ export default function registerWellnessActions(registerLensAction) {
   // directly, instead of a therapist targeting another user id.
 
   registerLensAction("wellness", "self-field-compose", (ctx, _a, params = {}) => {
+  try {
     const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
     const kind = String(params.fieldKind || "");
@@ -720,7 +731,8 @@ export default function registerWellnessActions(registerLensAction) {
     listWl(s.fields, userId).push(field);
     saveWell();
     return { ok: true, result: { field } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wellness", "self-field-list", (ctx, _a, _p = {}) => {
     const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -765,6 +777,7 @@ export default function registerWellnessActions(registerLensAction) {
   });
 
   registerLensAction("wellness", "cbt-record-create", (ctx, _a, params = {}) => {
+  try {
     const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
     const kind = String(params.fieldKind || "");
@@ -796,7 +809,8 @@ export default function registerWellnessActions(registerLensAction) {
     listWl(s.thoughtRecords, userId).push(record);
     saveWell();
     return { ok: true, result: { record } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wellness", "cbt-record-list", (ctx, _a, params = {}) => {
     const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -833,6 +847,7 @@ export default function registerWellnessActions(registerLensAction) {
   };
 
   registerLensAction("wellness", "wearable-import", (ctx, _a, params = {}) => {
+  try {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ts = getTherapyState(); if (!ts) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
@@ -874,7 +889,8 @@ export default function registerWellnessActions(registerLensAction) {
     listWl(ts.wearableSyncs, userId).push(summary);
     saveWell();
     return { ok: true, result: { summary } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wellness", "wearable-sync-history", (ctx, _a, _p = {}) => {
     const ts = getTherapyState(); if (!ts) return { ok: false, error: "STATE unavailable" };
@@ -901,6 +917,7 @@ export default function registerWellnessActions(registerLensAction) {
   });
 
   registerLensAction("wellness", "session-complete", (ctx, _a, params = {}) => {
+  try {
     const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
     const catId = String(params.catalogueId || "");
@@ -928,9 +945,11 @@ export default function registerWellnessActions(registerLensAction) {
     listWl(s.sessions, userId).push(session);
     saveWell();
     return { ok: true, result: { session } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wellness", "session-history", (ctx, _a, params = {}) => {
+  try {
     const s = getTherapyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const days = Math.max(1, Math.min(365, Number(params.days) || 30));
     const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -961,13 +980,15 @@ export default function registerWellnessActions(registerLensAction) {
         avgMoodShift,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Personalized daily recovery recommendation ───────────────
   // Folds today's recovery signals, sleep, strain, mood, mindfulness
   // and open thought-record patterns into one actionable daily plan.
 
   registerLensAction("wellness", "daily-recommendation", (ctx, _a, params = {}) => {
+  try {
     const s = getWellState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ts = getTherapyState(); if (!ts) return { ok: false, error: "STATE unavailable" };
     const userId = aidWl(ctx);
@@ -1056,5 +1077,6 @@ export default function registerWellnessActions(registerLensAction) {
         hasEnoughData: inputs.length >= 1 || recentMoods.length > 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

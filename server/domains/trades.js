@@ -9,6 +9,7 @@ export default function registerTradesActions(registerLensAction) {
    * params.markupPct (default 20), params.taxRate (default 0.08)
    */
   registerLensAction("trades", "calculateEstimate", (ctx, artifact, params) => {
+  try {
     const lineItems = artifact.data.lineItems || [];
     const markupPct = params.markupPct != null ? params.markupPct : 20;
     const taxRate = params.taxRate != null ? params.taxRate : 0.08;
@@ -65,7 +66,8 @@ export default function registerTradesActions(registerLensAction) {
     artifact.data.currentEstimate = estimate;
 
     return { ok: true, result: estimate };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * calculatePL
@@ -110,6 +112,7 @@ export default function registerTradesActions(registerLensAction) {
    * artifact.data.jobType or params.jobType
    */
   registerLensAction("trades", "checkPermits", (ctx, artifact, params) => {
+  try {
     const permits = artifact.data?.permits || [];
     const jobType = (artifact.data?.jobType || params.jobType || '').toLowerCase();
     const now = new Date();
@@ -161,7 +164,8 @@ export default function registerTradesActions(registerLensAction) {
         status: allClear ? 'approved' : 'action_required',
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * generateInvoice
@@ -170,6 +174,7 @@ export default function registerTradesActions(registerLensAction) {
    * params.markupPct (default 15), params.taxRate (default 0.08)
    */
   registerLensAction("trades", "generateInvoice", (ctx, artifact, params) => {
+  try {
     const workOrders = artifact.data?.workOrders || [];
     const markupPct = params.markupPct != null ? params.markupPct : 15;
     const taxRate = params.taxRate != null ? params.taxRate : 0.08;
@@ -228,7 +233,8 @@ export default function registerTradesActions(registerLensAction) {
         total,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * generatePO
@@ -237,6 +243,7 @@ export default function registerTradesActions(registerLensAction) {
    * params.poNumber (optional)
    */
   registerLensAction("trades", "generatePO", (ctx, artifact, params) => {
+  try {
     const materials = artifact.data?.materials || [];
     const poNumber = params.poNumber || `PO-${Date.now().toString(36).toUpperCase()}`;
 
@@ -285,7 +292,8 @@ export default function registerTradesActions(registerLensAction) {
         vendorCount: vendorSummary.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * scheduleInspection
@@ -296,6 +304,7 @@ export default function registerTradesActions(registerLensAction) {
    * params.requestedDate — preferred date (ISO)
    */
   registerLensAction("trades", "scheduleInspection", (ctx, artifact, params) => {
+  try {
     const permits = artifact.data.permits || [];
     const permitId = params.permitId;
     const stageName = params.stageName;
@@ -349,7 +358,8 @@ export default function registerTradesActions(registerLensAction) {
     stage.inspectionId = inspection.inspectionId;
 
     return { ok: true, result: inspection };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * materialsCost
@@ -358,6 +368,7 @@ export default function registerTradesActions(registerLensAction) {
    * params.statusFilter (default "active") — which job statuses to include
    */
   registerLensAction("trades", "materialsCost", (ctx, artifact, params) => {
+  try {
     const jobs = artifact.data.jobs || [];
     const statusFilter = params.statusFilter || "active";
 
@@ -418,7 +429,8 @@ export default function registerTradesActions(registerLensAction) {
     artifact.data.materialsCostReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 parity — ServiceTitan/Jobber/Houzz Pro/BuilderTrend ──
 
@@ -686,6 +698,7 @@ export default function registerTradesActions(registerLensAction) {
   });
 
   registerLensAction("trades", "dispatch-board", (ctx, _a, params = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const date = String(params.date || new Date().toISOString().slice(0, 10));
@@ -713,7 +726,8 @@ export default function registerTradesActions(registerLensAction) {
       }),
     }));
     return { ok: true, result: { date, rows, unassigned, totalJobs: todaysJobs.length, totalTechs: technicians.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Route optimization (nearest-neighbour heuristic) ──────────
 
@@ -758,6 +772,7 @@ export default function registerTradesActions(registerLensAction) {
   });
 
   registerLensAction("trades", "quotes-create", (ctx, _a, params = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const customerId = String(params.customerId || "");
@@ -783,7 +798,8 @@ export default function registerTradesActions(registerLensAction) {
     ensureTrBucket(s, "quotes", userId).push(quote);
     saveTradesState();
     return { ok: true, result: { quote } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("trades", "quotes-send", (ctx, _a, params = {}) => {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1057,6 +1073,7 @@ export default function registerTradesActions(registerLensAction) {
   // ── Dashboard summary (DispatchShell data source) ─────────────
 
   registerLensAction("trades", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const technicians = ensureTrBucket(s, "technicians", userId);
@@ -1094,7 +1111,8 @@ export default function registerTradesActions(registerLensAction) {
         bookingsPending: ensureTrBucket(s, "bookings", userId).filter(b => b.status === "pending").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Backlog: scheduling calendar / payments / portal / recurring /
   //     GPS tracking / reminders / pricebook / reporting ──────────────
@@ -1120,6 +1138,7 @@ export default function registerTradesActions(registerLensAction) {
   });
 
   registerLensAction("trades", "schedule-week", (ctx, _a, params = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const startStr = String(params.weekStart || new Date().toISOString().slice(0, 10));
@@ -1146,7 +1165,8 @@ export default function registerTradesActions(registerLensAction) {
       .filter(j => !j.scheduledFor && j.status !== "completed" && j.status !== "cancelled" && j.status !== "invoiced")
       .map(j => ({ id: j.id, number: j.number, customerName: j.customerName, description: j.description, priority: j.priority }));
     return { ok: true, result: { weekStart: startStr, days, unscheduled, totalScheduled: days.reduce((n, d) => n + d.jobs.length, 0) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Payment processing — invoices with payment status tracking ──
 
@@ -1173,6 +1193,7 @@ export default function registerTradesActions(registerLensAction) {
   });
 
   registerLensAction("trades", "invoices-create", (ctx, _a, params = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const customerName = String(params.customerName || "").trim();
@@ -1203,7 +1224,8 @@ export default function registerTradesActions(registerLensAction) {
     ensureTrBucket(s, "invoices", userId).push(invoice);
     saveTradesState();
     return { ok: true, result: { invoice } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("trades", "invoices-record-payment", (ctx, _a, params = {}) => {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1228,6 +1250,7 @@ export default function registerTradesActions(registerLensAction) {
   // ── [M] Customer portal — read-only customer-facing bundle ──────────
 
   registerLensAction("trades", "portal-view", (ctx, _a, params = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const customerId = String(params.customerId || "");
@@ -1253,7 +1276,8 @@ export default function registerTradesActions(registerLensAction) {
         balanceDue: Math.round(balanceDue * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("trades", "portal-quote-respond", (ctx, _a, params = {}) => {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1274,6 +1298,7 @@ export default function registerTradesActions(registerLensAction) {
   // ── [S] Recurring jobs — auto-generate the next due visit ───────────
 
   registerLensAction("trades", "recurring-generate-visit", (ctx, _a, params = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const id = String(params.id || "");
@@ -1313,7 +1338,8 @@ export default function registerTradesActions(registerLensAction) {
     plan.totalRevenue = Math.round(((plan.totalRevenue || 0) + plan.priceEach) * 100) / 100;
     saveTradesState();
     return { ok: true, result: { job, plan } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] GPS technician tracking + live job-status from the field ────
 
@@ -1407,6 +1433,7 @@ export default function registerTradesActions(registerLensAction) {
   });
 
   registerLensAction("trades", "pricebook-upsert", (ctx, _a, params = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const name = String(params.name || "").trim();
@@ -1429,7 +1456,8 @@ export default function registerTradesActions(registerLensAction) {
     else { entry.createdAt = nowIsoTrades(); list.push(entry); }
     saveTradesState();
     return { ok: true, result: { item: existing || entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("trades", "pricebook-delete", (ctx, _a, params = {}) => {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1446,6 +1474,7 @@ export default function registerTradesActions(registerLensAction) {
   // ── [S] Reporting dashboard — revenue / close rate / utilization ────
 
   registerLensAction("trades", "report-overview", (ctx, _a, _p = {}) => {
+  try {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
     const jobsMap = s.jobs?.get(userId);
@@ -1498,5 +1527,6 @@ export default function registerTradesActions(registerLensAction) {
         satisfaction: { reviewCount: reviews.length, avgRating },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };

@@ -19,6 +19,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * { pair: [rxcui1, rxcui2], severity, description }.
    */
   registerLensAction("healthcare", "checkInteractions", (ctx, artifact, params) => {
+  try {
     const prescriptions = artifact.data.prescriptions || [];
     const knownInteractions = params.knownInteractions || artifact.data.knownInteractions || [];
 
@@ -65,7 +66,8 @@ export default function registerHealthcareActions(registerLensAction) {
         hasCritical: found.some((i) => i.severity === "critical"),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * protocolMatch
@@ -76,6 +78,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * patient's active condition list.
    */
   registerLensAction("healthcare", "protocolMatch", (ctx, artifact, params) => {
+  try {
     const conditions = (artifact.data.conditions || []).map((c) =>
       typeof c === "string" ? c : c.icd10 || c.code
     );
@@ -133,7 +136,8 @@ export default function registerHealthcareActions(registerLensAction) {
         protocolsEvaluated: protocols.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * exportEncounter
@@ -141,6 +145,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * artifact.data.encounter or artifact.data: { patientName, date, chiefComplaints, diagnosis, plan, vitals, notes }
    */
   registerLensAction("healthcare", "exportEncounter", (ctx, artifact, _params) => {
+  try {
     const enc = artifact.data.encounter || artifact.data;
     const patientName = enc.patientName || artifact.data.patientName || artifact.title;
     const date = enc.date || enc.encounterDate || new Date().toISOString().split("T")[0];
@@ -180,7 +185,8 @@ export default function registerHealthcareActions(registerLensAction) {
     artifact.data.lastExport = exported;
 
     return { ok: true, result: exported };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * soapAutoFill
@@ -188,6 +194,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * artifact.data: { chiefComplaint, symptoms, vitals, examFindings, conditions, assessment, medications, plan }
    */
   registerLensAction("healthcare", "soapAutoFill", (ctx, artifact, _params) => {
+  try {
     const d = artifact.data;
 
     const subjective = {
@@ -246,7 +253,8 @@ export default function registerHealthcareActions(registerLensAction) {
     artifact.data.soapNote = soapNote;
 
     return { ok: true, result: soapNote };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * generateSummary
@@ -255,6 +263,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * Expects artifact.data.encounters, artifact.data.labs, artifact.data.treatments.
    */
   registerLensAction("healthcare", "generateSummary", (ctx, artifact, params) => {
+  try {
     const encounters = artifact.data.encounters || [];
     const labs = artifact.data.labs || [];
     const treatments = artifact.data.treatments || [];
@@ -347,7 +356,8 @@ export default function registerHealthcareActions(registerLensAction) {
     artifact.data.latestSummary = summary;
 
     return { ok: true, result: summary };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros: MyChart / Doximity / Teladoc / GoodRx / ZocDoc ───
 
@@ -418,6 +428,7 @@ export default function registerHealthcareActions(registerLensAction) {
   });
 
   registerLensAction("healthcare", "medications-list", (ctx, _artifact, _params = {}) => {
+  try {
     const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const meds = state.medications.get(userId) || [];
@@ -429,7 +440,8 @@ export default function registerHealthcareActions(registerLensAction) {
       return { ...m, dosesScheduledToday: scheduledToday, dosesTakenToday: takenToday, takenToday: takenToday >= scheduledToday };
     });
     return { ok: true, result: { medications: enriched } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "medications-add", (ctx, _artifact, params = {}) => {
     const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
@@ -565,6 +577,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * we no longer synthesize a fake slot grid from a seed.
    */
   registerLensAction("healthcare", "provider-slots", (ctx, _artifact, params = {}) => {
+  try {
     const state = getHealthState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const providerId = String(params.providerId || "");
@@ -580,9 +593,11 @@ export default function registerHealthcareActions(registerLensAction) {
           : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "appointment-book", (ctx, _artifact, params = {}) => {
+  try {
     const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const providerId = String(params.providerId || "");
@@ -602,7 +617,8 @@ export default function registerHealthcareActions(registerLensAction) {
     state.appointments.get(userId).push(appt);
     saveStateIfAvailable();
     return { ok: true, result: { appointment: appt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * appointment-charge-copay — Stripe PaymentIntent for the appointment
@@ -679,6 +695,7 @@ export default function registerHealthcareActions(registerLensAction) {
    * and copay filter (unpaid|pending|paid|all).
    */
   registerLensAction("healthcare", "appointment-list", (ctx, _artifact, params = {}) => {
+  try {
     const state = getHealthState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const status = ["booked", "completed", "cancelled", "all"].includes(params.status) ? params.status : "all";
@@ -690,7 +707,8 @@ export default function registerHealthcareActions(registerLensAction) {
       return true;
     }).slice().sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
     return { ok: true, result: { appointments: filtered } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * rx-price-compare — Real Rx pricing requires a pharmacy benefit
@@ -730,6 +748,7 @@ export default function registerHealthcareActions(registerLensAction) {
   // ── Patients (patient chart owner) ─────────────────────────────
 
   registerLensAction("healthcare", "patients-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = bucketH(s.patients, aidH(ctx));
     const q = String(params.q || "").trim().toLowerCase();
@@ -737,7 +756,8 @@ export default function registerHealthcareActions(registerLensAction) {
       `${p.firstName} ${p.lastName} ${p.mrn}`.toLowerCase().includes(q)
     ) : list;
     return { ok: true, result: { patients: filtered.slice().sort((a, b) => a.lastName.localeCompare(b.lastName)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "patients-create", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -782,6 +802,7 @@ export default function registerHealthcareActions(registerLensAction) {
   });
 
   registerLensAction("healthcare", "patients-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const id = String(params.id || "");
@@ -800,17 +821,20 @@ export default function registerHealthcareActions(registerLensAction) {
         encounters: filter(bucketH(s.encounters, userId)).slice().sort((a, b) => b.encounteredAt.localeCompare(a.encounteredAt)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Problem List with ICD-10 ──────────────────────────────────
 
   registerLensAction("healthcare", "problems-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const list = bucketH(s.problems, aidH(ctx)).filter(p => p.patientId === patientId);
     return { ok: true, result: { problems: list.slice().sort((a, b) => (b.onsetDate || '').localeCompare(a.onsetDate || '')) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "problems-add", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -873,12 +897,14 @@ export default function registerHealthcareActions(registerLensAction) {
   // ── Allergies ─────────────────────────────────────────────────
 
   registerLensAction("healthcare", "allergies-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const list = bucketH(s.allergies, aidH(ctx)).filter(a => a.patientId === patientId);
     return { ok: true, result: { allergies: list } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "allergies-add", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -918,12 +944,14 @@ export default function registerHealthcareActions(registerLensAction) {
   // ── Vitals ────────────────────────────────────────────────────
 
   registerLensAction("healthcare", "vitals-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const list = bucketH(s.vitals, aidH(ctx)).filter(v => v.patientId === patientId);
     return { ok: true, result: { vitals: list.slice().sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "vitals-record", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -989,12 +1017,14 @@ export default function registerHealthcareActions(registerLensAction) {
   };
 
   registerLensAction("healthcare", "labs-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const list = bucketH(s.labs, aidH(ctx)).filter(l => l.patientId === patientId);
     return { ok: true, result: { labs: list.slice().sort((a, b) => b.collectedAt.localeCompare(a.collectedAt)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "labs-record", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1038,12 +1068,14 @@ export default function registerHealthcareActions(registerLensAction) {
   // ── Immunizations ─────────────────────────────────────────────
 
   registerLensAction("healthcare", "immunizations-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const list = bucketH(s.immunizations, aidH(ctx)).filter(i => i.patientId === patientId);
     return { ok: true, result: { immunizations: list.slice().sort((a, b) => b.administeredAt.localeCompare(a.administeredAt)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "immunizations-add", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1074,14 +1106,17 @@ export default function registerHealthcareActions(registerLensAction) {
   // ── Encounters + SOAP notes ──────────────────────────────────
 
   registerLensAction("healthcare", "encounters-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     let list = bucketH(s.encounters, aidH(ctx));
     if (patientId) list = list.filter(e => e.patientId === patientId);
     return { ok: true, result: { encounters: list.slice().sort((a, b) => b.encounteredAt.localeCompare(a.encounteredAt)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "encounters-create", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patientId = String(params.patientId || "");
@@ -1112,7 +1147,8 @@ export default function registerHealthcareActions(registerLensAction) {
     bucketH(s.encounters, userId).push(enc);
     saveStateIfAvailable();
     return { ok: true, result: { encounter: enc } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "encounters-save-soap", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1251,6 +1287,7 @@ Use only facts present in the input — never invent. If a section has no data, 
 
   // Epic Conversational Search 2026 — search across a patient's chart with natural language.
   registerLensAction("healthcare", "ai-chart-search", async (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patientId = String(params.patientId || "");
@@ -1283,17 +1320,20 @@ Use only facts present in the input — never invent. If a section has no data, 
       }
     }
     return { ok: true, result: { query, findings, hitCount: findings.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Patient Portal (MyChart-style) ────────────────────────────
 
   registerLensAction("healthcare", "messages-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     let list = bucketH(s.messages, aidH(ctx));
     if (patientId) list = list.filter(m => m.patientId === patientId);
     return { ok: true, result: { messages: list.slice().sort((a, b) => b.sentAt.localeCompare(a.sentAt)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "messages-send", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1329,12 +1369,14 @@ Use only facts present in the input — never invent. If a section has no data, 
   });
 
   registerLensAction("healthcare", "refills-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const status = ['requested','approved','denied','filled','all'].includes(params.status) ? params.status : 'all';
     let list = bucketH(s.refills, aidH(ctx));
     if (status !== 'all') list = list.filter(r => r.status === status);
     return { ok: true, result: { refills: list.slice().sort((a, b) => b.requestedAt.localeCompare(a.requestedAt)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "refills-request", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1403,6 +1445,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   // ── Orders (CPOE) ──────────────────────────────────────────────
 
   registerLensAction("healthcare", "order-create", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patientId = String(params.patientId || "");
@@ -1431,9 +1474,11 @@ Use only facts present in the input — never invent. If a section has no data, 
     bucketH(s.orders, userId).push(order);
     saveStateIfAvailable();
     return { ok: true, result: { order } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "order-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
@@ -1444,7 +1489,8 @@ Use only facts present in the input — never invent. If a section has no data, 
     if (status) list = list.filter(o => o.status === status);
     list = list.slice().sort((a, b) => b.orderedAt.localeCompare(a.orderedAt));
     return { ok: true, result: { orders: list, total: list.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "order-update-status", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1492,6 +1538,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   ];
 
   registerLensAction("healthcare", "drug-interaction-check", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patientId = String(params.patientId || "");
@@ -1536,17 +1583,20 @@ Use only facts present in the input — never invent. If a section has no data, 
         clean: interactions.length === 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Care team ──────────────────────────────────────────────────
 
   registerLensAction("healthcare", "care-team-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const list = bucketH(s.careTeam, aidH(ctx)).filter(m => m.patientId === patientId);
     return { ok: true, result: { careTeam: list } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "care-team-assign", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1579,6 +1629,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   // ── Care gaps / health maintenance (Best Practice Advisories) ──
 
   registerLensAction("healthcare", "care-gaps", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patientId = String(params.patientId || "");
@@ -1625,11 +1676,13 @@ Use only facts present in the input — never invent. If a section has no data, 
       if (!pneumo) gaps.push({ item: 'Pneumococcal vaccine', status: 'due', reason: 'Recommended for adults age 65+.', lastDone: null });
     }
     return { ok: true, result: { patientId, age, gaps, count: gaps.length, allClear: gaps.length === 0 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── After-visit summary ────────────────────────────────────────
 
   registerLensAction("healthcare", "visit-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const enc = bucketH(s.encounters, userId).find(e => e.id === String(params.encounterId || ""));
@@ -1669,7 +1722,8 @@ Use only facts present in the input — never invent. If a section has no data, 
       `Allergies: ${summary.allergies.join('; ') || 'NKDA'}`,
     ].join('\n');
     return { ok: true, result: { summary, text } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Feature-parity backlog — results release, telehealth, device
@@ -1705,6 +1759,7 @@ Use only facts present in the input — never invent. If a section has no data, 
 
   // Patient-portal view: only released labs, with abnormal grouping.
   registerLensAction("healthcare", "labs-portal-view", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
@@ -1723,7 +1778,8 @@ Use only facts present in the input — never invent. If a section has no data, 
         hasCritical: abnormal.some(l => l.flag === "critical_high" || l.flag === "critical_low"),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Telehealth video visit integration ─────────────────────────
   // Creates a video room. Real provider would wire a WebRTC/SFU
@@ -1777,13 +1833,15 @@ Use only facts present in the input — never invent. If a section has no data, 
   });
 
   registerLensAction("healthcare", "telehealth-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogBuckets(s);
     const patientId = String(params.patientId || "");
     let list = bucketH(s.telehealth, aidH(ctx));
     if (patientId) list = list.filter(v => v.patientId === patientId);
     return { ok: true, result: { visits: list.slice().sort((a, b) => String(b.scheduledAt).localeCompare(String(a.scheduledAt))) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "telehealth-update-status", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1849,6 +1907,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   });
 
   registerLensAction("healthcare", "device-readings", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogBuckets(s);
     const patientId = String(params.patientId || "");
@@ -1875,18 +1934,21 @@ Use only facts present in the input — never invent. If a section has no data, 
       return { metric: m, count: rows.length, latest: latest.value, unit: latest.unit, latestFlag: latest.flag, trend };
     });
     return { ok: true, result: { readings: list, summary } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Insurance eligibility + claims/billing workflow ────────────
 
   registerLensAction("healthcare", "coverage-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogBuckets(s);
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const list = bucketH(s.coverage, aidH(ctx)).filter(c => c.patientId === patientId);
     return { ok: true, result: { policies: list } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "coverage-add", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1948,6 +2010,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   // CPT line items each have a billed charge. The claim total sums
   // them; once a payer "adjudicates" we record allowed/paid/patient.
   registerLensAction("healthcare", "claim-create", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogBuckets(s);
     const userId = aidH(ctx);
@@ -1983,9 +2046,11 @@ Use only facts present in the input — never invent. If a section has no data, 
     bucketH(s.claims, userId).push(claim);
     saveStateIfAvailable();
     return { ok: true, result: { claim } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "claim-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogBuckets(s);
     const patientId = String(params.patientId || "");
@@ -1998,7 +2063,8 @@ Use only facts present in the input — never invent. If a section has no data, 
       .filter(c => ["draft", "submitted", "denied"].includes(c.status))
       .reduce((sum, c) => sum + (c.totalChargeUsd || 0), 0) * 100) / 100;
     return { ok: true, result: { claims: list, count: list.length, outstandingUsd: outstanding } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Workflow: draft -> submitted, then adjudicate (paid/partial/denied).
   registerLensAction("healthcare", "claim-submit", (ctx, _a, params = {}) => {
@@ -2040,6 +2106,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   // baseline labs, age-inappropriate, and allergy cross-check.
 
   registerLensAction("healthcare", "cds-order-check", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patientId = String(params.patientId || "");
@@ -2104,13 +2171,15 @@ Use only facts present in the input — never invent. If a section has no data, 
         clean: alerts.length === 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── FHIR R4 export (immunization / health-record sharing) ──────
   // Produces a real FHIR R4 Bundle (type: collection) so the record
   // can be imported into any FHIR-conformant system.
 
   registerLensAction("healthcare", "fhir-export", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patientId = String(params.patientId || "");
@@ -2235,7 +2304,8 @@ Use only facts present in the input — never invent. If a section has no data, 
         scope: onlyImm ? "immunizations" : "full-record",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Family / proxy access to another patient's chart ───────────
   // The chart owner grants a named proxy scoped read (and optionally
@@ -2267,6 +2337,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   });
 
   registerLensAction("healthcare", "proxy-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogBuckets(s);
     const patientId = String(params.patientId || "");
@@ -2279,7 +2350,8 @@ Use only facts present in the input — never invent. If a section has no data, 
         activeCount: list.filter(g => g.status === "active").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("healthcare", "proxy-revoke", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2296,6 +2368,7 @@ Use only facts present in the input — never invent. If a section has no data, 
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("healthcare", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidH(ctx);
     const patients = bucketH(s.patients, userId);
@@ -2321,7 +2394,8 @@ Use only facts present in the input — never invent. If a section has no data, 
         allergiesCount,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };
 
 function extractJsonHealth(text) {

@@ -16,6 +16,7 @@ export default function registerInferenceActions(registerLensAction) {
    * params.maxIterations (default: 100)
    */
   registerLensAction("inference", "forwardChain", (ctx, artifact, params) => {
+  try {
     const initialFacts = artifact.data?.facts || [];
     const rules = artifact.data?.rules || [];
     if (initialFacts.length === 0) return { ok: false, error: "No facts provided." };
@@ -180,7 +181,8 @@ export default function registerInferenceActions(registerLensAction) {
         rulesApplied: [...new Set(derivationLog.map(d => d.rule))],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * backwardChain
@@ -193,6 +195,7 @@ export default function registerInferenceActions(registerLensAction) {
    * params.maxDepth (default: 20)
    */
   registerLensAction("inference", "backwardChain", (ctx, artifact, params) => {
+  try {
     const facts = artifact.data?.facts || [];
     const rules = artifact.data?.rules || [];
     const goal = artifact.data?.goal;
@@ -339,7 +342,8 @@ export default function registerInferenceActions(registerLensAction) {
         ruleCount: rules.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * unify
@@ -351,6 +355,7 @@ export default function registerInferenceActions(registerLensAction) {
    * Constants are plain strings. Compound terms have { functor, args }.
    */
   registerLensAction("inference", "unify", (ctx, artifact, _params) => {
+  try {
     const term1 = artifact.data?.term1;
     const term2 = artifact.data?.term2;
     if (!term1 || !term2) return { ok: false, error: "Both term1 and term2 are required." };
@@ -509,7 +514,8 @@ export default function registerInferenceActions(registerLensAction) {
         stepCount,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ───────────────────────────────────────────────────────────────────────
   // 2026 parity — Prolog / Drools rule engine: persistent knowledge base,

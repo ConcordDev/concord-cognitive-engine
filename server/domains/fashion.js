@@ -554,6 +554,7 @@ export default function registerFashionActions(registerLensAction) {
     travel: { top: 2, bottom: 2, shoes: 2, outerwear: 2, accessory: 1 },
   };
   registerLensAction("fashion", "ai-outfit-generate", (ctx, _a, params = {}) => {
+  try {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fsAid(ctx);
     const items = (s.items.get(userId) || []).filter((i) => !i.archived);
@@ -631,7 +632,8 @@ export default function registerFashionActions(registerLensAction) {
         note: outfits.length === 0 ? "Not enough variety — add more categories." : undefined,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Style profile quiz → personalized recommendations ───────────
   const STYLE_QUIZ = [
@@ -748,6 +750,7 @@ export default function registerFashionActions(registerLensAction) {
 
   // ── [S] Resale / declutter flagging + marketplace listing handoff ───
   registerLensAction("fashion", "declutter-suggestions", (ctx, _a, params = {}) => {
+  try {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fsAid(ctx);
     const items = (s.items.get(userId) || []).filter((i) => !i.archived);
@@ -778,7 +781,8 @@ export default function registerFashionActions(registerLensAction) {
         potentialResale: Math.round(flagged.reduce((a, f) => a + f.resaleEstimate, 0) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("fashion", "resale-list-item", (ctx, _a, params = {}) => {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fsAid(ctx);

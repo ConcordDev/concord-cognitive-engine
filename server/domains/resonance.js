@@ -116,6 +116,7 @@ export default function registerResonanceActions(registerLensAction) {
    * artifact.data.contentHistory (optional) = [{ date, views, interactions }] for trend
    */
   registerLensAction("resonance", "engagementScore", (ctx, artifact, params) => {
+  try {
     const content = artifact.data?.content || {};
     const history = artifact.data?.contentHistory || [];
 
@@ -239,7 +240,8 @@ export default function registerResonanceActions(registerLensAction) {
         trend,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * audienceMatch
@@ -249,6 +251,7 @@ export default function registerResonanceActions(registerLensAction) {
    * artifact.data.audience = { interests: [string], avgReadingLevel?: number, preferredFormats?: [string], activeHours?: [number], demographics?: { ageGroup?, education? } }
    */
   registerLensAction("resonance", "audienceMatch", (ctx, artifact, params) => {
+  try {
     const content = artifact.data?.content || {};
     const audience = artifact.data?.audience || {};
 
@@ -387,7 +390,8 @@ export default function registerResonanceActions(registerLensAction) {
         recommendations,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * impactPrediction
@@ -398,6 +402,7 @@ export default function registerResonanceActions(registerLensAction) {
    * params.k — number of nearest neighbors (default 5)
    */
   registerLensAction("resonance", "impactPrediction", (ctx, artifact, params) => {
+  try {
     const newContent = artifact.data?.newContent || {};
     const historical = artifact.data?.historicalContent || [];
     const k = Math.min(params.k || 5, historical.length);
@@ -566,7 +571,8 @@ export default function registerResonanceActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   // Cross-domain analogy / knowledge-graph resonance tooling

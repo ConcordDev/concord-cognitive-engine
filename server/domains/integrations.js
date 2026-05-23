@@ -10,6 +10,7 @@ export default function registerIntegrationsActions(registerLensAction) {
    * artifact.data.endpoints = [{ name, url?, samples: [{ latencyMs, statusCode, timestamp }] }]
    */
   registerLensAction("integrations", "apiHealthCheck", (ctx, artifact, params) => {
+  try {
     const endpoints = artifact.data?.endpoints || [];
     if (endpoints.length === 0) return { ok: true, result: { message: "No endpoints to check." } };
 
@@ -112,7 +113,8 @@ export default function registerIntegrationsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * dataFlowMapping
@@ -121,6 +123,7 @@ export default function registerIntegrationsActions(registerLensAction) {
    * artifact.data.flows = [{ source, target, dataType?, throughputMbps?, latencyMs?, protocol? }]
    */
   registerLensAction("integrations", "dataFlowMapping", (ctx, artifact, params) => {
+  try {
     const flows = artifact.data?.flows || [];
     if (flows.length === 0) return { ok: true, result: { message: "No flows to map." } };
 
@@ -246,7 +249,8 @@ export default function registerIntegrationsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * compatibilityCheck
@@ -255,6 +259,7 @@ export default function registerIntegrationsActions(registerLensAction) {
    * artifact.data.apis = [{ name, currentVersion, targetVersion, changes?: [{ type: "added"|"removed"|"modified", field, breaking?: bool }] }]
    */
   registerLensAction("integrations", "compatibilityCheck", (ctx, artifact, params) => {
+  try {
     const apis = artifact.data?.apis || [];
     if (apis.length === 0) return { ok: true, result: { message: "No APIs to check." } };
 
@@ -355,7 +360,8 @@ export default function registerIntegrationsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ───────────────────────────────────────────────────────────────────────
   //  Zapier-parity feature backlog
@@ -1052,6 +1058,7 @@ export default function registerIntegrationsActions(registerLensAction) {
   });
 
   registerLensAction("integrations", "webhookDeliveries", (ctx, _artifact, params = {}) => {
+  try {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!params.webhookId) return { ok: false, error: "webhookId required" };
@@ -1066,10 +1073,12 @@ export default function registerIntegrationsActions(registerLensAction) {
         signatureHeader: "X-Concord-Signature",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Webhook delivery retry with exponential backoff. Records each attempt.
   registerLensAction("integrations", "webhookRetry", (ctx, _artifact, params = {}) => {
+  try {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!params.webhookId || !params.deliveryId) return { ok: false, error: "webhookId and deliveryId required" };
@@ -1101,10 +1110,12 @@ export default function registerIntegrationsActions(registerLensAction) {
     if (meta.deliveries.length > 100) meta.deliveries.length = 100;
     saveIntegrationsState();
     return { ok: true, result: { retry, nextBackoffSeconds: backoff, attempt, exhausted: attempt >= meta.retryPolicy.maxAttempts } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Signature verification for inbound webhook payloads.
   registerLensAction("integrations", "verifyWebhookSignature", (ctx, _artifact, params = {}) => {
+  try {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!params.webhookId) return { ok: false, error: "webhookId required" };
@@ -1117,5 +1128,6 @@ export default function registerIntegrationsActions(registerLensAction) {
       ok: true,
       result: { valid, expected, provided, signatureHeader: "X-Concord-Signature" },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

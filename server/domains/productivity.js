@@ -670,10 +670,12 @@ export default function registerProductivityActions(registerLensAction) {
   }
 
   registerLensAction("productivity", "task-parse", (_ctx, _a, params = {}) => {
+  try {
     const parsed = parseQuickAdd(params.text);
     if (!parsed) return { ok: false, error: "text required" };
     return { ok: true, result: { parsed } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("productivity", "task-quick-add", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -800,6 +802,7 @@ export default function registerProductivityActions(registerLensAction) {
     return out;
   }
   registerLensAction("productivity", "filter-save", (ctx, _a, params = {}) => {
+  try {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const map = getFilterMap();
     const name = pdClean(params.name, 80);
@@ -822,8 +825,10 @@ export default function registerProductivityActions(registerLensAction) {
     pdListB(map, pdAid(ctx)).push(filter);
     saveProdState();
     return { ok: true, result: { filter } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("productivity", "filter-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const map = getFilterMap();
     const userId = pdAid(ctx);
@@ -832,8 +837,10 @@ export default function registerProductivityActions(registerLensAction) {
       ...f, matchCount: applyFilterQuery(tasks, f.query).length,
     }));
     return { ok: true, result: { filters, count: filters.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("productivity", "filter-run", (ctx, _a, params = {}) => {
+  try {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pdAid(ctx);
     let query;
@@ -851,7 +858,8 @@ export default function registerProductivityActions(registerLensAction) {
       .sort((a, b) => a.priority - b.priority ||
         String(a.dueDate || "9999").localeCompare(String(b.dueDate || "9999")));
     return { ok: true, result: { tasks, count: tasks.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("productivity", "filter-delete", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const arr = getFilterMap().get(pdAid(ctx)) || [];
@@ -864,6 +872,7 @@ export default function registerProductivityActions(registerLensAction) {
 
   // ── Calendar sync + view ────────────────────────────────────────────
   registerLensAction("productivity", "calendar-view", (ctx, _a, params = {}) => {
+  try {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pdAid(ctx);
     const anchor = pdDay(params.month) || new Date().toISOString().slice(0, 10);
@@ -892,7 +901,8 @@ export default function registerProductivityActions(registerLensAction) {
         totalScheduled: tasks.filter((t) => t.dueDate.startsWith(`${String(yr).padStart(4, "0")}-${String(mo).padStart(2, "0")}`)).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   function icsEscape(v) { return String(v == null ? "" : v).replace(/[\\;,]/g, (c) => "\\" + c).replace(/\n/g, "\\n"); }
   registerLensAction("productivity", "calendar-export-ics", (ctx, _a, _params = {}) => {

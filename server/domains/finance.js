@@ -190,6 +190,7 @@ export default function registerFinanceActions(registerLensAction) {
    * (per "everything must be real" directive — no SAMPLE_PORTFOLIO).
    */
   registerLensAction("finance", "investment-checkup", (ctx, _artifact, _params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const holdings = state.holdings.get(userId);
@@ -266,12 +267,14 @@ export default function registerFinanceActions(registerLensAction) {
         score,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * tax-estimate — IRS 2026 brackets per Tax Foundation + OBBBA updates.
    */
   registerLensAction("finance", "tax-estimate", (_ctx, _artifact, params = {}) => {
+  try {
     const wages = Math.max(0, Number(params.wages) || 0);
     const otherIncome = Math.max(0, Number(params.otherIncome) || 0);
     const longTermGains = Math.max(0, Number(params.longTermGains) || 0);
@@ -373,7 +376,8 @@ export default function registerFinanceActions(registerLensAction) {
         ltcgTax: Math.round(ltcgTax * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * retirement-monte-carlo — Geometric-Brownian-motion paths.
@@ -381,6 +385,7 @@ export default function registerFinanceActions(registerLensAction) {
    *           expectedReturn, volatility, annualSpendInRetirement, paths }
    */
   registerLensAction("finance", "retirement-monte-carlo", (_ctx, _artifact, params = {}) => {
+  try {
     const currentAge = Math.max(18, Math.min(90, Number(params.currentAge) || 35));
     const retireAge = Math.max(currentAge + 1, Math.min(100, Number(params.retireAge) || 67));
     const currentSavings = Math.max(0, Number(params.currentSavings) || 0);
@@ -443,7 +448,8 @@ export default function registerFinanceActions(registerLensAction) {
         paths,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * subscriptions-detect — Detect recurring charges from the user's real
@@ -613,6 +619,7 @@ Generate the summary.`;
   });
 
   registerLensAction("finance", "cashflow-forecast", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const horizonDays = Math.max(7, Math.min(180, Number(params.horizonDays) || 60));
@@ -661,7 +668,8 @@ Generate the summary.`;
         alert: lowestBalance < 0 ? `Projected negative balance on ${lowestDate}` : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Savings goals ──────────────────────────────────────────────
 
@@ -879,6 +887,7 @@ Generate the summary.`;
   });
 
   registerLensAction("finance", "dividends-calendar", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const holdings = state.holdings.get(userId) || [];
@@ -904,7 +913,8 @@ Generate the summary.`;
     }
     events.sort((a, b) => a.date.localeCompare(b.date));
     return { ok: true, result: { events, days } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Earnings calendar (deterministic synthetic dates per ticker) ──
 
@@ -931,6 +941,7 @@ Generate the summary.`;
   // ── Spending insights (MoM trends + anomalies) ─────────────────
 
   registerLensAction("finance", "spending-insights", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const tx = Array.isArray(params.transactions) ? params.transactions : (ensureBucket(state, "ledger", userId));
@@ -976,7 +987,8 @@ Generate the summary.`;
         topShrink: trends.filter(t => t.delta < 0).slice(0, 5),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── User categorisation rules ─────────────────────────────────
 
@@ -1043,6 +1055,7 @@ Generate the summary.`;
   // ── Tax-loss harvest candidates ────────────────────────────────
 
   registerLensAction("finance", "tax-loss-candidates", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const holdings = state.holdings.get(userId) || [];
@@ -1073,7 +1086,8 @@ Generate the summary.`;
         estimatedTaxBenefit: Math.round(totalHarvestable * 0.24 * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Linked accounts (institutional aggregation primitive) ──────
 
@@ -1190,6 +1204,7 @@ Generate the summary.`;
   // ── Combined dashboard summary (FinanceShell data source) ──────
 
   registerLensAction("finance", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const holdings = state.holdings.get(userId) || [];
@@ -1239,7 +1254,8 @@ Generate the summary.`;
         positionCount: holdings.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══ Parity backlog (Monarch / Empower gap) ════════════════════════
   // Seven buildable items: bank aggregation, auto-categorised ingest,
@@ -1503,6 +1519,7 @@ Generate the summary.`;
   // and surfaces the standard five-factor mix the user can input.
 
   registerLensAction("finance", "credit-score-record", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const score = Math.round(Number(params.score));
@@ -1525,7 +1542,8 @@ Generate the summary.`;
     history.sort((a, b) => String(a.date).localeCompare(String(b.date)));
     saveStateIfAvailable();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("finance", "credit-score-delete", (ctx, _a, params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
@@ -1540,6 +1558,7 @@ Generate the summary.`;
   });
 
   registerLensAction("finance", "credit-score-report", (ctx, _a, _p = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const history = ensureBucket(state, "creditScores", userId);
@@ -1568,7 +1587,8 @@ Generate the summary.`;
         advice,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Item 5: Cash-flow Sankey + month-over-month trend ─────────────
   //
@@ -1576,6 +1596,7 @@ Generate the summary.`;
   // outflows. monthly-trend: per-month income/spend/net series.
 
   registerLensAction("finance", "cashflow-sankey", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const ledger = ensureBucket(state, "ledger", userId);
@@ -1615,9 +1636,11 @@ Generate the summary.`;
         month,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("finance", "monthly-trend", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const ledger = ensureBucket(state, "ledger", userId);
@@ -1652,11 +1675,13 @@ Generate the summary.`;
         avgNet: Math.round((avgIncome - avgSpend) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Item 6: Bill-pay reminders + payment notifications ────────────
 
   registerLensAction("finance", "bill-reminders", (ctx, _a, params = {}) => {
+  try {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const bills = ensureBucket(state, "bills", userId);
@@ -1696,7 +1721,8 @@ Generate the summary.`;
         leadDays,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("finance", "bill-reminder-snooze", (ctx, _a, params = {}) => {
     const state = getFinState(); if (!state) return { ok: false, error: "STATE unavailable" };

@@ -143,6 +143,7 @@ export default function registerHRActions(registerLensAction) {
 
   // ── Employees ───────────────────────────────────────────────────────
   registerLensAction("hr", "employee-add", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = hrClean(params.name, 120);
     if (!name) return { ok: false, error: "employee name required" };
@@ -162,7 +163,8 @@ export default function registerHRActions(registerLensAction) {
     hrListB(s.employees, hrAid(ctx)).push(emp);
     saveHrState();
     return { ok: true, result: { employee: emp } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("hr", "employee-list", (ctx, _a, params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -187,6 +189,7 @@ export default function registerHRActions(registerLensAction) {
   });
 
   registerLensAction("hr", "employee-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     const emp = findEmployee(s, userId, params.id);
@@ -204,7 +207,8 @@ export default function registerHRActions(registerLensAction) {
         openGoals: (s.goals.get(userId) || []).filter((g) => g.employeeId === emp.id && g.progress < 100).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("hr", "employee-offboard", (ctx, _a, params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -266,6 +270,7 @@ export default function registerHRActions(registerLensAction) {
 
   // ── Time off ────────────────────────────────────────────────────────
   registerLensAction("hr", "timeoff-request", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     if (!findEmployee(s, userId, params.employeeId)) return { ok: false, error: "employee not found" };
@@ -284,7 +289,8 @@ export default function registerHRActions(registerLensAction) {
     hrListB(s.timeoff, userId).push(req);
     saveHrState();
     return { ok: true, result: { request: req } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("hr", "timeoff-list", (ctx, _a, params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -312,6 +318,7 @@ export default function registerHRActions(registerLensAction) {
   });
 
   registerLensAction("hr", "timeoff-balance", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     if (!findEmployee(s, userId, params.employeeId)) return { ok: false, error: "employee not found" };
@@ -324,7 +331,8 @@ export default function registerHRActions(registerLensAction) {
       return { kind, accrued, used: Math.round(used * 2) / 2, remaining: Math.round((accrued - used) * 2) / 2 };
     });
     return { ok: true, result: { year, balances } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Onboarding ──────────────────────────────────────────────────────
   registerLensAction("hr", "onboarding-task-add", (ctx, _a, params = {}) => {
@@ -569,6 +577,7 @@ export default function registerHRActions(registerLensAction) {
   }
 
   registerLensAction("hr", "payroll-run", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     const frequency = Object.keys(PAY_PERIODS).includes(String(params.frequency))
@@ -597,7 +606,8 @@ export default function registerHRActions(registerLensAction) {
     hrListB(s.payRuns, userId).unshift(run);
     saveHrState();
     return { ok: true, result: { run } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("hr", "payroll-list", (ctx, _a, _params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -628,6 +638,7 @@ export default function registerHRActions(registerLensAction) {
 
   // ── Benefits enrollment ─────────────────────────────────────────────
   registerLensAction("hr", "benefit-plan-add", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = hrClean(params.name, 120);
     if (!name) return { ok: false, error: "plan name required" };
@@ -643,7 +654,8 @@ export default function registerHRActions(registerLensAction) {
     hrListB(s.benefitPlans, hrAid(ctx)).push(plan);
     saveHrState();
     return { ok: true, result: { plan } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("hr", "benefit-plan-list", (ctx, _a, _params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -834,6 +846,7 @@ export default function registerHRActions(registerLensAction) {
   });
 
   registerLensAction("hr", "course-assignment-list", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     const empName = new Map((s.employees.get(userId) || []).map((e) => [e.id, e.name]));
@@ -850,7 +863,8 @@ export default function registerHRActions(registerLensAction) {
           && a.dueDate < hrDay(hrNow())).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Compliance acknowledgement ──────────────────────────────────────
   registerLensAction("hr", "compliance-doc-add", (ctx, _a, params = {}) => {
@@ -910,6 +924,7 @@ export default function registerHRActions(registerLensAction) {
   });
 
   registerLensAction("hr", "compliance-status", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     const docs = s.complianceDocs.get(userId) || [];
@@ -947,12 +962,14 @@ export default function registerHRActions(registerLensAction) {
         compliancePct: totalRequired ? Math.round((totalAcked / totalRequired) * 100) : 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Employee self-service portal ────────────────────────────────────
   // Read-only consolidated view for one employee: profile, time-off
   // balance + history, benefits, paystubs, courses, compliance, goals.
   registerLensAction("hr", "self-service-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     const emp = findEmployee(s, userId, params.employeeId);
@@ -996,7 +1013,8 @@ export default function registerHRActions(registerLensAction) {
         complianceOutstanding,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("hr", "self-service-update", (ctx, _a, params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1025,6 +1043,7 @@ export default function registerHRActions(registerLensAction) {
 
   // ── Org-wide analytics ──────────────────────────────────────────────
   registerLensAction("hr", "workforce-analytics", (ctx, _a, _params = {}) => {
+  try {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     const emps = s.employees.get(userId) || [];
@@ -1102,7 +1121,8 @@ export default function registerHRActions(registerLensAction) {
         annualPayroll: Math.round(active.reduce((a, e) => a + hrNum(e.salary), 0)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("hr", "hr-dashboard", (ctx, _a, _params = {}) => {

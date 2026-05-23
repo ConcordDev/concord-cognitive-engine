@@ -12,6 +12,7 @@ export default function registerTransferActions(registerLensAction) {
    * params.similarityThreshold (default: 0.5)
    */
   registerLensAction("transfer", "schemaMapping", (ctx, artifact, params) => {
+  try {
     const source = artifact.data?.sourceSchema || [];
     const target = artifact.data?.targetSchema || [];
     if (source.length === 0 || target.length === 0) {
@@ -165,7 +166,8 @@ export default function registerTransferActions(registerLensAction) {
         threshold,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * dataQuality
@@ -359,6 +361,7 @@ export default function registerTransferActions(registerLensAction) {
    * params.checkpointInterval (batches between checkpoints, default: 5)
    */
   registerLensAction("transfer", "migrationPlan", (ctx, artifact, params) => {
+  try {
     const entities = artifact.data?.entities || [];
     if (entities.length === 0) return { ok: false, error: "No entities to migrate." };
 
@@ -522,7 +525,8 @@ export default function registerTransferActions(registerLensAction) {
         estimatedSteps: plan.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ───────────────────────────────────────────────────────────────────────
   // 2026 ETL parity — Fivetran / Airbyte

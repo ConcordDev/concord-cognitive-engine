@@ -14,6 +14,7 @@ export default function registerReflectionActions(registerLensAction) {
    * params.topN — number of top themes to return (default 10)
    */
   registerLensAction("reflection", "insightExtraction", (ctx, artifact, params) => {
+  try {
     const entries = artifact.data?.entries || [];
     if (entries.length === 0) {
       return { ok: true, result: { message: "No journal entries to analyze." } };
@@ -176,7 +177,8 @@ export default function registerReflectionActions(registerLensAction) {
         topTags: topTags.length > 0 ? topTags : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * growthMetrics
@@ -186,6 +188,7 @@ export default function registerReflectionActions(registerLensAction) {
    * params.windowSize — entries per window for trend analysis (default 5)
    */
   registerLensAction("reflection", "growthMetrics", (ctx, artifact, params) => {
+  try {
     const entries = artifact.data?.entries || [];
     if (entries.length < 2) {
       return { ok: true, result: { message: "Need at least 2 entries for growth analysis." } };
@@ -349,7 +352,8 @@ export default function registerReflectionActions(registerLensAction) {
         growthWindows: windows.length <= 15 ? windows : windows.filter((_, i) => i % Math.ceil(windows.length / 15) === 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * habitTracking
@@ -358,6 +362,7 @@ export default function registerReflectionActions(registerLensAction) {
    * artifact.data.habits = [{ name, completions: [{ date, time?, duration?, quality? }] }]
    */
   registerLensAction("reflection", "habitTracking", (ctx, artifact, params) => {
+  try {
     const habits = artifact.data?.habits || [];
     if (habits.length === 0) {
       return { ok: true, result: { message: "No habit data to analyze." } };
@@ -544,7 +549,8 @@ export default function registerReflectionActions(registerLensAction) {
         needsAttention: habitProfiles.filter(h => (h.consistency || 0) < 0.3).map(h => h.name),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Day One 2026 parity — journaling companion ─────────────────────
   // Named journals, rich entries (mood / tags / location / weather),
@@ -797,6 +803,7 @@ export default function registerReflectionActions(registerLensAction) {
 
   // ── Streaks & stats ─────────────────────────────────────────────────
   registerLensAction("reflection", "journal-streak", (ctx, _a, _params = {}) => {
+  try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const dates = (s.entries.get(rfAid(ctx)) || []).map((e) => e.date);
     return {
@@ -807,7 +814,8 @@ export default function registerReflectionActions(registerLensAction) {
         daysJournaled: new Set(dates).size,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("reflection", "journal-stats", (ctx, _a, _params = {}) => {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1185,6 +1193,7 @@ export default function registerReflectionActions(registerLensAction) {
   });
 
   registerLensAction("reflection", "reminder-status", (ctx, _a, _params = {}) => {
+  try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rfExtraState(s);
     const userId = rfAid(ctx);
@@ -1210,7 +1219,8 @@ export default function registerReflectionActions(registerLensAction) {
           (new Date().getUTCHours() * 60 + new Date().getUTCMinutes()) >= reminder.hour * 60 + reminder.minute),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── End-to-end encryption (private journal at rest) ─────────────────
   registerLensAction("reflection", "entry-encrypt", (ctx, _a, params = {}) => {
@@ -1269,6 +1279,7 @@ export default function registerReflectionActions(registerLensAction) {
 
   // ── Timeline / map view ─────────────────────────────────────────────
   registerLensAction("reflection", "entry-timeline", (ctx, _a, params = {}) => {
+  try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let entries = [...(s.entries.get(rfAid(ctx)) || [])];
     if (params.journalId) entries = entries.filter((e) => e.journalId === String(params.journalId));
@@ -1305,7 +1316,8 @@ export default function registerReflectionActions(registerLensAction) {
         monthBuckets: Object.entries(byMonth).map(([month, count]) => ({ month, count })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("reflection", "entry-map", (ctx, _a, _params = {}) => {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1386,6 +1398,7 @@ export default function registerReflectionActions(registerLensAction) {
 
   // ── Year in review / export ─────────────────────────────────────────
   registerLensAction("reflection", "year-in-review", (ctx, _a, params = {}) => {
+  try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const now = new Date();
     const year = Math.round(rfNum(params.year, now.getUTCFullYear()));
@@ -1436,9 +1449,11 @@ export default function registerReflectionActions(registerLensAction) {
         lastEntryDate: yEntries[yEntries.length - 1].date,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("reflection", "journal-export", (ctx, _a, params = {}) => {
+  try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rfExtraState(s);
     const userId = rfAid(ctx);
@@ -1493,7 +1508,8 @@ export default function registerReflectionActions(registerLensAction) {
         export: record,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("reflection", "export-history", (ctx, _a, _params = {}) => {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };

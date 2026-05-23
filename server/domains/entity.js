@@ -11,6 +11,7 @@ export default function registerEntityActions(registerLensAction) {
    * params.threshold (default 0.85), params.matchFields (default all)
    */
   registerLensAction("entity", "entityResolution", (ctx, artifact, params) => {
+  try {
     const records = artifact.data?.records || [];
     if (records.length < 2) {
       return { ok: true, result: { message: "Need at least 2 records for entity resolution." } };
@@ -224,7 +225,8 @@ export default function registerEntityActions(registerLensAction) {
         parameters: { threshold, matchFields: matchFields || "all" },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * relationshipGraph
@@ -234,6 +236,7 @@ export default function registerEntityActions(registerLensAction) {
    * artifact.data.relationships = [{ from, to, type?, weight? }]
    */
   registerLensAction("entity", "relationshipGraph", (ctx, artifact, _params) => {
+  try {
     const entities = artifact.data?.entities || [];
     const relationships = artifact.data?.relationships || [];
 
@@ -442,7 +445,8 @@ export default function registerEntityActions(registerLensAction) {
         relationshipTypes: [...new Set(validRels.map(r => r.type).filter(Boolean))],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * attributeValidation
@@ -738,6 +742,7 @@ export default function registerEntityActions(registerLensAction) {
 
   /** graph-get — full per-user graph (nodes + edges + schemas). */
   registerLensAction("entity", "graph-get", (ctx, _a, _p = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = aid(ctx);
     return {
@@ -748,7 +753,8 @@ export default function registerEntityActions(registerLensAction) {
         schemas: userSchemas(s, u),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /** node-create — add an entity node. params: { name, entityType?, attributes?:{key:{value,source}} } */
   registerLensAction("entity", "node-create", (ctx, _a, params = {}) => {
@@ -1015,6 +1021,7 @@ export default function registerEntityActions(registerLensAction) {
   /** path-find — shortest path between two nodes (BFS, treats edges as
    *  undirected). params: { from, to } */
   registerLensAction("entity", "path-find", (ctx, _a, params = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = aid(ctx);
     const nodes = userNodes(s, u);
@@ -1058,7 +1065,8 @@ export default function registerEntityActions(registerLensAction) {
       cur = prev[cur];
     }
     return { ok: true, result: { found: true, hops: path.length - 1, path } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /** import-bulk — bulk-create nodes from parsed CSV/JSON rows.
    *  params: { rows:[{ name, entityType?, ...attrs }], source? } */
@@ -1138,6 +1146,7 @@ export default function registerEntityActions(registerLensAction) {
   /** provenance-report — aggregate which source asserted each attribute
    *  value, across the whole user graph. */
   registerLensAction("entity", "provenance-report", (ctx, _a, _p = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = aid(ctx);
     const nodes = userNodes(s, u);
@@ -1171,5 +1180,6 @@ export default function registerEntityActions(registerLensAction) {
         entries: entries.slice(0, 100),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

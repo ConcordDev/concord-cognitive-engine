@@ -22,6 +22,7 @@ export default function registerAutomotiveActions(registerLensAction) {
    * Returns severity, common causes, repair guidance, cost range.
    */
   registerLensAction("automotive", "diagnosticLookup", (_ctx, artifact, params = {}) => {
+  try {
     const data = artifact?.data || {};
     const code = String(data.code || data.dtcCode || params.code || "").toUpperCase().trim();
     if (!code) {
@@ -72,7 +73,8 @@ export default function registerAutomotiveActions(registerLensAction) {
         source: "sae-j2012",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * vin-decode — Real VIN decoder via NHTSA vPIC. Decodes 17-char VIN
@@ -185,6 +187,7 @@ export default function registerAutomotiveActions(registerLensAction) {
    * combines with regional shop-rate data.
    */
   registerLensAction("automotive", "maintenanceSchedule", (_ctx, artifact, _params) => {
+  try {
     const data = artifact?.data || {};
     const mileage = parseInt(data.mileage || data.odometer, 10) || 0;
     if (!Number.isFinite(mileage) || mileage <= 0) {
@@ -225,7 +228,8 @@ export default function registerAutomotiveActions(registerLensAction) {
         notes: "Intervals are typical OEM recommendations. Always check the owner's manual for vehicle-specific values.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * fuelEfficiency — Real MPG analysis from user-logged fill-ups. No
@@ -417,6 +421,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   // ── Fuel log + economy ───────────────────────────────────────
 
   registerLensAction("automotive", "fuel-log", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -457,7 +462,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     expSeq.exp++;
     saveAuto();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "fuel-list", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -498,6 +504,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   // ── Service log ──────────────────────────────────────────────
 
   registerLensAction("automotive", "service-log", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -533,7 +540,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     }
     saveAuto();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "service-list", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -607,6 +615,7 @@ export default function registerAutomotiveActions(registerLensAction) {
 
   // Compute which scheduled services are due / overdue / upcoming.
   registerLensAction("automotive", "service-reminders", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
@@ -661,11 +670,13 @@ export default function registerAutomotiveActions(registerLensAction) {
         dueSoonCount: reminders.filter(r => r.status === 'due_soon').length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Expenses ──────────────────────────────────────────────────
 
   registerLensAction("automotive", "expenses-log", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -687,7 +698,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.expenses, userId).push(expense);
     saveAuto();
     return { ok: true, result: { expense } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "expenses-list", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -723,6 +735,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   // ── Trips ─────────────────────────────────────────────────────
 
   registerLensAction("automotive", "trips-log", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -746,7 +759,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.trips, userId).push(trip);
     saveAuto();
     return { ok: true, result: { trip } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "trips-list", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -828,6 +842,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   // ── Vehicle stats ────────────────────────────────────────────
 
   registerLensAction("automotive", "vehicle-stats", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -861,11 +876,13 @@ export default function registerAutomotiveActions(registerLensAction) {
         costPerMile,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard summary ────────────────────────────────────────
 
   registerLensAction("automotive", "automotive-dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicles = listAu(s.vehicles, userId);
@@ -897,7 +914,8 @@ export default function registerAutomotiveActions(registerLensAction) {
         scheduleCount: listAu(s.schedule, userId).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Feature-parity backlog — OBD telemetry, TCO rollups, predictive
@@ -929,6 +947,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   // the dongle reported.
 
   registerLensAction("automotive", "obd-import", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -969,7 +988,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     }
     saveAuto();
     return { ok: true, result: { imported: stored.length, readings: stored } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "obd-list", (ctx, _a, params = {}) => {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1006,6 +1026,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   // ── Cost-per-mile / total-cost-of-ownership rollups ───────────
 
   registerLensAction("automotive", "cost-of-ownership", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -1052,13 +1073,15 @@ export default function registerAutomotiveActions(registerLensAction) {
         note: purchasePrice === 0 ? "Supply purchasePrice for a full TCO including depreciation." : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Predictive maintenance alerts ────────────────────────────
   // Projects each scheduled service forward using the vehicle's recent
   // mileage accumulation rate (computed from logged odometer points).
 
   registerLensAction("automotive", "predictive-maintenance", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
@@ -1129,13 +1152,15 @@ export default function registerAutomotiveActions(registerLensAction) {
         forecastable: alerts.filter(a => a.daysUntilDue !== null).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Photo attachments for receipts + odometer readings ───────
   // The frontend uploads images to the artifact store and passes the
   // resulting URL/data-URI here; the macro stores the reference.
 
   registerLensAction("automotive", "attachments-add", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -1162,7 +1187,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     if (att.odometerReading !== null) bumpOdometer(s, userId, vehicleId, att.odometerReading);
     saveAuto();
     return { ok: true, result: { attachment: att } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "attachments-list", (ctx, _a, params = {}) => {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1188,6 +1214,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   // ── Multi-vehicle comparison dashboard ───────────────────────
 
   registerLensAction("automotive", "compare-vehicles", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const all = listAu(s.vehicles, userId);
@@ -1244,11 +1271,13 @@ export default function registerAutomotiveActions(registerLensAction) {
         highlights: best,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Service-shop locator + appointment notes ─────────────────
 
   registerLensAction("automotive", "shops-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const name = String(params.name || "").trim();
@@ -1273,7 +1302,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.shops, userId).push(shop);
     saveAuto();
     return { ok: true, result: { shop } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Real geocoding via OpenStreetMap Nominatim (free, keyless) so the
   // locator can place a saved shop on a map.
@@ -1317,6 +1347,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   });
 
   registerLensAction("automotive", "appointments-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -1343,7 +1374,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.appointments, userId).push(appt);
     saveAuto();
     return { ok: true, result: { appointment: appt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "appointments-list", (ctx, _a, params = {}) => {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1394,6 +1426,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   const RENEWAL_KINDS = ['warranty', 'insurance', 'registration', 'inspection', 'lease', 'extended_warranty', 'roadside', 'other'];
 
   registerLensAction("automotive", "renewals-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = String(params.vehicleId || "");
@@ -1422,7 +1455,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.renewals, userId).push(renewal);
     saveAuto();
     return { ok: true, result: { renewal } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   function decorateRenewal(s, userId, r) {
     const now = Date.now();
@@ -1440,6 +1474,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   }
 
   registerLensAction("automotive", "renewals-list", (ctx, _a, params = {}) => {
+  try {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
     const vehicleId = params.vehicleId ? String(params.vehicleId) : null;
@@ -1456,7 +1491,8 @@ export default function registerAutomotiveActions(registerLensAction) {
         dueSoonCount: decorated.filter(r => r.status === 'due_soon').length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("automotive", "renewals-upcoming", (ctx, _a, params = {}) => {
     const s = getAutoExtra(); if (!s) return { ok: false, error: "STATE unavailable" };
