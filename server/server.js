@@ -23661,16 +23661,7 @@ registerVideoGenMacros(register);
 // endpoint runs the agent loop and streams tool calls + tokens + final
 // status as they happen, so the AgentModePanel renders progressively.
 import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
-try {
-  mountChatAgentStream({
-    app,
-    auth: (req, res, next) => next(), // chained through standard auth middleware downstream
-    runMacro,
-    lensActions: LENS_ACTIONS,
-  });
-} catch (streamErr) {
-  structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
-}
+// Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
   frequency: 12,
@@ -23678,20 +23669,7 @@ registerHeartbeat("agent-marathon-cycle", {
 });
 
 import { mountMcpServer } from "./lib/mcp-server-host.js";
-try {
-  mountMcpServer({
-    app,
-    runMacro,
-    ctxFor: (extra) => ({
-      db: STATE?.db || globalThis._concordDB,
-      actor: extra?.authInfo?.actor || null,
-      state: STATE,
-    }),
-  });
-  structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
-} catch (mcpErr) {
-  structuredLog("warn", "mcp_server_mount_failed", { error: String(mcpErr?.message || mcpErr) });
-}
+// Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.
@@ -36541,6 +36519,39 @@ const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifac
 globalThis.__concordLensActions = LENS_ACTIONS;
 function registerLensAction(domain, action, handler) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
+}
+
+// Sprint 18.5 follow-up — moved here from ~line 23664. mountChatAgentStream
+// destructures `app` + `LENS_ACTIONS`; both must be initialised before the
+// mount call (`app` at 27554, LENS_ACTIONS just above). Old position TDZ'd
+// at boot and silently dead-mounted the /api/chat-agent/stream SSE endpoint.
+try {
+  mountChatAgentStream({
+    app,
+    auth: (req, res, next) => next(), // chained through standard auth middleware downstream
+    runMacro,
+    lensActions: LENS_ACTIONS,
+  });
+} catch (streamErr) {
+  structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
+}
+
+// Sprint 18.5 follow-up — same TDZ story. mountMcpServer needs `app` + `STATE`
+// + `runMacro`. Old position at ~line 23681 was TDZ on `app` and silently
+// disabled the /mcp endpoint (Claude Desktop / Cursor / any MCP client).
+try {
+  mountMcpServer({
+    app,
+    runMacro,
+    ctxFor: (extra) => ({
+      db: STATE?.db || globalThis._concordDB,
+      actor: extra?.authInfo?.actor || null,
+      state: STATE,
+    }),
+  });
+  structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
+} catch (mcpErr) {
+  structuredLog("warn", "mcp_server_mount_failed", { error: String(mcpErr?.message || mcpErr) });
 }
 
 // Pipeline introspection endpoint (must be before wildcard :domain routes)
