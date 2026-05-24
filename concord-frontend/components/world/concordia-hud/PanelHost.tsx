@@ -150,7 +150,7 @@ export function PanelHost() {
       data-panel-id={activeId}
       role="dialog"
       aria-label={label}
-      onClick={(e) => { if (e.target === e.currentTarget) setActiveId(null); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={(e) => { if (e.target === e.currentTarget) setActiveId(null); }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="w-[28rem] max-w-[90vw] max-h-[80vh] bg-zinc-950 border border-zinc-700/60 rounded-lg shadow-2xl flex flex-col">
         <header className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
           <h2 className="text-sm font-bold text-zinc-100">{label}</h2>

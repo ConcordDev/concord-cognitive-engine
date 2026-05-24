@@ -2505,7 +2505,7 @@ export default function ChatLensPage() {
         {chatSidebarOpen && (
           <div
             className="lg:hidden fixed inset-0 bg-black/50 z-30"
-            onClick={() => setChatSidebarOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+            onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         )}
 
         {/* Sidebar */}
@@ -2618,7 +2618,7 @@ export default function ChatLensPage() {
                 onClick={() => {
                   setSelectedConversation(conv.id);
                   setChatSidebarOpen(false);
-                }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start gap-3">
                   <div
                     className={cn(

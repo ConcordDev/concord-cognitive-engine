@@ -126,10 +126,10 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
       role="dialog"
       aria-modal="true"
       aria-label="Tool palette"
-      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl rounded-xl border border-lattice-border bg-lattice-bg shadow-2xl overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        className="w-full max-w-2xl rounded-xl border border-lattice-border bg-lattice-bg shadow-2xl overflow-hidden" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <header className="flex items-center gap-2 border-b border-lattice-border px-4 py-3">
           <Sparkles className="w-4 h-4 text-neon-cyan" />
           <span className="text-sm font-semibold text-white">Tool palette</span>

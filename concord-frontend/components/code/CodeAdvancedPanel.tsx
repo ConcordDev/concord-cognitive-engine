@@ -1046,46 +1046,50 @@ function SharedDebugTerminalTile({ code }: { code: string }) {
   const terminalId = 'shared-1';
 
   useEffect(() => {
-    let s: { emit: (e: string, p: unknown) => void; on: (e: string, fn: (p: unknown) => void) => void; disconnect: () => void } | null = null;
+    type Sock = { emit: (e: string, p: unknown) => void; on: (e: string, fn: (p: unknown) => void) => void; disconnect: () => void };
+    let s: Sock | null = null;
     let disposed = false;
     (async () => {
       try {
         const { io } = await import('socket.io-client');
         if (disposed) return;
-        s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true }) as never;
+        // socket.io-client returns a Socket whose typed signature is
+        // narrower than the structural shape we use here; cast through
+        // unknown so TS keeps `s` as Sock for the closures below.
+        s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true }) as unknown as Sock;
         socketRef.current = s;
-        s!.emit('room:join', { room: `code:liveshare:${code}` });
-        s!.emit('liveshare:debug:state-request', { code });
-        s!.on('liveshare:debug:state-snapshot', (p: unknown) => {
+        s.emit('room:join', { room: `code:liveshare:${code}` });
+        s.emit('liveshare:debug:state-request', { code });
+        s.on('liveshare:debug:state-snapshot', (p: unknown) => {
           const data = p as { breakpoints: Bp[]; currentLine: typeof currentLine };
           setBreakpoints(data.breakpoints || []);
           setCurrentLine(data.currentLine || null);
         });
-        s!.on('liveshare:debug:breakpoint-set', (p: unknown) => {
+        s.on('liveshare:debug:breakpoint-set', (p: unknown) => {
           const d = p as Bp;
           setBreakpoints(prev => prev.find(b => b.path === d.path && b.line === d.line)
             ? prev
             : [...prev, { path: d.path, line: d.line, fromPeerId: d.fromPeerId }]);
         });
-        s!.on('liveshare:debug:breakpoint-cleared', (p: unknown) => {
+        s.on('liveshare:debug:breakpoint-cleared', (p: unknown) => {
           const d = p as Bp;
           setBreakpoints(prev => prev.filter(b => !(b.path === d.path && b.line === d.line)));
         });
-        s!.on('liveshare:debug:current-line', (p: unknown) => {
+        s.on('liveshare:debug:current-line', (p: unknown) => {
           const d = p as { path: string; line: number; fromPeerId: string };
           setCurrentLine({ path: d.path, line: d.line, peerId: d.fromPeerId });
         });
-        s!.on('liveshare:debug:state', (p: unknown) => {
+        s.on('liveshare:debug:state', (p: unknown) => {
           const d = p as { state: typeof debugState };
           setDebugState(d.state || null);
         });
-        s!.on('liveshare:terminal:input', (p: unknown) => {
+        s.on('liveshare:terminal:input', (p: unknown) => {
           const d = p as { data: string; fromPeerId: string };
-          setTerminalLog(prev => [...prev, { kind: 'in', data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
+          setTerminalLog(prev => [...prev, { kind: 'in' as const, data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
         });
-        s!.on('liveshare:terminal:output', (p: unknown) => {
+        s.on('liveshare:terminal:output', (p: unknown) => {
           const d = p as { data: string; fromPeerId: string };
-          setTerminalLog(prev => [...prev, { kind: 'out', data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
+          setTerminalLog(prev => [...prev, { kind: 'out' as const, data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
         });
       } catch { /* graceful: tile shows empty state */ }
     })();
