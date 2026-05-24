@@ -139,7 +139,7 @@ export default function CrossWorldPotencyHUD() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-zinc-200">{row.domain}</span>
                   <span className="flex items-center gap-1.5">
-                    <span className="text-zinc-500 text-[10px]">L{row.level}</span>
+                    <span className="text-zinc-400 text-[10px]">L{row.level}</span>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${pctBadgeColor(row.multiplier)}`}>
                       {pctLabel(row.multiplier)}
                     </span>
@@ -148,7 +148,7 @@ export default function CrossWorldPotencyHUD() {
                 <div className="mt-1 text-[11px] text-zinc-400 leading-snug">
                   {row.note}
                 </div>
-                <div className="mt-1.5 flex gap-2 text-[10px] text-zinc-500">
+                <div className="mt-1.5 flex gap-2 text-[10px] text-zinc-400">
                   <span title="World skill_affinity from meta.json">affinity {Math.round(row.affinity * 100)}%</span>
                   <span title="Level floor: 0.10 + 0.40 × (level/maxLevel)">floor {Math.round(row.floor * 100)}%</span>
                   <span className={row.dominant === 'level_floor' ? 'text-emerald-400' : 'text-amber-400'}>

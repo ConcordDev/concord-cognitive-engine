@@ -76,7 +76,7 @@ export function PeerPolicyPanel() {
       <h2 className="text-amber-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <ShieldCheck className="w-4 h-4" /> Allowlist / blocklist
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Defederation controls. Blocked domains never exchange DTUs or trust.
         Peers with no explicit policy default to allowed.
       </p>
@@ -118,7 +118,7 @@ export function PeerPolicyPanel() {
 
       {/* Counts + filter */}
       <div className="flex items-center gap-2 mb-3 flex-wrap text-xs">
-        <Filter className="w-3.5 h-3.5 text-gray-500" />
+        <Filter className="w-3.5 h-3.5 text-gray-400" />
         {(['', 'allow', 'block', 'pending'] as const).map((f) => (
           <button
             key={f || 'all'}
@@ -137,9 +137,9 @@ export function PeerPolicyPanel() {
       </div>
 
       {loading ? (
-        <p className="text-xs text-gray-500 italic">Loading policies…</p>
+        <p className="text-xs text-gray-400 italic">Loading policies…</p>
       ) : !data || data.entries.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">No policies set. Default-allow is in effect.</p>
+        <p className="text-xs text-gray-400 italic">No policies set. Default-allow is in effect.</p>
       ) : (
         <ul className="space-y-2">
           {data.entries.map((e) => {
@@ -154,8 +154,8 @@ export function PeerPolicyPanel() {
                       <Icon className="w-3 h-3" /> {meta.label}
                     </span>
                   </div>
-                  {e.reason && <div className="text-[11px] text-gray-500 mt-1">{e.reason}</div>}
-                  <div className="text-[10px] text-gray-600 mt-1">
+                  {e.reason && <div className="text-[11px] text-gray-400 mt-1">{e.reason}</div>}
+                  <div className="text-[10px] text-gray-400 mt-1">
                     updated {new Date(e.updatedAt).toLocaleString()}
                   </div>
                 </div>

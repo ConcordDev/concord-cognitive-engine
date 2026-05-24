@@ -120,7 +120,7 @@ export function ChooseYourUniverse({ onComplete, onSkip }: Props) {
                   aria-pressed={isActive}
                 >
                   <div className="text-white font-medium">{lens.label}</div>
-                  <div className="text-xs text-gray-500 mt-1 leading-snug">{lens.description}</div>
+                  <div className="text-xs text-gray-400 mt-1 leading-snug">{lens.description}</div>
                 </button>
               );
             })}
@@ -142,7 +142,7 @@ export function ChooseYourUniverse({ onComplete, onSkip }: Props) {
               className="w-full rounded-lg bg-lattice-deep border border-lattice-border px-3 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-cyan"
               autoComplete="address-level2"
             />
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               Posts you scope as &ldquo;regional&rdquo; are visible only to others in this region.
             </p>
           </div>
@@ -159,7 +159,7 @@ export function ChooseYourUniverse({ onComplete, onSkip }: Props) {
               className="w-full rounded-lg bg-lattice-deep border border-lattice-border px-3 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-cyan"
               autoComplete="country-name"
             />
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               Posts scoped &ldquo;national&rdquo; are visible only in this country.
             </p>
           </div>
@@ -190,7 +190,7 @@ export function ChooseYourUniverse({ onComplete, onSkip }: Props) {
               'inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all',
               canContinue && !mutation.isPending
                 ? 'bg-neon-cyan text-black hover:bg-neon-cyan/90'
-                : 'bg-lattice-border text-gray-500 cursor-not-allowed',
+                : 'bg-lattice-border text-gray-400 cursor-not-allowed',
             )}
           >
             {mutation.isPending ? 'Saving…' : 'Enter Concord'}
@@ -198,7 +198,7 @@ export function ChooseYourUniverse({ onComplete, onSkip }: Props) {
           </button>
         </div>
 
-        <p className="text-center text-[11px] text-gray-600 mt-4">
+        <p className="text-center text-[11px] text-gray-400 mt-4">
           You can change any of this later in Settings.
         </p>
       </div>

@@ -136,7 +136,7 @@ export function QuestDiscovery() {
           <section className="mb-4">
             <p className="mb-1 text-[10px] uppercase tracking-wider text-amber-400">Active</p>
             {active.length === 0 ? (
-              <p className="rounded border border-slate-800 bg-slate-900/40 p-2 text-center text-xs text-slate-500">
+              <p className="rounded border border-slate-800 bg-slate-900/40 p-2 text-center text-xs text-slate-400">
                 No active quests. Press J to toggle this panel.
               </p>
             ) : (
@@ -165,7 +165,7 @@ export function QuestDiscovery() {
           <section className="mb-4">
             <p className="mb-1 text-[10px] uppercase tracking-wider text-cyan-400">Nearby</p>
             {nearby.length === 0 ? (
-              <p className="rounded border border-slate-800 bg-slate-900/40 p-2 text-center text-xs text-slate-500">
+              <p className="rounded border border-slate-800 bg-slate-900/40 p-2 text-center text-xs text-slate-400">
                 Nothing within 100m. Walk around.
               </p>
             ) : (
@@ -188,7 +188,7 @@ export function QuestDiscovery() {
           <section>
             <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">Recent</p>
             {recent.length === 0 ? (
-              <p className="rounded border border-slate-800 bg-slate-900/40 p-2 text-center text-xs text-slate-500">
+              <p className="rounded border border-slate-800 bg-slate-900/40 p-2 text-center text-xs text-slate-400">
                 Nothing notable yet.
               </p>
             ) : (
@@ -200,7 +200,7 @@ export function QuestDiscovery() {
                   >
                     <div className="h-2 w-2 rounded-full" style={{ background: KIND_COLORS[ev.kind] }} />
                     <span className="text-[11px] text-slate-200">{ev.title}</span>
-                    <span className="ml-auto text-[9px] text-slate-500">
+                    <span className="ml-auto text-[9px] text-slate-400">
                       {Math.max(0, Math.floor((Date.now() - ev.ts) / 1000))}s ago
                     </span>
                   </div>

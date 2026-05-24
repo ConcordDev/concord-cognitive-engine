@@ -271,7 +271,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                   >
                     <div className="p-4 grid grid-cols-3 gap-4">
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">Tier</label>
+                        <label className="text-xs text-gray-400 block mb-1">Tier</label>
                         <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-sm text-white">
                           <option value="">All tiers</option>
                           <option value="regular">Regular</option>
@@ -280,7 +280,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">Date range</label>
+                        <label className="text-xs text-gray-400 block mb-1">Date range</label>
                         <select value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-sm text-white">
                           <option value="">Any time</option>
                           <option value="today">Today</option>
@@ -289,7 +289,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">Sort by</label>
+                        <label className="text-xs text-gray-400 block mb-1">Sort by</label>
                         <select value={filterSort} onChange={(e) => setFilterSort(e.target.value)} className="w-full bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-sm text-white">
                           <option value="relevance">Relevance</option>
                           <option value="recent">Most recent</option>
@@ -305,7 +305,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
               <div ref={resultsRef} className="max-h-[400px] overflow-y-auto">
                 {!query && recentSearches.length > 0 && (
                   <div className="p-3">
-                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
                       <Clock className="w-3.5 h-3.5" />
                       Recent searches
                     </div>
@@ -326,7 +326,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                   <div className="p-8 text-center">
                     <Search className="w-10 h-10 text-gray-600 mx-auto mb-3" />
                     <p className="text-gray-400">No results found for "{query}"</p>
-                    <p className="text-sm text-gray-500 mt-1">Try different keywords or filters</p>
+                    <p className="text-sm text-gray-400 mt-1">Try different keywords or filters</p>
                   </div>
                 )}
 
@@ -376,14 +376,14 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                           )}
                         </div>
                         {result.excerpt && (
-                          <p className="text-sm text-gray-500 truncate mt-0.5">
+                          <p className="text-sm text-gray-400 truncate mt-0.5">
                             {result.excerpt}
                           </p>
                         )}
                         {result.tags && result.tags.length > 0 && (
                           <div className="flex items-center gap-1 mt-1">
                             {result.tags.map(tag => (
-                              <span key={tag} className="text-xs text-gray-500">
+                              <span key={tag} className="text-xs text-gray-400">
                                 #{tag}
                               </span>
                             ))}
@@ -399,7 +399,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between px-4 py-2 border-t border-lattice-border bg-lattice-surface/30 text-xs text-gray-500">
+              <div className="flex items-center justify-between px-4 py-2 border-t border-lattice-border bg-lattice-surface/30 text-xs text-gray-400">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
                     <kbd className="px-1.5 py-0.5 bg-lattice-surface border border-lattice-border rounded">↑↓</kbd>

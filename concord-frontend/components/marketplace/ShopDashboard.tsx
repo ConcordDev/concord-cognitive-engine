@@ -45,8 +45,8 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
     finally { setLoading(false); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading dashboard…</div>;
-  if (!summary || !dash) return <div className="p-10 text-center text-xs text-gray-500">No dashboard data yet.</div>;
+  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading dashboard…</div>;
+  if (!summary || !dash) return <div className="p-10 text-center text-xs text-gray-400">No dashboard data yet.</div>;
 
   return (
     <div className="space-y-3">
@@ -69,7 +69,7 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
 
       {summary.series.length > 0 && (
         <div className="rounded border border-white/10 bg-black/30 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Revenue · last {days} days</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Revenue · last {days} days</div>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={summary.series} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
@@ -105,11 +105,11 @@ function Tile({ label, value, sub, icon: Icon, tone = 'neutral', bold, onClick }
   return (
     <button onClick={onClick} className={cn('p-3 rounded-lg border bg-black/30 text-left hover:bg-white/[0.04]', bold ? 'border-orange-500/30' : 'border-white/10')}>
       <div className="flex items-center gap-1.5 mb-1">
-        <Icon className="w-3 h-3 text-gray-500" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <Icon className="w-3 h-3 text-gray-400" />
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className={cn('text-2xl font-mono tabular-nums', colour, bold && 'font-bold')}>{value}</div>
-      {sub && <div className="text-[10px] text-gray-500 mt-0.5">{sub}</div>}
+      {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
     </button>
   );
 }
@@ -119,9 +119,9 @@ function Card({ label, value, sub, icon: Icon, onClick }: { label: string; value
     <button onClick={onClick} className="p-2.5 rounded border border-white/10 bg-black/30 text-left hover:bg-white/[0.04] flex items-center gap-2.5">
       <Icon className="w-4 h-4 text-orange-400 flex-shrink-0" />
       <div className="flex-1">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+        <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
         <div className="text-base font-mono tabular-nums text-white">{value}</div>
-        {sub && <div className="text-[10px] text-gray-500">{sub}</div>}
+        {sub && <div className="text-[10px] text-gray-400">{sub}</div>}
       </div>
     </button>
   );

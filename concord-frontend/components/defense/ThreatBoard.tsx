@@ -155,7 +155,7 @@ export function ThreatBoard() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-zinc-500">
+        <div className="flex items-center justify-center py-12 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -171,8 +171,8 @@ export function ThreatBoard() {
                     {t.severity}
                   </span>
                   <span className="text-xs text-white truncate">{t.name}</span>
-                  <span className="text-[10px] text-zinc-500 shrink-0">{t.category}</span>
-                  {t.region && <span className="text-[10px] text-zinc-500 shrink-0">{t.region}</span>}
+                  <span className="text-[10px] text-zinc-400 shrink-0">{t.category}</span>
+                  {t.region && <span className="text-[10px] text-zinc-400 shrink-0">{t.region}</span>}
                   <button
                     onClick={() => setStatus(t)}
                     disabled={busy}
@@ -187,7 +187,7 @@ export function ThreatBoard() {
                     onClick={() => escalate(t.id, 'up')}
                     disabled={busy || t.severity === 'critical'}
                     aria-label="Escalate"
-                    className="p-1 text-zinc-500 hover:text-red-400 disabled:opacity-30"
+                    className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-30"
                   >
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
@@ -195,7 +195,7 @@ export function ThreatBoard() {
                     onClick={() => escalate(t.id, 'down')}
                     disabled={busy || t.severity === 'low'}
                     aria-label="De-escalate"
-                    className="p-1 text-zinc-500 hover:text-green-400 disabled:opacity-30"
+                    className="p-1 text-zinc-400 hover:text-green-400 disabled:opacity-30"
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
@@ -203,15 +203,15 @@ export function ThreatBoard() {
                     onClick={() => remove(t.id)}
                     disabled={busy}
                     aria-label="Delete threat"
-                    className="p-1 text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                    className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-              {t.note && <p className="text-[10px] text-zinc-500 mt-1">{t.note}</p>}
+              {t.note && <p className="text-[10px] text-zinc-400 mt-1">{t.note}</p>}
               {t.history.length > 1 && (
-                <p className="text-[10px] text-zinc-600 mt-1">
+                <p className="text-[10px] text-zinc-400 mt-1">
                   {t.history.length} escalation events · latest:{' '}
                   {t.history[t.history.length - 1].event}
                 </p>
@@ -219,7 +219,7 @@ export function ThreatBoard() {
             </div>
           ))}
           {threats.length === 0 && (
-            <div className="text-center py-6 text-xs text-zinc-500">
+            <div className="text-center py-6 text-xs text-zinc-400">
               <AlertTriangle className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No threats on the board. Add one below.
             </div>

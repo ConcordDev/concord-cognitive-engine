@@ -83,7 +83,7 @@ export function JournalLock({
     }
   }, [form, loadStatus]);
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   // Locked + not unlocked → block with passcode prompt.
   if (status?.locked && !unlocked) {
@@ -91,12 +91,12 @@ export function JournalLock({
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-6 text-center max-w-sm mx-auto">
         <Lock className="w-8 h-8 text-rose-400 mx-auto mb-3" />
         <h3 className="text-sm font-bold text-zinc-100 mb-1">Journal locked</h3>
-        <p className="text-xs text-zinc-500 mb-3">Enter your passcode to view your entries.</p>
+        <p className="text-xs text-zinc-400 mb-3">Enter your passcode to view your entries.</p>
         <input type="password" value={code} onChange={(e) => setCode(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void verify(); }}
           placeholder="Passcode" maxLength={64}
           className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-center text-zinc-100 focus:outline-none focus:ring-2 focus:ring-rose-500" />
-        {status.hint && <p className="text-[11px] text-zinc-500 mt-1">Hint: {status.hint}</p>}
+        {status.hint && <p className="text-[11px] text-zinc-400 mt-1">Hint: {status.hint}</p>}
         {err && <p className="text-[11px] text-rose-400 mt-1">{err}</p>}
         <button onClick={verify} disabled={!code || busy}
           className="w-full mt-3 px-3 py-1.5 text-xs font-semibold rounded bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-40 inline-flex items-center justify-center gap-1">
@@ -110,7 +110,7 @@ export function JournalLock({
   return (
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
       <div className="flex items-center gap-2">
-        {status?.locked ? <ShieldCheck className="w-4 h-4 text-emerald-400" /> : <Unlock className="w-4 h-4 text-zinc-500" />}
+        {status?.locked ? <ShieldCheck className="w-4 h-4 text-emerald-400" /> : <Unlock className="w-4 h-4 text-zinc-400" />}
         <p className="text-xs text-zinc-300">
           {status?.locked ? 'Journal is protected with a passcode.' : 'Journal is not locked.'}
         </p>

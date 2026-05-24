@@ -258,7 +258,7 @@ export function CodeActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -281,7 +281,7 @@ export function CodeActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5"><Box className="w-3 h-3" /> Dependencies</div>
             <div className="text-[11px] text-zinc-300 mt-1">{depsResult.total} total · <span className="text-amber-300">{depsResult.outdated} outdated</span> · <span className="text-rose-300">{depsResult.security} security</span></div>
-            {depsResult.riskScore != null && <div className="text-[10px] text-zinc-500">risk score {depsResult.riskScore}</div>}
+            {depsResult.riskScore != null && <div className="text-[10px] text-zinc-400">risk score {depsResult.riskScore}</div>}
           </div>
         )}
         {coverageResult && (
@@ -290,7 +290,7 @@ export function CodeActionPanel() {
               <ShieldCheck className="w-3 h-3" /> Coverage {coverageResult.band}
             </div>
             <div className="text-2xl font-bold text-zinc-100 mt-1">{coverageResult.coveragePct}%</div>
-            {coverageResult.uncoveredLines != null && <div className="text-[10px] text-zinc-500">{coverageResult.uncoveredLines} uncovered / {coverageResult.totalLines} total</div>}
+            {coverageResult.uncoveredLines != null && <div className="text-[10px] text-zinc-400">{coverageResult.uncoveredLines} uncovered / {coverageResult.totalLines} total</div>}
           </div>
         )}
       </div>

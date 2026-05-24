@@ -81,7 +81,7 @@ function BoardFootCalc() {
       </header>
 
       <div className="p-4 space-y-2">
-        <div className="grid grid-cols-[60px_60px_70px_70px_1fr_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[60px_60px_70px_70px_1fr_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Thick</span><span>Width</span><span>Length</span><span>$/BF</span><span>Species</span><span></span>
         </div>
         {pieces.map((p, i) => (
@@ -93,7 +93,7 @@ function BoardFootCalc() {
             <select className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" value={p.species} onChange={(e) => setPieces((ps) => ps.map((x, idx) => idx === i ? { ...x, species: e.target.value } : x))}>
               {SPECIES_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <button type="button" onClick={() => setPieces((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => setPieces((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -106,7 +106,7 @@ function BoardFootCalc() {
         {result && result.totalBoardFeet != null && (
           <div className="grid grid-cols-3 gap-2 pt-2">
             <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-amber-300">Total BF</div><div className="font-mono text-2xl text-amber-100">{result.totalBoardFeet}</div></div>
-            <div className="rounded border border-amber-700/30 bg-zinc-950/40 p-3"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Pieces</div><div className="font-mono text-2xl text-amber-200">{result.totalPieces}</div></div>
+            <div className="rounded border border-amber-700/30 bg-zinc-950/40 p-3"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Pieces</div><div className="font-mono text-2xl text-amber-200">{result.totalPieces}</div></div>
             <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Total cost</div><div className="font-mono text-2xl text-emerald-100">${result.totalCost}</div></div>
           </div>
         )}
@@ -147,13 +147,13 @@ function JointStrengthGuide() {
       <div className="grid gap-3 p-4 md:grid-cols-[260px_1fr]">
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Joint type</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Joint type</span>
             <select value={jointType} onChange={(e) => setJointType(e.target.value)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               {JOINT_TYPES.map((j) => <option key={j} value={j}>{j}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Wood species</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Wood species</span>
             <select value={species} onChange={(e) => setSpecies(e.target.value)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               {SPECIES_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -164,7 +164,7 @@ function JointStrengthGuide() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Pick joint type and wood species, then evaluate.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Pick joint type and wood species, then evaluate.</div>}
           {result && (
             <>
               <div className="rounded-lg border-2 border-stone-500/40 bg-stone-500/10 p-3">
@@ -172,11 +172,11 @@ function JointStrengthGuide() {
                   <div className="text-[11px] text-stone-300">{result.jointType} in {result.species}</div>
                   <div className={`rounded px-2 py-0.5 text-[10px] font-semibold ${result.classification?.includes('strong') || result.classification?.includes('Excellent') ? 'bg-emerald-500/20 text-emerald-200' : result.classification?.includes('weak') ? 'bg-rose-500/20 text-rose-200' : 'bg-amber-500/20 text-amber-200'}`}>{result.classification}</div>
                 </div>
-                <div className="mt-2 font-mono text-3xl text-stone-100">{result.adjustedStrength}<span className="text-sm text-zinc-500"> / 100</span></div>
+                <div className="mt-2 font-mono text-3xl text-stone-100">{result.adjustedStrength}<span className="text-sm text-zinc-400"> / 100</span></div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-800">
                   <div className={`h-full ${result.adjustedStrength && result.adjustedStrength > 70 ? 'bg-emerald-500' : result.adjustedStrength && result.adjustedStrength > 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, result.adjustedStrength || 0)}%` }} />
                 </div>
-                <div className="mt-1 text-[10px] text-zinc-500">Base {result.baseStrength} × {result.speciesMultiplier} species multiplier</div>
+                <div className="mt-1 text-[10px] text-zinc-400">Base {result.baseStrength} × {result.speciesMultiplier} species multiplier</div>
               </div>
               {result.recommendation && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-200">{result.recommendation}</div>}
             </>
@@ -324,7 +324,7 @@ function FinishRecommender() {
               <div key={i} className={`rounded-lg border p-3 ${i === 0 ? 'border-orange-500/40 bg-orange-500/10' : 'border-orange-700/20 bg-zinc-950/40'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Droplet className={`h-3.5 w-3.5 ${i === 0 ? 'text-orange-300' : 'text-zinc-500'}`} />
+                    <Droplet className={`h-3.5 w-3.5 ${i === 0 ? 'text-orange-300' : 'text-zinc-400'}`} />
                     <span className="font-mono text-sm font-semibold text-white">{f.name}</span>
                     <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{f.type}</span>
                   </div>

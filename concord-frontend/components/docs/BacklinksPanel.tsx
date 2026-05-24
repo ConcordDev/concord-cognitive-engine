@@ -56,7 +56,7 @@ export function BacklinksPanel({ pageId, onOpenPage }: {
   useEffect(() => { void load(); }, [load]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-4 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-4 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   const tree: TreeNode[] = (graph?.mostLinked || [])
@@ -88,11 +88,11 @@ export function BacklinksPanel({ pageId, onOpenPage }: {
       </h4>
 
       <section>
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 flex items-center gap-1">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1 flex items-center gap-1">
           <ArrowDownLeft className="w-3 h-3" /> Backlinks ({bl?.backlinkCount ?? 0})
         </p>
         {(bl?.backlinks?.length ?? 0) === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">No pages mention this page yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No pages mention this page yet.</p>
         ) : (
           <div className="space-y-1">
             {bl!.backlinks.map(p => (
@@ -100,7 +100,7 @@ export function BacklinksPanel({ pageId, onOpenPage }: {
                 className="block w-full text-left rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1 hover:border-indigo-700">
                 <p className="text-[11px] text-zinc-200 truncate">{p.icon} {p.title}</p>
                 {p.mentions?.map(m => (
-                  <p key={m.blockId} className="text-[10px] text-zinc-500 truncate">&ldquo;{m.snippet}&rdquo;</p>
+                  <p key={m.blockId} className="text-[10px] text-zinc-400 truncate">&ldquo;{m.snippet}&rdquo;</p>
                 ))}
               </button>
             ))}
@@ -109,11 +109,11 @@ export function BacklinksPanel({ pageId, onOpenPage }: {
       </section>
 
       <section>
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 flex items-center gap-1">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1 flex items-center gap-1">
           <ArrowUpRight className="w-3 h-3" /> Outgoing ({bl?.outgoingCount ?? 0})
         </p>
         {(bl?.outgoingLinks?.length ?? 0) === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">This page mentions no other pages.</p>
+          <p className="text-[11px] text-zinc-400 italic">This page mentions no other pages.</p>
         ) : (
           <div className="space-y-1">
             {bl!.outgoingLinks.map(p => (
@@ -127,11 +127,11 @@ export function BacklinksPanel({ pageId, onOpenPage }: {
       </section>
 
       <section>
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">
           Workspace mention graph ({graph?.edgeCount ?? 0} edges)
         </p>
         {tree.length === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">No mentions across the workspace yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No mentions across the workspace yet.</p>
         ) : (
           <TreeDiagram root={tree} />
         )}

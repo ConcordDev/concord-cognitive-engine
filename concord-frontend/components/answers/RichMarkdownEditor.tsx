@@ -113,7 +113,7 @@ export function RichMarkdownEditor({
           {value.trim() ? (
             <MarkdownView body={value} />
           ) : (
-            <p className="text-xs text-zinc-600 italic">Nothing to preview yet.</p>
+            <p className="text-xs text-zinc-400 italic">Nothing to preview yet.</p>
           )}
         </div>
       )}

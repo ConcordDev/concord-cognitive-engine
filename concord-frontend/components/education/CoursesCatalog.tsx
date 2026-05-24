@@ -78,12 +78,12 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BookOpen className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Course catalog</span>
-        <span className="ml-auto text-[10px] text-gray-500">{courses.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{courses.length}</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
-        <Search className="w-3.5 h-3.5 text-gray-500" />
+        <Search className="w-3.5 h-3.5 text-gray-400" />
         <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') refresh(); }} placeholder="Search courses…" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All categories</option>
@@ -108,9 +108,9 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : courses.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No courses. Hit + to add one.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No courses. Hit + to add one.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {courses.map(c => {
@@ -127,7 +127,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                       <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', c.level === 'advanced' ? 'bg-rose-500/15 text-rose-300' : c.level === 'intermediate' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{c.level}</span>
                     </div>
                     <div className="text-[11px] text-gray-400 line-clamp-1">{c.description}</div>
-                    <div className="mt-1 flex items-center gap-3 text-[10px] text-gray-500">
+                    <div className="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
                       {c.instructor && <span>{c.instructor}</span>}
                       {c.institution && <span>· {c.institution}</span>}
                       {c.durationHours > 0 && <span>· {c.durationHours}h</span>}
@@ -140,7 +140,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                   ) : (
                     <button onClick={() => enroll(c)} className="px-2.5 py-1 text-[11px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Enroll</button>
                   )}
-                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

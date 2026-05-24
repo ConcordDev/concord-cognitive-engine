@@ -205,7 +205,7 @@ export function SupplyChainActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -216,7 +216,7 @@ export function SupplyChainActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Lead time · {leadResult.ordersAnalyzed} orders</div>
             <div className="text-2xl font-bold text-blue-300">{leadResult.avgLeadTimeDays}<span className="text-xs text-zinc-400">d avg</span></div>
-            <div className="text-[10px] text-zinc-500">range {leadResult.minDays}-{leadResult.maxDays}d</div>
+            <div className="text-[10px] text-zinc-400">range {leadResult.minDays}-{leadResult.maxDays}d</div>
             <div className={cn('text-[10px] font-semibold', REL_COLOR[leadResult.reliability])}>{leadResult.reliability}</div>
           </div>
         )}
@@ -236,7 +236,7 @@ export function SupplyChainActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Forecast · {foreResult.trend}</div>
             <div className="text-2xl font-bold text-cyan-300">{foreResult.avgDemand}<span className="text-xs text-zinc-400"> avg</span></div>
-            {foreResult.forecast.map((f, i) => <div key={i} className="text-[11px] text-zinc-300">{f.period}: <span className="text-cyan-200 font-mono">{f.predicted}</span> <span className="text-zinc-500">({f.confidence})</span></div>)}
+            {foreResult.forecast.map((f, i) => <div key={i} className="text-[11px] text-zinc-300">{f.period}: <span className="text-cyan-200 font-mono">{f.predicted}</span> <span className="text-zinc-400">({f.confidence})</span></div>)}
           </div>
         )}
       </div>

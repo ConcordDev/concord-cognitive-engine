@@ -51,7 +51,7 @@ export function RepresentativeFinder() {
       </header>
       <div className="p-4 space-y-3">
         <form onSubmit={(e) => { e.preventDefault(); lookup(); }} className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-gray-500" />
+          <MapPin className="w-4 h-4 text-gray-400" />
           <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Address or ZIP" className="flex-1 px-3 py-2 text-sm bg-lattice-deep border border-lattice-border rounded text-white" />
           <button type="submit" disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-2 rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -62,7 +62,7 @@ export function RepresentativeFinder() {
 
         {(['federal', 'state', 'local'] as const).map(level => byLevel[level].length > 0 && (
           <div key={level}>
-            <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">{level}</h3>
+            <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">{level}</h3>
             <ul className="space-y-2">
               {byLevel[level].map((r, i) => (
                 <li key={`${level}-${i}`} className="p-3 bg-white/[0.02] border border-white/10 rounded">

@@ -150,7 +150,7 @@ export function UniverseSettings() {
               className="w-full rounded-lg bg-lattice-deep border border-lattice-border px-3 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-cyan"
               autoComplete="address-level2"
             />
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               Regional posts you make are visible to others in this region.
               Clear it to drop out of regional feeds entirely.
             </p>
@@ -168,7 +168,7 @@ export function UniverseSettings() {
               className="w-full rounded-lg bg-lattice-deep border border-lattice-border px-3 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-cyan"
               autoComplete="country-name"
             />
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               National posts you make are visible country-wide.
             </p>
           </div>
@@ -176,7 +176,7 @@ export function UniverseSettings() {
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-3 border-t border-lattice-border">
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-400">
             {savedAt ? (
               <span className="inline-flex items-center gap-1 text-neon-green">
                 <Check className="w-3.5 h-3.5" />
@@ -196,7 +196,7 @@ export function UniverseSettings() {
               'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
               hasChanges && !mutation.isPending
                 ? 'bg-neon-cyan text-black hover:bg-neon-cyan/90'
-                : 'bg-lattice-border text-gray-500 cursor-not-allowed',
+                : 'bg-lattice-border text-gray-400 cursor-not-allowed',
             )}
           >
             <Save className="w-4 h-4" />

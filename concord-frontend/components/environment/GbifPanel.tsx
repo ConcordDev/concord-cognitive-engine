@@ -98,7 +98,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
           type="button"
           onClick={() => void fetchData(query)}
           disabled={loading || !query.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -106,7 +106,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -124,7 +124,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       )}
 
       {!error && !query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">Type a scientific or common name.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Type a scientific or common name.</div>
       )}
 
       {taxon && taxon.scientificName && (
@@ -133,7 +133,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
           <div className="text-[10px] text-zinc-400 mt-0.5">
             {[taxon.kingdom, taxon.phylum, taxon.class, taxon.order, taxon.family, taxon.genus].filter(Boolean).join(' › ')}
           </div>
-          <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+          <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
             rank: {taxon.rank || '—'} · status: {taxon.status || '—'} · match: {taxon.matchType || '—'}
           </div>
         </div>
@@ -141,26 +141,26 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
 
       {occurrences.length > 0 && (
         <>
-          <div className="px-3 py-1.5 text-[10px] text-zinc-500 font-mono border-b border-zinc-800/40">
+          <div className="px-3 py-1.5 text-[10px] text-zinc-400 font-mono border-b border-zinc-800/40">
             {total.toLocaleString()} total occurrences · showing {occurrences.length}
           </div>
           <ul className="divide-y divide-zinc-800/40 max-h-[400px] overflow-y-auto">
             {occurrences.map((o) => (
               <li key={o.key} className="px-3 py-1.5 text-[11px]">
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-3 h-3 text-zinc-500 shrink-0" aria-hidden="true" />
+                  <MapPin className="w-3 h-3 text-zinc-400 shrink-0" aria-hidden="true" />
                   <div className="flex-1 min-w-0">
                     <div className="text-zinc-300 truncate">
                       {[o.country, o.stateProvince].filter(Boolean).join(', ')} · {o.latitude.toFixed(3)}, {o.longitude.toFixed(3)}
                     </div>
-                    <div className="text-[10px] text-zinc-500 truncate">
+                    <div className="text-[10px] text-zinc-400 truncate">
                       {o.eventDate?.slice(0, 10) || '—'} · {o.basisOfRecord}{o.datasetName ? ` · ${o.datasetName}` : ''}
                     </div>
                   </div>
                   <a
                     href={`https://www.gbif.org/occurrence/${o.key}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="text-zinc-500 hover:text-green-300 text-[10px] shrink-0"
+                    className="text-zinc-400 hover:text-green-300 text-[10px] shrink-0"
                     aria-label="Open GBIF record"
                   >
                     <ExternalLink className="w-3 h-3" />
@@ -172,7 +172,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
         </>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: GBIF · {updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

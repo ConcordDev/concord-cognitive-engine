@@ -693,7 +693,7 @@ export default function CryptoLensPage() {
                     <div key={chain.id} className="flex items-center gap-1.5 text-xs">
                       <span className={`w-2 h-2 rounded-full ${color.bg}`} />
                       <span className={`${color.text} font-mono font-semibold`}>{chain.symbol}</span>
-                      <span className="text-gray-500">{pct.toFixed(1)}%</span>
+                      <span className="text-gray-400">{pct.toFixed(1)}%</span>
                     </div>
                   );
                 })}
@@ -749,7 +749,7 @@ export default function CryptoLensPage() {
                 {chains.length === 0 ? (
                   <div className="text-center py-8">
                     <Coins className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-                    <p className="text-gray-500">No chains configured.</p>
+                    <p className="text-gray-400">No chains configured.</p>
                     <p className="text-sm text-gray-600 mt-1">Add a chain to start tracking your portfolio.</p>
                     <button
                       onClick={() => setShowAddChain(true)}
@@ -804,7 +804,7 @@ export default function CryptoLensPage() {
                                   )}
                                 />
                               ))}
-                              <span className="text-xs text-gray-600 ml-1">
+                              <span className="text-xs text-gray-400 ml-1">
                                 {chainSparklines[chain.symbol].length} recent
                               </span>
                             </div>
@@ -860,12 +860,12 @@ export default function CryptoLensPage() {
                           </div>
                           <div>
                             <p className="font-medium">{chain.name}</p>
-                            <p className="text-xs text-gray-500">{chain.symbol}</p>
+                            <p className="text-xs text-gray-400">{chain.symbol}</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-mono font-bold">${chain.price.toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             Holdings: {showBalances ? `$${(chain.balance * chain.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '****'}
                           </p>
                         </div>
@@ -874,7 +874,7 @@ export default function CryptoLensPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+                <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                   <p>No blockchain data yet. Add chains to see network analytics.</p>
                 </div>
               )}
@@ -947,12 +947,12 @@ export default function CryptoLensPage() {
                 <h2 className="font-semibold mb-4 flex items-center gap-2">
                   <RefreshCw className="w-4 h-4 text-neon-blue" />
                   Transaction History
-                  <span className="text-xs text-gray-500 font-normal">({filteredTransactions.length})</span>
+                  <span className="text-xs text-gray-400 font-normal">({filteredTransactions.length})</span>
                 </h2>
                 {filteredTransactions.length === 0 ? (
                   <div className="text-center py-8">
                     <ArrowRightLeft className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-                    <p className="text-gray-500">No transactions found.</p>
+                    <p className="text-gray-400">No transactions found.</p>
                     <p className="text-sm text-gray-600 mt-1">
                       {txFilter !== 'all' ? 'Try changing the filter or ' : ''}Start by earning some tokens.
                     </p>
@@ -972,7 +972,7 @@ export default function CryptoLensPage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium">{tx.description}</p>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
                               <span>{new Date(tx.timestamp).toLocaleString()}</span>
                               {tx.to && <span>To: {tx.to}</span>}
                             </div>
@@ -1011,7 +1011,7 @@ export default function CryptoLensPage() {
               {wallets.length === 0 ? (
                 <div className="panel p-8 text-center">
                   <Wallet className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-                  <p className="text-gray-500">No wallets configured.</p>
+                  <p className="text-gray-400">No wallets configured.</p>
                   <p className="text-sm text-gray-600 mt-1">Add a wallet to manage your addresses.</p>
                   <button
                     onClick={() => setShowAddWallet(true)}
@@ -1060,11 +1060,11 @@ export default function CryptoLensPage() {
                               <span className="opacity-0 group-hover/addr:opacity-100 transition-opacity">
                                 {copiedAddress === wallet.address
                                   ? <Check className="w-3 h-3 text-neon-green" />
-                                  : <Copy className="w-3 h-3 text-gray-500" />
+                                  : <Copy className="w-3 h-3 text-gray-400" />
                                 }
                               </span>
                             </button>
-                            <p className="text-xs text-gray-600 mt-0.5">
+                            <p className="text-xs text-gray-400 mt-0.5">
                               Added {new Date().toLocaleDateString()}
                             </p>
                           </div>
@@ -1125,7 +1125,7 @@ export default function CryptoLensPage() {
                       </button>
                     ))}
                   </div>
-                  <span className="ml-auto text-[10px] text-gray-500">Powered by TradingView Lightweight Charts</span>
+                  <span className="ml-auto text-[10px] text-gray-400">Powered by TradingView Lightweight Charts</span>
                 </div>
                 <CandleChart
                   candles={chartCandles}
@@ -1190,7 +1190,7 @@ export default function CryptoLensPage() {
                   <li>• Hard block above 15% — execution risk too high</li>
                   <li>• Gas estimate built in</li>
                 </ul>
-                <p className="mt-4 text-[10px] text-gray-500">
+                <p className="mt-4 text-[10px] text-gray-400">
                   Concord swaps simulate the AMM math against live CoinGecko prices. No external router is contacted; this view is informational + ledger-only.
                 </p>
               </div>
@@ -1459,12 +1459,12 @@ export default function CryptoLensPage() {
           <div className="relative rounded-lg bg-lattice-deep border border-lattice-border p-4">
             <button
               onClick={() => setActionResult(null)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-white transition-colors"
+              className="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors"
               aria-label="Dismiss result"
             >
               <XCircle className="w-4 h-4" />
             </button>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Result</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Result</p>
             {(() => {
               const r: ActionResultData = (actionResult?.result as ActionResultData) ?? actionResult;
               if (!r) return null;
@@ -1484,21 +1484,21 @@ export default function CryptoLensPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-green">${r.totalValue.toLocaleString()}</p>
-                          <p className="text-[10px] text-gray-500">Total Value</p>
+                          <p className="text-[10px] text-gray-400">Total Value</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className={`text-sm font-bold ${(r.totalUnrealizedPnl ?? 0) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>
                             {r.totalUnrealizedPnl != null ? `${r.totalUnrealizedPnl >= 0 ? '+' : ''}$${r.totalUnrealizedPnl.toLocaleString()}` : '—'}
                           </p>
-                          <p className="text-[10px] text-gray-500">Unrealized P&L</p>
+                          <p className="text-[10px] text-gray-400">Unrealized P&L</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Concentration:</span>
+                        <span className="text-gray-400">Concentration:</span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${r.concentrationRisk === 'low' ? 'bg-neon-green/20 text-neon-green' : r.concentrationRisk === 'moderate' ? 'bg-yellow-500/20 text-yellow-400' : r.concentrationRisk === 'high' ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'}`}>
                           {r.concentrationRisk}
                         </span>
-                        <span className="ml-auto text-gray-500">HHI: {r.hhi}</span>
+                        <span className="ml-auto text-gray-400">HHI: {r.hhi}</span>
                       </div>
                       <div className="space-y-1">
                         {(r.allocations as Allocation[]).map((h: Allocation) => (
@@ -1512,7 +1512,7 @@ export default function CryptoLensPage() {
                         ))}
                       </div>
                       {(r.stablecoinExposure ?? 0) > 0 && (
-                        <p className="text-[10px] text-gray-500">Stablecoin exposure: {r.stablecoinExposure}%</p>
+                        <p className="text-[10px] text-gray-400">Stablecoin exposure: {r.stablecoinExposure}%</p>
                       )}
                     </div>
                   )}
@@ -1525,7 +1525,7 @@ export default function CryptoLensPage() {
                           {r.valid ? 'VALID' : 'INVALID'}
                         </span>
                         <span className="text-gray-400">{r.network}</span>
-                        <span className="ml-auto text-gray-500">Gas: {r.maxGasCostEth} ETH</span>
+                        <span className="ml-auto text-gray-400">Gas: {r.maxGasCostEth} ETH</span>
                       </div>
                       {(r.warnings?.length ?? 0) > 0 && (
                         <div className="space-y-1">
@@ -1539,7 +1539,7 @@ export default function CryptoLensPage() {
                       <div className="space-y-1">
                         {(r.checks as TransactionCheck[]).map((c: TransactionCheck) => (
                           <div key={c.field} className="flex items-center justify-between text-[10px]">
-                            <span className="text-gray-500 font-mono">{c.field}</span>
+                            <span className="text-gray-400 font-mono">{c.field}</span>
                             <span className={c.valid ? 'text-neon-green' : 'text-red-400'}>{c.valid ? 'OK' : 'FAIL'}</span>
                           </div>
                         ))}
@@ -1553,25 +1553,25 @@ export default function CryptoLensPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-neon-green">{r.gasLimit.toLocaleString()}</p>
-                          <p className="text-[10px] text-gray-500">Gas Limit</p>
+                          <p className="text-[10px] text-gray-400">Gas Limit</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className={`font-bold ${r.networkCongestion === 'low' ? 'text-neon-green' : r.networkCongestion === 'moderate' ? 'text-yellow-400' : 'text-red-400'}`}>{r.networkCongestion ?? 'N/A'}</p>
-                          <p className="text-[10px] text-gray-500">Congestion</p>
+                          <p className="text-[10px] text-gray-400">Congestion</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {(['slow', 'standard', 'fast'] as const).map(speed => (
                           <div key={speed} className="p-2 bg-lattice-bg rounded text-center space-y-0.5">
-                            <p className="text-[10px] text-gray-500 capitalize">{speed}</p>
+                            <p className="text-[10px] text-gray-400 capitalize">{speed}</p>
                             <p className="font-bold text-neon-green text-sm">{(r.recommendations as Record<string, GasRecommendation>)[speed].maxFeeGwei} Gwei</p>
-                            <p className="text-[10px] text-gray-500">+{(r.recommendations as Record<string, GasRecommendation>)[speed].priorityFeeGwei} tip</p>
+                            <p className="text-[10px] text-gray-400">+{(r.recommendations as Record<string, GasRecommendation>)[speed].priorityFeeGwei} tip</p>
                             <p className="text-[10px] text-gray-400">{(r.recommendations as Record<string, GasRecommendation>)[speed].waitBlocks} blocks</p>
                           </div>
                         ))}
                       </div>
                       {r.baseFeeStats && (
-                        <p className="text-[10px] text-gray-500">Avg base fee: {r.baseFeeStats.avg} Gwei · {r.blocksAnalyzed ?? 0} blocks</p>
+                        <p className="text-[10px] text-gray-400">Avg base fee: {r.baseFeeStats.avg} Gwei · {r.blocksAnalyzed ?? 0} blocks</p>
                       )}
                     </div>
                   )}
@@ -1582,18 +1582,18 @@ export default function CryptoLensPage() {
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-red-400">{r.riskSummary?.high ?? 0}</p>
-                          <p className="text-[10px] text-gray-500">High Risk</p>
+                          <p className="text-[10px] text-gray-400">High Risk</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-yellow-400">{r.riskSummary?.moderate ?? 0}</p>
-                          <p className="text-[10px] text-gray-500">Moderate</p>
+                          <p className="text-[10px] text-gray-400">Moderate</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-neon-green">{r.riskSummary?.informational ?? 0}</p>
-                          <p className="text-[10px] text-gray-500">Info</p>
+                          <p className="text-[10px] text-gray-400">Info</p>
                         </div>
                       </div>
-                      <p className="text-gray-500">Scanned {r.totalTransactions} transactions</p>
+                      <p className="text-gray-400">Scanned {r.totalTransactions} transactions</p>
                       {r.patterns.length === 0 && (
                         <p className="text-neon-green text-[11px]">No suspicious patterns detected.</p>
                       )}
@@ -1606,9 +1606,9 @@ export default function CryptoLensPage() {
                                 {p.risk}
                               </span>
                             </div>
-                            {p.hops && <p className="text-[10px] text-gray-500">{p.hops} hops</p>}
-                            {p.occurrences && <p className="text-[10px] text-gray-500">{p.occurrences} occurrences</p>}
-                            {p.count && p.type === 'whale_movement' && <p className="text-[10px] text-gray-500">{p.count} whale txs · largest: {p.largest}</p>}
+                            {p.hops && <p className="text-[10px] text-gray-400">{p.hops} hops</p>}
+                            {p.occurrences && <p className="text-[10px] text-gray-400">{p.occurrences} occurrences</p>}
+                            {p.count && p.type === 'whale_movement' && <p className="text-[10px] text-gray-400">{p.count} whale txs · largest: {p.largest}</p>}
                           </div>
                         ))}
                       </div>

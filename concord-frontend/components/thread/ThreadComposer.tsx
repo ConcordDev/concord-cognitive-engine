@@ -91,15 +91,15 @@ export function ThreadComposer() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <PenSquare className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-bold text-zinc-100">Thread Composer</h3>
-        <span className="text-[11px] text-zinc-500">Typefully shape</span>
-        {dash && <span className="ml-auto text-[10px] text-zinc-500">{dash.drafts} drafts · {dash.scheduled} queued · {dash.published} published</span>}
+        <span className="text-[11px] text-zinc-400">Typefully shape</span>
+        {dash && <span className="ml-auto text-[10px] text-zinc-400">{dash.drafts} drafts · {dash.scheduled} queued · {dash.published} published</span>}
       </div>
 
       <div className="grid sm:grid-cols-[180px_1fr_1fr] gap-3">
@@ -114,7 +114,7 @@ export function ThreadComposer() {
                 <button onClick={() => open(d.id)}
                   className={cn('flex-1 text-left rounded-lg px-2 py-1.5 border', active?.id === d.id ? 'bg-sky-600/15 border-sky-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                   <p className="text-[11px] font-semibold text-zinc-100 truncate">{d.title}</p>
-                  <p className="text-[9px] text-zinc-500">{d.postCount} posts · {d.status}</p>
+                  <p className="text-[9px] text-zinc-400">{d.postCount} posts · {d.status}</p>
                 </button>
                 <button onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
@@ -150,7 +150,7 @@ export function ThreadComposer() {
             </div>
           )}
           {bestSlots.length > 0 && (
-            <p className="text-[10px] text-zinc-500 mt-1 inline-flex items-center gap-1">
+            <p className="text-[10px] text-zinc-400 mt-1 inline-flex items-center gap-1">
               <Clock className="w-3 h-3" />Best time: {bestSlots[0].day} {bestSlots[0].time}
             </p>
           )}
@@ -158,10 +158,10 @@ export function ThreadComposer() {
 
         {/* Live preview */}
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Preview · {preview.length} post{preview.length === 1 ? '' : 's'}</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Preview · {preview.length} post{preview.length === 1 ? '' : 's'}</p>
           <div className="space-y-1.5 max-h-72 overflow-y-auto">
             {preview.length === 0 ? (
-              <p className="text-[11px] text-zinc-600 italic">Start writing to see the split.</p>
+              <p className="text-[11px] text-zinc-400 italic">Start writing to see the split.</p>
             ) : preview.map(p => (
               <div key={p.index} className="bg-zinc-950 border border-zinc-800 rounded-lg p-2">
                 <p className="text-xs text-zinc-200 whitespace-pre-wrap">{p.text}</p>

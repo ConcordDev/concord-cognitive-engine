@@ -70,7 +70,7 @@ export function SubLensQuickNav({
           <Layers className="w-4 h-4 text-neon-purple" />
           <span className="font-semibold">Sub-Lenses</span>
           {loaded && children && (
-            <span className="text-xs text-gray-500 font-mono">({children.length})</span>
+            <span className="text-xs text-gray-400 font-mono">({children.length})</span>
           )}
         </span>
         <ChevronDown
@@ -89,10 +89,10 @@ export function SubLensQuickNav({
           >
             <div className="px-4 pb-4">
               {loading && !loaded && (
-                <p className="text-xs text-gray-500 italic">Loading sub-lenses&hellip;</p>
+                <p className="text-xs text-gray-400 italic">Loading sub-lenses&hellip;</p>
               )}
               {loaded && children && children.length === 0 && (
-                <p className="text-xs text-gray-500 italic">
+                <p className="text-xs text-gray-400 italic">
                   No sub-lenses registered for this lens.
                 </p>
               )}

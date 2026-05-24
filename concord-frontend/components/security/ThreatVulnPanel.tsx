@@ -111,8 +111,8 @@ export function ThreatVulnPanel() {
       </header>
 
       <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500">Threats</div>
-        <div className="grid grid-cols-[1fr_90px_60px_60px_60px_90px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400">Threats</div>
+        <div className="grid grid-cols-[1fr_90px_60px_60px_60px_90px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Name</span><span>Type</span><span>Prob</span><span>Impact</span><span>Vulns</span><span>Controls</span><span></span>
         </div>
         {threats.map((t, i) => (
@@ -124,18 +124,18 @@ export function ThreatVulnPanel() {
             <input type="number" min={0} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.vulnerabilities} onChange={(e) => updateThreat(i, 'vulnerabilities', Math.max(0, Number(e.target.value) || 0))} />
             <div className="flex items-center gap-1">
               <input type="number" min={0} className="w-12 rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-xs text-white font-mono" value={t.activeControls} onChange={(e) => updateThreat(i, 'activeControls', Math.max(0, Number(e.target.value) || 0))} />
-              <span className="text-[10px] text-zinc-500">/</span>
+              <span className="text-[10px] text-zinc-400">/</span>
               <input type="number" min={0} className="w-12 rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-xs text-white font-mono" value={t.totalControls} onChange={(e) => updateThreat(i, 'totalControls', Math.max(0, Number(e.target.value) || 0))} />
             </div>
-            <button type="button" onClick={() => removeThreat(i)} className="rounded border border-zinc-800 text-xs text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => removeThreat(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <button type="button" onClick={addThreat} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-red-500/40 hover:text-red-200"><Plus className="h-3 w-3" />Add threat</button>
       </div>
 
       <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500">Systems (vulnerability config)</div>
-        <div className="grid grid-cols-[1fr_50px_50px_50px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400">Systems (vulnerability config)</div>
+        <div className="grid grid-cols-[1fr_50px_50px_50px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Hostname</span><span>FW</span><span>Enc</span><span>MFA</span><span>Def cred</span><span></span>
         </div>
         {systems.map((s, i) => (
@@ -145,7 +145,7 @@ export function ThreatVulnPanel() {
             <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input type="checkbox" checked={s.encryption} onChange={(e) => updateSystem(i, 'encryption', e.target.checked)} /></label>
             <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input type="checkbox" checked={s.mfa} onChange={(e) => updateSystem(i, 'mfa', e.target.checked)} /></label>
             <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input type="checkbox" checked={s.defaultCredentials} onChange={(e) => updateSystem(i, 'defaultCredentials', e.target.checked)} /></label>
-            <button type="button" onClick={() => removeSystem(i)} className="rounded border border-zinc-800 text-xs text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => removeSystem(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <button type="button" onClick={addSystem} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-red-500/40 hover:text-red-200"><Plus className="h-3 w-3" />Add system</button>
@@ -160,8 +160,8 @@ export function ThreatVulnPanel() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><ShieldAlert className="h-3 w-3" />Threat risk</div>
-          {!threatResult && <div className="text-[11px] text-zinc-500">Analyze to score.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><ShieldAlert className="h-3 w-3" />Threat risk</div>
+          {!threatResult && <div className="text-[11px] text-zinc-400">Analyze to score.</div>}
           {threatResult?.assessments && (
             <div className="space-y-2">
               {threatResult.assessments.map((a, i) => (
@@ -186,8 +186,8 @@ export function ThreatVulnPanel() {
           )}
         </div>
         <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Server className="h-3 w-3" />Vulnerability findings</div>
-          {!scanResult && <div className="text-[11px] text-zinc-500">Analyze to scan.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Server className="h-3 w-3" />Vulnerability findings</div>
+          {!scanResult && <div className="text-[11px] text-zinc-400">Analyze to scan.</div>}
           {scanResult && (
             <div className="space-y-1.5 text-[11px]">
               <div className="flex items-center gap-2 text-[10px]">

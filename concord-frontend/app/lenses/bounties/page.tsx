@@ -193,13 +193,13 @@ export default function BountiesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wide">Open pool</div>
+                  <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Open pool</div>
                   <div className="text-lg font-bold text-amber-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardStats.openPool} CC
                   </div>
                 </div>
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wide">Paid out</div>
+                  <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Paid out</div>
                   <div className="text-lg font-bold text-emerald-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardStats.paidOut} CC
                   </div>
@@ -225,14 +225,14 @@ export default function BountiesPage() {
               )}
 
               {boardLoading && !boardError && (
-                <div className="text-center py-12 text-zinc-500">
+                <div className="text-center py-12 text-zinc-400">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                   <p className="text-sm">Loading bounties…</p>
                 </div>
               )}
 
               {!boardLoading && !boardError && bounties.length === 0 && (
-                <div className="text-center text-zinc-500 py-12 border border-zinc-800 border-dashed rounded-xl">
+                <div className="text-center text-zinc-400 py-12 border border-zinc-800 border-dashed rounded-xl">
                   <Target className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   <p className="text-sm font-medium text-zinc-400 mb-1">No bounties match</p>
                   <p className="text-xs">Post the first one, or clear your filters.</p>
@@ -313,14 +313,14 @@ export default function BountiesPage() {
             )}
 
             {autofixLoading && !autofixError && (
-              <div className="text-center py-12 text-zinc-500">
+              <div className="text-center py-12 text-zinc-400">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                 <p className="text-sm">Loading open bounties…</p>
               </div>
             )}
 
             {!autofixLoading && !autofixError && autofix.length === 0 && (
-              <div className="text-center text-zinc-500 py-12 border border-zinc-800 border-dashed rounded-xl">
+              <div className="text-center text-zinc-400 py-12 border border-zinc-800 border-dashed rounded-xl">
                 <Trophy className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 <p className="text-sm font-medium text-zinc-400 mb-1">No open autofix bounties</p>
                 <p className="text-xs">Reflex detectors will surface new bounties when they spot issues.</p>
@@ -334,7 +334,7 @@ export default function BountiesPage() {
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h3 className="text-sm font-bold text-zinc-100">Bounty #{b.autofix_id}</h3>
-                        <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                        <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                           {b.proposal_kind} · {b.stake_count} stakes
                         </p>
                       </div>

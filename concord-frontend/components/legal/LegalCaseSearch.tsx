@@ -136,7 +136,7 @@ export function LegalCaseSearch() {
           </span>
         </div>
         {result && (
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-zinc-400">
             {result.results.length} of {result.totalHits?.toLocaleString() || '?'} hits
             {result.authenticatedWithToken && <span className="ml-2 text-cyan-300/80">· authenticated</span>}
           </span>
@@ -146,7 +146,7 @@ export function LegalCaseSearch() {
       <form onSubmit={runSearch} className="space-y-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               type="text"
               value={queryInput}
@@ -190,7 +190,7 @@ export function LegalCaseSearch() {
             >
               <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
                 <div>
-                  <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Court</div>
+                  <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Court</div>
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
@@ -229,7 +229,7 @@ export function LegalCaseSearch() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">Filed after</label>
+                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">Filed after</label>
                     <input
                       type="date"
                       value={dateAfter}
@@ -238,7 +238,7 @@ export function LegalCaseSearch() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">Filed before</label>
+                    <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">Filed before</label>
                     <input
                       type="date"
                       value={dateBefore}
@@ -252,7 +252,7 @@ export function LegalCaseSearch() {
                   <button
                     type="button"
                     onClick={() => { setCourt(''); setDateAfter(''); setDateBefore(''); }}
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
                   >
                     <X className="h-2.5 w-2.5" />
                     Clear filters
@@ -271,7 +271,7 @@ export function LegalCaseSearch() {
       )}
 
       {!result && !searchQuery.isPending && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
           Search 9M+ federal and state court opinions via the CourtListener REST API.
           Free without a key; <code className="text-cyan-300">COURTLISTENER_API_TOKEN</code> env unlocks higher rate limits.
         </div>
@@ -332,7 +332,7 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
           </div>
 
           {/* Line 2: court · date · judge · docket · precedential status */}
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-zinc-500">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-zinc-400">
             {hit.court && <span>{hit.court}</span>}
             {hit.dateFiled && (
               <span className="flex items-center gap-1">
@@ -371,7 +371,7 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
             className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
               clipped
                 ? 'bg-cyan-500/15 text-cyan-300'
-                : 'text-zinc-500 hover:bg-zinc-800 hover:text-cyan-300'
+                : 'text-zinc-400 hover:bg-zinc-800 hover:text-cyan-300'
             }`}
             title={clipped ? 'Clipped to folder' : 'Clip to folder'}
             aria-label={clipped ? 'Unclip' : 'Clip to folder'}
@@ -404,7 +404,7 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
               href={hit.absoluteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
               title="Open full opinion on CourtListener"
               aria-label="Open opinion"
             >

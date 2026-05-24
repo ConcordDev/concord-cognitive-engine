@@ -158,7 +158,7 @@ export function PanelHost() {
             type="button"
             onClick={() => setActiveId(null)}
             aria-label="Close panel"
-            className="text-xs text-zinc-500 hover:text-zinc-200"
+            className="text-xs text-zinc-400 hover:text-zinc-200"
           >✕ Esc</button>
         </header>
         <div className="flex-1 overflow-auto p-3">

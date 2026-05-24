@@ -101,7 +101,7 @@ export function SpeciesIdentifier({ onAccept }: SpeciesIdentifierProps) {
             >
               <Upload className="w-4 h-4" /> Pick or capture photo
             </button>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               Powered by LLaVA vision (5th Concord brain). Snap any plant, animal, fungus, or insect.
             </p>
           </div>
@@ -130,7 +130,7 @@ export function SpeciesIdentifier({ onAccept }: SpeciesIdentifierProps) {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-white">{s.commonName}</div>
                         <div className="text-xs text-gray-400 italic">{s.scientificName}</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">
+                        <div className="text-[10px] text-gray-400 mt-0.5">
                           {s.taxonomicRank}{s.kingdom ? ` · ${s.kingdom}` : ''} · {Math.round(s.confidence * 100)}% confidence
                         </div>
                       </div>

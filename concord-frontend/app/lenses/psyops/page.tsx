@@ -217,7 +217,7 @@ export default function PsyopsPage() {
               onClearSelection={() => setSelectedIds([])}
             />
             {selectedIds.length === 0 && (
-              <p className="mt-3 text-[11px] text-zinc-600">
+              <p className="mt-3 text-[11px] text-zinc-400">
                 Tip: select alerts on the Console tab&apos;s alert board, then return here to
                 correlate them into an incident.
               </p>
@@ -238,7 +238,7 @@ export default function PsyopsPage() {
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
                   <Activity className="h-4 w-4 text-rose-400" /> NPC skill-divergence reflex
                 </h2>
-                <p className="mt-1 text-[11px] text-zinc-500">
+                <p className="mt-1 text-[11px] text-zinc-400">
                   Flags NPCs whose <code>skill_revisions</code> diverge &gt;2.5σ from the
                   cohort baseline — a signal of adversarial demonstrations.
                 </p>
@@ -258,7 +258,7 @@ export default function PsyopsPage() {
               </div>
             )}
             {skillAlerts.length === 0 ? (
-              <p className="rounded-lg border border-zinc-800 py-6 text-center text-xs italic text-zinc-600">
+              <p className="rounded-lg border border-zinc-800 py-6 text-center text-xs italic text-zinc-400">
                 No skill-divergence alerts. Run a scan above.
               </p>
             ) : (
@@ -275,12 +275,12 @@ export default function PsyopsPage() {
                           {a.revision_count_window} revs · {a.sigma_above.toFixed(2)}σ above {a.cohort_baseline.toFixed(1)} baseline
                           {a.suspect_mentor_id ? ` · mentor ${a.suspect_mentor_id.slice(0, 8)}` : ''}
                         </p>
-                        <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
+                        <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
                           {new Date(a.detected_at * 1000).toLocaleString()}
                         </p>
                       </div>
                       {a.quarantined ? (
-                        <span className="text-[10px] uppercase text-zinc-500">quarantined</span>
+                        <span className="text-[10px] uppercase text-zinc-400">quarantined</span>
                       ) : (
                         <button
                           type="button"

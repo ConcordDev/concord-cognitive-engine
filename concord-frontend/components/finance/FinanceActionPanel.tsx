@@ -280,7 +280,7 @@ export function FinanceActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -291,21 +291,21 @@ export function FinanceActionPanel() {
           <div className={cn('rounded-md border p-2.5', (netWorthResult.netWorth ?? 0) >= 0 ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> Net worth</div>
             <div className="text-xl font-bold text-zinc-100 mt-1">${netWorthResult.netWorth?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">A ${netWorthResult.assetsTotal?.toLocaleString()} · L ${netWorthResult.liabilitiesTotal?.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">A ${netWorthResult.assetsTotal?.toLocaleString()} · L ${netWorthResult.liabilitiesTotal?.toLocaleString()}</div>
           </div>
         )}
         {taxResult && (
           <div className="rounded-md border border-yellow-500/40 bg-yellow-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5"><Calculator className="w-3 h-3" /> Tax est.</div>
             <div className="text-xl font-bold text-zinc-100 mt-1">${taxResult.estimatedTax?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">{taxResult.effectiveRate}% effective · {taxResult.bracket}</div>
+            <div className="text-[10px] text-zinc-400">{taxResult.effectiveRate}% effective · {taxResult.bracket}</div>
           </div>
         )}
         {mcResult && (
           <div className={cn('rounded-md border p-2.5', (mcResult.successRate ?? 0) >= 80 ? 'border-emerald-500/40 bg-emerald-500/5' : (mcResult.successRate ?? 0) >= 60 ? 'border-amber-500/40 bg-amber-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5"><Briefcase className="w-3 h-3" /> Retirement MC</div>
             <div className="text-xl font-bold text-zinc-100 mt-1">{mcResult.successRate}%</div>
-            <div className="text-[10px] text-zinc-500">median $${mcResult.medianFinal?.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">median $${mcResult.medianFinal?.toLocaleString()}</div>
           </div>
         )}
         {subsResult && (

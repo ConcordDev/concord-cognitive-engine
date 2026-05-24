@@ -115,7 +115,7 @@ export function HouseholdBudgets() {
 
   if (loading) {
     return (
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg flex items-center justify-center py-10 text-xs text-gray-500">
+      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg flex items-center justify-center py-10 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading household…
       </div>
     );
@@ -132,7 +132,7 @@ export function HouseholdBudgets() {
         </header>
         <div className="p-6 text-center space-y-3">
           <Users className="w-8 h-8 mx-auto opacity-30" />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             No household yet. Create one to share budgets with a partner or family.
           </p>
           <div className="flex items-center gap-2 max-w-sm mx-auto">
@@ -162,14 +162,14 @@ export function HouseholdBudgets() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
           {household.name}
         </span>
-        <span className="ml-auto text-[10px] text-gray-500">
+        <span className="ml-auto text-[10px] text-gray-400">
           {household.members.length} member(s) · {household.sharedBudgets.length} shared budget(s)
         </span>
       </header>
 
       {/* Members */}
       <div className="px-4 py-3 border-b border-white/10">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Members</div>
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Members</div>
         <ul className="space-y-1">
           {household.members.map((m) => (
             <li key={m.userId} className="flex items-center gap-2 text-xs group">
@@ -183,7 +183,7 @@ export function HouseholdBudgets() {
               {m.role !== 'owner' && (
                 <button
                   onClick={() => removeMember(m.userId)}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-500 hover:text-rose-400"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-400"
                   aria-label="Remove member"
                 >
                   <UserMinus className="w-3.5 h-3.5" />
@@ -211,9 +211,9 @@ export function HouseholdBudgets() {
 
       {/* Shared budgets */}
       <div className="px-4 py-3">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Shared budgets</div>
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Shared budgets</div>
         {household.sharedBudgets.length === 0 ? (
-          <p className="text-xs text-gray-500 py-2">No shared budgets yet.</p>
+          <p className="text-xs text-gray-400 py-2">No shared budgets yet.</p>
         ) : (
           <ul className="space-y-2">
             {household.sharedBudgets.map((b) => {
@@ -240,7 +240,7 @@ export function HouseholdBudgets() {
                     />
                   </div>
                   {b.contributions.length > 0 && (
-                    <div className="text-[10px] text-gray-500 mt-1">
+                    <div className="text-[10px] text-gray-400 mt-1">
                       {b.contributions.length} contribution(s) from{' '}
                       {new Set(b.contributions.map((c) => c.memberId)).size} member(s)
                     </div>

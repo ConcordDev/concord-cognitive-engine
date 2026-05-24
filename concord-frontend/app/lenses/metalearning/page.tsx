@@ -305,7 +305,7 @@ export default function MetalearningLensPage() {
             <h2 className="font-semibold flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-neon-blue" /> Strategies
               {(strategySearch || strategyTypeFilter !== 'all') && (
-                <span className="text-xs text-gray-500 font-normal">
+                <span className="text-xs text-gray-400 font-normal">
                   ({visibleStrategies.length} of {strategyList.length})
                 </span>
               )}
@@ -361,16 +361,16 @@ export default function MetalearningLensPage() {
                     <div className="h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                       <div className="h-full bg-neon-green" style={{ width: `${s.successRate * 100}%` }} />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{(s.successRate * 100).toFixed(0)}% success</p>
+                    <p className="text-xs text-gray-400 mt-1">{(s.successRate * 100).toFixed(0)}% success</p>
                   </div>
                 )}
               </motion.div>
             ))}
             {strategyList.length === 0 && (
-              <p className="text-center py-4 text-gray-500 text-sm">No strategies yet</p>
+              <p className="text-center py-4 text-gray-400 text-sm">No strategies yet</p>
             )}
             {strategyList.length > 0 && visibleStrategies.length === 0 && (
-              <p className="text-center py-4 text-gray-500 text-sm">No matches</p>
+              <p className="text-center py-4 text-gray-400 text-sm">No matches</p>
             )}
           </div>
         </div>
@@ -385,7 +385,7 @@ export default function MetalearningLensPage() {
               {JSON.stringify(results, null, 2)}
             </pre>
           ) : (
-            <p className="text-center py-12 text-gray-500 text-sm">
+            <p className="text-center py-12 text-gray-400 text-sm">
               Generate a curriculum or adapt a strategy to see results
             </p>
           )}
@@ -429,7 +429,7 @@ export default function MetalearningLensPage() {
                 <div className="h-1.5 bg-lattice-void rounded-full overflow-hidden">
                   <div className="h-full bg-neon-green rounded-full" style={{ width: `${(bestStrategy.successRate as number) * 100}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">{((bestStrategy.successRate as number) * 100).toFixed(0)}% success rate</p>
+                <p className="text-[10px] text-gray-400 mt-1">{((bestStrategy.successRate as number) * 100).toFixed(0)}% success rate</p>
               </div>
             )}
           </div>
@@ -508,7 +508,7 @@ export default function MetalearningLensPage() {
                 </div>
                 {'rankings' in actionResult && Array.isArray(actionResult.rankings) && actionResult.rankings.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Rankings</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Rankings</p>
                     {(actionResult.rankings as Array<Record<string, unknown>>).slice(0, 5).map((r, i) => (
                       <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
                         <span className="text-gray-300">{String(r.strategy || r.name)}</span>

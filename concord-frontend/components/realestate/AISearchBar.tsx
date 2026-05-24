@@ -37,7 +37,7 @@ export function AISearchBar({ onParsed }: { onParsed?: (p: Parsed) => void }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Conversational search</span>
-        <span className="ml-auto text-[10px] text-gray-500">type naturally</span>
+        <span className="ml-auto text-[10px] text-gray-400">type naturally</span>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); parse(); }} className="p-3 border-b border-white/10 flex items-center gap-2">
         <Search className="w-4 h-4 text-gray-400" />
@@ -53,13 +53,13 @@ export function AISearchBar({ onParsed }: { onParsed?: (p: Parsed) => void }) {
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono">
               {Object.entries(parsed.filters).map(([k, v]) => (
                 <div key={k} className="flex items-center gap-1.5">
-                  <span className="text-gray-500">{k}:</span>
+                  <span className="text-gray-400">{k}:</span>
                   <span className="text-emerald-300">{Array.isArray(v) ? v.join(', ') : String(v)}</span>
                 </div>
               ))}
               {parsed.tags.length > 0 && (
                 <div className="col-span-2 mt-1">
-                  <span className="text-gray-500">tags:</span>{' '}
+                  <span className="text-gray-400">tags:</span>{' '}
                   {parsed.tags.map(t => <span key={t} className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[10px]">{t}</span>)}
                 </div>
               )}

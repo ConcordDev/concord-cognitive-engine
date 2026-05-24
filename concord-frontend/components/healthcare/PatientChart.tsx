@@ -58,8 +58,8 @@ export function PatientChart() {
     })();
   }, []);
 
-  if (loading) return <div className="p-6 flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading chart…</div>;
-  if (!record) return <div className="p-6 text-xs text-gray-500">No patient record found.</div>;
+  if (loading) return <div className="p-6 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading chart…</div>;
+  if (!record) return <div className="p-6 text-xs text-gray-400">No patient record found.</div>;
 
   // Group vitals by channel, take latest
   const latestByChannel = new Map<string, VitalReading>();
@@ -93,7 +93,7 @@ export function PatientChart() {
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <HeartPulse className="w-4 h-4 text-red-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Vitals</span>
-          <span className="ml-auto text-[10px] text-gray-500">{latestByChannel.size} channels</span>
+          <span className="ml-auto text-[10px] text-gray-400">{latestByChannel.size} channels</span>
         </header>
         <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[...latestByChannel.entries()].map(([ch, v]) => {
@@ -104,10 +104,10 @@ export function PatientChart() {
               <div key={ch} className="bg-white/[0.02] rounded p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Icon className={cn('w-3.5 h-3.5', meta.color)} />
-                  <span className="text-[10px] uppercase tracking-wider text-gray-500">{meta.label}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-gray-400">{meta.label}</span>
                 </div>
-                <div className={cn('text-2xl font-bold tabular-nums', inRange ? 'text-white' : 'text-yellow-300')}>{v.value}<span className="text-[10px] text-gray-500 ml-1">{v.unit}</span></div>
-                <div className="text-[9px] text-gray-500 mt-0.5">{new Date(v.recordedAt).toLocaleDateString()}</div>
+                <div className={cn('text-2xl font-bold tabular-nums', inRange ? 'text-white' : 'text-yellow-300')}>{v.value}<span className="text-[10px] text-gray-400 ml-1">{v.unit}</span></div>
+                <div className="text-[9px] text-gray-400 mt-0.5">{new Date(v.recordedAt).toLocaleDateString()}</div>
               </div>
             );
           })}
@@ -118,10 +118,10 @@ export function PatientChart() {
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-yellow-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Allergies</span>
-          <span className="ml-auto text-[10px] text-gray-500">{record.allergies.length}</span>
+          <span className="ml-auto text-[10px] text-gray-400">{record.allergies.length}</span>
         </header>
         {record.allergies.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-gray-500">No known drug allergies (NKDA)</div>
+          <div className="px-4 py-6 text-center text-xs text-gray-400">No known drug allergies (NKDA)</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {record.allergies.map((a, i) => (
@@ -144,16 +144,16 @@ export function PatientChart() {
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <Activity className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Immunizations</span>
-          <span className="ml-auto text-[10px] text-gray-500">{record.immunizations.length}</span>
+          <span className="ml-auto text-[10px] text-gray-400">{record.immunizations.length}</span>
         </header>
         {record.immunizations.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-gray-500">No immunizations on record</div>
+          <div className="px-4 py-6 text-center text-xs text-gray-400">No immunizations on record</div>
         ) : (
           <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2">
             {record.immunizations.map((imm, i) => (
               <div key={i} className="bg-white/[0.02] rounded p-2 text-xs">
                 <div className="text-white font-medium">{imm.vaccine}</div>
-                <div className="text-[10px] text-gray-500">{new Date(imm.administeredAt).toLocaleDateString()}{imm.doseNumber && imm.totalDoses && ` · ${imm.doseNumber}/${imm.totalDoses}`}</div>
+                <div className="text-[10px] text-gray-400">{new Date(imm.administeredAt).toLocaleDateString()}{imm.doseNumber && imm.totalDoses && ` · ${imm.doseNumber}/${imm.totalDoses}`}</div>
               </div>
             ))}
           </div>
@@ -165,13 +165,13 @@ export function PatientChart() {
           <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-purple-400" />
             <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Conditions</span>
-            <span className="ml-auto text-[10px] text-gray-500">{record.conditions.length}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{record.conditions.length}</span>
           </header>
           <ul className="divide-y divide-white/5">
             {record.conditions.map((c, i) => (
               <li key={i} className="px-4 py-2 flex items-center gap-2 text-xs">
                 <span className="text-sm text-white">{c.name}</span>
-                <span className="text-[10px] text-gray-500">since {new Date(c.diagnosedAt).toLocaleDateString()}</span>
+                <span className="text-[10px] text-gray-400">since {new Date(c.diagnosedAt).toLocaleDateString()}</span>
                 <span className={cn('ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold',
                   c.status === 'active' ? 'bg-orange-500/20 text-orange-300' :
                   c.status === 'remission' ? 'bg-green-500/20 text-green-300' :

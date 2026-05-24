@@ -244,7 +244,7 @@ export function TideActionStack() {
               <span className="text-2xl font-bold text-cyan-300">{next.height.toFixed(2)}m</span>
               <span className="text-xs text-zinc-400 uppercase tracking-wider">{next.type} tide</span>
             </div>
-            <span className="text-[10px] text-zinc-500 font-mono">{stationName}</span>
+            <span className="text-[10px] text-zinc-400 font-mono">{stationName}</span>
           </div>
           <div className="mt-1 text-[11px] text-zinc-400">
             Next: {new Date(next.time).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -287,7 +287,7 @@ export function TideActionStack() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}

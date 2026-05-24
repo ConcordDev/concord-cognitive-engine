@@ -171,8 +171,8 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={t.artworkUrl} alt="" className="w-6 h-6 rounded shrink-0" />
                 )}
-                <span className="truncate flex-1">{t.title} <span className="text-zinc-500">— {t.artist}</span></span>
-                <span className="text-[10px] text-zinc-600">{dur(t.durationSec)}</span>
+                <span className="truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
+                <span className="text-[10px] text-zinc-400">{dur(t.durationSec)}</span>
               </li>
             ))}
           </ul>
@@ -191,7 +191,7 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
               return (
                 <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                   <Music2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                  <span className="text-[11px] text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-500">— {t.artist}</span></span>
+                  <span className="text-[11px] text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
                   {lyricsMsg[t.id] && <span className="text-[10px] text-violet-300">{lyricsMsg[t.id]}</span>}
                   <button type="button" onClick={() => fetchLyrics(t.id)}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 hover:bg-violet-800/50">Lyrics</button>
@@ -206,7 +206,7 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
           </ul>
         )}
         {downloads.length > 0 && (
-          <p className="mt-2 text-[10px] text-zinc-500">
+          <p className="mt-2 text-[10px] text-zinc-400">
             {downloads.length} tracks offline · {(downloadKb / 1024).toFixed(1)} MB cached
           </p>
         )}
@@ -326,7 +326,7 @@ function EngineTab() {
             {devices.map((d) => (
               <li key={d.id} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <Smartphone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                <span className="text-[11px] text-zinc-200 truncate flex-1">{d.name} <span className="text-zinc-500">· {d.kind}</span></span>
+                <span className="text-[11px] text-zinc-200 truncate flex-1">{d.name} <span className="text-zinc-400">· {d.kind}</span></span>
                 {d.active ? (
                   <span className="text-[10px] text-emerald-300">● Playing here</span>
                 ) : (
@@ -423,7 +423,7 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
             {djTracks.map((t, i) => (
               <li key={t.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
                 <span className="text-zinc-600 w-4 text-right">{i + 1}</span>
-                <span className="truncate flex-1">{t.title} <span className="text-zinc-500">— {t.artist}</span></span>
+                <span className="truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
               </li>
             ))}
           </ul>
@@ -456,9 +456,9 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
               <div key={kind} className="bg-zinc-950/60 border border-zinc-800 rounded-lg p-2.5">
                 <p className="text-[11px] font-semibold text-zinc-200 capitalize">{kind.replace('_', ' ')}</p>
                 {sp ? (
-                  <p className="text-[10px] text-zinc-500 mt-0.5">{sp.trackCount} tracks{sp.mood ? ` · ${sp.mood}` : ''}</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">{sp.trackCount} tracks{sp.mood ? ` · ${sp.mood}` : ''}</p>
                 ) : (
-                  <p className="text-[10px] text-zinc-600 mt-0.5">Not generated</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">Not generated</p>
                 )}
                 <button type="button" onClick={() => refreshScheduled(kind)}
                   className="mt-1.5 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-300 hover:bg-emerald-800/50">
@@ -480,8 +480,8 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
             {recs.slice(0, 10).map((t) => (
               <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <Music2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="text-[11px] text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-500">— {t.artist}</span></span>
-                <span className="text-[10px] text-zinc-600 capitalize">{t.genre}</span>
+                <span className="text-[11px] text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
+                <span className="text-[10px] text-zinc-400 capitalize">{t.genre}</span>
               </li>
             ))}
           </ul>
@@ -600,9 +600,9 @@ function SocialTab({ onChange }: { onChange: () => void }) {
               <li key={`${a.userId}-${i}`} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', a.kind === 'now_playing' ? 'bg-emerald-400' : 'bg-zinc-600')} />
                 <span className="text-[11px] text-zinc-300 truncate flex-1">
-                  {a.track.title} <span className="text-zinc-500">— {a.track.artist}</span>
+                  {a.track.title} <span className="text-zinc-400">— {a.track.artist}</span>
                 </span>
-                <span className="text-[10px] text-zinc-600">{a.kind === 'now_playing' ? 'now' : 'recent'}</span>
+                <span className="text-[10px] text-zinc-400">{a.kind === 'now_playing' ? 'now' : 'recent'}</span>
               </li>
             ))}
           </ul>
@@ -729,7 +729,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
             </div>
             {Object.keys(analytics.bySource).length > 0 && (
               <div className="mb-2">
-                <p className="text-[10px] text-zinc-500 uppercase mb-1">Stream sources</p>
+                <p className="text-[10px] text-zinc-400 uppercase mb-1">Stream sources</p>
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(analytics.bySource).map(([src, n]) => (
                     <span key={src} className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">{src}: {n}</span>
@@ -743,7 +743,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
                   <li key={i} className="flex items-center gap-2 text-[11px] text-zinc-300">
                     <span className="w-4 text-zinc-600">{i + 1}</span>
                     <span className="truncate flex-1">{t.title}</span>
-                    <span className="text-zinc-500">{t.streams} streams</span>
+                    <span className="text-zinc-400">{t.streams} streams</span>
                   </li>
                 ))}
               </ul>
@@ -772,7 +772,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
           className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">Save profile</button>
         {profileMsg && <p className="mt-2 text-[11px] text-emerald-300">{profileMsg}</p>}
         {profile?.canvasUrl && (
-          <p className="mt-2 text-[10px] text-zinc-500 truncate">Canvas: {profile.canvasUrl}</p>
+          <p className="mt-2 text-[10px] text-zinc-400 truncate">Canvas: {profile.canvasUrl}</p>
         )}
       </section>
 
@@ -796,7 +796,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
               <li key={e.mbid} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
                 <span className="text-[11px] text-zinc-200 truncate flex-1">{e.name}</span>
-                <span className="text-[10px] text-zinc-500">{e.date}{e.time ? ` ${e.time}` : ''}</span>
+                <span className="text-[10px] text-zinc-400">{e.date}{e.time ? ` ${e.time}` : ''}</span>
               </li>
             ))}
           </ul>
@@ -808,17 +808,17 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
 
 // ── shared bits ─────────────────────────────────────────────────────
 function Spin() {
-  return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
 }
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-500 italic">{text}</p>;
+  return <p className="text-[11px] text-zinc-400 italic">{text}</p>;
 }
 function Head({ icon: Icon, title, hint }: { icon: typeof Radio; title: string; hint?: string }) {
   return (
     <div className="flex items-center gap-2 mb-2">
       <Icon className="w-4 h-4 text-emerald-300" />
       <h3 className="text-sm font-bold text-zinc-100">{title}</h3>
-      {hint && <span className="text-[10px] text-zinc-500 truncate">{hint}</span>}
+      {hint && <span className="text-[10px] text-zinc-400 truncate">{hint}</span>}
     </div>
   );
 }
@@ -834,7 +834,7 @@ function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="bg-zinc-950/60 border border-zinc-800 rounded-lg p-2 text-center">
       <p className="text-base font-bold text-zinc-100">{value}</p>
-      <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

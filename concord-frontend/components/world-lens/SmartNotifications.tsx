@@ -91,7 +91,7 @@ const bucketConfig: Record<PriorityBucket, { label: string; icon: React.Componen
   immediate: { label: 'Immediate', icon: Zap, color: 'text-red-400' },
   daily:     { label: 'Daily Digest', icon: Mail, color: 'text-blue-400' },
   weekly:    { label: 'Weekly', icon: Calendar, color: 'text-purple-400' },
-  archive:   { label: 'Archive', icon: Archive, color: 'text-gray-500' },
+  archive:   { label: 'Archive', icon: Archive, color: 'text-gray-400' },
 };
 
 const domainIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -119,7 +119,7 @@ function scoreColor(score: number): string {
   if (score >= 80) return 'text-red-400';
   if (score >= 60) return 'text-yellow-400';
   if (score >= 40) return 'text-blue-400';
-  return 'text-gray-500';
+  return 'text-gray-400';
 }
 
 function scoreBg(score: number): string {
@@ -310,23 +310,23 @@ export default function SmartNotifications({
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-2 rounded bg-white/5">
               <div className="text-xl font-bold text-white">{profile.analytics.totalReceived}</div>
-              <div className="text-xs text-gray-500">Received</div>
+              <div className="text-xs text-gray-400">Received</div>
             </div>
             <div className="text-center p-2 rounded bg-white/5">
               <div className="text-xl font-bold text-green-400">
                 {Math.round(profile.analytics.readRate * 100)}%
               </div>
-              <div className="text-xs text-gray-500">Read Rate</div>
+              <div className="text-xs text-gray-400">Read Rate</div>
             </div>
             <div className="text-center p-2 rounded bg-white/5">
               <div className="text-xl font-bold text-blue-400">
                 {Math.round(profile.analytics.actionRate * 100)}%
               </div>
-              <div className="text-xs text-gray-500">Action Rate</div>
+              <div className="text-xs text-gray-400">Action Rate</div>
             </div>
           </div>
           <div className="space-y-1.5">
-            <div className="text-xs text-gray-500 uppercase tracking-wider">Top Domains</div>
+            <div className="text-xs text-gray-400 uppercase tracking-wider">Top Domains</div>
             {profile.analytics.topDomains.map(d => (
               <div key={d.domain} className="flex items-center justify-between text-sm">
                 <span className="text-gray-300 capitalize">{d.domain}</span>
@@ -339,14 +339,14 @@ export default function SmartNotifications({
                       }}
                     />
                   </div>
-                  <span className="text-gray-500 text-xs w-8 text-right">{d.count}</span>
+                  <span className="text-gray-400 text-xs w-8 text-right">{d.count}</span>
                 </div>
               </div>
             ))}
           </div>
           {/* Learning Signal Summary */}
           <div className="pt-2 border-t border-white/5 space-y-1">
-            <div className="text-xs text-gray-500 uppercase tracking-wider">Learning Signals</div>
+            <div className="text-xs text-gray-400 uppercase tracking-wider">Learning Signals</div>
             <div className="flex gap-3 text-xs">
               <span className="text-green-400 flex items-center gap-1">
                 <Eye className="w-3 h-3" /> Reads train relevance
@@ -372,7 +372,7 @@ export default function SmartNotifications({
 
           {/* Interest Profile (drag to reorder) */}
           <div className="space-y-2">
-            <div className="text-xs text-gray-500 uppercase tracking-wider">
+            <div className="text-xs text-gray-400 uppercase tracking-wider">
               Interest Profile (drag to reorder priority)
             </div>
             <div className="space-y-1">
@@ -392,7 +392,7 @@ export default function SmartNotifications({
                     }`}
                   >
                     <GripVertical className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-                    <span className="text-xs text-gray-500 w-4">{idx + 1}</span>
+                    <span className="text-xs text-gray-400 w-4">{idx + 1}</span>
                     <DomainIcon className="w-4 h-4 text-gray-400 shrink-0" />
                     <span className="text-sm text-gray-200 flex-1">{interest.label}</span>
                     <div className="w-16 h-1.5 rounded bg-white/10 overflow-hidden">
@@ -409,7 +409,7 @@ export default function SmartNotifications({
 
           {/* Routing Rules */}
           <div className="space-y-2">
-            <div className="text-xs text-gray-500 uppercase tracking-wider">Priority Routing Rules</div>
+            <div className="text-xs text-gray-400 uppercase tracking-wider">Priority Routing Rules</div>
             {rules.map(rule => {
               const cfg = bucketConfig[rule.bucket];
               const BucketIcon = cfg.icon;
@@ -417,7 +417,7 @@ export default function SmartNotifications({
                 <div key={rule.id} className="flex items-center gap-2 p-2 rounded bg-white/5">
                   <span className="text-sm text-gray-300 flex-1 capitalize">{rule.domain}</span>
                   {rule.condition && (
-                    <span className="text-xs text-gray-500 italic">{rule.condition}</span>
+                    <span className="text-xs text-gray-400 italic">{rule.condition}</span>
                   )}
                   <select
                     value={rule.bucket}
@@ -438,7 +438,7 @@ export default function SmartNotifications({
           {/* Quiet Hours */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-gray-500 uppercase tracking-wider">Quiet Hours</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wider">Quiet Hours</div>
               <button
                 onClick={() => setQuietEnabled(!quietEnabled)}
                 className="text-gray-400 hover:text-white transition-colors"
@@ -453,7 +453,7 @@ export default function SmartNotifications({
             {quietEnabled && (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <BellOff className="w-3.5 h-3.5 text-gray-500" />
+                  <BellOff className="w-3.5 h-3.5 text-gray-400" />
                   <input
                     type="time"
                     value={quietStart}
@@ -463,7 +463,7 @@ export default function SmartNotifications({
                 </div>
                 <span className="text-gray-600 text-xs">to</span>
                 <div className="flex items-center gap-1.5">
-                  <Bell className="w-3.5 h-3.5 text-gray-500" />
+                  <Bell className="w-3.5 h-3.5 text-gray-400" />
                   <input
                     type="time"
                     value={quietEnd}
@@ -486,7 +486,7 @@ export default function SmartNotifications({
             className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
               activeTab === tab.key
                 ? 'bg-purple-500/20 text-purple-300'
-                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
             {tab.label}
@@ -547,13 +547,13 @@ export default function SmartNotifications({
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
                     {isGroup
                       ? primary.title
                       : primary.message}
                   </p>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[10px] text-gray-600">{relativeTime(primary.timestamp)}</span>
+                    <span className="text-[10px] text-gray-400">{relativeTime(primary.timestamp)}</span>
                     <span className={`text-[10px] ${cfg.color} flex items-center gap-0.5`}>
                       <cfg.icon className="w-2.5 h-2.5" />
                       {cfg.label}
@@ -589,7 +589,7 @@ export default function SmartNotifications({
                       <span className="text-xs font-medium text-blue-300">Why am I seeing this?</span>
                     </div>
                     <p className="text-xs text-blue-200/70">{primary.reason}</p>
-                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-400">
                       <span>Score: {primary.importanceScore}/100</span>
                       <span>Bucket: {cfg.label}</span>
                       <span>Domain: {primary.domain}</span>
@@ -605,7 +605,7 @@ export default function SmartNotifications({
                           className="flex items-center gap-2 p-2 rounded bg-white/[0.03] text-xs"
                         >
                           <span className="text-gray-600 w-4">{i + 1}.</span>
-                          <span className={`flex-1 truncate ${n.read ? 'text-gray-500' : 'text-gray-300'}`}>
+                          <span className={`flex-1 truncate ${n.read ? 'text-gray-400' : 'text-gray-300'}`}>
                             {n.title}
                           </span>
                           <span className="text-gray-600">{relativeTime(n.timestamp)}</span>
@@ -633,11 +633,11 @@ export default function SmartNotifications({
 
       {/* Footer: Learning Signal Indicator */}
       <div className="flex items-center justify-between pt-2 border-t border-white/5">
-        <div className="flex items-center gap-1.5 text-[10px] text-gray-600">
+        <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
           <TrendingUp className="w-3 h-3" />
           <span>ML model learns from your reads, dismisses, and clicks</span>
         </div>
-        <span className="text-[10px] text-gray-600">
+        <span className="text-[10px] text-gray-400">
           {filtered.length} notification{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>

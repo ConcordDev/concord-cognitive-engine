@@ -519,7 +519,7 @@ export default function AviationLensPage() {
             <span className={ds.textMuted}>Active Flights</span>
           </div>
           <div className="text-3xl font-bold text-white">{activeFlights}</div>
-          <div className="text-xs text-gray-500 mt-1">{completedFlights} completed this period</div>
+          <div className="text-xs text-gray-400 mt-1">{completedFlights} completed this period</div>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-2">
@@ -527,7 +527,7 @@ export default function AviationLensPage() {
             <span className={ds.textMuted}>Fleet Available</span>
           </div>
           <div className="text-3xl font-bold text-green-400">{airworthyAircraft}</div>
-          <div className="text-xs text-gray-500 mt-1">{groundedAircraft} grounded / in maintenance</div>
+          <div className="text-xs text-gray-400 mt-1">{groundedAircraft} grounded / in maintenance</div>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-2">
@@ -535,7 +535,7 @@ export default function AviationLensPage() {
             <span className={ds.textMuted}>Pilots Current</span>
           </div>
           <div className="text-3xl font-bold text-blue-400">{currentPilots}</div>
-          <div className="text-xs text-gray-500 mt-1">{pilots.length} total on roster</div>
+          <div className="text-xs text-gray-400 mt-1">{pilots.length} total on roster</div>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-2">
@@ -543,7 +543,7 @@ export default function AviationLensPage() {
             <span className={ds.textMuted}>Charter Revenue</span>
           </div>
           <div className="text-3xl font-bold text-emerald-400">${charterRevenue.toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-1">{pendingCharters} pending bookings</div>
+          <div className="text-xs text-gray-400 mt-1">{pendingCharters} pending bookings</div>
         </div>
       </div>
 
@@ -667,11 +667,11 @@ export default function AviationLensPage() {
                       </div>
                       <div className={ds.textMuted}>{d.make} {d.model} ({d.year || '--'})</div>
                       <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
-                        <span className="text-gray-500">Total Time:</span>
+                        <span className="text-gray-400">Total Time:</span>
                         <span className="text-white">{d.totalTime?.toFixed(1) || '0'}h</span>
-                        <span className="text-gray-500">TSMOH:</span>
+                        <span className="text-gray-400">TSMOH:</span>
                         <span className="text-white">{d.tsmoh?.toFixed(1) || '0'}h</span>
-                        <span className="text-gray-500">Next Annual:</span>
+                        <span className="text-gray-400">Next Annual:</span>
                         <span className={cn(annualDays < 30 ? 'text-red-400' : annualDays < 60 ? 'text-yellow-400' : 'text-white')}>
                           {d.nextAnnual || 'N/A'} {annualDays < 60 && `(${annualDays}d)`}
                         </span>
@@ -770,24 +770,24 @@ export default function AviationLensPage() {
           <div className="flex items-center gap-2 text-sm mb-2">
             <MapPin className="w-3 h-3 text-green-400" />
             <span className="text-white font-mono text-xs">{String(d.departure || '????')}</span>
-            <Navigation className="w-3 h-3 text-gray-500" />
+            <Navigation className="w-3 h-3 text-gray-400" />
             <span className="text-white font-mono text-xs">{String(d.arrival || '????')}</span>
           </div>
         )}
         <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-          {!!d.aircraft && <><span className="text-gray-500">Aircraft:</span><span className="text-white">{String(d.aircraft)}</span></>}
-          {!!d.tailNumber && <><span className="text-gray-500">Tail #:</span><span className="text-white font-mono">{String(d.tailNumber)}</span></>}
-          {!!d.pic && <><span className="text-gray-500">PIC:</span><span className="text-white">{String(d.pic)}</span></>}
-          {!!d.passengers && <><span className="text-gray-500">PAX:</span><span className="text-white">{String(d.passengers)}</span></>}
-          <span className="text-gray-500">Hobbs:</span><span className="text-white">{hobbs}</span>
-          {!!d.fuelBurn && <><span className="text-gray-500">Fuel:</span><span className="text-white">{String(d.fuelBurn)} gal</span></>}
+          {!!d.aircraft && <><span className="text-gray-400">Aircraft:</span><span className="text-white">{String(d.aircraft)}</span></>}
+          {!!d.tailNumber && <><span className="text-gray-400">Tail #:</span><span className="text-white font-mono">{String(d.tailNumber)}</span></>}
+          {!!d.pic && <><span className="text-gray-400">PIC:</span><span className="text-white">{String(d.pic)}</span></>}
+          {!!d.passengers && <><span className="text-gray-400">PAX:</span><span className="text-white">{String(d.passengers)}</span></>}
+          <span className="text-gray-400">Hobbs:</span><span className="text-white">{hobbs}</span>
+          {!!d.fuelBurn && <><span className="text-gray-400">Fuel:</span><span className="text-white">{String(d.fuelBurn)} gal</span></>}
         </div>
         {!!d.weatherMins && (
           <div className="flex items-center gap-1 text-xs text-cyan-400 mt-2">
             <CloudRain className="w-3 h-3" /> WX Mins: {String(d.weatherMins)}
           </div>
         )}
-        <div className="flex items-center justify-between text-xs text-gray-500 mt-3 pt-2 border-t border-lattice-border">
+        <div className="flex items-center justify-between text-xs text-gray-400 mt-3 pt-2 border-t border-lattice-border">
           {!!d.date && <span><Calendar className="w-3 h-3 inline mr-1" />{String(d.date)}</span>}
           <span><Clock className="w-3 h-3 inline mr-1" />{new Date(item.updatedAt).toLocaleDateString()}</span>
         </div>
@@ -824,12 +824,12 @@ export default function AviationLensPage() {
           </div>
         )}
         <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-          <span className="text-gray-500">Total:</span><span className="text-white">{d.totalHours || 0}h</span>
-          <span className="text-gray-500">PIC:</span><span className="text-white">{d.picHours || 0}h</span>
-          <span className="text-gray-500">Night:</span><span className="text-white">{d.nightHours || 0}h</span>
-          <span className="text-gray-500">IFR:</span><span className="text-white">{d.instrumentHours || 0}h</span>
-          <span className="text-gray-500">XC:</span><span className="text-white">{d.crossCountryHours || 0}h</span>
-          <span className="text-gray-500">Multi:</span><span className="text-white">{d.multiEngineHours || 0}h</span>
+          <span className="text-gray-400">Total:</span><span className="text-white">{d.totalHours || 0}h</span>
+          <span className="text-gray-400">PIC:</span><span className="text-white">{d.picHours || 0}h</span>
+          <span className="text-gray-400">Night:</span><span className="text-white">{d.nightHours || 0}h</span>
+          <span className="text-gray-400">IFR:</span><span className="text-white">{d.instrumentHours || 0}h</span>
+          <span className="text-gray-400">XC:</span><span className="text-white">{d.crossCountryHours || 0}h</span>
+          <span className="text-gray-400">Multi:</span><span className="text-white">{d.multiEngineHours || 0}h</span>
         </div>
         <div className="flex gap-2 mt-3 pt-2 border-t border-lattice-border">
           <span className={statusBadge(medStatus)}>Med {d.medicalExpiry || 'N/A'}</span>
@@ -854,23 +854,23 @@ export default function AviationLensPage() {
         <h3 className="font-bold text-white mb-0.5 font-mono">{d.tailNumber || item.title}</h3>
         <div className={ds.textMuted}>{d.make} {d.model} {d.year ? `(${d.year})` : ''}</div>
         <div className="grid grid-cols-2 gap-1 text-xs mt-3">
-          <span className="text-gray-500">Total Time:</span><span className="text-white">{d.totalTime?.toFixed(1) || 0}h</span>
-          <span className="text-gray-500">TSMOH:</span><span className="text-white">{d.tsmoh?.toFixed(1) || 0}h</span>
-          <span className="text-gray-500">TSPOH:</span><span className="text-white">{d.tspoh?.toFixed(1) || 0}h</span>
-          <span className="text-gray-500">Engine:</span><span className="text-white">{d.engType || '--'} {d.engHP ? `${d.engHP}hp` : ''}</span>
-          <span className="text-gray-500">Fuel Cap:</span><span className="text-white">{d.fuelCapacity || '--'} gal</span>
-          <span className="text-gray-500">Useful Load:</span><span className="text-white">{d.usefulLoad || '--'} lbs</span>
+          <span className="text-gray-400">Total Time:</span><span className="text-white">{d.totalTime?.toFixed(1) || 0}h</span>
+          <span className="text-gray-400">TSMOH:</span><span className="text-white">{d.tsmoh?.toFixed(1) || 0}h</span>
+          <span className="text-gray-400">TSPOH:</span><span className="text-white">{d.tspoh?.toFixed(1) || 0}h</span>
+          <span className="text-gray-400">Engine:</span><span className="text-white">{d.engType || '--'} {d.engHP ? `${d.engHP}hp` : ''}</span>
+          <span className="text-gray-400">Fuel Cap:</span><span className="text-white">{d.fuelCapacity || '--'} gal</span>
+          <span className="text-gray-400">Useful Load:</span><span className="text-white">{d.usefulLoad || '--'} lbs</span>
         </div>
         <div className="mt-3 pt-2 border-t border-lattice-border space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">Next Annual:</span>
+            <span className="text-gray-400">Next Annual:</span>
             <span className={cn(annualDays < 30 ? 'text-red-400 font-bold' : annualDays < 60 ? 'text-yellow-400' : 'text-white')}>
               {d.nextAnnual || 'N/A'} {annualDays < 90 && annualDays > -999 ? `(${annualDays}d)` : ''}
             </span>
           </div>
           {d.next100hr !== undefined && d.next100hr > 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Next 100hr:</span>
+              <span className="text-gray-400">Next 100hr:</span>
               <span className={cn(d.next100hr < 10 ? 'text-red-400 font-bold' : d.next100hr < 25 ? 'text-yellow-400' : 'text-white')}>
                 {d.next100hr.toFixed(1)}h remaining
               </span>
@@ -909,16 +909,16 @@ export default function AviationLensPage() {
         {d.workOrderNumber && <div className="text-xs font-mono text-gray-400 mb-1">WO# {d.workOrderNumber}</div>}
         <div className="text-sm text-gray-300 mb-2 line-clamp-2">{d.discrepancy}</div>
         <div className="grid grid-cols-2 gap-1 text-xs">
-          {d.tailNumber && <><span className="text-gray-500">Aircraft:</span><span className="text-white font-mono">{d.tailNumber}</span></>}
-          {d.melReference && <><span className="text-gray-500">MEL Ref:</span><span className="text-yellow-400">{d.melReference}</span></>}
-          {d.laborHours && <><span className="text-gray-500">Labor:</span><span className="text-white">{d.laborHours}h</span></>}
-          {d.mechanic && <><span className="text-gray-500">Mechanic:</span><span className="text-white">{d.mechanic}</span></>}
-          {d.adReference && <><span className="text-gray-500">AD:</span><span className="text-red-400">{d.adReference}</span></>}
-          {d.sbReference && <><span className="text-gray-500">SB:</span><span className="text-yellow-400">{d.sbReference}</span></>}
+          {d.tailNumber && <><span className="text-gray-400">Aircraft:</span><span className="text-white font-mono">{d.tailNumber}</span></>}
+          {d.melReference && <><span className="text-gray-400">MEL Ref:</span><span className="text-yellow-400">{d.melReference}</span></>}
+          {d.laborHours && <><span className="text-gray-400">Labor:</span><span className="text-white">{d.laborHours}h</span></>}
+          {d.mechanic && <><span className="text-gray-400">Mechanic:</span><span className="text-white">{d.mechanic}</span></>}
+          {d.adReference && <><span className="text-gray-400">AD:</span><span className="text-red-400">{d.adReference}</span></>}
+          {d.sbReference && <><span className="text-gray-400">SB:</span><span className="text-yellow-400">{d.sbReference}</span></>}
         </div>
         {d.componentName && (
           <div className="mt-2 pt-2 border-t border-lattice-border text-xs">
-            <span className="text-gray-500">Component:</span> <span className="text-white">{d.componentName}</span>
+            <span className="text-gray-400">Component:</span> <span className="text-white">{d.componentName}</span>
             {d.componentLifeLimit > 0 && (
               <span className={cn('ml-2', d.componentTSN / d.componentLifeLimit > 0.9 ? 'text-red-400' : 'text-gray-400')}>
                 ({d.componentTSN || 0}/{d.componentLifeLimit}h)
@@ -926,7 +926,7 @@ export default function AviationLensPage() {
             )}
           </div>
         )}
-        <div className="flex items-center justify-between text-xs text-gray-500 mt-3 pt-2 border-t border-lattice-border">
+        <div className="flex items-center justify-between text-xs text-gray-400 mt-3 pt-2 border-t border-lattice-border">
           {d.dateOpened && <span>Opened: {d.dateOpened}</span>}
           {d.dateClosed ? <span className="text-green-400">Closed: {d.dateClosed}</span> : <span className="text-yellow-400">Open</span>}
         </div>
@@ -951,32 +951,32 @@ export default function AviationLensPage() {
           <div className="flex items-center gap-2 text-sm mb-2">
             <MapPin className="w-3 h-3 text-green-400" />
             <span className="text-white font-mono text-xs">{d.departure || '????'}</span>
-            <Navigation className="w-3 h-3 text-gray-500" />
+            <Navigation className="w-3 h-3 text-gray-400" />
             <span className="text-white font-mono text-xs">{d.arrival || '????'}</span>
           </div>
         )}
         <div className="grid grid-cols-2 gap-1 text-xs mt-2">
-          {d.clientName && <><span className="text-gray-500">Client:</span><span className="text-white">{d.clientName}</span></>}
-          {d.aircraft && <><span className="text-gray-500">Aircraft:</span><span className="text-white">{d.aircraft}</span></>}
-          {d.passengerCount && <><span className="text-gray-500">PAX:</span><span className="text-white">{d.passengerCount}</span></>}
-          {d.distanceNM && <><span className="text-gray-500">Distance:</span><span className="text-white">{d.distanceNM} NM</span></>}
+          {d.clientName && <><span className="text-gray-400">Client:</span><span className="text-white">{d.clientName}</span></>}
+          {d.aircraft && <><span className="text-gray-400">Aircraft:</span><span className="text-white">{d.aircraft}</span></>}
+          {d.passengerCount && <><span className="text-gray-400">PAX:</span><span className="text-white">{d.passengerCount}</span></>}
+          {d.distanceNM && <><span className="text-gray-400">Distance:</span><span className="text-white">{d.distanceNM} NM</span></>}
         </div>
         {d.totalPrice && (
           <div className="mt-3 pt-2 border-t border-lattice-border">
             <div className="flex items-center justify-between">
-              <span className="text-gray-500 text-xs">Total Price:</span>
+              <span className="text-gray-400 text-xs">Total Price:</span>
               <span className="text-emerald-400 font-bold">${d.totalPrice.toLocaleString()}</span>
             </div>
             {d.depositPaid > 0 && (
               <div className="flex items-center justify-between text-xs mt-1">
-                <span className="text-gray-500">Deposit:</span>
+                <span className="text-gray-400">Deposit:</span>
                 <span className="text-green-400">${d.depositPaid.toLocaleString()}</span>
               </div>
             )}
           </div>
         )}
         {d.catering && <div className="text-xs text-purple-400 mt-1"><Package className="w-3 h-3 inline mr-1" />{d.catering}</div>}
-        {d.date && <div className="text-xs text-gray-500 mt-2"><Calendar className="w-3 h-3 inline mr-1" />{d.date}{d.returnDate ? ` - ${d.returnDate}` : ''}</div>}
+        {d.date && <div className="text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 inline mr-1" />{d.date}{d.returnDate ? ` - ${d.returnDate}` : ''}</div>}
       </div>
     );
   };
@@ -1000,14 +1000,14 @@ export default function AviationLensPage() {
         <h3 className="font-semibold text-white mb-1 truncate">{item.title}</h3>
         <div className="text-xs text-gray-400 mb-2 font-mono">{d.tailNumber || '--'}</div>
         <div className="grid grid-cols-2 gap-1 text-xs">
-          <span className="text-gray-500">Empty Wt:</span><span className="text-white">{d.emptyWeight || 0} lbs</span>
-          <span className="text-gray-500">Fuel:</span><span className="text-white">{d.fuelWeight || 0} lbs</span>
-          <span className="text-gray-500">Payload:</span><span className="text-white">{((d.pilotWeight || 0) + (d.copilotWeight || 0) + (d.paxRow1Weight || 0) + (d.paxRow2Weight || 0) + (d.cargoWeight || 0) + (d.baggageWeight || 0))} lbs</span>
-          <span className="text-gray-500">Total:</span><span className={cn('font-bold', d.totalWeight > (d.maxGross || 99999) ? 'text-red-400' : 'text-white')}>{d.totalWeight || 0} lbs</span>
-          <span className="text-gray-500">Max Gross:</span><span className="text-white">{d.maxGross || '--'} lbs</span>
-          <span className="text-gray-500">CG:</span><span className={cn('font-bold', (d.cg < (d.fwdCGLimit || 0) || d.cg > (d.aftCGLimit || 999)) ? 'text-red-400' : 'text-white')}>{d.cg?.toFixed(2) || '--'} in</span>
+          <span className="text-gray-400">Empty Wt:</span><span className="text-white">{d.emptyWeight || 0} lbs</span>
+          <span className="text-gray-400">Fuel:</span><span className="text-white">{d.fuelWeight || 0} lbs</span>
+          <span className="text-gray-400">Payload:</span><span className="text-white">{((d.pilotWeight || 0) + (d.copilotWeight || 0) + (d.paxRow1Weight || 0) + (d.paxRow2Weight || 0) + (d.cargoWeight || 0) + (d.baggageWeight || 0))} lbs</span>
+          <span className="text-gray-400">Total:</span><span className={cn('font-bold', d.totalWeight > (d.maxGross || 99999) ? 'text-red-400' : 'text-white')}>{d.totalWeight || 0} lbs</span>
+          <span className="text-gray-400">Max Gross:</span><span className="text-white">{d.maxGross || '--'} lbs</span>
+          <span className="text-gray-400">CG:</span><span className={cn('font-bold', (d.cg < (d.fwdCGLimit || 0) || d.cg > (d.aftCGLimit || 999)) ? 'text-red-400' : 'text-white')}>{d.cg?.toFixed(2) || '--'} in</span>
         </div>
-        <div className="mt-2 text-xs text-gray-500">
+        <div className="mt-2 text-xs text-gray-400">
           CG Limits: {d.fwdCGLimit || '--'} - {d.aftCGLimit || '--'} in
         </div>
         {/* CG visual bar */}
@@ -1021,7 +1021,7 @@ export default function AviationLensPage() {
             }} />
           </div>
         )}
-        {d.date && <div className="text-xs text-gray-500 mt-2"><Calendar className="w-3 h-3 inline mr-1" />{d.date}</div>}
+        {d.date && <div className="text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 inline mr-1" />{d.date}</div>}
       </div>
     );
   };
@@ -1049,20 +1049,20 @@ export default function AviationLensPage() {
           </div>
         )}
         <div className="grid grid-cols-2 gap-1 text-xs">
-          <span className="text-gray-500 flex items-center gap-1"><Wind className="w-3 h-3" />Wind:</span>
+          <span className="text-gray-400 flex items-center gap-1"><Wind className="w-3 h-3" />Wind:</span>
           <span className="text-white">{d.windDirection || '--'}° @ {d.windSpeed || '--'}kt{d.windGust ? ` G${d.windGust}` : ''}</span>
-          <span className="text-gray-500 flex items-center gap-1"><Eye className="w-3 h-3" />Vis:</span>
+          <span className="text-gray-400 flex items-center gap-1"><Eye className="w-3 h-3" />Vis:</span>
           <span className="text-white">{d.visibility || '--'} SM</span>
-          <span className="text-gray-500 flex items-center gap-1"><CloudRain className="w-3 h-3" />Ceiling:</span>
+          <span className="text-gray-400 flex items-center gap-1"><CloudRain className="w-3 h-3" />Ceiling:</span>
           <span className={cn('text-white', (d.ceiling || 99999) < 1000 ? 'text-red-400 font-bold' : '')}>{d.ceiling ? `${d.ceiling} ft` : 'CLR'}</span>
-          <span className="text-gray-500 flex items-center gap-1"><Thermometer className="w-3 h-3" />Temp:</span>
+          <span className="text-gray-400 flex items-center gap-1"><Thermometer className="w-3 h-3" />Temp:</span>
           <span className="text-white">{d.temperature !== undefined ? `${d.temperature}°C` : '--'} / {d.dewpoint !== undefined ? `${d.dewpoint}°C` : '--'}</span>
-          <span className="text-gray-500">Altimeter:</span>
+          <span className="text-gray-400">Altimeter:</span>
           <span className="text-white">{d.altimeter ? `${d.altimeter}" Hg` : '--'}</span>
         </div>
         {d.cloudLayers && (
           <div className="text-xs text-gray-400 mt-2">
-            <span className="text-gray-500">Clouds:</span> {d.cloudLayers}
+            <span className="text-gray-400">Clouds:</span> {d.cloudLayers}
           </div>
         )}
         {d.wxConditions && (
@@ -1081,7 +1081,7 @@ export default function AviationLensPage() {
             <AlertTriangle className="w-3 h-3" /> AIRMET: {d.airmets}
           </div>
         )}
-        <div className="flex items-center text-xs text-gray-500 mt-2 pt-2 border-t border-lattice-border">
+        <div className="flex items-center text-xs text-gray-400 mt-2 pt-2 border-t border-lattice-border">
           <Clock className="w-3 h-3 mr-1" />{d.observationTime || new Date(item.updatedAt).toLocaleString()}
         </div>
       </div>
@@ -1165,7 +1165,7 @@ export default function AviationLensPage() {
             const selected = ratings.includes(r);
             return (
               <button key={r} onClick={() => setField('ratings', selected ? ratings.filter(x => x !== r) : [...ratings, r])}
-                className={cn('px-2 py-1 rounded text-xs border transition-colors', selected ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'border-lattice-border text-gray-500 hover:text-white')}>
+                className={cn('px-2 py-1 rounded text-xs border transition-colors', selected ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'border-lattice-border text-gray-400 hover:text-white')}>
                 {r}
               </button>
             );
@@ -1438,7 +1438,7 @@ export default function AviationLensPage() {
           <h4 className={cn(ds.heading3, 'text-sm mb-3')}>Loading Stations</h4>
           <div className="space-y-2">
             {/* Table header */}
-            <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 font-medium px-1">
+            <div className="grid grid-cols-3 gap-2 text-xs text-gray-400 font-medium px-1">
               <span>Station</span><span>Weight (lbs)</span><span>Arm (in)</span>
             </div>
             {/* Empty weight */}
@@ -1509,26 +1509,26 @@ export default function AviationLensPage() {
           </div>
           <div className={ds.grid4}>
             <div>
-              <div className="text-xs text-gray-500">Total Weight</div>
+              <div className="text-xs text-gray-400">Total Weight</div>
               <div className={cn('text-lg font-bold', totalW > mg ? 'text-red-400' : 'text-white')}>{totalW.toFixed(1)} lbs</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Total Moment</div>
+              <div className="text-xs text-gray-400">Total Moment</div>
               <div className="text-lg font-bold text-white">{totalM.toFixed(1)}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">CG Location</div>
+              <div className="text-xs text-gray-400">CG Location</div>
               <div className={cn('text-lg font-bold', (cgCalc < fwdL || cgCalc > aftL) ? 'text-red-400' : 'text-white')}>{cgCalc.toFixed(2)} in</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Max Gross</div>
+              <div className="text-xs text-gray-400">Max Gross</div>
               <div className="text-lg font-bold text-white">{mg < 99999 ? `${mg} lbs` : 'N/A'}</div>
             </div>
           </div>
           {/* CG bar indicator */}
           {fwdL > 0 && aftL < 999 && (
             <div className="mt-3">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
                 <span>Fwd: {fwdL}"</span><span>Aft: {aftL}"</span>
               </div>
               <div className="h-4 bg-lattice-border rounded-full relative overflow-hidden">
@@ -1780,15 +1780,15 @@ export default function AviationLensPage() {
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
                   <div>
-                    <div className="text-[10px] text-zinc-500 uppercase">Maintenance</div>
+                    <div className="text-[10px] text-zinc-400 uppercase">Maintenance</div>
                     <div className="text-zinc-200 font-medium">{maint.length}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-zinc-500 uppercase">W&amp;B configs</div>
+                    <div className="text-[10px] text-zinc-400 uppercase">W&amp;B configs</div>
                     <div className="text-zinc-200 font-medium">{wb.length}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-zinc-500 uppercase">Safety wire</div>
+                    <div className="text-[10px] text-zinc-400 uppercase">Safety wire</div>
                     <div className="text-zinc-200 font-medium">{recentSafetyAlerts}/7d</div>
                   </div>
                 </div>
@@ -1921,7 +1921,7 @@ export default function AviationLensPage() {
           {/* Cards Grid */}
           <div className={ds.grid3}>
             {items.length === 0 ? (
-              <p className="col-span-full text-center py-12 text-gray-500">
+              <p className="col-span-full text-center py-12 text-gray-400">
                 No {MODE_TABS.find(t => t.key === activeMode)?.label.toLowerCase() || 'items'} found. Create your first entry.
               </p>
             ) : (
@@ -1980,27 +1980,27 @@ export default function AviationLensPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalTime)}h</p>
-                <p className="text-[10px] text-gray-500">Total Time</p>
+                <p className="text-[10px] text-gray-400">Total Time</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.picTime)}h</p>
-                <p className="text-[10px] text-gray-500">PIC Time</p>
+                <p className="text-[10px] text-gray-400">PIC Time</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.nightTime)}h</p>
-                <p className="text-[10px] text-gray-500">Night Time</p>
+                <p className="text-[10px] text-gray-400">Night Time</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.instrumentTime)}h</p>
-                <p className="text-[10px] text-gray-500">Instrument</p>
+                <p className="text-[10px] text-gray-400">Instrument</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.crossCountry)}h</p>
-                <p className="text-[10px] text-gray-500">Cross-Country</p>
+                <p className="text-[10px] text-gray-400">Cross-Country</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalFlights)}</p>
-                <p className="text-[10px] text-gray-500">Total Flights</p>
+                <p className="text-[10px] text-gray-400">Total Flights</p>
               </div>
             </div>
           )}
@@ -2017,15 +2017,15 @@ export default function AviationLensPage() {
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-green-400">{String(actionResult.occupied)}</p>
-                  <p className="text-[10px] text-gray-500">Occupied</p>
+                  <p className="text-[10px] text-gray-400">Occupied</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-amber-400">{String(actionResult.vacant)}</p>
-                  <p className="text-[10px] text-gray-500">Vacant</p>
+                  <p className="text-[10px] text-gray-400">Vacant</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">${String(actionResult.monthlyRevenue)}</p>
-                  <p className="text-[10px] text-gray-500">Monthly Rev</p>
+                  <p className="text-[10px] text-gray-400">Monthly Rev</p>
                 </div>
               </div>
             </div>
@@ -2171,7 +2171,7 @@ function ForeFlightWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
-                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
             }
           >
             {t.label}

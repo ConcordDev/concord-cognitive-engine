@@ -99,7 +99,7 @@ export function RestaurantMap() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MapPin className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Restaurant Map</span>
-        <span className="ml-auto text-[10px] text-gray-500">
+        <span className="ml-auto text-[10px] text-gray-400">
           {markers.length} on map{withoutGeo > 0 ? ` · ${withoutGeo} without location` : ''}
         </span>
       </header>
@@ -129,9 +129,9 @@ export function RestaurantMap() {
 
         {/* Map */}
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading map…</div>
+          <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading map…</div>
         ) : markers.length === 0 ? (
-          <div className="py-12 text-center text-xs text-gray-500">
+          <div className="py-12 text-center text-xs text-gray-400">
             <MapPin className="w-6 h-6 mx-auto mb-2 opacity-30" />
             No restaurants with map locations yet. Add a business with latitude/longitude in the Discover tab.
           </div>
@@ -145,17 +145,17 @@ export function RestaurantMap() {
                 <div className="flex items-start gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-white">{selectedBiz.name}</div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-[10px] text-gray-400">
                       {selectedBiz.cuisine} · {'$'.repeat(selectedBiz.priceTier)}
                       {selectedBiz.neighborhood ? ` · ${selectedBiz.neighborhood}` : ''}
                     </div>
-                    {selectedBiz.address && <div className="text-[10px] text-gray-600 mt-0.5">{selectedBiz.address}</div>}
+                    {selectedBiz.address && <div className="text-[10px] text-gray-400 mt-0.5">{selectedBiz.address}</div>}
                   </div>
                   <div className="text-right shrink-0">
                     <div className="flex items-center gap-0.5 text-yellow-400 text-xs">
                       <Star className="w-3.5 h-3.5 fill-yellow-400" /> {selectedBiz.rating || '—'}
                     </div>
-                    <div className="text-[9px] text-gray-600">{selectedBiz.reviewCount} reviews</div>
+                    <div className="text-[9px] text-gray-400">{selectedBiz.reviewCount} reviews</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
@@ -185,7 +185,7 @@ export function RestaurantMap() {
                     <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-white truncate">{m.name}</div>
-                      <div className="text-[10px] text-gray-500">{m.cuisine} · {'$'.repeat(m.priceTier)}</div>
+                      <div className="text-[10px] text-gray-400">{m.cuisine} · {'$'.repeat(m.priceTier)}</div>
                     </div>
                     {m.distanceKm != null && <span className="text-[10px] text-cyan-300">{m.distanceKm} km</span>}
                     <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">

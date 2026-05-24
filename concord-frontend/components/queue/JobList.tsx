@@ -56,7 +56,7 @@ export function JobList({
 }) {
   if (jobs.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+      <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
         No jobs. Enqueue one above to get started.
       </p>
     );
@@ -99,7 +99,7 @@ export function JobList({
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${PRIORITY_STYLE[j.priority]}`}>
                     {j.priority}
                   </span>
-                  <span className="text-[10px] text-zinc-500">
+                  <span className="text-[10px] text-zinc-400">
                     {j.attempts}/{j.maxAttempts} attempts
                   </span>
                   {typeof j.etaMs === 'number' && (
@@ -108,7 +108,7 @@ export function JobList({
                     </span>
                   )}
                   {j.durationMs != null && (
-                    <span className="text-[10px] text-zinc-500">{j.durationMs}ms</span>
+                    <span className="text-[10px] text-zinc-400">{j.durationMs}ms</span>
                   )}
                 </div>
                 {j.error && (

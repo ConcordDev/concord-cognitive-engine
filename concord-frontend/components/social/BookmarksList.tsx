@@ -84,7 +84,7 @@ export function BookmarksList({ className, showHeader = true }: BookmarksListPro
 
   if (isLoading) {
     return (
-      <div className={cn('flex items-center gap-2 py-10 text-zinc-500 text-sm', className)}>
+      <div className={cn('flex items-center gap-2 py-10 text-zinc-400 text-sm', className)}>
         <Loader2 className="w-4 h-4 animate-spin" /> Loading your bookmarks…
       </div>
     );
@@ -101,7 +101,7 @@ export function BookmarksList({ className, showHeader = true }: BookmarksListPro
   if (bookmarks.length === 0) {
     return (
       <div className={cn('text-center py-12 text-zinc-400', className)}>
-        <Bookmark className="w-6 h-6 mx-auto mb-2 text-zinc-500" />
+        <Bookmark className="w-6 h-6 mx-auto mb-2 text-zinc-400" />
         <div className="font-medium text-zinc-200">No bookmarks yet</div>
         <div className="text-sm mt-1">Click the bookmark icon on any post to save it for later.</div>
       </div>
@@ -119,7 +119,7 @@ export function BookmarksList({ className, showHeader = true }: BookmarksListPro
           <button
             type="button"
             onClick={() => refetch()}
-            className="text-xs text-zinc-500 hover:text-zinc-200"
+            className="text-xs text-zinc-400 hover:text-zinc-200"
           >
             Refresh
           </button>
@@ -132,7 +132,7 @@ export function BookmarksList({ className, showHeader = true }: BookmarksListPro
           className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 space-y-2"
         >
           {loading && (
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
               <Loader2 className="w-3 h-3 animate-spin" /> Loading post…
             </div>
           )}
@@ -167,7 +167,7 @@ export function BookmarksList({ className, showHeader = true }: BookmarksListPro
                     prefix="@"
                   />
                   {post.createdAt && (
-                    <span className="text-[10px] text-zinc-500">
+                    <span className="text-[10px] text-zinc-400">
                       {new Date(post.createdAt).toLocaleString()}
                     </span>
                   )}

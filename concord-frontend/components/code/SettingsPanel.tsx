@@ -132,7 +132,7 @@ export default function SettingsPanel({ open, onClose, onChange, initial }: Sett
             <header className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gradient-to-r from-cyan-500/5 to-purple-500/5">
               <div className="flex items-center gap-3">
                 <h2 id="settings-title" className="text-sm font-bold text-white">Code Lens Settings</h2>
-                <span className="text-[10px] text-gray-500">Persisted to browser · per-user</span>
+                <span className="text-[10px] text-gray-400">Persisted to browser · per-user</span>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -274,7 +274,7 @@ export default function SettingsPanel({ open, onClose, onChange, initial }: Sett
                 )}
               </div>
             </div>
-            <footer className="px-4 py-2 border-t border-white/10 text-[11px] text-gray-500 flex justify-between bg-[#0a0e17]">
+            <footer className="px-4 py-2 border-t border-white/10 text-[11px] text-gray-400 flex justify-between bg-[#0a0e17]">
               <span>Changes save automatically · Esc to close</span>
               <span className="inline-flex items-center gap-1 text-green-400"><Save className="w-3 h-3" /> Saved</span>
             </footer>

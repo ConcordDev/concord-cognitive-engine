@@ -74,7 +74,7 @@ export function ExpressionEvaluator({ onSaved }: { onSaved?: () => void }) {
         <Calculator className="w-4 h-4 text-gray-400" />
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Expression Evaluator</h2>
       </div>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Multi-term expressions with precedence and parentheses. Mix decimals and glyphs:
         e.g. <span className="text-violet-400">(2 + 3) * 4</span> or <span className="text-violet-400">⟲⟐ + 1</span>.
       </p>
@@ -124,7 +124,7 @@ export function ExpressionEvaluator({ onSaved }: { onSaved?: () => void }) {
           </div>
           {result.steps.length > 0 && (
             <div className="border-t border-gray-800 pt-2">
-              <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5">
+              <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">
                 Evaluation steps ({result.steps.length})
               </div>
               <ol className="space-y-1 text-xs font-mono">

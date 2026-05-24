@@ -85,12 +85,12 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
         <h3 className="text-sm font-medium text-zinc-100 flex-1">MET Museum · Open Access</h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data · CC0</span>
         {total > 0 && (
-          <span className="text-[10px] text-zinc-500 font-mono">{works.length} / {total}</span>
+          <span className="text-[10px] text-zinc-400 font-mono">{works.length} / {total}</span>
         )}
       </header>
 
       <div className="p-3 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -108,11 +108,11 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
       )}
 
       {!error && works.length === 0 && query.trim().length >= 2 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No works in MET for &ldquo;{query.trim()}&rdquo;.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No works in MET for &ldquo;{query.trim()}&rdquo;.</div>
       )}
 
       {!error && works.length === 0 && query.trim().length < 2 && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">Type 2+ characters to search 470,000+ works.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Type 2+ characters to search 470,000+ works.</div>
       )}
 
       {works.length > 0 && (
@@ -135,7 +135,7 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
                 )}
                 <div className="mt-1.5">
                   <div className="text-[11px] text-zinc-200 font-medium leading-snug line-clamp-2">{w.title}</div>
-                  <div className="text-[10px] text-zinc-500 truncate mt-0.5">
+                  <div className="text-[10px] text-zinc-400 truncate mt-0.5">
                     {w.artist || w.culture || '—'}{w.objectDate ? ` · ${w.objectDate}` : ''}
                   </div>
                 </div>
@@ -148,7 +148,7 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
             ) : w.objectUrl ? (
               <a key={w.objectId} href={w.objectUrl} target="_blank" rel="noopener noreferrer" className="text-left block">
                 {inner}
-                <div className="text-[10px] text-zinc-600 hover:text-rose-300 mt-0.5 flex items-center gap-0.5">
+                <div className="text-[10px] text-zinc-400 hover:text-rose-300 mt-0.5 flex items-center gap-0.5">
                   <ExternalLink className="w-2.5 h-2.5" />metmuseum.org
                 </div>
               </a>
@@ -159,7 +159,7 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
         </div>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: MET Museum Open Access · ~470,000 works · CC0
       </footer>
     </section>

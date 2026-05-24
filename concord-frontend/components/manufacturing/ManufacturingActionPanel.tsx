@@ -217,7 +217,7 @@ export function ManufacturingActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -228,7 +228,7 @@ export function ManufacturingActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">OEE</div>
             <div className={cn('text-3xl font-bold', RATING_COLOR[oeeResult.rating])}>{oeeResult.oee}%</div>
-            <div className="text-[10px] text-zinc-500">A {oeeResult.availability}% × P {oeeResult.performance}% × Q {oeeResult.quality}%</div>
+            <div className="text-[10px] text-zinc-400">A {oeeResult.availability}% × P {oeeResult.performance}% × Q {oeeResult.quality}%</div>
             <div className={cn('text-[10px] font-semibold', RATING_COLOR[oeeResult.rating])}>{oeeResult.rating.replace('_', ' ')}</div>
           </div>
         )}
@@ -244,8 +244,8 @@ export function ManufacturingActionPanel() {
           <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">TRIR</div>
             <div className={cn('text-2xl font-bold', BENCH_COLOR[safeResult.benchmark])}>{safeResult.incidentRate}</div>
-            <div className="text-[10px] text-zinc-500">{safeResult.recordableIncidents} rec / {safeResult.totalIncidents} total</div>
-            <div className="text-[10px] text-zinc-500">{safeResult.hoursWorked.toLocaleString()} hrs</div>
+            <div className="text-[10px] text-zinc-400">{safeResult.recordableIncidents} rec / {safeResult.totalIncidents} total</div>
+            <div className="text-[10px] text-zinc-400">{safeResult.hoursWorked.toLocaleString()} hrs</div>
             <div className={cn('text-[10px] font-semibold', BENCH_COLOR[safeResult.benchmark])}>{safeResult.benchmark.replace('_', ' ')}</div>
           </div>
         )}
@@ -253,7 +253,7 @@ export function ManufacturingActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Schedule</div>
             <div className="text-2xl font-bold text-cyan-300">{schedResult.makespan ?? '-'}<span className="text-xs text-zinc-400"> min</span></div>
-            {schedResult.utilization != null && <div className="text-[10px] text-zinc-500">util {schedResult.utilization}%</div>}
+            {schedResult.utilization != null && <div className="text-[10px] text-zinc-400">util {schedResult.utilization}%</div>}
             {schedResult.bottleneck && <div className="text-[10px] text-amber-300">⚠ bottleneck: {schedResult.bottleneck}</div>}
             {(schedResult.jobs ?? []).slice(0, 4).map((j, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5">{j.id} · {j.machine} · {j.duration}min</div>)}
           </div>

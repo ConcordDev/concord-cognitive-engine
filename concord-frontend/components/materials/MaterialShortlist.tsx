@@ -60,14 +60,14 @@ export function MaterialShortlist() {
     else alert(r.data?.error || 'Need 2+ materials.');
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Layers className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Material Shortlist</h3>
-        <span className="text-[11px] text-zinc-500">Granta MI shape</span>
+        <span className="text-[11px] text-zinc-400">Granta MI shape</span>
         <button onClick={compare} disabled={materials.length < 2}
           className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-40">Compare</button>
       </div>
@@ -88,12 +88,12 @@ export function MaterialShortlist() {
       </div>
 
       {materials.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No materials shortlisted — add candidates above or from MP search.</p>
+        <p className="text-xs text-zinc-400 italic">No materials shortlisted — add candidates above or from MP search.</p>
       ) : comparison ? (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-zinc-500 text-left">
+              <tr className="text-zinc-400 text-left">
                 <th className="py-1 pr-2">Property</th>
                 {comparison.materials.map(m => <th key={m.id} className="py-1 px-2">{m.name}</th>)}
                 <th className="py-1 pl-2">Best</th>
@@ -118,16 +118,16 @@ export function MaterialShortlist() {
               ))}
             </tbody>
           </table>
-          <button onClick={() => setComparison(null)} className="mt-2 text-[11px] text-zinc-500 hover:text-zinc-300">← back to list</button>
+          <button onClick={() => setComparison(null)} className="mt-2 text-[11px] text-zinc-400 hover:text-zinc-300">← back to list</button>
         </div>
       ) : (
         <ul className="space-y-1">
           {materials.map(m => (
             <li key={m.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-1.5">
               <span className="text-xs font-semibold text-zinc-100">{m.name}</span>
-              {m.formula && <span className="text-[10px] font-mono text-zinc-500">{m.formula}</span>}
+              {m.formula && <span className="text-[10px] font-mono text-zinc-400">{m.formula}</span>}
               <span className="text-[9px] px-1 rounded bg-cyan-900/40 text-cyan-300">{m.category}</span>
-              <span className="text-[10px] text-zinc-500 ml-auto">
+              <span className="text-[10px] text-zinc-400 ml-auto">
                 {FIELDS.filter(f => m.properties[f.key] != null).map(f => `${f.label} ${m.properties[f.key]}`).join(' · ')}
               </span>
               <button onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>

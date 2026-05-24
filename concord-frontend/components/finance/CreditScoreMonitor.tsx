@@ -98,7 +98,7 @@ export function CreditScoreMonitor() {
         </button>
       </header>
 
-      <p className="px-4 py-2 text-[10px] text-gray-500 border-b border-white/5">
+      <p className="px-4 py-2 text-[10px] text-gray-400 border-b border-white/5">
         Log readings from your bureau or card issuer. Scores are your real reported
         figures — nothing is pulled or invented.
       </p>
@@ -159,11 +159,11 @@ export function CreditScoreMonitor() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : !latest ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">
+        <div className="px-3 py-10 text-center text-xs text-gray-400">
           <Gauge className="w-6 h-6 mx-auto mb-2 opacity-30" />
           No credit-score readings logged yet. Click + to add one.
         </div>
@@ -174,7 +174,7 @@ export function CreditScoreMonitor() {
               <div className={cn('text-4xl font-bold tabular-nums', BAND_COLOR[report!.band] || 'text-white')}>
                 {latest.score}
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-gray-500">
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">
                 {report!.band} · {latest.bureau}
               </div>
             </div>
@@ -214,16 +214,16 @@ export function CreditScoreMonitor() {
             <ul className="divide-y divide-white/5">
               {[...report!.history].reverse().map((h) => (
                 <li key={h.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3 text-xs">
-                  <span className="text-[10px] text-gray-500 font-mono w-20">{h.date}</span>
+                  <span className="text-[10px] text-gray-400 font-mono w-20">{h.date}</span>
                   <span className="font-mono text-sm text-white tabular-nums">{h.score}</span>
-                  <span className="text-[10px] text-gray-500 uppercase">{h.bureau}</span>
+                  <span className="text-[10px] text-gray-400 uppercase">{h.bureau}</span>
                   <span className="flex-1" />
                   {h.factors.utilisationPct != null && (
-                    <span className="text-[10px] text-gray-500">util {h.factors.utilisationPct}%</span>
+                    <span className="text-[10px] text-gray-400">util {h.factors.utilisationPct}%</span>
                   )}
                   <button
                     onClick={() => remove(h.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
                     aria-label="Delete reading"
                   >
                     <Trash2 className="w-3 h-3" />

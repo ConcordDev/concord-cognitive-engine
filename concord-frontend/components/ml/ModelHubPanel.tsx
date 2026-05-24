@@ -127,7 +127,7 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /> Loading models...
         </div>
       ) : models.length === 0 ? (
-        <div className="py-12 text-center text-gray-500">No models found.</div>
+        <div className="py-12 text-center text-gray-400">No models found.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {models.map((m) => (
@@ -137,7 +137,7 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
                 <Brain className="w-4 h-4 text-neon-purple mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="font-semibold text-sm truncate" title={m.id}>{m.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{m.author}</p>
+                  <p className="text-xs text-gray-400 truncate">{m.author}</p>
                 </div>
               </div>
               <p className="text-xs text-neon-cyan mb-2">{m.task}</p>
@@ -197,7 +197,7 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
                   </div>
                   {card.tags.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tags</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Tags</p>
                       <div className="flex flex-wrap gap-1">
                         {card.tags.map((t) => (
                           <span key={t} className="text-xs bg-lattice-surface px-2 py-0.5 rounded text-gray-300">{t}</span>
@@ -207,7 +207,7 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
                   )}
                   {card.siblings.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Files</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Files</p>
                       <div className="space-y-0.5 max-h-40 overflow-y-auto">
                         {card.siblings.map((f) => (
                           <p key={f} className="text-xs font-mono text-gray-400 flex items-center gap-1">

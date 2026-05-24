@@ -52,7 +52,7 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
   const play = async (id: string) => { await lensRun('music', 'play-track', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -67,13 +67,13 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
           <p className="text-[11px] text-zinc-400 mb-2">{wrapped.totalPlays} plays this year</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[10px] text-zinc-500 uppercase mb-0.5">Top tracks</p>
+              <p className="text-[10px] text-zinc-400 uppercase mb-0.5">Top tracks</p>
               {wrapped.topTracks.map((t, i) => (
                 <p key={i} className="text-[11px] text-zinc-300 truncate">{i + 1}. {t.title}</p>
               ))}
             </div>
             <div>
-              <p className="text-[10px] text-zinc-500 uppercase mb-0.5">Top artists</p>
+              <p className="text-[10px] text-zinc-400 uppercase mb-0.5">Top artists</p>
               {wrapped.topArtists.map((a, i) => (
                 <p key={i} className="text-[11px] text-zinc-300 truncate">{i + 1}. {a.artist}</p>
               ))}
@@ -87,15 +87,15 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-zinc-100">{stats.totalPlays}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Plays</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Plays</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-zinc-100">{stats.listenedHours}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Hours</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Hours</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-zinc-100">{stats.libraryTracks}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Library</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Library</p>
           </div>
         </div>
       )}
@@ -110,8 +110,8 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
             {topTracks.slice(0, 8).map((t, i) => (
               <li key={t.id} className="flex items-center gap-2 text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="w-4 text-zinc-600">{i + 1}</span>
-                <span className="text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-500">— {t.artist}</span></span>
-                <span className="text-zinc-500">{t.playCount} plays</span>
+                <span className="text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
+                <span className="text-zinc-400">{t.playCount} plays</span>
               </li>
             ))}
           </ul>
@@ -122,7 +122,7 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Daily Mix</h3>
         {dailyMix.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Add and play tracks to seed your daily mix.</p>
+          <p className="text-[11px] text-zinc-400 italic">Add and play tracks to seed your daily mix.</p>
         ) : (
           <ul className="space-y-1">
             {dailyMix.slice(0, 8).map((t) => (
@@ -130,7 +130,7 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
                 <button type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300">
                   <Play className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-[11px] text-zinc-300 truncate">{t.title} <span className="text-zinc-500">— {t.artist}</span></span>
+                <span className="text-[11px] text-zinc-300 truncate">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
               </li>
             ))}
           </ul>
@@ -152,7 +152,7 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
           <div className="flex flex-wrap gap-1.5">
             {artists.map((a) => (
               <span key={a.name} className="text-[11px] px-2 py-0.5 rounded-full border border-emerald-700/50 bg-emerald-950/40 text-emerald-300">
-                {a.name} <span className="text-zinc-500">· {a.trackCount}</span>
+                {a.name} <span className="text-zinc-400">· {a.trackCount}</span>
               </span>
             ))}
           </div>

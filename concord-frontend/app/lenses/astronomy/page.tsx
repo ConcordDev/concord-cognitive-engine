@@ -103,13 +103,13 @@ function CelestialCard({
             <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${
               visible
                 ? 'bg-green-400/15 text-green-400 border border-green-400/30'
-                : 'bg-gray-600/20 text-gray-500 border border-gray-600/30'
+                : 'bg-gray-600/20 text-gray-400 border border-gray-600/30'
             }`}>
               {visible ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
               {visible ? 'Tonight' : 'Not visible'}
             </span>
           </div>
-          <div className="flex gap-3 mt-0.5 text-xs text-gray-500">
+          <div className="flex gap-3 mt-0.5 text-xs text-gray-400">
             {obj.constellation && <span>{obj.constellation}</span>}
             {obj.magnitude !== undefined && obj.magnitude !== 0 && <span>Mag {obj.magnitude}</span>}
             {obj.distance && <span>{obj.distance}</span>}
@@ -314,19 +314,19 @@ export default function AstronomyLensPage() {
                 <Globe className="w-3.5 h-3.5" />
                 Group by Constellation
               </button>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {filtered.filter(o => isVisibleTonight(o.name || o.title || '')).length} visible tonight
               </span>
             </div>
           )}
 
           {filtered.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-4">No celestial objects cataloged yet.</p>
+            <p className="text-gray-400 text-sm text-center py-4">No celestial objects cataloged yet.</p>
           ) : groupByConstellation ? (
             <div className="space-y-4">
               {(Object.entries(groupedByConstellation) as [string, (CelestialObject & { id: string; title: string })[]][]).sort(([a], [b]) => a.localeCompare(b)).map(([constellation, conObjs]) => (
                 <div key={constellation}>
-                  <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                     <Star className="w-3 h-3 text-indigo-400" />
                     {constellation}
                     <span className="text-gray-600">({conObjs.length})</span>
@@ -370,7 +370,7 @@ export default function AstronomyLensPage() {
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium">{obs.target || obs.title}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">{obs.date ? new Date(obs.date).toLocaleDateString() : ''}</span>
+                    <span className="text-xs text-gray-400">{obs.date ? new Date(obs.date).toLocaleDateString() : ''}</span>
                     <button onClick={() => removeObs(obs.id)} className="text-gray-600 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
@@ -385,7 +385,7 @@ export default function AstronomyLensPage() {
       {activeTab === 'planning' && (
         <div className="panel p-4">
           <h3 className="font-semibold mb-3 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-400" /> Session Planner</h3>
-          <p className="text-gray-500 text-sm text-center py-4">Select objects from your catalog to plan an observation session. Best results with clear skies and low light pollution.</p>
+          <p className="text-gray-400 text-sm text-center py-4">Select objects from your catalog to plan an observation session. Best results with clear skies and low light pollution.</p>
           {objects.length > 0 ? (
             <div className="mt-4 space-y-2">
               <p className="text-sm text-gray-400 mb-3">
@@ -405,17 +405,17 @@ export default function AstronomyLensPage() {
                     <div key={obj.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
                       <span className={`text-sm ${typeInfo.color}`}>{typeInfo.emoji}</span>
                       <span className="text-sm">{obj.name || obj.title}</span>
-                      <span className="text-xs text-gray-500">{obj.constellation || obj.type}</span>
-                      <button onClick={() => handleAction(obj.id)} className="text-gray-500 hover:text-indigo-400 ml-2" title="Run AI analysis">
+                      <span className="text-xs text-gray-400">{obj.constellation || obj.type}</span>
+                      <button onClick={() => handleAction(obj.id)} className="text-gray-400 hover:text-indigo-400 ml-2" title="Run AI analysis">
                         <Zap className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => update(obj.id, { data: { ...obj, notes: `Updated ${new Date().toLocaleDateString()}` } })} className="text-gray-500 hover:text-yellow-400" title="Mark updated">
+                      <button onClick={() => update(obj.id, { data: { ...obj, notes: `Updated ${new Date().toLocaleDateString()}` } })} className="text-gray-400 hover:text-yellow-400" title="Mark updated">
                         <Star className="w-3.5 h-3.5" />
                       </button>
                       <span className={`ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${
                         visible
                           ? 'bg-green-400/15 text-green-400'
-                          : 'bg-gray-600/20 text-gray-500'
+                          : 'bg-gray-600/20 text-gray-400'
                       }`}>
                         {visible ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
                         {visible ? 'Tonight' : 'Not visible'}
@@ -425,7 +425,7 @@ export default function AstronomyLensPage() {
                 })}
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+            <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
               <p>No celestial objects cataloged yet. Add objects to see your observation log.</p>
             </div>
           )}

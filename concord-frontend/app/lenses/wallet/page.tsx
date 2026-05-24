@@ -449,7 +449,7 @@ function WalletPageInner() {
                 </>
               )}
             </div>
-            <p className="text-sm text-gray-500 flex items-center gap-1">
+            <p className="text-sm text-gray-400 flex items-center gap-1">
               <DollarSign className="w-3.5 h-3.5" />
               {balance.toLocaleString()}.00 USD
             </p>
@@ -539,7 +539,7 @@ function WalletPageInner() {
               connectStatus?.onboardingComplete ? (
                 <Sparkles className="w-4 h-4 text-neon-green" />
               ) : (
-                <ArrowUpFromLine className="w-4 h-4 text-gray-500" />
+                <ArrowUpFromLine className="w-4 h-4 text-gray-400" />
               )
             }
             color={
@@ -610,7 +610,7 @@ function WalletPageInner() {
 
                 {/* Total Earned */}
                 <div className="bg-lattice-deep rounded-lg p-4 border border-lattice-border">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">
                     Total Earned
                   </p>
                   <p className="text-2xl font-mono font-bold text-neon-green mt-1">
@@ -640,13 +640,13 @@ function WalletPageInner() {
                 {/* Month Comparison */}
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-lattice-border">
                   <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border">
-                    <p className="text-xs text-gray-500">This Month</p>
+                    <p className="text-xs text-gray-400">This Month</p>
                     <p className="text-lg font-mono font-bold text-white mt-1">
                       {earnings.thisMonth.toLocaleString()}
                     </p>
                   </div>
                   <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border">
-                    <p className="text-xs text-gray-500">Last Month</p>
+                    <p className="text-xs text-gray-400">Last Month</p>
                     <p className="text-lg font-mono font-bold text-gray-400 mt-1">
                       {earnings.lastMonth.toLocaleString()}
                     </p>
@@ -710,25 +710,25 @@ function WalletPageInner() {
             {activeTab === 'withdrawal' && withdrawalsData && (
               <div className="px-4 pt-4">
                 <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border mb-3">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Recent Withdrawals</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Recent Withdrawals</p>
                   <div className="space-y-2">
                     {(withdrawalsData.withdrawals || withdrawalsData.items || []).slice(0, 5).map(w => (
                       <div key={w.id} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <ArrowDownToLine className="w-3.5 h-3.5 text-amber-400" />
                           <span className="font-mono text-white">{w.amount.toLocaleString()} CC</span>
-                          {w.fee > 0 && <span className="text-xs text-gray-500">(fee: {w.fee})</span>}
+                          {w.fee > 0 && <span className="text-xs text-gray-400">(fee: {w.fee})</span>}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-1.5 py-0.5 rounded ${w.status === 'complete' || w.status === 'completed' ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
                             {w.status}
                           </span>
-                          <span className="text-xs text-gray-500">{new Date(w.created_at).toLocaleDateString()}</span>
+                          <span className="text-xs text-gray-400">{new Date(w.created_at).toLocaleDateString()}</span>
                         </div>
                       </div>
                     ))}
                     {(withdrawalsData.withdrawals || withdrawalsData.items || []).length === 0 && (
-                      <p className="text-xs text-gray-500">No withdrawals found</p>
+                      <p className="text-xs text-gray-400">No withdrawals found</p>
                     )}
                   </div>
                 </div>
@@ -748,11 +748,11 @@ function WalletPageInner() {
                     placeholder="Search by type, description, address, amount…"
                     className="w-full pl-8 pr-8 py-1.5 text-sm bg-lattice-deep border border-lattice-border rounded text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50"
                   />
-                  <Sparkles className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                  <Sparkles className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                   {txQuery && (
                     <button
                       onClick={() => setTxQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-lattice-elevated text-gray-500 hover:text-white"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-lattice-elevated text-gray-400 hover:text-white"
                       aria-label="Clear search"
                     >
                       <XIcon className="w-3 h-3" />
@@ -769,7 +769,7 @@ function WalletPageInner() {
                   CSV
                 </button>
                 {txQuery && (
-                  <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                  <span className="text-[10px] text-gray-400 whitespace-nowrap">
                     {visibleTransactions.length} of {transactions.length}
                   </span>
                 )}
@@ -787,7 +787,7 @@ function WalletPageInner() {
                 <div className="text-center py-12">
                   <History className="w-8 h-8 mx-auto text-gray-600 mb-3" />
                   <p className="text-gray-400">No transactions found</p>
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     {activeTab !== 'all'
                       ? 'Try the "All" tab to see all transactions'
                       : 'Your transaction history will appear here'}
@@ -815,7 +815,7 @@ function WalletPageInner() {
                       {isFetchingNextPage ? (
                         <Loader2 className="w-5 h-5 mx-auto text-neon-blue animate-spin" />
                       ) : (
-                        <span className="text-xs text-gray-600">
+                        <span className="text-xs text-gray-400">
                           Scroll for more
                         </span>
                       )}
@@ -952,7 +952,7 @@ function WalletPageInner() {
                   <div className="text-sm font-semibold text-white truncate">
                     {activeTx.description || activeTx.type.replace(/_/g, ' ')}
                   </div>
-                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">{activeTx.type}</div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wider font-mono">{activeTx.type}</div>
                 </div>
                 <button
                   onClick={() => setActiveTx(null)}
@@ -964,7 +964,7 @@ function WalletPageInner() {
               </div>
               <div className="p-4 space-y-3">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Amount</div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Amount</div>
                   <div className={cn(
                     'text-3xl font-bold font-mono',
                     activeTx.amount >= 0 ? 'text-green-400' : 'text-red-400'
@@ -975,12 +975,12 @@ function WalletPageInner() {
                 {(activeTx.fee !== undefined && activeTx.fee > 0) && (
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500">Fee</div>
+                      <div className="text-[10px] uppercase tracking-wider text-gray-400">Fee</div>
                       <div className="text-amber-400 font-mono">{activeTx.fee.toLocaleString()} CC</div>
                     </div>
                     {activeTx.net !== undefined && (
                       <div>
-                        <div className="text-[10px] uppercase tracking-wider text-gray-500">Net</div>
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400">Net</div>
                         <div className="text-white font-mono">{activeTx.net.toLocaleString()} CC</div>
                       </div>
                     )}
@@ -990,13 +990,13 @@ function WalletPageInner() {
                   <div className="space-y-2 pt-2 border-t border-lattice-border">
                     {activeTx.from && (
                       <div>
-                        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">From</div>
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">From</div>
                         <div className="text-xs font-mono text-gray-300 break-all">{activeTx.from}</div>
                       </div>
                     )}
                     {activeTx.to && (
                       <div>
-                        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">To</div>
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">To</div>
                         <div className="text-xs font-mono text-gray-300 break-all">{activeTx.to}</div>
                       </div>
                     )}
@@ -1004,7 +1004,7 @@ function WalletPageInner() {
                 )}
                 {activeTx.status && (
                   <div className="pt-2 border-t border-lattice-border">
-                    <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Status</div>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Status</div>
                     <span className={cn(
                       'text-xs px-2 py-0.5 rounded',
                       activeTx.status === 'completed' || activeTx.status === 'complete' ? 'bg-green-500/15 text-green-400' :
@@ -1017,13 +1017,13 @@ function WalletPageInner() {
                 )}
                 <div className="pt-2 border-t border-lattice-border space-y-2">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-gray-500">Timestamp</div>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-400">Timestamp</div>
                     <div className="text-xs text-gray-300">
                       {new Date(activeTx.created_at || activeTx.timestamp || '').toLocaleString()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="text-[10px] uppercase tracking-wider text-gray-500">ID</div>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-400">ID</div>
                     <code className="text-xs font-mono text-gray-400 truncate flex-1">{activeTx.id}</code>
                     <button
                       onClick={() => navigator.clipboard?.writeText(activeTx.id)}
@@ -1033,7 +1033,7 @@ function WalletPageInner() {
                 </div>
                 {activeTx.metadata && Object.keys(activeTx.metadata).length > 0 && (
                   <details className="pt-2 border-t border-lattice-border">
-                    <summary className="text-[10px] uppercase tracking-wider text-gray-500 cursor-pointer hover:text-gray-300">
+                    <summary className="text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:text-gray-300">
                       Metadata ({Object.keys(activeTx.metadata).length})
                     </summary>
                     <pre className="mt-2 text-[10px] text-gray-400 font-mono whitespace-pre-wrap break-words bg-lattice-deep p-2 rounded max-h-40 overflow-auto">
@@ -1209,7 +1209,7 @@ function QuickStat({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-gray-400">{label}</p>
       <div className="flex items-center gap-2">
         {icon}
         <span className={cn('font-mono font-medium', color)}>
@@ -1238,7 +1238,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
     transfer: <Repeat className="w-4 h-4 text-neon-blue" />,
     bounty: <Target className="w-4 h-4 text-amber-400" />,
     sale: <DollarSign className="w-4 h-4 text-neon-green" />,
-    fee: <BarChart3 className="w-4 h-4 text-gray-500" />,
+    fee: <BarChart3 className="w-4 h-4 text-gray-400" />,
   };
 
   const statusColors: Record<string, string> = {
@@ -1247,8 +1247,8 @@ function TransactionRow({ tx }: { tx: Transaction }) {
     pending: 'text-amber-400',
     processing: 'text-neon-blue',
     failed: 'text-red-400',
-    reversed: 'text-gray-500',
-    canceled: 'text-gray-500',
+    reversed: 'text-gray-400',
+    canceled: 'text-gray-400',
   };
 
   const dateStr = tx.created_at || tx.timestamp || '';
@@ -1272,7 +1272,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           {date && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               {date.toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -1292,7 +1292,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             <span
               className={cn(
                 'text-xs capitalize',
-                statusColors[tx.status] || 'text-gray-500'
+                statusColors[tx.status] || 'text-gray-400'
               )}
             >
               {tx.status}
@@ -1313,7 +1313,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
           {tx.amount.toLocaleString()} CC
         </span>
         {tx.fee && tx.fee > 0 && (
-          <p className="text-xs text-gray-600 font-mono">
+          <p className="text-xs text-gray-400 font-mono">
             fee: {tx.fee.toLocaleString()}
           </p>
         )}
@@ -1503,7 +1503,7 @@ function TransferFlow({
             <div>
               <label className={ds.label}>Amount</label>
               <div className="relative">
-                <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   inputMode="numeric"
@@ -1513,7 +1513,7 @@ function TransferFlow({
                   className={cn(ds.input, 'pl-10 font-mono')}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Available: {balance.toLocaleString()} CC</p>
+              <p className="text-xs text-gray-400 mt-1">Available: {balance.toLocaleString()} CC</p>
             </div>
 
             {parsedAmount > 0 && isValid && (
@@ -1550,7 +1550,7 @@ function TransferFlow({
                 'w-full px-6 py-3',
                 isValid
                   ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/30'
-                  : 'bg-lattice-elevated text-gray-500 cursor-not-allowed'
+                  : 'bg-lattice-elevated text-gray-400 cursor-not-allowed'
               )}
             >
               <Send className="w-5 h-5" />
@@ -1671,7 +1671,7 @@ function PendingWithdrawalsBanner({
               <div key={w.id} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-white">{w.amount.toLocaleString()} CC</span>
-                  {w.fee > 0 && <span className="text-gray-500">(fee: {w.fee})</span>}
+                  {w.fee > 0 && <span className="text-gray-400">(fee: {w.fee})</span>}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={cn(
@@ -1682,7 +1682,7 @@ function PendingWithdrawalsBanner({
                   )}>
                     {w.status}
                   </span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-400">
                     {new Date(w.created_at).toLocaleDateString()}
                   </span>
                 </div>

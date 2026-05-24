@@ -152,14 +152,14 @@ export function AppBuilderStudio() {
               <button onClick={() => loadProject(p.id)} className="font-medium">
                 {p.name}
               </button>
-              <span className="text-gray-500">
+              <span className="text-gray-400">
                 {p.pageCount}p · {p.tableCount}t · {p.workflowCount}w
               </span>
               {p.deployment?.status === 'live' && <span className="text-green-400">live</span>}
-              <button onClick={() => duplicateProject(p.id)} title="Duplicate" className="text-gray-500 hover:text-neon-cyan">
+              <button onClick={() => duplicateProject(p.id)} title="Duplicate" className="text-gray-400 hover:text-neon-cyan">
                 <Copy className="w-3 h-3" />
               </button>
-              <button onClick={() => deleteProject(p.id)} title="Delete" className="text-gray-500 hover:text-red-400">
+              <button onClick={() => deleteProject(p.id)} title="Delete" className="text-gray-400 hover:text-red-400">
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
@@ -168,7 +168,7 @@ export function AppBuilderStudio() {
       )}
 
       {!project ? (
-        <div className="panel p-8 text-center text-sm text-gray-500">
+        <div className="panel p-8 text-center text-sm text-gray-400">
           {projects.length === 0
             ? 'Create a project to start building. The builder gives you a visual canvas, a data-model designer, a workflow builder, live preview and one-click deploy.'
             : 'Select a project above to open the builder.'}
@@ -324,7 +324,7 @@ function CanvasEditor({ project, run, reload }: SubProps) {
       <div className="grid grid-cols-[150px_1fr_180px] gap-3">
         {/* palette */}
         <div className="panel p-2 space-y-1 max-h-[460px] overflow-y-auto">
-          <p className="text-[10px] uppercase text-gray-500 px-1 mb-1">Elements</p>
+          <p className="text-[10px] uppercase text-gray-400 px-1 mb-1">Elements</p>
           {palette.map((p) => (
             <button
               key={p.type}
@@ -347,7 +347,7 @@ function CanvasEditor({ project, run, reload }: SubProps) {
           className="relative bg-[#020617] border border-lattice-edge rounded-lg overflow-hidden h-[460px]"
           style={{ backgroundImage: 'radial-gradient(circle, #1e293b 1px, transparent 1px)', backgroundSize: '20px 20px' }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {elements.length === 0 && (
-            <p className="absolute inset-0 flex items-center justify-center text-xs text-gray-600 pointer-events-none">
+            <p className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none">
               Click an element from the palette to add it, then drag to position.
             </p>
           )}
@@ -370,13 +370,13 @@ function CanvasEditor({ project, run, reload }: SubProps) {
 
         {/* inspector */}
         <div className="panel p-2 space-y-2 max-h-[460px] overflow-y-auto">
-          <p className="text-[10px] uppercase text-gray-500">Inspector</p>
+          <p className="text-[10px] uppercase text-gray-400">Inspector</p>
           {!sel ? (
-            <p className="text-xs text-gray-600">Select an element to style it.</p>
+            <p className="text-xs text-gray-400">Select an element to style it.</p>
           ) : (
             <>
               <p className="text-xs text-neon-cyan font-mono">{sel.type}</p>
-              <label className="block text-[10px] text-gray-500">Label
+              <label className="block text-[10px] text-gray-400">Label
                 <input
                   value={String(sel.props.label || '')}
                   onChange={(e) => updateProp('label', e.target.value)}
@@ -384,7 +384,7 @@ function CanvasEditor({ project, run, reload }: SubProps) {
                 />
               </label>
               {(sel.type === 'input' || sel.type === 'form') && (
-                <label className="block text-[10px] text-gray-500">Placeholder
+                <label className="block text-[10px] text-gray-400">Placeholder
                   <input
                     value={String(sel.props.placeholder || '')}
                     onChange={(e) => updateProp('placeholder', e.target.value)}
@@ -393,7 +393,7 @@ function CanvasEditor({ project, run, reload }: SubProps) {
                 </label>
               )}
               {sel.type === 'image' && (
-                <label className="block text-[10px] text-gray-500">Image URL
+                <label className="block text-[10px] text-gray-400">Image URL
                   <input
                     value={String(sel.props.src || '')}
                     onChange={(e) => updateProp('src', e.target.value)}
@@ -403,7 +403,7 @@ function CanvasEditor({ project, run, reload }: SubProps) {
               )}
               <div className="grid grid-cols-2 gap-1.5">
                 {(['x', 'y', 'w', 'h'] as const).map((k) => (
-                  <label key={k} className="block text-[10px] text-gray-500 uppercase">{k}
+                  <label key={k} className="block text-[10px] text-gray-400 uppercase">{k}
                     <input
                       type="number"
                       value={sel[k]}
@@ -503,7 +503,7 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
                       Save
                     </button>
                   )}
-                  <button onClick={() => deleteTable(t)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => deleteTable(t)} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               <div className="space-y-1">
@@ -521,7 +521,7 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
                     >
                       {fieldTypes.map((ft) => <option key={ft} value={ft}>{ft}</option>)}
                     </select>
-                    <label className="text-[10px] text-gray-500 flex items-center gap-0.5" title="Required">
+                    <label className="text-[10px] text-gray-400 flex items-center gap-0.5" title="Required">
                       <input
                         type="checkbox"
                         checked={f.required}
@@ -569,7 +569,7 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
           </div>
         )}
         {relations.length === 0 ? (
-          <p className="text-xs text-gray-600">No relations yet.</p>
+          <p className="text-xs text-gray-400">No relations yet.</p>
         ) : relations.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs bg-lattice-deep rounded px-2 py-1">
             <span className="text-white">{r.fromName}</span>
@@ -626,14 +626,14 @@ function WorkflowBuilder({ project, run, reload }: SubProps) {
             placeholder="Workflow name…"
             className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs flex-1 min-w-[140px]"
           />
-          <span className="text-xs text-gray-500">When</span>
+          <span className="text-xs text-gray-400">When</span>
           <select value={draft.trigger} onChange={(e) => setDraft({ ...draft, trigger: e.target.value })} className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs">
             {opts.triggers.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
           </select>
         </div>
         {draft.steps.map((st, i) => (
           <div key={st.id} className="flex items-center gap-1.5">
-            <span className="text-[10px] text-gray-600 w-8">→ {i + 1}</span>
+            <span className="text-[10px] text-gray-400 w-8">→ {i + 1}</span>
             <select
               value={st.action}
               onChange={(e) => { const ss = [...draft.steps]; ss[i] = { ...st, action: e.target.value }; setDraft({ ...draft, steps: ss }); }}
@@ -668,7 +668,7 @@ function WorkflowBuilder({ project, run, reload }: SubProps) {
 
       <div className="space-y-2">
         {project.workflows.length === 0 ? (
-          <p className="text-xs text-gray-600">No workflows yet.</p>
+          <p className="text-xs text-gray-400">No workflows yet.</p>
         ) : project.workflows.map((w) => (
           <div key={w.id} className="panel p-3">
             <div className="flex items-center gap-2">
@@ -753,7 +753,7 @@ function ConnectorPanel({ project, run, reload }: SubProps) {
 
       <div className="space-y-2">
         {project.connectors.length === 0 ? (
-          <p className="text-xs text-gray-600">No connectors yet.</p>
+          <p className="text-xs text-gray-400">No connectors yet.</p>
         ) : project.connectors.map((c) => {
           const t = tests[c.id];
           return (
@@ -771,7 +771,7 @@ function ConnectorPanel({ project, run, reload }: SubProps) {
                 </button>
                 <button onClick={() => deleteConnector(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
-              <p className="text-[11px] text-gray-500 font-mono mt-1 truncate">{c.endpoint || '(no endpoint)'}</p>
+              <p className="text-[11px] text-gray-400 font-mono mt-1 truncate">{c.endpoint || '(no endpoint)'}</p>
               {t && (
                 <div className={`mt-1 text-xs flex items-center gap-1.5 ${t.reachable ? 'text-green-400' : t.reachable === false ? 'text-red-400' : 'text-gray-400'}`}>
                   {t.reachable ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
@@ -834,13 +834,13 @@ function ComponentLibraryPanel({ project, run, reload }: SubProps) {
           <select value={draft.baseType} onChange={(e) => setDraft({ ...draft, baseType: e.target.value })} className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs">
             {['card', 'button', 'container', 'form', 'nav'].map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
-          <label className="text-[10px] text-gray-500 flex items-center gap-1">Background
+          <label className="text-[10px] text-gray-400 flex items-center gap-1">Background
             <input type="color" value={draft.bg} onChange={(e) => setDraft({ ...draft, bg: e.target.value })} className="h-6 w-8 bg-transparent" />
           </label>
-          <label className="text-[10px] text-gray-500 flex items-center gap-1">Text
+          <label className="text-[10px] text-gray-400 flex items-center gap-1">Text
             <input type="color" value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} className="h-6 w-8 bg-transparent" />
           </label>
-          <label className="text-[10px] text-gray-500 flex items-center gap-1 col-span-2">Corner radius
+          <label className="text-[10px] text-gray-400 flex items-center gap-1 col-span-2">Corner radius
             <input type="range" min="0" max="24" value={draft.radius} onChange={(e) => setDraft({ ...draft, radius: e.target.value })} className="flex-1" />
             <span className="w-8 text-right">{draft.radius}px</span>
           </label>
@@ -852,7 +852,7 @@ function ComponentLibraryPanel({ project, run, reload }: SubProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         {lib.length === 0 ? (
-          <p className="text-xs text-gray-600 col-span-full">No reusable components yet.</p>
+          <p className="text-xs text-gray-400 col-span-full">No reusable components yet.</p>
         ) : lib.map((c) => (
           <div key={c.id} className="panel p-2 space-y-1.5">
             <div
@@ -866,7 +866,7 @@ function ComponentLibraryPanel({ project, run, reload }: SubProps) {
               {c.name}
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-500">{c.baseType}</span>
+              <span className="text-[10px] text-gray-400">{c.baseType}</span>
               <button onClick={() => deleteComponent(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>
@@ -902,7 +902,7 @@ function LivePreview({ project, run }: { project: Project; run: RunFn }) {
         <button onClick={() => render(pageId)} className="text-xs text-gray-400 hover:text-neon-cyan flex items-center gap-1">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Refresh
         </button>
-        <span className="text-[10px] text-gray-600 ml-auto flex items-center gap-1"><FileCode className="w-3 h-3" /> sandboxed iframe</span>
+        <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1"><FileCode className="w-3 h-3" /> sandboxed iframe</span>
       </div>
       <iframe
         title="App live preview"
@@ -943,7 +943,7 @@ function DeployPanel({ project, run, reload }: SubProps) {
     <div className="space-y-3">
       <div className="panel p-4 space-y-3">
         <p className="text-sm font-semibold flex items-center gap-1.5"><Rocket className="w-4 h-4 text-neon-purple" /> Deploy to hosted URL</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           Publishing snapshots the current project ({project.pages.length} pages, {project.dataModel.tables.length} tables,
           {' '}{project.workflows.length} workflows) and assigns a stable hosted URL on apps.concord-os.org.
         </p>
@@ -966,13 +966,13 @@ function DeployPanel({ project, run, reload }: SubProps) {
       </div>
 
       <div className="panel p-4">
-        <p className="text-xs uppercase text-gray-500 mb-2">Deployment status</p>
+        <p className="text-xs uppercase text-gray-400 mb-2">Deployment status</p>
         {status?.status === 'live' && status.url ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <span className="w-2 h-2 rounded-full bg-green-400" />
               <span className="text-green-400 font-medium">Live</span>
-              {status.deployedAt && <span className="text-xs text-gray-500">since {new Date(status.deployedAt).toLocaleString()}</span>}
+              {status.deployedAt && <span className="text-xs text-gray-400">since {new Date(status.deployedAt).toLocaleString()}</span>}
             </div>
             <a
               href={status.url}
@@ -984,7 +984,7 @@ function DeployPanel({ project, run, reload }: SubProps) {
             </a>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-gray-400">
             <span className="w-2 h-2 rounded-full bg-gray-600" />
             Not deployed yet
           </div>
@@ -1038,13 +1038,13 @@ function VersionHistory({ project, run, reload }: SubProps) {
 
       <div className="space-y-2">
         {versions.length === 0 ? (
-          <p className="text-xs text-gray-600">No versions yet. Snapshots are created automatically on each deploy.</p>
+          <p className="text-xs text-gray-400">No versions yet. Snapshots are created automatically on each deploy.</p>
         ) : versions.map((v) => (
           <div key={v.id} className="panel p-3 flex items-center gap-3">
             <History className="w-4 h-4 text-neon-purple" />
             <div className="flex-1">
               <p className="text-sm font-medium">{v.label}</p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-gray-400">
                 {new Date(v.createdAt).toLocaleString()} · {v.pageCount} pages · {v.tableCount} tables
                 {v.deployUrl ? ' · deployed' : ''}
               </p>

@@ -107,7 +107,7 @@ export function CrtMembershipPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -150,7 +150,7 @@ export function CrtMembershipPanel({ onChange }: { onChange: () => void }) {
 
       {/* Tiers */}
       {tiers.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No tiers yet — create one above to start offering memberships.</p>
+        <p className="text-[11px] text-zinc-400 italic">No tiers yet — create one above to start offering memberships.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {tiers.map((t) => (
@@ -158,14 +158,14 @@ export function CrtMembershipPanel({ onChange }: { onChange: () => void }) {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{t.name}</p>
-                  <p className="text-lg font-bold text-emerald-300">${t.priceMonthly.toLocaleString()}<span className="text-[10px] text-zinc-500">/mo</span></p>
+                  <p className="text-lg font-bold text-emerald-300">${t.priceMonthly.toLocaleString()}<span className="text-[10px] text-zinc-400">/mo</span></p>
                 </div>
                 <button type="button" onClick={() => deleteTier(t.id)} title="Delete tier"
                   className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              {t.description && <p className="text-[11px] text-zinc-500 mt-1">{t.description}</p>}
+              {t.description && <p className="text-[11px] text-zinc-400 mt-1">{t.description}</p>}
               {t.perks.length > 0 && (
                 <ul className="mt-2 space-y-0.5">
                   {t.perks.map((p, i) => (
@@ -216,7 +216,7 @@ export function CrtMembershipPanel({ onChange }: { onChange: () => void }) {
               <li key={sub.id}
                 className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-xs text-zinc-200 flex-1 truncate">{sub.supporter}</span>
-                <span className="text-[10px] text-zinc-500">{sub.tierName}</span>
+                <span className="text-[10px] text-zinc-400">{sub.tierName}</span>
                 <span className="text-xs text-emerald-300">${sub.priceMonthly}/mo</span>
                 {sub.status === 'active' ? (
                   <button type="button" onClick={() => cancelSub(sub.id)} title="Cancel subscription"
@@ -239,7 +239,7 @@ function SummaryStat({ label, value, accent }: { label: string; value: string | 
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       <p className={`text-xl font-bold ${accent}`}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase">{label}</p>
     </div>
   );
 }

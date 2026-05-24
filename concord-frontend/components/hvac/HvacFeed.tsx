@@ -45,25 +45,25 @@ export function HvacFeed() {
       </header>
       {posts.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Reddit unreachable.</div>}
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Posts</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{list.length}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Upvotes</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{totalScore.toLocaleString()}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Posts</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{list.length}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Upvotes</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{totalScore.toLocaleString()}</div></div>
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((p) => (
           <a key={p.id} href={`https://reddit.com${p.permalink}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2.5 hover:border-cyan-500/40">
             <p className="line-clamp-2 text-[12px] text-zinc-100">{p.title}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
               <span className="flex items-center gap-0.5"><ArrowUp className="h-3 w-3" />{p.score}</span>
               <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{p.num_comments}</span>
               <span>u/{p.author}</span>
               {p.link_flair_text && <span className="rounded bg-cyan-500/20 px-1 font-mono text-[9px] text-cyan-200">{p.link_flair_text}</span>}
-              <ExternalLink className="h-3 w-3 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 text-zinc-400" />
             </div>
           </a>
         ))}
-        {list.length === 0 && !posts.isPending && !posts.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No posts.</div>}
+        {list.length === 0 && !posts.isPending && !posts.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No posts.</div>}
       </div>
-      {posts.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {posts.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
 }

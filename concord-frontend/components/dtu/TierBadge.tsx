@@ -91,7 +91,7 @@ const TIER_CONFIG: Record<string, {
   shadow: {
     icon: Ghost,
     label: 'Shadow',
-    color: 'text-gray-500',
+    color: 'text-gray-400',
     bg: 'bg-gray-600/10',
     border: 'border-gray-600/30 border-dashed',
     ring: 'ring-gray-600',
@@ -207,7 +207,7 @@ function TierBadgeDetailInner({
       {consolidatedInto && (
         <button
           onClick={() => onNavigateToParent?.(consolidatedInto.id)}
-          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-neon-cyan transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-neon-cyan transition-colors"
         >
           <ArrowRight className="w-3 h-3" />
           Consolidated into {consolidatedInto.title || consolidatedInto.id.slice(0, 20) + '...'}

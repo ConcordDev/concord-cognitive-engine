@@ -15,7 +15,7 @@ interface Insights { entries: number; average: number | null; trend: string; dis
 
 const MOOD_EMOJI = ['', '😞', '😕', '😐', '🙂', '😄'];
 const TREND_COLOR: Record<string, string> = {
-  improving: 'text-emerald-400', declining: 'text-rose-400', stable: 'text-zinc-400', no_data: 'text-zinc-500',
+  improving: 'text-emerald-400', declining: 'text-rose-400', stable: 'text-zinc-400', no_data: 'text-zinc-400',
 };
 
 export function MhMoodPanel({ onChange }: { onChange: () => void }) {
@@ -48,7 +48,7 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const chartData = series.map((m) => ({ date: m.date.slice(5), mood: m.mood }));
@@ -84,15 +84,15 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-zinc-100">{insights.average}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Avg mood</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Avg mood</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
             <p className={cn('text-lg font-bold capitalize', TREND_COLOR[insights.trend])}>{insights.trend}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Trend</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Trend</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-zinc-100">{insights.entries}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Check-ins</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Check-ins</p>
           </div>
         </div>
       )}
@@ -111,7 +111,7 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic py-8 text-center">Check in for a few days to see your trend.</p>
+          <p className="text-[11px] text-zinc-400 italic py-8 text-center">Check in for a few days to see your trend.</p>
         )}
       </div>
     </div>

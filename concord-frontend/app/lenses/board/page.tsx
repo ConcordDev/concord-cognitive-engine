@@ -708,7 +708,7 @@ export default function BoardLensPage() {
                   label: 'Overdue',
                   value: stats.overdue,
                   icon: AlertTriangle,
-                  color: stats.overdue > 0 ? 'text-red-400' : 'text-gray-500',
+                  color: stats.overdue > 0 ? 'text-red-400' : 'text-gray-400',
                 },
                 {
                   label: 'Done This Week',
@@ -723,7 +723,7 @@ export default function BoardLensPage() {
                 >
                   <s.icon className={cn('w-4 h-4', s.color)} />
                   <span className="text-lg font-semibold text-white">{s.value}</span>
-                  <span className="text-xs text-gray-500">{s.label}</span>
+                  <span className="text-xs text-gray-400">{s.label}</span>
                 </div>
               ))}
             </div>
@@ -731,7 +731,7 @@ export default function BoardLensPage() {
             {/* Search + Filter bar */}
             <div className="flex items-center gap-3">
               <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   ref={searchInputRef}
               type="text"
@@ -911,7 +911,7 @@ export default function BoardLensPage() {
                       <>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <div className="text-center p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                            <p className="text-[10px] text-gray-500 mb-1">Avg Cycle Time</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Avg Cycle Time</p>
                             <p className="text-base font-bold text-cyan-300">
                               {(
                                 ((actionResult.cycleTime as Record<string, unknown>)
@@ -921,7 +921,7 @@ export default function BoardLensPage() {
                             </p>
                           </div>
                           <div className="text-center p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                            <p className="text-[10px] text-gray-500 mb-1">Avg Lead Time</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Avg Lead Time</p>
                             <p className="text-base font-bold text-blue-300">
                               {(
                                 ((actionResult.leadTime as Record<string, unknown>)
@@ -931,7 +931,7 @@ export default function BoardLensPage() {
                             </p>
                           </div>
                           <div className="text-center p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                            <p className="text-[10px] text-gray-500 mb-1">Weekly Throughput</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Weekly Throughput</p>
                             <p className="text-base font-bold text-green-300">
                               {(
                                 ((actionResult.throughput as Record<string, unknown>)
@@ -941,7 +941,7 @@ export default function BoardLensPage() {
                             </p>
                           </div>
                           <div className="text-center p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                            <p className="text-[10px] text-gray-500 mb-1">Flow Efficiency</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Flow Efficiency</p>
                             <p className="text-base font-bold text-purple-300">
                               {actionResult.flowEfficiency != null
                                 ? `${actionResult.flowEfficiency as number}%`
@@ -1027,7 +1027,7 @@ export default function BoardLensPage() {
                                 </span>
                               </div>
                             ))}
-                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-400">
                           {(
                             ['quick-wins', 'major-projects', 'fill-ins', 'thankless-tasks'] as const
                           ).map((q) => {
@@ -1035,7 +1035,7 @@ export default function BoardLensPage() {
                               'quick-wins': 'text-green-400',
                               'major-projects': 'text-blue-400',
                               'fill-ins': 'text-yellow-400',
-                              'thankless-tasks': 'text-gray-500',
+                              'thankless-tasks': 'text-gray-400',
                             };
                             const count = (
                               (actionResult.quadrants as Record<string, unknown[]>)?.[q] || []
@@ -1061,20 +1061,20 @@ export default function BoardLensPage() {
                       <>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <div className="text-center p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                            <p className="text-[10px] text-gray-500 mb-1">Remaining Pts</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Remaining Pts</p>
                             <p className="text-base font-bold text-white">
                               {actionResult.remainingPoints as number}
                             </p>
                           </div>
                           <div className="text-center p-2.5 rounded-lg bg-green-500/10 border border-green-500/20">
-                            <p className="text-[10px] text-gray-500 mb-1">Likely Date</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Likely Date</p>
                             <p className="text-sm font-bold text-green-300">
                               {((actionResult.forecast as Record<string, unknown>)
                                 ?.mostLikelyDate as string) || '—'}
                             </p>
                           </div>
                           <div className="text-center p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                            <p className="text-[10px] text-gray-500 mb-1">Avg Velocity</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Avg Velocity</p>
                             <p className="text-base font-bold text-blue-300">
                               {(
                                 ((actionResult.velocityStats as Record<string, unknown>)
@@ -1084,7 +1084,7 @@ export default function BoardLensPage() {
                             </p>
                           </div>
                           <div className="text-center p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                            <p className="text-[10px] text-gray-500 mb-1">Simulations</p>
+                            <p className="text-[10px] text-gray-400 mb-1">Simulations</p>
                             <p className="text-base font-bold text-purple-300">
                               {actionResult.simulations as number}
                             </p>
@@ -1109,7 +1109,7 @@ export default function BoardLensPage() {
                               key={key}
                               className="bg-white/[0.03] rounded-lg px-2 py-2 border border-white/[0.06]"
                             >
-                              <p className="text-[10px] text-gray-500 mb-0.5">{label}</p>
+                              <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
                               <p className={`font-semibold ${color}`}>
                                 {(
                                   (actionResult.forecast as Record<string, unknown>)
@@ -1123,7 +1123,7 @@ export default function BoardLensPage() {
                           (actionResult.burndownProjection as Array<Record<string, unknown>>)
                             .length > 0 && (
                             <div>
-                              <p className="text-[10px] text-gray-500 uppercase font-semibold mb-1.5">
+                              <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1.5">
                                 Sprint Projection
                               </p>
                               <div className="space-y-1">
@@ -1141,7 +1141,7 @@ export default function BoardLensPage() {
                                         key={sprint.sprint as number}
                                         className="flex items-center gap-2 text-xs text-gray-400"
                                       >
-                                        <span className="w-14 flex-shrink-0 text-gray-500">
+                                        <span className="w-14 flex-shrink-0 text-gray-400">
                                           Sprint {sprint.sprint as number}
                                         </span>
                                         <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -1208,7 +1208,7 @@ export default function BoardLensPage() {
                         <span className={cn('text-sm font-semibold', column.color)}>
                           {column.name}
                         </span>
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/5 text-gray-500">
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/5 text-gray-400">
                           {colTasks.length}
                         </span>
                       </div>
@@ -1310,13 +1310,13 @@ export default function BoardLensPage() {
                                 {(task.estimate || task.tags?.[0]) && (
                                   <div className="flex gap-2 mt-1.5">
                                     {task.estimate && (
-                                      <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
                                         <Clock className="w-3 h-3" />
                                         {task.estimate} Est.
                                       </span>
                                     )}
                                     {task.tags?.[0] && (
-                                      <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
                                         <Tag className="w-3 h-3" />
                                         Tag: {task.tags[0]}
                                       </span>
@@ -1327,7 +1327,7 @@ export default function BoardLensPage() {
                                 {/* Progress bar */}
                                 <div className="mt-2">
                                   <div className="flex items-center justify-between mb-0.5">
-                                    <span className="text-[10px] text-gray-500">
+                                    <span className="text-[10px] text-gray-400">
                                       {task.progress}%
                                     </span>
                                   </div>
@@ -1354,20 +1354,20 @@ export default function BoardLensPage() {
                                         'text-[10px] flex items-center gap-0.5',
                                         isOverdue(task.dueDate) && task.status !== 'done'
                                           ? 'text-red-400 font-medium'
-                                          : 'text-gray-500'
+                                          : 'text-gray-400'
                                       )}
                                     >
                                       <Calendar className="w-3 h-3" />
                                       {formatDate(task.dueDate)}
                                     </span>
                                     {task.attachments > 0 && (
-                                      <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
                                         <Paperclip className="w-3 h-3" />
                                         {task.attachments}
                                       </span>
                                     )}
                                     {task.commentCount > 0 && (
-                                      <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
                                         <MessageSquare className="w-3 h-3" />
                                         {task.commentCount}
                                       </span>
@@ -1402,7 +1402,7 @@ export default function BoardLensPage() {
                               );
                               input?.focus();
                             }}
-                            className="text-xs text-gray-500 hover:text-neon-cyan flex items-center gap-1 transition-colors"
+                            className="text-xs text-gray-400 hover:text-neon-cyan flex items-center gap-1 transition-colors"
                           >
                             <Plus className="w-3 h-3" /> Add task
                           </button>
@@ -1427,7 +1427,7 @@ export default function BoardLensPage() {
               });
               if (sorted.length === 0) {
                 return (
-                  <div className="flex items-center justify-center h-32 text-sm text-gray-500">
+                  <div className="flex items-center justify-center h-32 text-sm text-gray-400">
                     No tasks to chart on the timeline.
                   </div>
                 );
@@ -1455,7 +1455,7 @@ export default function BoardLensPage() {
                             </span>
                             <span className={cn(
                               'ml-auto text-[10px]',
-                              overdue ? 'text-red-400 font-medium' : 'text-gray-500',
+                              overdue ? 'text-red-400 font-medium' : 'text-gray-400',
                             )}>
                               {task.dueDate
                                 ? new Date(task.dueDate).toLocaleDateString()
@@ -1486,12 +1486,12 @@ export default function BoardLensPage() {
           {viewMode === 'table' && (
           <div className="flex-1 overflow-auto px-6 pb-6">
             {filteredTasks.length === 0 ? (
-              <div className="flex items-center justify-center h-32 text-sm text-gray-500">
+              <div className="flex items-center justify-center h-32 text-sm text-gray-400">
                 No tasks match the current filter.
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="text-[10px] uppercase tracking-wider text-gray-500 border-b border-white/10">
+                <thead className="text-[10px] uppercase tracking-wider text-gray-400 border-b border-white/10">
                   <tr>
                     <th className="text-left py-2 pl-2">Title</th>
                     <th className="text-left py-2">Status</th>
@@ -1688,7 +1688,7 @@ function TaskDetailPanel({
       <div className="grid grid-cols-2 gap-3">
         {/* Assignee */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-600">Assignee</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Assignee</label>
           <select
             value={task.assignee}
             onChange={(e) => onUpdate(task.id, { assignee: e.target.value })}
@@ -1704,7 +1704,7 @@ function TaskDetailPanel({
 
         {/* Priority */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-600">Priority</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Priority</label>
           <select
             value={task.priority}
             onChange={(e) => onUpdate(task.id, { priority: e.target.value as Priority })}
@@ -1720,7 +1720,7 @@ function TaskDetailPanel({
 
         {/* Type */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-600">Type</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Type</label>
           <select
             value={task.type}
             onChange={(e) => onUpdate(task.id, { type: e.target.value as TaskType })}
@@ -1736,7 +1736,7 @@ function TaskDetailPanel({
 
         {/* Label */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-600">Label</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Label</label>
           <select
             value={task.label}
             onChange={(e) => onUpdate(task.id, { label: e.target.value })}
@@ -1752,7 +1752,7 @@ function TaskDetailPanel({
 
         {/* Due date */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-600">Due Date</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Due Date</label>
           <input
             type="date"
             value={task.dueDate}
@@ -1766,7 +1766,7 @@ function TaskDetailPanel({
 
         {/* Estimate */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-600">Estimate</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Estimate</label>
           <input
             type="text"
             value={task.estimate ?? ''}
@@ -1780,7 +1780,7 @@ function TaskDetailPanel({
       {/* Progress */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-[10px] uppercase tracking-wider text-gray-600">Progress</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Progress</label>
           <span className="text-xs text-gray-400">{task.progress}%</span>
         </div>
         <input
@@ -1803,7 +1803,7 @@ function TaskDetailPanel({
               'px-3 py-2 text-xs font-medium capitalize border-b-2 transition-colors -mb-px',
               activeTab === tab
                 ? 'border-purple-500 text-purple-300'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                : 'border-transparent text-gray-400 hover:text-gray-300'
             )}
           >
             {tab}
@@ -1835,7 +1835,7 @@ function TaskDetailPanel({
                   <span
                     className={cn(
                       'text-sm',
-                      sub.done ? 'text-gray-500 line-through' : 'text-gray-300'
+                      sub.done ? 'text-gray-400 line-through' : 'text-gray-300'
                     )}
                   >
                     {sub.title}
@@ -1901,7 +1901,7 @@ function TaskDetailPanel({
                       {c.author[0]}
                     </div>
                     <span className="text-xs font-medium text-gray-300">{c.author}</span>
-                    <span className="text-[10px] text-gray-600">{formatDate(c.timestamp)}</span>
+                    <span className="text-[10px] text-gray-400">{formatDate(c.timestamp)}</span>
                   </div>
                   <p className="text-xs text-gray-400 pl-6">{c.text}</p>
                 </div>
@@ -1958,7 +1958,7 @@ function TaskDetailPanel({
       {activeTab === 'activity' && (
         <div className="space-y-2">
           {task.activity.length === 0 && (
-            <p className="text-xs text-gray-600 text-center py-4">No activity yet.</p>
+            <p className="text-xs text-gray-400 text-center py-4">No activity yet.</p>
           )}
           {task.activity.map((a) => (
             <div key={a.id} className="flex items-start gap-2 text-xs">
@@ -1975,14 +1975,14 @@ function TaskDetailPanel({
       {activeTab === 'files' && (
         <div className="space-y-2">
           {task.files.length === 0 && (
-            <p className="text-xs text-gray-600 text-center py-4">No files attached.</p>
+            <p className="text-xs text-gray-400 text-center py-4">No files attached.</p>
           )}
           {task.files.map((file, i) => (
             <div
               key={i}
               className="flex items-center gap-2 p-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
             >
-              <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
               <span className="text-xs text-gray-300 truncate flex-1">{file}</span>
               <Paperclip className="w-3 h-3 text-gray-600 flex-shrink-0" />
             </div>
@@ -1993,7 +1993,7 @@ function TaskDetailPanel({
               input.type = 'file';
               input.click();
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 w-full rounded-md border border-dashed border-white/10 text-xs text-gray-500 hover:text-gray-300 hover:border-white/20 transition-colors justify-center"
+            className="flex items-center gap-1.5 px-3 py-1.5 w-full rounded-md border border-dashed border-white/10 text-xs text-gray-400 hover:text-gray-300 hover:border-white/20 transition-colors justify-center"
           >
             <Upload className="w-3.5 h-3.5" />
             Upload file

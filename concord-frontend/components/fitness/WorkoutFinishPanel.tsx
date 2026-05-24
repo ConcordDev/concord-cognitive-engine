@@ -291,13 +291,13 @@ export function WorkoutFinishPanel() {
             <div className="flex items-center gap-2">
               <input type="text" value={lift.name} onChange={(e) => updateLiftName(li, e.target.value)} className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[12px] text-white font-semibold focus:outline-none focus:ring-2 focus:ring-orange-400/40" placeholder="Lift name (Squat, Bench, …)" />
               <button type="button" onClick={() => addSet(li)} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-orange-500/15 text-orange-300 text-[10px] hover:bg-orange-500/25"><Plus className="w-3 h-3" /> set</button>
-              <button type="button" onClick={() => removeLift(li)} className="p-1 rounded hover:bg-zinc-800 text-zinc-500" aria-label="Remove lift"><X className="w-3 h-3" /></button>
+              <button type="button" onClick={() => removeLift(li)} className="p-1 rounded hover:bg-zinc-800 text-zinc-400" aria-label="Remove lift"><X className="w-3 h-3" /></button>
             </div>
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-1 items-center">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider px-1">#</span>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider px-1">Weight (kg)</span>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider px-1">Reps</span>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider px-1">RIR</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider px-1">#</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider px-1">Weight (kg)</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider px-1">Reps</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider px-1">RIR</span>
               <span></span>
               {lift.sets.map((s, si) => (
                 <>
@@ -346,7 +346,7 @@ export function WorkoutFinishPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -376,7 +376,7 @@ export function WorkoutFinishPanel() {
               <div key={z.zone} className="rounded bg-zinc-900/60 px-2 py-1 text-[10px]">
                 <div className="text-red-300 font-mono">Z{z.zone}</div>
                 <div className="text-zinc-300">{z.range}</div>
-                <div className="text-zinc-500 text-[9px]">{z.purpose}</div>
+                <div className="text-zinc-400 text-[9px]">{z.purpose}</div>
               </div>
             ))}
           </div>

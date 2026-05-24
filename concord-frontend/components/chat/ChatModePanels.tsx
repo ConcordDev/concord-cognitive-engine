@@ -110,7 +110,7 @@ export function WelcomePanel({ currentLens, onSendMessage }: ModePanelProps) {
         {getTimeIcon()}
         <div>
           <h3 className="text-sm font-semibold text-white">{getTimeGreeting()}</h3>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             Your conversation context carries across all lenses
           </p>
         </div>
@@ -118,7 +118,7 @@ export function WelcomePanel({ currentLens, onSendMessage }: ModePanelProps) {
 
       {/* Quick action buttons */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
           Quick actions
         </p>
         <div className="flex flex-wrap gap-2">
@@ -172,14 +172,14 @@ export function AssistPanel({ currentLens, onSendMessage }: ModePanelProps) {
       {/* Mode header */}
       <div className="p-2.5 rounded-lg bg-neon-blue/5 border border-neon-blue/20">
         <p className="text-xs text-neon-blue font-medium mb-1">Task Assistant Mode</p>
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           I'm here to help you accomplish tasks. Select an action or describe what you need.
         </p>
       </div>
 
       {/* Action buttons grid */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
           Common operations
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -216,7 +216,7 @@ export function AssistPanel({ currentLens, onSendMessage }: ModePanelProps) {
           <Lightbulb className="w-3 h-3 text-neon-blue" />
           <span>Context-aware for <span className="text-neon-blue font-medium">{currentLens}</span> lens</span>
         </div>
-        <p className="text-[11px] text-zinc-500 mt-1">
+        <p className="text-[11px] text-zinc-400 mt-1">
           Actions are scoped to your current lens context. I can also work across lenses if needed.
         </p>
       </div>
@@ -248,14 +248,14 @@ export function ExplorePanel({ currentLens, onSendMessage }: ModePanelProps) {
       {/* Mode header */}
       <div className="p-2.5 rounded-lg bg-neon-purple/5 border border-neon-purple/20">
         <p className="text-xs text-neon-purple font-medium mb-1">Explore Mode</p>
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           Discover knowledge, find connections, and explore the unknown.
         </p>
       </div>
 
       {/* Discovery buttons */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
           Discovery prompts
         </p>
         <div className="flex flex-wrap gap-2">
@@ -317,14 +317,14 @@ export function ConnectPanel({ currentLens, onSendMessage }: ModePanelProps) {
       {/* Mode header */}
       <div className="p-2.5 rounded-lg bg-neon-pink/5 border border-neon-pink/20">
         <p className="text-xs text-neon-pink font-medium mb-1">Connect Mode</p>
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           Collaborate with others, share sessions, and work together.
         </p>
       </div>
 
       {/* Collaboration actions */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
           Collaboration tools
         </p>
         <div className="flex flex-wrap gap-2">
@@ -353,9 +353,9 @@ export function ConnectPanel({ currentLens, onSendMessage }: ModePanelProps) {
       <div className="p-3 rounded-lg bg-lattice-elevated border border-lattice-border space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-zinc-400">Active sessions</span>
-          <span className="text-[10px] text-zinc-600">0 live</span>
+          <span className="text-[10px] text-zinc-400">0 live</span>
         </div>
-        <p className="text-[11px] text-zinc-600">
+        <p className="text-[11px] text-zinc-400">
           No active shared sessions. Invite someone to start collaborating.
         </p>
       </div>
@@ -366,7 +366,7 @@ export function ConnectPanel({ currentLens, onSendMessage }: ModePanelProps) {
           <Lightbulb className="w-3 h-3 text-neon-pink inline mr-1" />
           Collaborative workspaces let you share DTUs, chat in real-time, and co-create artifacts.
         </p>
-        <div className="flex items-center gap-2 text-xs text-zinc-500 mt-1.5">
+        <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1.5">
           <Eye className="w-3 h-3 text-neon-pink" />
           <span>Current lens: <span className="text-neon-pink font-medium">{currentLens}</span></span>
         </div>
@@ -449,7 +449,7 @@ export function ModeSelector({ activeMode, onModeChange }: ModeSelectorProps) {
                     color === 'neon-purple' && 'bg-neon-purple/20 text-neon-purple border border-neon-purple/40',
                     color === 'neon-pink' && 'bg-neon-pink/20 text-neon-pink border border-neon-pink/40',
                   )
-                : 'text-zinc-500 hover:text-zinc-300 border border-transparent hover:border-zinc-700',
+                : 'text-zinc-400 hover:text-zinc-300 border border-transparent hover:border-zinc-700',
             )}
             title={MODE_LABELS[mode]}
           >
@@ -476,7 +476,7 @@ export function MessageActions({ messageContent, onSendMessage }: MessageActions
     <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700/30">
       <button
         onClick={() => onSendMessage(`Save this as a DTU: "${messageContent.slice(0, 100)}..."`)}
-        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-500 hover:text-neon-cyan hover:bg-neon-cyan/10 transition-colors"
+        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-400 hover:text-neon-cyan hover:bg-neon-cyan/10 transition-colors"
         title="Save as DTU"
       >
         <FileText className="w-2.5 h-2.5" />
@@ -484,7 +484,7 @@ export function MessageActions({ messageContent, onSendMessage }: MessageActions
       </button>
       <button
         onClick={() => onSendMessage(`Explore this topic deeper: "${messageContent.slice(0, 80)}"`)}
-        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-500 hover:text-neon-purple hover:bg-neon-purple/10 transition-colors"
+        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-400 hover:text-neon-purple hover:bg-neon-purple/10 transition-colors"
         title="Explore deeper"
       >
         <Compass className="w-2.5 h-2.5" />
@@ -564,7 +564,7 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
           <button
             key={i}
             onClick={() => onSendMessage(action.prompt)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-lattice-elevated transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-400 hover:text-zinc-300 hover:bg-lattice-elevated transition-colors"
           >
             <Icon className="w-2.5 h-2.5" />
             {action.label}
@@ -634,10 +634,10 @@ export function CrossLensMemoryBar({
             </span>
           ))}
           {trail.length > 4 && (
-            <span className="text-[9px] text-zinc-600">+{trail.length - 4}</span>
+            <span className="text-[9px] text-zinc-400">+{trail.length - 4}</span>
           )}
         </div>
-        <span className="ml-auto text-[10px] text-zinc-600 flex items-center gap-1">
+        <span className="ml-auto text-[10px] text-zinc-400 flex items-center gap-1">
           <Database className="w-2.5 h-2.5" />
           {totalLensCount} lens{totalLensCount !== 1 ? 'es' : ''} of context
         </span>
@@ -658,14 +658,14 @@ export function CrossLensMemoryBar({
                 'text-[10px] px-2 py-0.5 rounded transition-colors',
                 memoryPreserved
                   ? 'text-neon-cyan bg-neon-cyan/10 hover:bg-neon-cyan/20'
-                  : 'text-zinc-500 bg-zinc-800 hover:bg-zinc-700',
+                  : 'text-zinc-400 bg-zinc-800 hover:bg-zinc-700',
               )}
             >
               Memory: {memoryPreserved ? 'ON' : 'OFF'}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onClearTrail(); }}
-              className="text-[10px] px-2 py-0.5 rounded text-zinc-600 hover:text-zinc-400 bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              className="text-[10px] px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-400 bg-zinc-800 hover:bg-zinc-700 transition-colors"
             >
               Clear trail
             </button>
@@ -703,7 +703,7 @@ export function ProactiveChip({ content, actionLabel, onAction, onDismiss }: Pro
             )}
             <button
               onClick={onDismiss}
-              className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+              className="text-[10px] text-zinc-400 hover:text-zinc-400 transition-colors"
             >
               Dismiss
             </button>

@@ -121,7 +121,7 @@ export function SolarCalculator() {
             <Metric icon={<Leaf className="h-4 w-4 text-green-400" />} label="CO₂ avoided/yr" value={`${result.co2AvoidedKgYr} kg`} />
             <Metric icon={<Sun className="h-4 w-4 text-amber-400" />} label="Homes equiv." value={`${result.homesEquivalent}`} />
           </div>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             Sized for {result.sizedFor} at {result.latitude}° latitude · system loss factor {result.systemLossFactor}.
           </p>
         </div>
@@ -133,7 +133,7 @@ export function SolarCalculator() {
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       <input
         type="number"
         value={value}
@@ -149,7 +149,7 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
     <div className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
       <div className="flex items-center gap-1.5">
         {icon}
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       </div>
       <div className="mt-0.5 font-mono text-base text-white">{value}</div>
     </div>

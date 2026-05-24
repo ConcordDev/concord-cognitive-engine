@@ -27,7 +27,7 @@ const PRIORITY_STYLE: Record<string, string> = {
   overdue: 'border-rose-500/40 bg-rose-500/5 text-rose-300',
   urgent: 'border-amber-500/40 bg-amber-500/5 text-amber-300',
   upcoming: 'border-white/10 bg-black/40 text-gray-300',
-  completed: 'border-white/5 bg-black/20 text-gray-500',
+  completed: 'border-white/5 bg-black/20 text-gray-400',
 };
 
 export function ObligationTracker({ contracts }: { contracts: { id: string; title: string }[] }) {
@@ -81,7 +81,7 @@ export function ObligationTracker({ contracts }: { contracts: { id: string; titl
              ['Upcoming', s.upcoming, 'text-gray-300'], ['Done', s.completed, 'text-neon-green']] as const).map(([l, v, c]) => (
             <div key={l} className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-center">
               <p className={cn('text-sm font-bold', c)}>{v}</p>
-              <p className="text-[9px] text-gray-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-gray-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -117,7 +117,7 @@ export function ObligationTracker({ contracts }: { contracts: { id: string; titl
       )}
 
       {!result || result.tasks.length === 0 ? (
-        <p className="text-xs text-gray-500 italic py-4 text-center">No obligations yet.</p>
+        <p className="text-xs text-gray-400 italic py-4 text-center">No obligations yet.</p>
       ) : (
         <ul className="space-y-1">
           {result.tasks.map((t) => (
@@ -128,7 +128,7 @@ export function ObligationTracker({ contracts }: { contracts: { id: string; titl
               </button>
               <div className="min-w-0 flex-1">
                 <p className={cn('text-xs font-medium truncate', t.done && 'line-through')}>{t.label}</p>
-                <p className="text-[9px] text-gray-500">{t.contractTitle} · {t.kind}{t.amount > 0 ? ` · $${t.amount.toLocaleString()}` : ''}</p>
+                <p className="text-[9px] text-gray-400">{t.contractTitle} · {t.kind}{t.amount > 0 ? ` · $${t.amount.toLocaleString()}` : ''}</p>
               </div>
               <span className="text-[10px] shrink-0">{t.dueDate}</span>
               <span className="text-[10px] font-semibold shrink-0 w-16 text-right">

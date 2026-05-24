@@ -58,7 +58,7 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
   }, [load, onPlayed]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   return (
@@ -68,7 +68,7 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
         <div className="flex items-center gap-2 mb-3">
           <Lightbulb className="w-4 h-4 text-violet-300" />
           <h3 className="text-sm font-bold text-zinc-100">For You</h3>
-          {rec && <span className="text-[11px] text-zinc-500">goal: {rec.goal}</span>}
+          {rec && <span className="text-[11px] text-zinc-400">goal: {rec.goal}</span>}
         </div>
         {rec ? (
           <>
@@ -79,7 +79,7 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-zinc-100 truncate">{t.title}</p>
-                      <p className="text-[10px] text-zinc-500">{t.narrator || t.goal} · {t.durationMin}m · {t.category}</p>
+                      <p className="text-[10px] text-zinc-400">{t.narrator || t.goal} · {t.durationMin}m · {t.category}</p>
                     </div>
                     <button type="button" onClick={() => play(t.id)} disabled={!!playingId}
                       className="w-7 h-7 rounded-full bg-violet-600 hover:bg-violet-500 flex items-center justify-center text-white flex-shrink-0 disabled:opacity-50"
@@ -90,13 +90,13 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-zinc-600 mt-2">
+            <p className="text-[10px] text-zinc-400 mt-2">
               Based on {rec.basedOn.totalSessions} session(s)
               {rec.basedOn.recentMood != null && ` · last mood ${rec.basedOn.recentMood}/5`}
             </p>
           </>
         ) : (
-          <p className="text-xs text-zinc-600">No recommendations available.</p>
+          <p className="text-xs text-zinc-400">No recommendations available.</p>
         )}
       </div>
 
@@ -105,7 +105,7 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
         <div className="flex items-center gap-2 mb-3">
           <Trophy className="w-4 h-4 text-yellow-300" />
           <h3 className="text-sm font-bold text-zinc-100">Milestones</h3>
-          {mile && <span className="text-[11px] text-zinc-500">{mile.unlockedCount}/{mile.totalCount} unlocked</span>}
+          {mile && <span className="text-[11px] text-zinc-400">{mile.unlockedCount}/{mile.totalCount} unlocked</span>}
         </div>
         {mile ? (
           <>
@@ -120,7 +120,7 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
                       <div className="h-full bg-yellow-500" style={{ width: `${Math.round(mile.nextUp.progress * 100)}%` }} />
                     </div>
                   </div>
-                  <span className="text-[11px] text-zinc-500">{mile.nextUp.value}/{mile.nextUp.threshold}</span>
+                  <span className="text-[11px] text-zinc-400">{mile.nextUp.value}/{mile.nextUp.threshold}</span>
                 </div>
               </div>
             )}
@@ -133,13 +133,13 @@ export function InsightsPanel({ onPlayed }: { onPlayed?: () => void }) {
                   <p className="text-[10px] font-semibold text-zinc-200 leading-tight">{b.label}</p>
                   {b.unlocked
                     ? <p className="text-[9px] text-emerald-400 inline-flex items-center gap-0.5 mt-0.5"><Check className="w-2.5 h-2.5" />done</p>
-                    : <p className="text-[9px] text-zinc-600 mt-0.5">{b.value}/{b.threshold}</p>}
+                    : <p className="text-[9px] text-zinc-400 mt-0.5">{b.value}/{b.threshold}</p>}
                 </div>
               ))}
             </div>
           </>
         ) : (
-          <p className="text-xs text-zinc-600">No milestones available.</p>
+          <p className="text-xs text-zinc-400">No milestones available.</p>
         )}
       </div>
     </div>

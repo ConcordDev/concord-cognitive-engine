@@ -76,19 +76,19 @@ export function QuakeFeed() {
       {quakes.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">USGS unreachable.</div>}
       <div className="grid grid-cols-4 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Events</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Events</div>
           <div className="mt-0.5 font-mono text-lg text-rose-300">{list.length}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Max mag</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Max mag</div>
           <div className="mt-0.5 font-mono text-lg text-rose-300">{maxMag > 0 ? `M${maxMag.toFixed(1)}` : '—'}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">M5+</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">M5+</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{m5plus}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Tsunamis</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Tsunamis</div>
           <div className="mt-0.5 font-mono text-lg text-cyan-300">{tsunamis}</div>
         </div>
       </div>
@@ -106,23 +106,23 @@ export function QuakeFeed() {
                     {q.properties.tsunami === 1 && <span className="rounded bg-cyan-500/30 px-1 font-mono text-[9px] text-cyan-200">TSUNAMI</span>}
                     {q.properties.alert && <span className={`rounded px-1 font-mono text-[9px] uppercase ${q.properties.alert === 'red' ? 'bg-rose-500/30 text-rose-200' : q.properties.alert === 'orange' ? 'bg-orange-500/30 text-orange-200' : 'bg-yellow-500/30 text-yellow-200'}`}>{q.properties.alert}</span>}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
                     <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{q.geometry.coordinates[1]?.toFixed(2)}, {q.geometry.coordinates[0]?.toFixed(2)}</span>
                     <span className="flex items-center gap-0.5"><Activity className="h-3 w-3" />depth {q.geometry.coordinates[2]?.toFixed(1)}km</span>
                     {q.properties.felt && <span>felt by {q.properties.felt}</span>}
                     <span>{new Date(q.properties.time).toLocaleString()}</span>
                   </div>
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
               </div>
             </a>
           );
         })}
         {list.length === 0 && !quakes.isPending && !quakes.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No events in this feed.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No events in this feed.</div>
         )}
       </div>
-      {quakes.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling USGS…</div>}
+      {quakes.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling USGS…</div>}
     </div>
   );
 }

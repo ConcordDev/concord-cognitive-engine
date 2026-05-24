@@ -66,7 +66,7 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
     await refresh();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   // Build a per-week chart: one row per week, one series column per consultant.
   const weekSet = new Set<string>();
@@ -121,20 +121,20 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
 
       {chartData.length > 0 && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-          <p className="text-[10px] text-zinc-500 uppercase mb-2">Weekly Utilization %</p>
+          <p className="text-[10px] text-zinc-400 uppercase mb-2">Weekly Utilization %</p>
           <ChartKit kind="bar" data={chartData} xKey="week" series={chartSeries} height={160} />
         </div>
       )}
 
       <div className="space-y-1.5">
-        {rows.length === 0 && <p className="text-xs text-zinc-500 italic py-3 text-center">No consultants yet.</p>}
+        {rows.length === 0 && <p className="text-xs text-zinc-400 italic py-3 text-center">No consultants yet.</p>}
         {rows.map(row => (
           <div key={row.consultantId} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <Users className="w-4 h-4 text-indigo-400 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-zinc-100 truncate">{row.name} · <span className="text-zinc-500">{row.role}</span></p>
-                <p className="text-[10px] text-zinc-500">{row.weeklyCapacity}h/wk capacity · {row.byWeek.length} weeks planned</p>
+                <p className="text-xs font-semibold text-zinc-100 truncate">{row.name} · <span className="text-zinc-400">{row.role}</span></p>
+                <p className="text-[10px] text-zinc-400">{row.weeklyCapacity}h/wk capacity · {row.byWeek.length} weeks planned</p>
               </div>
               <button onClick={() => delConsultant(row.consultantId)} aria-label="Delete consultant"
                 className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -156,7 +156,7 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
 
       {allocations.length > 0 && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-          <p className="text-[10px] text-zinc-500 uppercase mb-1.5">Allocations</p>
+          <p className="text-[10px] text-zinc-400 uppercase mb-1.5">Allocations</p>
           <ul className="space-y-1">
             {allocations.map(a => (
               <li key={a.id} className="group flex items-center gap-2 text-[11px] text-zinc-300">

@@ -158,7 +158,7 @@ export function ScenarioModeler() {
             Reduction projects to apply
           </div>
           {projects.length === 0 ? (
-            <div className="text-[10px] text-gray-500">
+            <div className="text-[10px] text-gray-400">
               No reduction projects yet — add ad-hoc reductions below, or create projects
               in the Projects tab.
             </div>
@@ -199,7 +199,7 @@ export function ScenarioModeler() {
             </button>
           </div>
           {adHoc.length === 0 ? (
-            <div className="text-[10px] text-gray-500">None added.</div>
+            <div className="text-[10px] text-gray-400">None added.</div>
           ) : (
             <ul className="space-y-1.5">
               {adHoc.map((r, i) => (
@@ -328,7 +328,7 @@ export function ScenarioModeler() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[9px] uppercase tracking-wider text-gray-500">{label}</span>
+      <span className="text-[9px] uppercase tracking-wider text-gray-400">{label}</span>
       {children}
     </label>
   );
@@ -353,7 +353,7 @@ function ResTile({
           : 'text-gray-200';
   return (
     <div className="rounded border border-white/10 bg-white/[0.03] p-2">
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-sm font-mono font-bold tabular-nums', colour)}>{value}</div>
     </div>
   );

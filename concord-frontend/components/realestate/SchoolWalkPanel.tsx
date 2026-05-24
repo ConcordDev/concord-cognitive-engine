@@ -62,7 +62,7 @@ export function SchoolWalkPanel() {
 
       <div className="p-3 space-y-3">
         {!schools && !walk && !commute && (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">Enter an address to see schools, walk score & commute.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">Enter an address to see schools, walk score & commute.</div>
         )}
         {walk && (
           <div className="grid grid-cols-3 gap-2">
@@ -81,9 +81,9 @@ export function SchoolWalkPanel() {
             <ul className="space-y-1.5">
               {schools.schools.map(s => (
                 <li key={s.kind} className="flex items-center gap-2 text-xs">
-                  <span className="text-[10px] uppercase tracking-wider w-16 text-gray-500">{s.kind}</span>
+                  <span className="text-[10px] uppercase tracking-wider w-16 text-gray-400">{s.kind}</span>
                   <span className="flex-1 truncate text-white">{s.name}</span>
-                  <span className="text-[10px] text-gray-500">{s.distance}mi</span>
+                  <span className="text-[10px] text-gray-400">{s.distance}mi</span>
                   <span className={cn('font-mono font-bold w-6 text-right', s.rating >= 8 ? 'text-emerald-300' : s.rating >= 6 ? 'text-amber-300' : 'text-rose-300')}>{s.rating}</span>
                 </li>
               ))}
@@ -97,9 +97,9 @@ export function SchoolWalkPanel() {
               <span className="text-xs text-gray-300">Commute · {commute.mode}</span>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div><div className="text-[10px] uppercase tracking-wider text-gray-500">Time</div><div className="text-lg font-mono tabular-nums text-white">{commute.minutes}m</div></div>
-              <div><div className="text-[10px] uppercase tracking-wider text-gray-500">Rush hour</div><div className="text-lg font-mono tabular-nums text-amber-300">{commute.rushHourMinutes}m</div></div>
-              <div><div className="text-[10px] uppercase tracking-wider text-gray-500">Distance</div><div className="text-lg font-mono tabular-nums text-white">{commute.distanceMi}mi</div></div>
+              <div><div className="text-[10px] uppercase tracking-wider text-gray-400">Time</div><div className="text-lg font-mono tabular-nums text-white">{commute.minutes}m</div></div>
+              <div><div className="text-[10px] uppercase tracking-wider text-gray-400">Rush hour</div><div className="text-lg font-mono tabular-nums text-amber-300">{commute.rushHourMinutes}m</div></div>
+              <div><div className="text-[10px] uppercase tracking-wider text-gray-400">Distance</div><div className="text-lg font-mono tabular-nums text-white">{commute.distanceMi}mi</div></div>
             </div>
           </div>
         )}
@@ -113,9 +113,9 @@ function ScoreTile({ icon: Icon, label, score, desc }: { icon: typeof Footprints
   return (
     <div className="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-center">
       <Icon className={cn('w-4 h-4 mx-auto mb-0.5', colour)} />
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-2xl font-mono font-bold tabular-nums', colour)}>{score}</div>
-      <div className="text-[9px] text-gray-500 truncate">{desc}</div>
+      <div className="text-[9px] text-gray-400 truncate">{desc}</div>
     </div>
   );
 }

@@ -79,7 +79,7 @@ export function QRCodeReceive({ address, label, amount, symbol, size = 240 }: QR
           )}
         </div>
         <div className="w-full text-center">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{symbol || 'Address'}</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">{symbol || 'Address'}</div>
           <div className="font-mono text-xs text-cyan-200 break-all max-w-md mx-auto">{address}</div>
         </div>
         {amount && (
@@ -103,7 +103,7 @@ export function QRCodeReceive({ address, label, amount, symbol, size = 240 }: QR
             <Download className="w-3.5 h-3.5" /> Save QR
           </button>
         </div>
-        <p className="text-[10px] text-gray-500 text-center max-w-xs">
+        <p className="text-[10px] text-gray-400 text-center max-w-xs">
           Only send {symbol || 'tokens'} on the matching network to this address. Sending other assets will lose them.
         </p>
       </div>

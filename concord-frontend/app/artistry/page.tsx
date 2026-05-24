@@ -87,7 +87,7 @@ export default function ArtistryPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Concord Artistry</h1>
-                <p className="text-xs text-gray-500">Cross-domain creative discovery</p>
+                <p className="text-xs text-gray-400">Cross-domain creative discovery</p>
               </div>
             </div>
           </div>
@@ -97,7 +97,7 @@ export default function ArtistryPage() {
             <Info className="w-4 h-4 text-neon-cyan flex-shrink-0 mt-0.5" />
             <div>
               <p><strong className="text-gray-300">Free advertising for creators.</strong> No cost to post, no cost to browse. No ads. No promoted posts. No pay-for-visibility. Ever.</p>
-              <p className="mt-1 text-gray-500">Every piece of content links back to its source lens. No citations, no downloads from Artistry — this is a funnel, not a destination.</p>
+              <p className="mt-1 text-gray-400">Every piece of content links back to its source lens. No citations, no downloads from Artistry — this is a funnel, not a destination.</p>
             </div>
           </div>
         </motion.div>

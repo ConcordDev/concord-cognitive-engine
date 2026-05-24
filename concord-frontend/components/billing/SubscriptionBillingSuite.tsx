@@ -116,7 +116,7 @@ function Card({ children }: { children: React.ReactNode }) {
 function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-lg ${accent || 'text-cyan-300'}`}>{value}</div>
     </div>
   );
@@ -284,7 +284,7 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
               <div key={su.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
                 <div>
                   <span className="text-white">{su.customerName}</span>
-                  <span className="ml-2 text-zinc-500">{su.plan?.name || su.planId} · {su.quantity} seat(s)</span>
+                  <span className="ml-2 text-zinc-400">{su.plan?.name || su.planId} · {su.quantity} seat(s)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${
@@ -412,7 +412,7 @@ function UsagePanel({ onError }: { onError: (e: string) => void }) {
               {tiers.map((t, i) => (
                 <div key={i} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1 text-xs">
                   <span className="font-mono text-zinc-400">{t.range}</span>
-                  <span className="text-zinc-500">{(Number(t.units) || 0).toLocaleString()} × {t.unitPrice}</span>
+                  <span className="text-zinc-400">{(Number(t.units) || 0).toLocaleString()} × {t.unitPrice}</span>
                   <span className="text-white">{money(t.charge)}</span>
                 </div>
               ))}
@@ -503,7 +503,7 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
               <div key={c.id} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
                 <span className="font-mono text-cyan-300">{c.code}</span>
                 <span className="text-zinc-400">{c.kind === 'percent' ? `${c.value}% off` : money(c.value)} · {c.duration}</span>
-                <span className="text-zinc-500">
+                <span className="text-zinc-400">
                   {c.redemptions} / {c.maxRedemptions ?? '∞'} used
                   <span className={`ml-2 ${c.active ? 'text-emerald-400' : 'text-zinc-600'}`}>{c.active ? 'active' : 'inactive'}</span>
                 </span>
@@ -607,7 +607,7 @@ function DunningPanel({ onError }: { onError: (e: string) => void }) {
               <div key={a.attempt} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1 text-[11px]">
                 <span className="text-zinc-400">Attempt {a.attempt} · {a.emailTemplate}</span>
                 <span className="text-zinc-600">{new Date(a.scheduledFor).toLocaleDateString()}</span>
-                <span className={`${a.status === 'succeeded' ? 'text-emerald-400' : a.status === 'failed' ? 'text-red-400' : 'text-zinc-500'}`}>{a.status}</span>
+                <span className={`${a.status === 'succeeded' ? 'text-emerald-400' : a.status === 'failed' ? 'text-red-400' : 'text-zinc-400'}`}>{a.status}</span>
               </div>
             ))}
           </div>
@@ -667,7 +667,7 @@ function PortalPanel({ onError }: { onError: (e: string) => void }) {
           <div className="rounded bg-zinc-950 px-2.5 py-1.5 text-xs text-white">
             {pm.brand} •••• {pm.last4} · exp {String(pm.expMonth).padStart(2, '0')}/{pm.expYear}
           </div>
-        ) : <div className="text-xs text-zinc-500">No card on file.</div>}
+        ) : <div className="text-xs text-zinc-400">No card on file.</div>}
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
           <Field label="Name"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Card number"><input className={inputCls} value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="4242 4242 4242 4242" /></Field>
@@ -684,7 +684,7 @@ function PortalPanel({ onError }: { onError: (e: string) => void }) {
             {activeSubs.map((su) => (
               <div key={su.id} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
                 <span className="text-white">{su.customerName} · {su.plan?.name || su.planId}</span>
-                <span className="text-zinc-500">{su.status}</span>
+                <span className="text-zinc-400">{su.status}</span>
               </div>
             ))}
           </div>
@@ -695,7 +695,7 @@ function PortalPanel({ onError }: { onError: (e: string) => void }) {
         <div className="mb-2 text-xs font-semibold text-zinc-200">
           Invoice history ({invoices.length}) · {data?.openInvoiceCount ?? 0} open
         </div>
-        {invoices.length === 0 ? <div className="text-xs text-zinc-500">No invoices yet.</div> : (
+        {invoices.length === 0 ? <div className="text-xs text-zinc-400">No invoices yet.</div> : (
           <div className="space-y-1">
             {invoices.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
@@ -772,7 +772,7 @@ function TaxPanel({ onError }: { onError: (e: string) => void }) {
             <Stat label="Gross" value={money(result.grossAmount)} accent="text-emerald-300" />
             <Stat label="Reverse charge" value={result.reverseCharge ? 'yes' : 'no'} accent="text-zinc-300" />
           </div>
-          {result.note && <p className="mt-2 text-[11px] text-zinc-500">{result.note}</p>}
+          {result.note && <p className="mt-2 text-[11px] text-zinc-400">{result.note}</p>}
         </Card>
       )}
     </div>
@@ -835,7 +835,7 @@ function AnalyticsPanel({ onError }: { onError: (e: string) => void }) {
             {cohorts.map((c) => (
               <div key={c.month} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
                 <span className="font-mono text-zinc-400">{c.month}</span>
-                <span className="text-zinc-500">{c.signups} signups · {c.churned} churned</span>
+                <span className="text-zinc-400">{c.signups} signups · {c.churned} churned</span>
                 <span className="text-cyan-300">{c.retentionPct}% retained</span>
                 <span className="text-emerald-300">{money(c.mrr)}</span>
               </div>

@@ -110,13 +110,13 @@ export function AIScribePanel({
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">AI Scribe — raw note → structured SOAP</span>
-        {patient && <span className="text-[10px] text-gray-500">{patient.lastName}, {patient.firstName} · <span className="font-mono">{patient.mrn}</span></span>}
+        {patient && <span className="text-[10px] text-gray-400">{patient.lastName}, {patient.firstName} · <span className="font-mono">{patient.mrn}</span></span>}
       </header>
       <div className="grid grid-cols-2 gap-0 h-[28rem]">
         {/* Left: raw text input */}
         <div className="p-3 border-r border-white/10 flex flex-col">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Encounter transcript / dictation</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Encounter transcript / dictation</div>
             <button
               onClick={recording ? stopVoice : startVoice}
               className={`px-2 py-1 text-xs rounded inline-flex items-center gap-1 ${recording ? 'bg-rose-500 text-white animate-pulse' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25'}`}
@@ -131,7 +131,7 @@ export function AIScribePanel({
             className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono whitespace-pre-wrap resize-none"
           />
           <div className="mt-2 flex items-center justify-between">
-            <div className="text-[10px] text-gray-500">{raw.length} chars</div>
+            <div className="text-[10px] text-gray-400">{raw.length} chars</div>
             <button onClick={transcribe} disabled={loading || raw.length < 30} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
               {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Structure SOAP
             </button>
@@ -141,7 +141,7 @@ export function AIScribePanel({
         {/* Right: structured SOAP output */}
         <div className="p-3 flex flex-col">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Structured SOAP{source && <span className="ml-2 text-[9px] text-cyan-300">· {source}</span>}</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Structured SOAP{source && <span className="ml-2 text-[9px] text-cyan-300">· {source}</span>}</div>
             {soap && (
               <div className="flex items-center gap-1">
                 <button onClick={copyToClipboard} className="px-2 py-1 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1">
@@ -165,7 +165,7 @@ export function AIScribePanel({
                 <Field label="Plan" value={soap.plan} />
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500 text-[11px]">
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 text-[11px]">
                 <FileText className="w-8 h-8 opacity-30 mb-2" />
                 Click "Structure SOAP" to convert raw text into structured Chief Complaint / Subjective / Objective / Assessment / Plan.
               </div>
@@ -181,7 +181,7 @@ function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">{label}</div>
-      <div className="px-2 py-1.5 bg-black/30 border border-white/10 rounded text-gray-200 font-mono whitespace-pre-wrap min-h-[2rem]">{value || <span className="italic text-gray-500">(empty)</span>}</div>
+      <div className="px-2 py-1.5 bg-black/30 border border-white/10 rounded text-gray-200 font-mono whitespace-pre-wrap min-h-[2rem]">{value || <span className="italic text-gray-400">(empty)</span>}</div>
     </div>
   );
 }

@@ -346,7 +346,7 @@ export default function EventTimelineLens() {
           {/* ── search / range controls ────────────────────────────── */}
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 rounded-md bg-zinc-900 px-2 py-1 ring-1 ring-zinc-700 focus-within:ring-zinc-500">
-              <Search className="h-3.5 w-3.5 text-zinc-500" />
+              <Search className="h-3.5 w-3.5 text-zinc-400" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -377,7 +377,7 @@ export default function EventTimelineLens() {
             />
 
             <div className="flex items-center gap-1 rounded-md bg-zinc-900 px-2 py-1 text-[11px] ring-1 ring-zinc-700">
-              <span className="text-zinc-500">range</span>
+              <span className="text-zinc-400">range</span>
               <input
                 type="datetime-local"
                 value={fromTs}
@@ -448,7 +448,7 @@ export default function EventTimelineLens() {
                   key={cat}
                   onClick={() => toggleCategory(cat)}
                   className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-zinc-700 transition-colors ${
-                    isActive ? badgeColor(cat) : 'bg-zinc-900 text-zinc-500'
+                    isActive ? badgeColor(cat) : 'bg-zinc-900 text-zinc-400'
                   }`}
                   title={`Toggle ${cat} events`}
                 >
@@ -461,7 +461,7 @@ export default function EventTimelineLens() {
           {/* ── exact-channel chips (from channels macro) ──────────── */}
           {knownChannels.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-1.5">
-              <span className="mr-1 text-[10px] uppercase tracking-wider text-zinc-600">
+              <span className="mr-1 text-[10px] uppercase tracking-wider text-zinc-400">
                 channels
               </span>
               {knownChannels.slice(0, 24).map((c) => {
@@ -478,7 +478,7 @@ export default function EventTimelineLens() {
                     title={`Last seen ${relativeTime(c.last_seen)}`}
                   >
                     {c.channel}
-                    <span className="ml-1 text-zinc-500">{c.count}</span>
+                    <span className="ml-1 text-zinc-400">{c.count}</span>
                   </button>
                 );
               })}
@@ -495,7 +495,7 @@ export default function EventTimelineLens() {
 
           {statsByChannel.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-1.5 text-[10px]">
-              <span className="mr-2 text-zinc-500">Last 24h:</span>
+              <span className="mr-2 text-zinc-400">Last 24h:</span>
               {statsByChannel.slice(0, 12).map((s) => (
                 <span key={s.channel} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">
                   {s.channel} <span className="text-zinc-300">{s.count}</span>
@@ -507,7 +507,7 @@ export default function EventTimelineLens() {
           <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
             {/* ── event feed ──────────────────────────────────────── */}
             <div className="rounded-xl bg-zinc-900/60 ring-1 ring-zinc-800">
-              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-[11px] text-zinc-500">
+              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-[11px] text-zinc-400">
                 <span>
                   {mode === 'live' && 'Live feed'}
                   {mode === 'search' && `Search results for "${query.trim()}"`}
@@ -518,7 +518,7 @@ export default function EventTimelineLens() {
                 </span>
               </div>
               {filteredRows.length === 0 ? (
-                <div className="p-8 text-center text-sm text-zinc-500">
+                <div className="p-8 text-center text-sm text-zinc-400">
                   {mode === 'live'
                     ? 'No events yet. The substrate fires events continuously — check back in a few seconds.'
                     : 'No events match this filter.'}
@@ -547,12 +547,12 @@ export default function EventTimelineLens() {
                               {row.channel}
                             </span>
                             {row.world_id && (
-                              <span className="shrink-0 text-[11px] text-zinc-500">
+                              <span className="shrink-0 text-[11px] text-zinc-400">
                                 @{row.world_id}
                               </span>
                             )}
                             {row.actor_id && (
-                              <span className="shrink-0 text-[11px] text-zinc-500">
+                              <span className="shrink-0 text-[11px] text-zinc-400">
                                 {row.actor_kind || '?'}:{row.actor_id}
                               </span>
                             )}
@@ -560,7 +560,7 @@ export default function EventTimelineLens() {
                               <span className="truncate text-xs text-zinc-300">{summary}</span>
                             )}
                           </button>
-                          <span className="shrink-0 text-[10px] text-zinc-500">
+                          <span className="shrink-0 text-[10px] text-zinc-400">
                             {relativeTime(row.created_at)}
                           </span>
                           <button

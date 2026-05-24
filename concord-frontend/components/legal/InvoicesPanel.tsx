@@ -91,9 +91,9 @@ export function InvoicesPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : invoices.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">No invoices in this view.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No invoices in this view.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {invoices.map(inv => {
@@ -106,11 +106,11 @@ export function InvoicesPanel() {
                     <FileText className={cn('w-3.5 h-3.5', inv.status === 'paid' ? 'text-emerald-400' : overdue ? 'text-rose-400' : 'text-amber-400')} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-gray-500">{inv.number}</span>
+                        <span className="font-mono text-[10px] text-gray-400">{inv.number}</span>
                         <span className="truncate">{inv.matterName}</span>
                         {overdue && <span className="text-[9px] uppercase text-rose-300">Overdue</span>}
                       </div>
-                      <div className="text-[10px] text-gray-500">{inv.clientName || '—'} · {inv.lineItems.length} time entries · issued {inv.issuedAt}</div>
+                      <div className="text-[10px] text-gray-400">{inv.clientName || '—'} · {inv.lineItems.length} time entries · issued {inv.issuedAt}</div>
                     </div>
                     <div className="text-sm font-mono tabular-nums text-white w-24 text-right">${inv.total.toFixed(2)}</div>
                     {inv.status === 'open' ? (
@@ -124,14 +124,14 @@ export function InvoicesPanel() {
                   {isOpen && (
                     <div className="px-4 pb-3 bg-black/30">
                       <table className="w-full text-xs">
-                        <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+                        <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
                           <tr><th className="text-left py-1">Date</th><th className="text-left">Description</th><th className="text-right">Hours</th><th className="text-right">Rate</th><th className="text-right">Amount</th></tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
                           {inv.lineItems.map(li => (
                             <tr key={li.entryId}>
-                              <td className="py-1 text-gray-500 font-mono">{li.date}</td>
-                              <td className="text-white">{li.description || <span className="italic text-gray-500">(no description)</span>}</td>
+                              <td className="py-1 text-gray-400 font-mono">{li.date}</td>
+                              <td className="text-white">{li.description || <span className="italic text-gray-400">(no description)</span>}</td>
                               <td className="text-right font-mono text-gray-400">{li.hours.toFixed(2)}</td>
                               <td className="text-right font-mono text-gray-400">${li.rate}</td>
                               <td className="text-right font-mono text-white">${li.amount.toFixed(2)}</td>

@@ -287,10 +287,10 @@ export function AnonMessenger() {
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
         <Fingerprint className="h-5 w-5 text-neon-purple" />
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wide text-gray-500">Your pseudonym</p>
+          <p className="text-[10px] uppercase tracking-wide text-gray-400">Your pseudonym</p>
           <p className="truncate font-mono text-sm text-white">
             {identity?.alias || '…'}{' '}
-            <span className="text-gray-500">· {identity?.anonId?.slice(0, 14) || ''}</span>
+            <span className="text-gray-400">· {identity?.anonId?.slice(0, 14) || ''}</span>
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -334,7 +334,7 @@ export function AnonMessenger() {
           </div>
           <div className="space-y-1.5">
             {conversations.length === 0 && (
-              <p className="rounded-lg border border-dashed border-zinc-800 px-3 py-6 text-center text-xs text-gray-500">
+              <p className="rounded-lg border border-dashed border-zinc-800 px-3 py-6 text-center text-xs text-gray-400">
                 No conversations. Start one with a peer.
               </p>
             )}
@@ -362,12 +362,12 @@ export function AnonMessenger() {
                         .join(', ') ||
                       'Conversation'}
                   </p>
-                  <p className="truncate text-[10px] text-gray-500">
+                  <p className="truncate text-[10px] text-gray-400">
                     {c.messageCount} msg
                     {c.disappearDefaultSec > 0 && ' · ⏱ disappearing'}
                   </p>
                 </div>
-                <span className="text-[10px] text-gray-600">{relTime(c.lastActivityAt)}</span>
+                <span className="text-[10px] text-gray-400">{relTime(c.lastActivityAt)}</span>
               </button>
             ))}
           </div>
@@ -378,14 +378,14 @@ export function AnonMessenger() {
               <Users className="h-3.5 w-3.5" /> Peer directory ({peers.length})
             </h4>
             {peers.length === 0 && (
-              <p className="text-[10px] text-gray-600">No other pseudonyms online yet.</p>
+              <p className="text-[10px] text-gray-400">No other pseudonyms online yet.</p>
             )}
             {peers.map((p) => (
               <div
                 key={p.anonId}
                 className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5"
               >
-                <Fingerprint className="h-3.5 w-3.5 text-gray-500" />
+                <Fingerprint className="h-3.5 w-3.5 text-gray-400" />
                 <span className="min-w-0 flex-1 truncate font-mono text-xs text-gray-200">
                   {p.alias}
                 </span>
@@ -409,7 +409,7 @@ export function AnonMessenger() {
         {/* Active conversation */}
         <div className="lg:col-span-2">
           {!activeView ? (
-            <div className="flex h-full min-h-[24rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 text-gray-500">
+            <div className="flex h-full min-h-[24rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 text-gray-400">
               <Lock className="h-8 w-8" />
               <p className="text-sm">Select or start a conversation</p>
               <p className="text-xs">Messages are X25519 + AES-256-GCM end-to-end encrypted</p>
@@ -465,7 +465,7 @@ export function AnonMessenger() {
               {/* Messages */}
               <div className="flex-1 space-y-2 overflow-y-auto p-4">
                 {activeView.messages.length === 0 && (
-                  <p className="py-8 text-center text-xs text-gray-500">
+                  <p className="py-8 text-center text-xs text-gray-400">
                     No messages yet — say something encrypted.
                   </p>
                 )}
@@ -501,7 +501,7 @@ export function AnonMessenger() {
                           </span>
                         )}
                       </p>
-                      <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-500">
+                      <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
                         <span>{new Date(m.sentAt).toLocaleTimeString()}</span>
                         <Lock className="h-2.5 w-2.5 text-neon-green" />
                         {m.expiresAt && (
@@ -600,12 +600,12 @@ export function AnonMessenger() {
               <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
                 <Plus className="h-4 w-4 text-neon-blue" /> Start conversation
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Pick one peer for a direct message, or several for a group.
               </p>
               <div className="max-h-48 space-y-1.5 overflow-y-auto">
                 {peers.length === 0 && (
-                  <p className="text-xs text-gray-600">No peers available.</p>
+                  <p className="text-xs text-gray-400">No peers available.</p>
                 )}
                 {peers.map((p) => {
                   const sel = selectedPeers.includes(p.anonId);
@@ -704,7 +704,7 @@ export function AnonMessenger() {
                 <ShieldCheck className="h-4 w-4 text-neon-green" /> Safety number ·{' '}
                 <span className="font-mono text-gray-400">{safety.peerAlias}</span>
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Compare these 12 groups with your peer out-of-band. A match proves no
                 man-in-the-middle on the X25519 key exchange.
               </p>

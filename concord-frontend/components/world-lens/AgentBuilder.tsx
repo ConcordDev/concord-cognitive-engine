@@ -271,27 +271,27 @@ export default function AgentBuilder() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
                   <div>
-                    <span className="text-gray-500">Last run:</span> {agent.lastRun}
+                    <span className="text-gray-400">Last run:</span> {agent.lastRun}
                   </div>
                   <div>
-                    <span className="text-gray-500">Runs today:</span> {agent.runsToday}
+                    <span className="text-gray-400">Runs today:</span> {agent.runsToday}
                   </div>
                   {agent.watching && (
                     <div className="col-span-2">
-                      <span className="text-gray-500">Watching:</span>{' '}
+                      <span className="text-gray-400">Watching:</span>{' '}
                       <code className="text-blue-300 bg-blue-400/10 px-1 rounded">{agent.watching}</code>
                     </div>
                   )}
                   {agent.schedule && (
                     <div className="col-span-2">
-                      <span className="text-gray-500">Schedule:</span> {agent.schedule}
+                      <span className="text-gray-400">Schedule:</span> {agent.schedule}
                     </div>
                   )}
                 </div>
 
                 {/* Quota bar */}
                 <div>
-                  <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                  <div className="flex justify-between text-[10px] text-gray-400 mb-1">
                     <span>Daily usage</span>
                     <span>
                       {agent.runsToday}/{agent.dailyQuota}
@@ -330,16 +330,16 @@ export default function AgentBuilder() {
                 {/* Expanded logs */}
                 {isExpanded && (
                   <div className="mt-2 border-t border-white/10 pt-3 space-y-2">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500">Recent Logs</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">Recent Logs</span>
                     {agent.logs.length === 0 && (
-                      <p className="text-xs text-gray-500 italic">No log entries yet.</p>
+                      <p className="text-xs text-gray-400 italic">No log entries yet.</p>
                     )}
                     {agent.logs.map((log, i) => {
                       const badge = resultBadge(log.result);
                       return (
                         <div key={i} className="flex items-center justify-between text-xs gap-2">
                           <span className="text-gray-300 truncate flex-1">{log.action}</span>
-                          <span className="text-gray-500 whitespace-nowrap">{log.timestamp}</span>
+                          <span className="text-gray-400 whitespace-nowrap">{log.timestamp}</span>
                           <span
                             className={`px-2 py-0.5 rounded border text-[10px] font-medium whitespace-nowrap ${badge.cls}`}
                           >
@@ -361,7 +361,7 @@ export default function AgentBuilder() {
         <div className="max-w-2xl space-y-6">
           {/* Type selector */}
           <div>
-            <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Agent Type</label>
+            <label className="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Agent Type</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {AGENT_TYPES.map((t) => (
                 <button
@@ -390,7 +390,7 @@ export default function AgentBuilder() {
 
           {/* Type-specific config */}
           <div className="border border-white/10 rounded-xl bg-white/5 p-5 space-y-4">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">Configuration</span>
+            <span className="text-xs text-gray-400 uppercase tracking-wider">Configuration</span>
 
             {/* Monitor */}
             {selectedType === 'monitor' && (
@@ -544,9 +544,9 @@ export default function AgentBuilder() {
                 <label className="text-xs text-gray-400 mb-1 block">Rules ({customRules.length})</label>
                 {customRules.map((r, i) => (
                   <div key={i} className="text-xs bg-black/40 border border-white/10 rounded-lg p-2 flex flex-col gap-1">
-                    <span><span className="text-gray-500">Trigger:</span> {r.trigger}</span>
-                    <span><span className="text-gray-500">Condition:</span> {r.condition}</span>
-                    <span><span className="text-gray-500">Action:</span> {r.action}</span>
+                    <span><span className="text-gray-400">Trigger:</span> {r.trigger}</span>
+                    <span><span className="text-gray-400">Condition:</span> {r.condition}</span>
+                    <span><span className="text-gray-400">Action:</span> {r.action}</span>
                   </div>
                 ))}
                 <div className="grid grid-cols-1 gap-2">
@@ -584,7 +584,7 @@ export default function AgentBuilder() {
 
             {/* Fallback for types without special config */}
             {!['monitor', 'alert', 'report', 'market_watch', 'custom'].includes(selectedType) && (
-              <p className="text-xs text-gray-500 italic">
+              <p className="text-xs text-gray-400 italic">
                 Default configuration will be applied. Customize after creation.
               </p>
             )}
@@ -593,7 +593,7 @@ export default function AgentBuilder() {
           {/* Name, activate, create */}
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
             <div className="flex-1 w-full">
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Agent Name</label>
+              <label className="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Agent Name</label>
               <input
                 type="text"
                 value={agentName}

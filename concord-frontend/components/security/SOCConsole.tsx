@@ -321,7 +321,7 @@ export function SOCConsole() {
       <header className="flex items-center gap-2">
         <Activity className="h-5 w-5 text-rose-400" />
         <h2 className="text-base font-semibold text-zinc-100">SOC Console</h2>
-        <span className="text-xs text-zinc-500">SIEM · detections · playbooks · intel</span>
+        <span className="text-xs text-zinc-400">SIEM · detections · playbooks · intel</span>
       </header>
 
       <nav className="flex flex-wrap gap-1.5 border-b border-zinc-800 pb-3">
@@ -391,7 +391,7 @@ export function SOCConsole() {
               <input className={cn(inp, 'ml-auto max-w-[200px]')} placeholder="Search…" value={evQuery} onChange={(e) => setEvQuery(e.target.value)} />
             </div>
             {events.length === 0 ? (
-              <p className="py-6 text-center text-sm text-zinc-500">No events ingested yet.</p>
+              <p className="py-6 text-center text-sm text-zinc-400">No events ingested yet.</p>
             ) : (
               <div className="max-h-72 space-y-1 overflow-y-auto">
                 {events.map((e) => (
@@ -399,7 +399,7 @@ export function SOCConsole() {
                     <span className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', SEV_DOT[e.severity])} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-zinc-200">{e.message}</p>
-                      <p className="text-[11px] text-zinc-500">
+                      <p className="text-[11px] text-zinc-400">
                         {e.source} · {e.srcIp || 'no-ip'} · {new Date(e.ts).toLocaleTimeString()}
                         {e.correlationId && <span className="ml-1 text-amber-400">· correlated</span>}
                       </p>
@@ -444,7 +444,7 @@ export function SOCConsole() {
           </div>
 
           {rules.length === 0 ? (
-            <p className="py-6 text-center text-sm text-zinc-500">No detection rules defined yet.</p>
+            <p className="py-6 text-center text-sm text-zinc-400">No detection rules defined yet.</p>
           ) : (
             <ul className="space-y-1.5">
               {rules.map((r) => (
@@ -452,7 +452,7 @@ export function SOCConsole() {
                   <span className={cn('h-2 w-2 rounded-full', r.enabled ? 'bg-emerald-500' : 'bg-zinc-600')} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-zinc-200">{r.name}</p>
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-zinc-400">
                       {r.field} ⊃ &quot;{r.pattern}&quot; · ≥{r.threshold} in {r.windowMin}m → {r.incidentSeverity} · fired {r.fireCount}×
                     </p>
                   </div>
@@ -487,7 +487,7 @@ export function SOCConsole() {
           </div>
 
           {incidents.length === 0 ? (
-            <p className="py-6 text-center text-sm text-zinc-500">No incidents. Open one above or evaluate alert rules.</p>
+            <p className="py-6 text-center text-sm text-zinc-400">No incidents. Open one above or evaluate alert rules.</p>
           ) : (
             <ul className="space-y-1.5">
               {incidents.map((i) => (
@@ -501,7 +501,7 @@ export function SOCConsole() {
                   >
                     <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-300">{i.severity}</span>
                     <span className="min-w-0 flex-1 truncate text-zinc-200">{i.title}</span>
-                    <span className="text-[11px] text-zinc-500">{i.phase}</span>
+                    <span className="text-[11px] text-zinc-400">{i.phase}</span>
                     {i.origin === 'alert-rule' && <span className="rounded bg-amber-900/50 px-1.5 py-0.5 text-[10px] text-amber-300">auto</span>}
                   </button>
                 </li>
@@ -533,7 +533,7 @@ export function SOCConsole() {
               {/* Playbook */}
               {!selectedIncident.playbookId ? (
                 <div className="mb-3">
-                  <p className="mb-1 text-xs text-zinc-500">Attach a response playbook:</p>
+                  <p className="mb-1 text-xs text-zinc-400">Attach a response playbook:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {playbooks.map((p) => (
                       <button key={p.id} onClick={() => attachPlaybook(selectedIncident.id, p.id)} className={cn(btn, 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 text-xs')}>
@@ -553,7 +553,7 @@ export function SOCConsole() {
                             ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500" />
                             : <span className="mt-0.5 inline-block h-4 w-4 rounded-full border border-zinc-600" />}
                         </button>
-                        <span className={cn(s.done ? 'text-zinc-500 line-through' : 'text-zinc-200')}>{s.text}</span>
+                        <span className={cn(s.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{s.text}</span>
                       </li>
                     ))}
                   </ul>
@@ -573,7 +573,7 @@ export function SOCConsole() {
                 <p className="mb-1 text-xs font-medium text-zinc-400">Timeline</p>
                 <ul className="space-y-0.5">
                   {selectedIncident.timeline.map((t, idx) => (
-                    <li key={idx} className="text-[11px] text-zinc-500">
+                    <li key={idx} className="text-[11px] text-zinc-400">
                       <span className="text-zinc-400">{new Date(t.at).toLocaleTimeString()}</span> · {t.action} {t.detail && `— ${t.detail}`}
                     </li>
                   ))}
@@ -595,7 +595,7 @@ export function SOCConsole() {
           </button>
           {cveMatches !== null && (
             cveMatches.length === 0 ? (
-              <p className="py-6 text-center text-sm text-zinc-500">No vulnerability matched a registered asset.</p>
+              <p className="py-6 text-center text-sm text-zinc-400">No vulnerability matched a registered asset.</p>
             ) : (
               <ul className="space-y-2">
                 {cveMatches.map((m) => (
@@ -646,7 +646,7 @@ export function SOCConsole() {
           </div>
 
           {badgeStats && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-400">
               Audited {badgeStats.eventsAudited} access event(s) · {badgeStats.denialCount} denial(s)
             </p>
           )}
@@ -690,7 +690,7 @@ export function SOCConsole() {
           </div>
 
           {cameras.length === 0 ? (
-            <p className="py-6 text-center text-sm text-zinc-500">No cameras registered yet.</p>
+            <p className="py-6 text-center text-sm text-zinc-400">No cameras registered yet.</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {cameras.map((c) => (
@@ -720,7 +720,7 @@ export function SOCConsole() {
                   </div>
                   <div className="p-2">
                     <p className="truncate text-sm font-medium text-zinc-200">{c.name}</p>
-                    <p className="text-[11px] text-zinc-500">{c.zone} · {c.kind}</p>
+                    <p className="text-[11px] text-zinc-400">{c.zone} · {c.kind}</p>
                     <div className="mt-1.5 flex gap-1">
                       <select
                         className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[11px] text-zinc-300"
@@ -748,7 +748,7 @@ export function SOCConsole() {
         <div className="space-y-4">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Enrich Indicator</h3>
-            <p className="mb-2 text-xs text-zinc-500">
+            <p className="mb-2 text-xs text-zinc-400">
               EPSS exploit-probability from FIRST.org · IOC reputation derived from your SIEM event stream.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -766,7 +766,7 @@ export function SOCConsole() {
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
               <h3 className="mb-1.5 text-sm font-semibold text-zinc-200">EPSS Exploit Probability</h3>
               {epss.score == null ? (
-                <p className="text-xs text-zinc-500">{epss.note || 'No EPSS data.'}</p>
+                <p className="text-xs text-zinc-400">{epss.note || 'No EPSS data.'}</p>
               ) : (
                 <div className="space-y-1 text-sm">
                   <p className="text-zinc-300">Score: <span className="font-mono text-rose-300">{(epss.score * 100).toFixed(1)}%</span></p>

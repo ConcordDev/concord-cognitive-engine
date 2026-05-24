@@ -77,9 +77,9 @@ function EffectSlot({
         aria-label="Power">
           <Power className="w-3 h-3" />
         </button>
-        <span className={cn('text-xs font-medium flex-1', !effect.enabled && 'text-gray-500')}>{effect.name}</span>
+        <span className={cn('text-xs font-medium flex-1', !effect.enabled && 'text-gray-400')}>{effect.name}</span>
         <div className="flex items-center gap-1">
-          <span className="text-[8px] text-gray-500">Wet</span>
+          <span className="text-[8px] text-gray-400">Wet</span>
           <input
             type="range"
             min={0} max={1} step={0.01}
@@ -96,7 +96,7 @@ function EffectSlot({
         aria-label="Delete">
           <Trash2 className="w-3 h-3" />
         </button>
-        {expanded ? <ChevronUp className="w-3 h-3 text-gray-500" /> : <ChevronDown className="w-3 h-3 text-gray-500" />}
+        {expanded ? <ChevronUp className="w-3 h-3 text-gray-400" /> : <ChevronDown className="w-3 h-3 text-gray-400" />}
       </div>
 
       {/* Parameters */}
@@ -116,12 +116,12 @@ function EffectSlot({
                     onChange={e => onUpdateParam(key, parseFloat(e.target.value))}
                     className="flex-1 h-0.5 accent-neon-purple"
                   />
-                  <span className="text-[9px] text-gray-500 font-mono w-12 text-right">{formatParamValue(key, value)}</span>
+                  <span className="text-[9px] text-gray-400 font-mono w-12 text-right">{formatParamValue(key, value)}</span>
                 </>
               ) : typeof value === 'boolean' ? (
                 <button
                   onClick={() => onUpdateParam(key, !value)}
-                  className={cn('px-2 py-0.5 rounded text-[10px]', value ? 'bg-neon-green/20 text-neon-green' : 'bg-white/10 text-gray-500')}
+                  className={cn('px-2 py-0.5 rounded text-[10px]', value ? 'bg-neon-green/20 text-neon-green' : 'bg-white/10 text-gray-400')}
                 >
                   {value ? 'On' : 'Off'}
                 </button>
@@ -231,7 +231,7 @@ export function EffectsPanel({ track, onUpdateEffects, onSaveChainAsDTU }: Effec
 
   if (!track) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-gray-400">
         <div className="text-center">
           <Sliders className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Select a track to edit effects</p>
@@ -279,13 +279,13 @@ export function EffectsPanel({ track, onUpdateEffects, onSaveChainAsDTU }: Effec
         <div className="bg-white/5 rounded-xl border border-white/10 p-3 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-400">Add Effect</span>
-            <button onClick={() => setShowCatalog(false)} className="text-[10px] text-gray-500 hover:text-white">Cancel</button>
+            <button onClick={() => setShowCatalog(false)} className="text-[10px] text-gray-400 hover:text-white">Cancel</button>
           </div>
           {['Dynamics', 'EQ', 'Space', 'Distortion', 'Modulation', 'Filter', 'Utility'].map(cat => {
             const items = EFFECT_CATALOG.filter(e => e.category === cat);
             return (
               <div key={cat}>
-                <h4 className="text-[10px] text-gray-500 uppercase mb-1">{cat}</h4>
+                <h4 className="text-[10px] text-gray-400 uppercase mb-1">{cat}</h4>
                 <div className="flex flex-wrap gap-1">
                   {items.map(item => (
                     <button
@@ -304,7 +304,7 @@ export function EffectsPanel({ track, onUpdateEffects, onSaveChainAsDTU }: Effec
       ) : (
         <button
           onClick={() => setShowCatalog(true)}
-          className="w-full py-2 rounded-lg border border-dashed border-white/10 text-gray-500 hover:text-white hover:border-neon-purple/30 text-xs flex items-center justify-center gap-1"
+          className="w-full py-2 rounded-lg border border-dashed border-white/10 text-gray-400 hover:text-white hover:border-neon-purple/30 text-xs flex items-center justify-center gap-1"
         >
           <span className="text-lg leading-none">+</span> Add Effect
         </button>

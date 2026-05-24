@@ -101,7 +101,7 @@ export function ShareButton({ postId, compact = true, hideWhenEmpty = false, cla
         <button
           type="button"
           onClick={() => { setOpen(false); setCommentary(''); }}
-          className="ml-auto text-zinc-500 hover:text-zinc-200"
+          className="ml-auto text-zinc-400 hover:text-zinc-200"
           aria-label="Cancel"
         >
           <X className="w-3 h-3" />
@@ -125,7 +125,7 @@ export function ShareButton({ postId, compact = true, hideWhenEmpty = false, cla
           {shareMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
           Share
         </button>
-        <span className="text-[10px] text-zinc-500 ml-auto">{commentary.length}/500</span>
+        <span className="text-[10px] text-zinc-400 ml-auto">{commentary.length}/500</span>
       </div>
       {shareMut.error && (
         <div className="text-[10px] text-rose-300/80 mt-1">

@@ -199,7 +199,7 @@ export function AmsWorkbench() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
           Agency Management Workbench
         </span>
-        <span className="ml-auto text-[10px] text-gray-500">Applied Epic / EZLynx parity</span>
+        <span className="ml-auto text-[10px] text-gray-400">Applied Epic / EZLynx parity</span>
       </header>
 
       <nav className="flex items-center gap-1 px-2 py-2 border-b border-white/10 flex-wrap">
@@ -319,7 +319,7 @@ function CarrierRating() {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Maintain your appointed-carrier roster, then run a comparative rate against your own
         underwriting base-premium estimate to find the best price and the best overall fit.
       </p>
@@ -328,7 +328,7 @@ function CarrierRating() {
       <div className="border border-white/10 rounded-lg">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10">
           <span className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Carrier roster</span>
-          <span className="text-[10px] text-gray-600">{carriers.length} appointed</span>
+          <span className="text-[10px] text-gray-400">{carriers.length} appointed</span>
           <button onClick={() => setAdding(v => !v)} className={cn(btnGhost, 'ml-auto')}>
             <Plus className="w-3.5 h-3.5" /> Add carrier
           </button>
@@ -347,20 +347,20 @@ function CarrierRating() {
           </div>
         )}
         {loading ? (
-          <div className="px-3 py-6 text-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
+          <div className="px-3 py-6 text-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
         ) : carriers.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-600">No carriers on your roster yet.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No carriers on your roster yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {carriers.map(c => (
               <li key={c.id} className="px-3 py-2 flex items-center gap-2 group">
                 <span className="text-sm text-white font-medium">{c.name}</span>
                 {c.amBestRating && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">AM Best {c.amBestRating}</span>}
-                <span className="text-[10px] text-gray-500">{c.lines.length ? c.lines.join(', ') : 'all lines'}</span>
-                <span className="text-[10px] text-gray-500">· {c.baseCommissionPct}% comm</span>
-                <span className="text-[10px] text-gray-500">· rate {c.rateIndex}×</span>
+                <span className="text-[10px] text-gray-400">{c.lines.length ? c.lines.join(', ') : 'all lines'}</span>
+                <span className="text-[10px] text-gray-400">· {c.baseCommissionPct}% comm</span>
+                <span className="text-[10px] text-gray-400">· rate {c.rateIndex}×</span>
                 <span className="ml-auto text-[10px] text-cyan-300">service {c.claimsServiceScore}/10</span>
-                <button onClick={() => delCarrier(c.id)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400" title="Remove">
+                <button onClick={() => delCarrier(c.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400" title="Remove">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
@@ -389,13 +389,13 @@ function CarrierRating() {
         )}
         {quotes.length > 0 && rateMeta && (
           <div className="px-3 pb-3 space-y-2">
-            <div className="text-[10px] text-gray-500">
+            <div className="text-[10px] text-gray-400">
               Cheapest <span className="text-green-300">${fmt(rateMeta.cheapest)}</span> ·
               Spread <span className="text-yellow-300">${fmt(rateMeta.spread)}</span>
             </div>
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-[10px] uppercase text-gray-500 text-left">
+                <tr className="text-[10px] uppercase text-gray-400 text-left">
                   <th className="py-1">Carrier</th>
                   <th className="py-1 text-right">Premium</th>
                   <th className="py-1 text-right">Commission</th>
@@ -471,7 +471,7 @@ function RenewalPipeline() {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Build a renewal pipeline from your active policies. Each renewal carries a quote shell,
         an optional rate-change uplift you supply, and a 45/21/7-day reminder schedule.
       </p>
@@ -491,9 +491,9 @@ function RenewalPipeline() {
       )}
 
       {loading ? (
-        <div className="px-3 py-6 text-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
+        <div className="px-3 py-6 text-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
       ) : pipeline.length === 0 ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-600 border border-white/10 rounded-lg">
+        <div className="px-3 py-8 text-center text-xs text-gray-400 border border-white/10 rounded-lg">
           No renewals in the pipeline yet. Add active policies, then build the pipeline.
         </div>
       ) : (
@@ -502,14 +502,14 @@ function RenewalPipeline() {
             <li key={r.id} className="border border-white/10 rounded-lg p-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm text-white font-medium">{r.carrier}</span>
-                <span className="text-[10px] text-gray-500">#{r.policyNumber} · {r.kind}</span>
+                <span className="text-[10px] text-gray-400">#{r.policyNumber} · {r.kind}</span>
                 <span className={cn(
                   'text-[9px] px-1.5 py-0.5 rounded font-bold uppercase',
                   r.stage === 'bound' ? 'bg-green-500/20 text-green-300' :
                   r.stage === 'lapsed' ? 'bg-red-500/20 text-red-300' :
                   'bg-cyan-500/20 text-cyan-300',
                 )}>{r.stage.replace(/_/g, ' ')}</span>
-                <span className={cn('ml-auto text-[10px]', r.daysUntil < 0 ? 'text-red-400' : r.daysUntil < 21 ? 'text-yellow-300' : 'text-gray-500')}>
+                <span className={cn('ml-auto text-[10px]', r.daysUntil < 0 ? 'text-red-400' : r.daysUntil < 21 ? 'text-yellow-300' : 'text-gray-400')}>
                   {r.daysUntil < 0 ? `${Math.abs(r.daysUntil)}d overdue` : `renews in ${r.daysUntil}d`}
                 </span>
               </div>
@@ -598,7 +598,7 @@ function FnolIntake({ policies }: { policies: PolicyLite[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Take a First Notice of Loss. Severity is auto-derived from estimated loss and injuries,
         and the claim is routed to the correct queue with an adjuster assigned round-robin.
       </p>
@@ -629,9 +629,9 @@ function FnolIntake({ policies }: { policies: PolicyLite[] }) {
       </div>
 
       {loading ? (
-        <div className="px-3 py-6 text-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
+        <div className="px-3 py-6 text-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
       ) : fnols.length === 0 ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-600 border border-white/10 rounded-lg">No losses reported yet.</div>
+        <div className="px-3 py-8 text-center text-xs text-gray-400 border border-white/10 rounded-lg">No losses reported yet.</div>
       ) : (
         <ul className="space-y-2">
           {fnols.map(f => (
@@ -640,12 +640,12 @@ function FnolIntake({ policies }: { policies: PolicyLite[] }) {
                 <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-bold uppercase', SEVERITY_COLOR[f.severity] || 'bg-gray-500/20 text-gray-300')}>
                   {f.severity.replace(/_/g, ' ')}
                 </span>
-                <span className="text-[10px] text-gray-500">{f.lossType} · {f.lossDate}</span>
+                <span className="text-[10px] text-gray-400">{f.lossType} · {f.lossDate}</span>
                 {f.injuries && <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">INJURY</span>}
-                <span className="ml-auto text-[10px] text-gray-500">routed → {f.routedTo.replace(/_/g, ' ')}</span>
+                <span className="ml-auto text-[10px] text-gray-400">routed → {f.routedTo.replace(/_/g, ' ')}</span>
               </div>
               <p className="text-xs text-gray-300 mt-1.5">{f.description}</p>
-              <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+              <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-400">
                 {f.estimatedLoss > 0 && <span>est. loss <span className="text-yellow-300">${fmt(f.estimatedLoss)}</span></span>}
                 <span>adjuster: <span className="text-cyan-300">{f.assignedAdjuster || 'unassigned'}</span></span>
                 <span>contact SLA: {f.sla.contactByHours}h</span>
@@ -734,7 +734,7 @@ function CommissionRecon({ policies }: { policies: PolicyLite[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Import a carrier commission statement line-by-line, then reconcile it against the
         commission expected from your own policies — surfacing every discrepancy.
       </p>
@@ -774,13 +774,13 @@ function CommissionRecon({ policies }: { policies: PolicyLite[] }) {
 
       <div className="flex items-center gap-2">
         <input className={cn(inputCls, 'max-w-[200px]')} type="number" placeholder="Expected commission rate %" value={expectedRate} onChange={e => setExpectedRate(e.target.value)} />
-        <span className="text-[10px] text-gray-500">used as the contracted rate for reconciliation</span>
+        <span className="text-[10px] text-gray-400">used as the contracted rate for reconciliation</span>
       </div>
 
       {loading ? (
-        <div className="px-3 py-6 text-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
+        <div className="px-3 py-6 text-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
       ) : statements.length === 0 ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-600 border border-white/10 rounded-lg">No statements imported yet.</div>
+        <div className="px-3 py-8 text-center text-xs text-gray-400 border border-white/10 rounded-lg">No statements imported yet.</div>
       ) : (
         <ul className="space-y-2">
           {statements.map(s => {
@@ -791,7 +791,7 @@ function CommissionRecon({ policies }: { policies: PolicyLite[] }) {
               <li key={s.id} className="border border-white/10 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white font-medium">{s.carrier}</span>
-                  <span className="text-[10px] text-gray-500">{s.period} · {s.lines.length} lines · stated ${fmt(s.statedTotal)}</span>
+                  <span className="text-[10px] text-gray-400">{s.period} · {s.lines.length} lines · stated ${fmt(s.statedTotal)}</span>
                   <button onClick={() => reconcile(s.id)} disabled={busy} className={cn(btnGhost, 'ml-auto')}>
                     <RefreshCw className="w-3.5 h-3.5" /> Reconcile
                   </button>
@@ -801,15 +801,15 @@ function CommissionRecon({ policies }: { policies: PolicyLite[] }) {
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="bg-white/[0.03] rounded p-2">
                         <div className="text-sm font-bold text-green-300 tabular-nums">{rc.matched}</div>
-                        <div className="text-[9px] uppercase text-gray-500">Matched</div>
+                        <div className="text-[9px] uppercase text-gray-400">Matched</div>
                       </div>
                       <div className="bg-white/[0.03] rounded p-2">
                         <div className={cn('text-sm font-bold tabular-nums', rc.unmatched > 0 ? 'text-yellow-300' : 'text-gray-400')}>{rc.unmatched}</div>
-                        <div className="text-[9px] uppercase text-gray-500">Unmatched</div>
+                        <div className="text-[9px] uppercase text-gray-400">Unmatched</div>
                       </div>
                       <div className="bg-white/[0.03] rounded p-2">
                         <div className={cn('text-sm font-bold tabular-nums', rc.discrepancies > 0 ? 'text-red-300' : 'text-green-300')}>{rc.discrepancies}</div>
-                        <div className="text-[9px] uppercase text-gray-500">Discrepancies</div>
+                        <div className="text-[9px] uppercase text-gray-400">Discrepancies</div>
                       </div>
                     </div>
                     <div className="text-[11px] text-gray-400">
@@ -823,7 +823,7 @@ function CommissionRecon({ policies }: { policies: PolicyLite[] }) {
                     {rc.matchedRows.length > 0 && (
                       <table className="w-full text-[11px]">
                         <thead>
-                          <tr className="text-[9px] uppercase text-gray-500 text-left">
+                          <tr className="text-[9px] uppercase text-gray-400 text-left">
                             <th className="py-1">Policy</th>
                             <th className="py-1 text-right">Stated</th>
                             <th className="py-1 text-right">Expected</th>
@@ -936,7 +936,7 @@ function Certificates({ policies }: { policies: PolicyLite[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Issue a Certificate of Insurance against a real policy and export it in ACORD form
         layout (25 / 27 / 28) as a downloadable document.
       </p>
@@ -965,9 +965,9 @@ function Certificates({ policies }: { policies: PolicyLite[] }) {
       </div>
 
       {loading ? (
-        <div className="px-3 py-6 text-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
+        <div className="px-3 py-6 text-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
       ) : certs.length === 0 ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-600 border border-white/10 rounded-lg">No certificates issued yet.</div>
+        <div className="px-3 py-8 text-center text-xs text-gray-400 border border-white/10 rounded-lg">No certificates issued yet.</div>
       ) : (
         <ul className="space-y-2">
           {certs.map(c => (
@@ -975,7 +975,7 @@ function Certificates({ policies }: { policies: PolicyLite[] }) {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold">{c.formType.replace('_', ' ')}</span>
                 <span className="text-sm text-white">{c.certificateHolder}</span>
-                <span className="text-[10px] text-gray-500">#{c.policyNumber} · {c.carrier}</span>
+                <span className="text-[10px] text-gray-400">#{c.policyNumber} · {c.carrier}</span>
                 {c.additionalInsured && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">+AI</span>}
                 {c.revoked && <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">REVOKED</span>}
                 <div className="ml-auto flex items-center gap-1">
@@ -1032,20 +1032,20 @@ function BookPanel() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) {
-    return <div className="px-3 py-8 text-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
+    return <div className="px-3 py-8 text-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
   }
 
   const hasBook = book && book.totalPolicies > 0;
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Your book-of-business performance and a producer leaderboard ranking your own carriers or
         lines of business by premium placed — every figure computed from your real policies.
       </p>
 
       {!hasBook ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-600 border border-white/10 rounded-lg">
+        <div className="px-3 py-8 text-center text-xs text-gray-400 border border-white/10 rounded-lg">
           No policies on file yet — add policies to build your book of business.
         </div>
       ) : (
@@ -1059,7 +1059,7 @@ function BookPanel() {
             ].map(m => (
               <div key={m.label} className="bg-white/[0.03] rounded-lg p-3 text-center">
                 <div className={cn('text-lg font-bold tabular-nums', m.color)}>{m.value}</div>
-                <div className="text-[9px] uppercase tracking-wider text-gray-500">{m.label}</div>
+                <div className="text-[9px] uppercase tracking-wider text-gray-400">{m.label}</div>
               </div>
             ))}
           </div>
@@ -1090,11 +1090,11 @@ function BookPanel() {
           <input className={cn(inputCls, 'max-w-[140px]')} type="number" placeholder="Commission rate %" value={commissionRate} onChange={e => setCommissionRate(e.target.value)} />
         </div>
         {leaderboard.length === 0 ? (
-          <div className="px-3 py-6 text-center text-xs text-gray-600">No active policies to rank.</div>
+          <div className="px-3 py-6 text-center text-xs text-gray-400">No active policies to rank.</div>
         ) : (
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-[10px] uppercase text-gray-500 text-left">
+              <tr className="text-[10px] uppercase text-gray-400 text-left">
                 <th className="py-1.5 px-3">#</th>
                 <th className="py-1.5">{dimension === 'carrier' ? 'Carrier' : 'Line'}</th>
                 <th className="py-1.5 text-right">Policies</th>
@@ -1111,7 +1111,7 @@ function BookPanel() {
                       row.rank === 1 ? 'bg-yellow-500/20 text-yellow-300' :
                       row.rank === 2 ? 'bg-gray-400/20 text-gray-300' :
                       row.rank === 3 ? 'bg-orange-500/20 text-orange-300' :
-                      'bg-white/5 text-gray-500',
+                      'bg-white/5 text-gray-400',
                     )}>{row.rank}</span>
                   </td>
                   <td className="py-1.5 text-white">{row.name}</td>
@@ -1203,7 +1203,7 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Send a document for signature, collect every signer&apos;s sign-off, then issue a
         temporary binder as proof of coverage once the envelope is fully executed.
       </p>
@@ -1247,9 +1247,9 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
       </div>
 
       {loading ? (
-        <div className="px-3 py-6 text-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
+        <div className="px-3 py-6 text-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>
       ) : envelopes.length === 0 ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-600 border border-white/10 rounded-lg">No signature envelopes yet.</div>
+        <div className="px-3 py-8 text-center text-xs text-gray-400 border border-white/10 rounded-lg">No signature envelopes yet.</div>
       ) : (
         <ul className="space-y-2">
           {envelopes.map(env => {
@@ -1258,23 +1258,23 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
               <li key={env.id} className="border border-white/10 rounded-lg p-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm text-white font-medium">{env.title}</span>
-                  <span className="text-[10px] text-gray-500">{env.docType}</span>
+                  <span className="text-[10px] text-gray-400">{env.docType}</span>
                   <span className={cn(
                     'text-[9px] px-1.5 py-0.5 rounded font-bold uppercase',
                     env.status === 'completed' ? 'bg-green-500/20 text-green-300' :
                     env.status === 'voided' ? 'bg-red-500/20 text-red-300' :
                     'bg-yellow-500/20 text-yellow-300',
                   )}>{env.status}</span>
-                  <span className="ml-auto text-[10px] text-gray-500">{signedCount}/{env.signers.length} signed</span>
+                  <span className="ml-auto text-[10px] text-gray-400">{signedCount}/{env.signers.length} signed</span>
                 </div>
                 <ul className="mt-2 space-y-1">
                   {env.signers.map((s, i) => (
                     <li key={i} className="flex items-center gap-2 text-[11px]">
                       {s.signed
                         ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
-                        : <PenLine className="w-3.5 h-3.5 text-gray-500" />}
+                        : <PenLine className="w-3.5 h-3.5 text-gray-400" />}
                       <span className="text-gray-300">{s.name}</span>
-                      <span className="text-[9px] text-gray-600">{s.role}</span>
+                      <span className="text-[9px] text-gray-400">{s.role}</span>
                       {s.signed
                         ? <span className="ml-auto text-[9px] text-green-300">signed</span>
                         : (

@@ -262,7 +262,7 @@ export default function StandardsLibrary() {
 
           {/* Standards list */}
           {filteredStandards.length === 0 && (
-            <p className="text-sm text-gray-500 italic py-8 text-center">No standards match your search.</p>
+            <p className="text-sm text-gray-400 italic py-8 text-center">No standards match your search.</p>
           )}
 
           <div className="space-y-3">
@@ -288,7 +288,7 @@ export default function StandardsLibrary() {
                           </p>
                         </div>
                       </div>
-                      <span className="text-gray-500 text-xs mt-1">{isExpanded ? '[-]' : '[+]'}</span>
+                      <span className="text-gray-400 text-xs mt-1">{isExpanded ? '[-]' : '[+]'}</span>
                     </div>
 
                     <div className="flex items-center gap-2 mt-2">
@@ -300,7 +300,7 @@ export default function StandardsLibrary() {
                           {j}
                         </span>
                       ))}
-                      <span className="text-[10px] text-gray-500 ml-auto">
+                      <span className="text-[10px] text-gray-400 ml-auto">
                         Effective: {std.effectiveDate}
                       </span>
                     </div>
@@ -309,7 +309,7 @@ export default function StandardsLibrary() {
                   {/* Expanded detail */}
                   {isExpanded && (
                     <div className="border-t border-white/10 p-4 space-y-2 bg-white/[0.02]">
-                      <span className="text-[10px] uppercase tracking-wider text-gray-500">Sample Rules</span>
+                      <span className="text-[10px] uppercase tracking-wider text-gray-400">Sample Rules</span>
                       {std.rules.map((rule, i) => {
                         const badge = enforcementBadge(rule.enforcement);
                         return (
@@ -317,7 +317,7 @@ export default function StandardsLibrary() {
                             key={i}
                             className="flex items-center justify-between gap-3 text-xs"
                           >
-                            <span className="text-gray-500 font-mono whitespace-nowrap">{rule.section}</span>
+                            <span className="text-gray-400 font-mono whitespace-nowrap">{rule.section}</span>
                             <span className="text-gray-300 flex-1 truncate">{rule.title}</span>
                             <span
                               className={`px-2 py-0.5 rounded border text-[10px] font-medium whitespace-nowrap ${badge.cls}`}
@@ -342,7 +342,7 @@ export default function StandardsLibrary() {
           {/* Selectors */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">DTU</label>
+              <label className="text-xs text-gray-400 uppercase tracking-wider mb-1 block">DTU</label>
               <select
                 value={selectedDtu}
                 onChange={(e) => {
@@ -358,7 +358,7 @@ export default function StandardsLibrary() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Standard</label>
+              <label className="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Standard</label>
               <select
                 value={selectedStandard}
                 onChange={(e) => {
@@ -396,7 +396,7 @@ export default function StandardsLibrary() {
               {/* Section-by-section results */}
               <div className="border border-white/10 rounded-xl bg-white/5 overflow-hidden">
                 <div className="p-3 border-b border-white/10">
-                  <span className="text-xs text-gray-500 uppercase tracking-wider">Section-by-Section Results</span>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider">Section-by-Section Results</span>
                 </div>
                 <div className="divide-y divide-white/5">
                   {SEED_COMPLIANCE.map((result, i) => {
@@ -408,7 +408,7 @@ export default function StandardsLibrary() {
                         >
                           {badge.text}
                         </span>
-                        <span className="text-gray-500 font-mono whitespace-nowrap">{result.section}</span>
+                        <span className="text-gray-400 font-mono whitespace-nowrap">{result.section}</span>
                         <span className="text-gray-300 flex-1 truncate">{result.title}</span>
                       </div>
                     );
@@ -419,11 +419,11 @@ export default function StandardsLibrary() {
               {/* Parameter comparison table */}
               <div className="border border-white/10 rounded-xl bg-white/5 overflow-hidden">
                 <div className="p-3 border-b border-white/10">
-                  <span className="text-xs text-gray-500 uppercase tracking-wider">Parameter Comparison</span>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider">Parameter Comparison</span>
                 </div>
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-gray-500 border-b border-white/5">
+                    <tr className="text-gray-400 border-b border-white/5">
                       <th className="text-left px-4 py-2 font-medium">Section</th>
                       <th className="text-left px-4 py-2 font-medium">Parameter</th>
                       <th className="text-left px-4 py-2 font-medium">Expected</th>
@@ -436,7 +436,7 @@ export default function StandardsLibrary() {
                       const badge = complianceStatusBadge(result.status);
                       return (
                         <tr key={i}>
-                          <td className="px-4 py-2 font-mono text-gray-500">{result.section}</td>
+                          <td className="px-4 py-2 font-mono text-gray-400">{result.section}</td>
                           <td className="px-4 py-2 text-gray-300">{result.title}</td>
                           <td className="px-4 py-2 text-gray-400">{result.expected}</td>
                           <td className="px-4 py-2 text-white font-medium">{result.actual}</td>

@@ -157,7 +157,7 @@ export function AnalyzePanel({
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded border border-gray-800 bg-black/30 px-2 py-1.5">
-      <span className="text-gray-500 uppercase tracking-wider text-[10px] block">{label}</span>
+      <span className="text-gray-400 uppercase tracking-wider text-[10px] block">{label}</span>
       <span className="font-mono text-gray-200">{value}</span>
     </div>
   );

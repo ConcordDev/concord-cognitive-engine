@@ -125,7 +125,7 @@ function Field({ label, value, onChange, type = 'text', placeholder }: {
 }) {
   return (
     <label className="flex flex-col gap-0.5">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       <input
         type={type}
         value={value}
@@ -142,7 +142,7 @@ function Select({ label, value, onChange, options }: {
 }) {
   return (
     <label className="flex flex-col gap-0.5">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -162,7 +162,7 @@ function Stat({ label, value, tone }: { label: string; value: string | number; t
           : tone === 'good' ? 'text-emerald-400' : 'text-violet-300')}>
         {value}
       </div>
-      <div className="text-[10px] text-zinc-500">{label}</div>
+      <div className="text-[10px] text-zinc-400">{label}</div>
     </div>
   );
 }
@@ -254,7 +254,7 @@ export function RFPlanner() {
             onClick={() => { setTab(key); setError(null); }}
             className={cn(
               'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-colors',
-              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300',
+              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
             )}
           >
             <Icon className="w-3.5 h-3.5" /> {label}
@@ -388,14 +388,14 @@ function SitesTab({ towers, run, busy, refreshTowers, flash }: {
           <div key={t.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2">
             <div className="text-[12px] text-zinc-200">
               <span className="font-semibold">{t.name}</span>
-              <span className="text-zinc-500 ml-2 font-mono">
+              <span className="text-zinc-400 ml-2 font-mono">
                 {t.lat.toFixed(3)},{t.lon.toFixed(3)} · {t.technology} · {t.freqMhz}MHz · {t.powerWatts}W · {t.terrain} · {t.status}
               </span>
             </div>
             <button
               onClick={() => del(t.id)}
               disabled={!!busy}
-              className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-red-400"
+              className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
               aria-label="Delete site"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -403,7 +403,7 @@ function SitesTab({ towers, run, busy, refreshTowers, flash }: {
           </div>
         ))}
         {towers.length === 0 && (
-          <p className="py-4 text-center text-[11px] text-zinc-600">No sites yet — add one above.</p>
+          <p className="py-4 text-center text-[11px] text-zinc-400">No sites yet — add one above.</p>
         )}
       </div>
     </div>
@@ -452,7 +452,7 @@ function PropagationTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; bu
         Predict coverage
       </button>
       {towers.length === 0 && (
-        <p className="text-[11px] text-zinc-600">Add sites in the Sites tab first.</p>
+        <p className="text-[11px] text-zinc-400">Add sites in the Sites tab first.</p>
       )}
 
       {result && (
@@ -472,7 +472,7 @@ function PropagationTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; bu
           <div className="overflow-x-auto">
             <table className="w-full text-[11px]">
               <thead>
-                <tr className="text-zinc-500 text-left">
+                <tr className="text-zinc-400 text-left">
                   <th className="py-1">Cell</th><th>Terrain</th><th>EIRP</th>
                   <th>Link budget</th><th>Range</th><th>Coverage</th><th>Edge RSRP</th><th>Quality</th>
                 </tr>
@@ -535,7 +535,7 @@ function InterferenceTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; b
         Analyze interference
       </button>
       {towers.length < 2 && (
-        <p className="text-[11px] text-zinc-600">Need at least 2 sites for interference analysis.</p>
+        <p className="text-[11px] text-zinc-400">Need at least 2 sites for interference analysis.</p>
       )}
 
       {result && (
@@ -568,7 +568,7 @@ function InterferenceTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; b
             {result.conflicts.map((p, i) => (
               <div key={i} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-[11px]">
                 <span className="text-zinc-200 font-medium">{p.towerA} ↔ {p.towerB}</span>
-                <span className="text-zinc-500 font-mono">
+                <span className="text-zinc-400 font-mono">
                   {p.separationKm}km · {p.overlapPercent}% overlap · C/I {p.ciDb}dB · gap {p.freqGapMhz}MHz
                   {p.coChannel ? ' · CO-CHANNEL' : ''}
                 </span>
@@ -582,7 +582,7 @@ function InterferenceTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; b
               </div>
             ))}
             {result.conflicts.length === 0 && (
-              <p className="py-3 text-center text-[11px] text-zinc-600">No overlapping cells.</p>
+              <p className="py-3 text-center text-[11px] text-zinc-400">No overlapping cells.</p>
             )}
           </div>
         </>
@@ -706,7 +706,7 @@ function TopologyTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; busy:
         </button>
       </div>
       {towers.length === 0 && (
-        <p className="text-[11px] text-zinc-600">Add sites in the Sites tab first.</p>
+        <p className="text-[11px] text-zinc-400">Add sites in the Sites tab first.</p>
       )}
 
       {result && (
@@ -727,7 +727,7 @@ function TopologyTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; busy:
           <div className="overflow-x-auto">
             <table className="w-full text-[11px]">
               <thead>
-                <tr className="text-zinc-500 text-left">
+                <tr className="text-zinc-400 text-left">
                   <th className="py-1">From</th><th>To</th><th>Link</th><th>Latency</th><th>Demand</th>
                 </tr>
               </thead>
@@ -826,13 +826,13 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash }: {
         {allocations.map((a) => (
           <div key={a.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-[11px]">
             <span className="text-zinc-200 font-medium">{a.band}</span>
-            <span className="text-zinc-500 font-mono">
+            <span className="text-zinc-400 font-mono">
               {a.startMhz}–{a.endMhz} MHz · {a.widthMhz}MHz · {a.technology} · {a.licenseType} · guard {a.guardBandMhz}MHz
             </span>
             <button
               onClick={() => del(a.id)}
               disabled={!!busy}
-              className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-red-400"
+              className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
               aria-label="Delete allocation"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -840,7 +840,7 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash }: {
           </div>
         ))}
         {allocations.length === 0 && (
-          <p className="py-3 text-center text-[11px] text-zinc-600">No spectrum allocated yet.</p>
+          <p className="py-3 text-center text-[11px] text-zinc-400">No spectrum allocated yet.</p>
         )}
       </div>
 
@@ -983,7 +983,7 @@ function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
         {outages.map((o) => (
           <div key={o.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-[11px]">
             <span className="text-zinc-200 font-medium">{o.site}</span>
-            <span className="text-zinc-500 font-mono">
+            <span className="text-zinc-400 font-mono">
               {o.cause} · {o.severity} · {o.affectedSubscribers} subs · {o.status}
             </span>
             {o.status === 'open' ? (
@@ -1000,7 +1000,7 @@ function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
           </div>
         ))}
         {outages.length === 0 && (
-          <p className="py-3 text-center text-[11px] text-zinc-600">No outages logged.</p>
+          <p className="py-3 text-center text-[11px] text-zinc-400">No outages logged.</p>
         )}
       </div>
 
@@ -1134,7 +1134,7 @@ function DriveTestTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; busy
         <p className="text-[11px] text-emerald-400">Imported {imported} measurement(s).</p>
       )}
       {towers.length === 0 && (
-        <p className="text-[11px] text-zinc-600">Add sites in the Sites tab to validate against.</p>
+        <p className="text-[11px] text-zinc-400">Add sites in the Sites tab to validate against.</p>
       )}
 
       {result && (

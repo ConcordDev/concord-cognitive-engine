@@ -63,7 +63,7 @@ function CalendarBadge() {
   return (
     <div className="absolute left-3 top-3 inline-flex items-center gap-2 text-xs text-zinc-400/80 bg-zinc-950/40 backdrop-blur-sm rounded px-2 py-1" data-testid="hud-calendar-badge">
       <span className="font-medium text-amber-300/80">{monthName}</span>
-      <span className="text-zinc-500">·</span>
+      <span className="text-zinc-400">·</span>
       <span className="font-mono">{civic}</span>
       {festival && (
         <span className="ml-1 text-amber-200 animate-pulse" aria-label={`Festival: ${festival}`}>✦ {festival}</span>

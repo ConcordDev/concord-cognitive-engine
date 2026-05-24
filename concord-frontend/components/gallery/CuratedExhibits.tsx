@@ -173,9 +173,9 @@ export function CuratedExhibits() {
           </div>
 
           {loading ? (
-            <div className="py-6 text-center text-zinc-500"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
+            <div className="py-6 text-center text-zinc-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
           ) : exhibits.length === 0 ? (
-            <div className="py-6 text-center text-[12px] text-zinc-500 italic">No exhibits yet. Create one to start sequencing artworks into a narrative.</div>
+            <div className="py-6 text-center text-[12px] text-zinc-400 italic">No exhibits yet. Create one to start sequencing artworks into a narrative.</div>
           ) : (
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {exhibits.map((e) => (
@@ -192,7 +192,7 @@ export function CuratedExhibits() {
                     </div>
                     <div className="min-w-0">
                       <div className="text-[12px] font-semibold text-zinc-100 truncate">{e.title}</div>
-                      <div className="text-[10px] text-zinc-500">
+                      <div className="text-[10px] text-zinc-400">
                         {e.panelCount} panel{e.panelCount === 1 ? '' : 's'}
                         {e.theme ? ` · ${e.theme}` : ''}
                         {e.published ? ' · published' : ''}
@@ -243,7 +243,7 @@ export function CuratedExhibits() {
           </div>
 
           {active.panels.length === 0 ? (
-            <div className="py-4 text-center text-[12px] text-zinc-500 italic">No panels yet. Add artworks to sequence the story.</div>
+            <div className="py-4 text-center text-[12px] text-zinc-400 italic">No panels yet. Add artworks to sequence the story.</div>
           ) : (
             <ol className="space-y-2">
               {active.panels.map((p, i) => (
@@ -257,7 +257,7 @@ export function CuratedExhibits() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[12px] font-semibold text-zinc-100 truncate">{p.title}</div>
-                    <div className="text-[10px] text-zinc-500">{p.artist}{p.date ? ` · ${p.date}` : ''}</div>
+                    <div className="text-[10px] text-zinc-400">{p.artist}{p.date ? ` · ${p.date}` : ''}</div>
                     {p.wallText && <p className="mt-1 text-[10px] text-zinc-400 italic line-clamp-3">{p.wallText}</p>}
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">

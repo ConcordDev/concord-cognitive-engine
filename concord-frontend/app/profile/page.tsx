@@ -344,7 +344,7 @@ export default function ProfilePage() {
                   </a>
                 )}
                 {profile.createdAt && (
-                  <span className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                  <span className="flex items-center gap-1 text-xs text-gray-400 mt-1">
                     <Calendar className="w-3 h-3" />
                     Joined {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                   </span>
@@ -554,7 +554,7 @@ function PinnedPostsSection({ posts }: { posts: SocialPost[] }) {
                 {post.content && (
                   <p className="text-sm text-gray-400 line-clamp-2 mt-1">{post.content}</p>
                 )}
-                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                   {post.createdAt && (
                     <span>{formatRelativeTime(post.createdAt)}</span>
                   )}
@@ -615,10 +615,10 @@ function CognitiveCard({ personality }: { personality: Record<string, unknown> }
               >
                 {ARCHETYPE_ICONS[archetype] || <Zap className="w-3 h-3" />}
                 <span className="capitalize">{archetype}</span>
-                <span className="text-gray-500">{score}%</span>
+                <span className="text-gray-400">{score}%</span>
               </span>
             ))}
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               <Compass className="w-3 h-3 inline mr-1" />
               {diversityScore}% diversity
             </span>
@@ -655,7 +655,7 @@ function PostsTab({ userId }: { userId: string }) {
       <div className={cn(ds.panel, 'text-center py-16')}>
         <BookOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">No posts yet</h3>
-        <p className="text-gray-500 text-sm max-w-md mx-auto">
+        <p className="text-gray-400 text-sm max-w-md mx-auto">
           Publish your DTUs to share your thoughts with the community.
         </p>
       </div>
@@ -699,7 +699,7 @@ function MediaTab({ userId }: { userId: string }) {
       <div className={cn(ds.panel, 'text-center py-16')}>
         <ImageIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">No media posts</h3>
-        <p className="text-gray-500 text-sm max-w-md mx-auto">
+        <p className="text-gray-400 text-sm max-w-md mx-auto">
           Posts with images, video, or audio will appear here.
         </p>
       </div>
@@ -741,7 +741,7 @@ function BookmarksTab() {
       <div className={cn(ds.panel, 'text-center py-16')}>
         <Bookmark className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">No bookmarks yet</h3>
-        <p className="text-gray-500 text-sm max-w-md mx-auto">
+        <p className="text-gray-400 text-sm max-w-md mx-auto">
           Bookmark posts from the feed to save them here for later.
         </p>
       </div>
@@ -784,7 +784,7 @@ function PostCard({ post }: { post: SocialPost }) {
           )}
           <div className="flex items-center gap-3 mt-2">
             {post.createdAt && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {formatRelativeTime(post.createdAt)}
               </span>
             )}
@@ -815,7 +815,7 @@ function PostCard({ post }: { post: SocialPost }) {
         </div>
 
         {post.engagement && (
-          <div className="flex flex-col items-end gap-1 text-xs text-gray-500 flex-shrink-0">
+          <div className="flex flex-col items-end gap-1 text-xs text-gray-400 flex-shrink-0">
             <span className="flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {formatNumber(post.engagement.views)}
@@ -863,7 +863,7 @@ function MyDTUsTab() {
       <div className={cn(ds.panel, 'text-center py-16')}>
         <Database className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">No DTUs yet</h3>
-        <p className="text-gray-500 text-sm max-w-md mx-auto">
+        <p className="text-gray-400 text-sm max-w-md mx-auto">
           Your discrete thought units will appear here as you create them
           through chat, lenses, or the DTU browser.
         </p>
@@ -895,9 +895,9 @@ function MyDTUsTab() {
                   {dtu.title || dtu.summary || dtu.id.slice(0, 20)}
                 </p>
                 {dtu.summary && dtu.summary !== dtu.title && (
-                  <p className="text-xs text-gray-500 truncate mt-0.5">{dtu.summary}</p>
+                  <p className="text-xs text-gray-400 truncate mt-0.5">{dtu.summary}</p>
                 )}
-                <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-600">
+                <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {new Date(dtu.timestamp).toLocaleDateString()}
@@ -917,7 +917,7 @@ function MyDTUsTab() {
 
       {/* Pagination */}
       {total > PAGE_SIZE && (
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center justify-between text-xs text-gray-400">
           <span>Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, total)} of {total}</span>
           <div className="flex gap-2">
             <button
@@ -1017,7 +1017,7 @@ function MeritScoreCard({
         </div>
         <div className="text-right">
           <span className="text-2xl font-mono font-bold text-white">{score}</span>
-          <span className="text-xs text-gray-500 block">/1000</span>
+          <span className="text-xs text-gray-400 block">/1000</span>
         </div>
       </div>
 
@@ -1035,7 +1035,7 @@ function MeritScoreCard({
                 style={{ width: `${(cat.data.score / maxCategoryScore) * 100}%` }}
               />
             </div>
-            <span className="text-xs text-gray-500 w-8 text-right font-mono">{cat.data.score}</span>
+            <span className="text-xs text-gray-400 w-8 text-right font-mono">{cat.data.score}</span>
           </div>
         ))}
       </div>

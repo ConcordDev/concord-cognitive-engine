@@ -104,7 +104,7 @@ export default function SecretsCodex({ open, onClose }: Props) {
                     {s.body && (
                       <div className="text-gray-200 mt-1 leading-relaxed">{s.body}</div>
                     )}
-                    <div className="text-gray-500 text-xs mt-1">
+                    <div className="text-gray-400 text-xs mt-1">
                       via {s.via} · {new Date(s.discovered_at * 1000).toLocaleDateString()}
                     </div>
                   </div>

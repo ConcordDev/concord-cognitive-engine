@@ -297,7 +297,7 @@ function MultiFrameworkPanel() {
         <div key={rec.id} className={SECTION}>
           <div className="flex items-start justify-between gap-3">
             <p className="text-white font-medium">{rec.dilemma}</p>
-            <span className="text-xs text-gray-500 whitespace-nowrap">
+            <span className="text-xs text-gray-400 whitespace-nowrap">
               {new Date(rec.createdAt).toLocaleDateString()}
             </span>
           </div>
@@ -328,7 +328,7 @@ function MultiFrameworkPanel() {
               <div key={o.name} className="flex items-center justify-between text-sm">
                 <span className="text-gray-300">{o.name}</span>
                 <span className="flex items-center gap-3">
-                  <span className="text-gray-500">composite {o.composite}</span>
+                  <span className="text-gray-400">composite {o.composite}</span>
                   <span className={
                     o.agreement === 'consensus' ? 'text-green-400'
                       : o.agreement === 'frameworks-conflict' ? 'text-red-400'
@@ -436,7 +436,7 @@ function StakeholderMapPanel() {
                 <div className="flex flex-wrap gap-2 pl-2">
                   {optionList.map((opt) => (
                     <div key={opt} className="flex items-center gap-1">
-                      <span className="text-xs text-gray-500">{opt}:</span>
+                      <span className="text-xs text-gray-400">{opt}:</span>
                       <input
                         type="number" className={cn(ds.input, 'w-24 py-1 text-xs')}
                         placeholder="-100..100"
@@ -472,7 +472,7 @@ function StakeholderMapPanel() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b border-lattice-border">
+                <tr className="text-left text-gray-400 border-b border-lattice-border">
                   <th className="py-1 pr-3">Stakeholder</th>
                   <th className="py-1 pr-3">Vuln.</th>
                   {rec.options.map((o) => <th key={o} className="py-1 pr-3">{o}</th>)}
@@ -500,9 +500,9 @@ function StakeholderMapPanel() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {rec.optionTotals.map((ot) => (
               <div key={ot.option} className="rounded-lg border border-lattice-border p-2">
-                <p className="text-xs text-gray-500">{ot.option}</p>
+                <p className="text-xs text-gray-400">{ot.option}</p>
                 <p className={cn('text-lg font-bold', impactColor(ot.netImpact))}>{ot.netImpact}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   +{ot.benefited} / -{ot.harmed}
                   {ot.vulnerableHarmed > 0 && (
                     <span className="text-red-400"> · {ot.vulnerableHarmed} vuln. harmed</span>
@@ -610,7 +610,7 @@ function DecisionMatrixPanel() {
                 <div className="flex flex-wrap gap-2 pl-2">
                   {criteriaNames.map((c) => (
                     <div key={c} className="flex items-center gap-1">
-                      <span className="text-xs text-gray-500">{c}:</span>
+                      <span className="text-xs text-gray-400">{c}:</span>
                       <input type="number" className={cn(ds.input, 'w-20 py-1 text-xs')} placeholder="0-10"
                         value={o.scores[c] ?? ''} onChange={(e) => setOptScore(i, c, e.target.value)} />
                     </div>
@@ -653,7 +653,7 @@ function DecisionMatrixPanel() {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {o.breakdown.map((b) => (
-                    <span key={b.criterion} className="text-xs text-gray-500">
+                    <span key={b.criterion} className="text-xs text-gray-400">
                       {b.criterion}: {b.raw} → {b.weighted}
                     </span>
                   ))}
@@ -731,7 +731,7 @@ function BiasChecklistPanel() {
                     className="mt-1 accent-red-500" />
                   <div className="flex-1">
                     <p className="text-sm text-gray-200 font-medium">{b.label}</p>
-                    <p className="text-xs text-gray-500">{b.prompt}</p>
+                    <p className="text-xs text-gray-400">{b.prompt}</p>
                   </div>
                 </label>
                 {r.flagged && (
@@ -893,7 +893,7 @@ function ReviewCard({ review, onChange }: { review: ReviewRecord; onChange: () =
             <Gavel className="w-4 h-4" /> Verdict: {review.verdict.decision}
           </p>
           {review.verdict.rationale && <p className="text-xs text-gray-400 mt-1">{review.verdict.rationale}</p>}
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             Tally — approve {review.verdict.tally.approve || 0} ·
             reject {review.verdict.tally.reject || 0} ·
             amend {review.verdict.tally.amend || 0} ·
@@ -989,7 +989,7 @@ function CaseLibraryPanel() {
       <div className={SECTION}>
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input className={cn(ds.input, 'pl-10')} placeholder="Search resolved cases..."
               value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
@@ -1043,12 +1043,12 @@ function CaseLibraryPanel() {
               <Trash2 className="w-4 h-4 text-red-400" />
             </button>
           </div>
-          <p className={ds.textMuted}><span className="text-gray-500">Dilemma:</span> {c.dilemma}</p>
+          <p className={ds.textMuted}><span className="text-gray-400">Dilemma:</span> {c.dilemma}</p>
           {c.reasoning && (
-            <p className={ds.textMuted}><span className="text-gray-500">Reasoning:</span> {c.reasoning}</p>
+            <p className={ds.textMuted}><span className="text-gray-400">Reasoning:</span> {c.reasoning}</p>
           )}
           <p className="text-sm text-green-400">
-            <span className="text-gray-500">Resolution:</span> {c.resolution}
+            <span className="text-gray-400">Resolution:</span> {c.resolution}
           </p>
           {c.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">

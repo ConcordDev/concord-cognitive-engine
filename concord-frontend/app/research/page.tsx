@@ -333,7 +333,7 @@ function JobCard({
 
       {isActive && <ProgressSteps job={job} />}
 
-      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
           {formatTime(job.createdAt)}
@@ -503,7 +503,7 @@ function JobResultsView({
   if (!results) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -564,7 +564,7 @@ function JobResultsView({
                           style={{ width: `${Math.round(h.confidence * 100)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-gray-500 font-mono">
+                      <span className="text-[10px] text-gray-400 font-mono">
                         {Math.round(h.confidence * 100)}%
                       </span>
                     </div>
@@ -625,13 +625,13 @@ function JobResultsView({
                 key={i}
                 className="flex items-center gap-2 p-1.5 rounded bg-lattice-elevated text-xs group"
               >
-                <Globe className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                <Globe className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-300 truncate">{src.title || src.url}</p>
-                  {src.title && <p className="text-gray-500 truncate">{src.url}</p>}
+                  {src.title && <p className="text-gray-400 truncate">{src.url}</p>}
                 </div>
                 {src.relevance != null && (
-                  <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
+                  <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">
                     {Math.round(src.relevance * 100)}%
                   </span>
                 )}
@@ -857,7 +857,7 @@ export default function ResearchDashboardPage() {
             <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm text-red-400 font-medium">Failed to load research jobs</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 {(jobsErrorObj as Error)?.message || 'Unknown error'}
               </p>
             </div>
@@ -915,8 +915,8 @@ export default function ResearchDashboardPage() {
           {/* Loading */}
           {jobsLoading && allJobs.length === 0 && (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
-              <span className="ml-2 text-sm text-gray-500">Loading research jobs...</span>
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-sm text-gray-400">Loading research jobs...</span>
             </div>
           )}
 
@@ -929,7 +929,7 @@ export default function ResearchDashboardPage() {
                 {activeTab === 'queue' && 'Research queue is empty'}
                 {activeTab === 'completed' && 'No completed research jobs yet'}
               </p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Launch a new research job from the panel on the right.
               </p>
             </div>

@@ -99,7 +99,7 @@ export function PlaceDetails() {
             placeholder="OSM ID"
             value={osmId}
             onChange={(e) => setOsmId(e.target.value)}
-            className="w-40 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-cyan-500/40 focus:outline-none"
+            className="w-40 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-cyan-500/40 focus:outline-none"
           />
           <button
             type="button"
@@ -111,7 +111,7 @@ export function PlaceDetails() {
             Look up
           </button>
         </div>
-        <p className="mt-2 text-[10px] text-zinc-600">
+        <p className="mt-2 text-[10px] text-zinc-400">
           Find OSM IDs from the place search panel above — each result carries an osmType + osmId.
         </p>
       </div>
@@ -121,7 +121,7 @@ export function PlaceDetails() {
           <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!result && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
             No data yet. Enter an OSM feature type and ID to load its full details.
           </div>
         )}
@@ -144,7 +144,7 @@ export function PlaceDetails() {
 
             {d.summary && (
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-3">
-                <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">
+                <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
                   <BookOpen className="h-3 w-3" /> Summary
                 </p>
                 <p className="mt-1 text-[12px] leading-relaxed text-zinc-200">{d.summary}</p>
@@ -189,9 +189,9 @@ export function PlaceDetails() {
             </dl>
 
             {d.lat != null && d.lng != null && (
-              <p className="font-mono text-[10px] text-zinc-500">{d.lat.toFixed(5)}, {d.lng.toFixed(5)}</p>
+              <p className="font-mono text-[10px] text-zinc-400">{d.lat.toFixed(5)}, {d.lng.toFixed(5)}</p>
             )}
-            <p className="text-[10px] text-zinc-600">Source: {result.source}</p>
+            <p className="text-[10px] text-zinc-400">Source: {result.source}</p>
           </div>
         )}
       </div>
@@ -204,7 +204,7 @@ function DetailRow({ icon: Icon, label, value }: { icon: typeof Info; label: str
     <div className="flex items-start gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-400" />
       <div className="flex-1">
-        <p className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</p>
+        <p className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</p>
         <p className="text-[11px] text-zinc-200">{value}</p>
       </div>
     </div>

@@ -321,7 +321,7 @@ export function AllianceWorkspace() {
               </button>
             </div>
           )}
-          {alliances.length === 0 && <p className="text-xs text-gray-500 py-2">No alliances yet. Form one to start collaborating.</p>}
+          {alliances.length === 0 && <p className="text-xs text-gray-400 py-2">No alliances yet. Form one to start collaborating.</p>}
           {alliances.map((a) => {
             const n = notifs?.perAlliance.find((x) => x.allianceId === a.id);
             return (
@@ -334,7 +334,7 @@ export function AllianceWorkspace() {
                   <span className="text-sm font-medium text-white truncate">{a.name}</span>
                   {n && n.unread > 0 && <span className="ml-auto text-[10px] px-1.5 rounded-full bg-amber-500 text-black font-bold">{n.unread}</span>}
                 </div>
-                <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
+                <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
                   <span className={TYPE_TINT[a.type] || 'text-gray-400'}>{a.type}</span>
                   <span>· {a.members.length} member{a.members.length !== 1 ? 's' : ''}</span>
                   {a.activeProposals > 0 && <span className="text-neon-purple">· {a.activeProposals} prop</span>}
@@ -347,7 +347,7 @@ export function AllianceWorkspace() {
         {/* ── Main panel ── */}
         <div className="lg:col-span-3 space-y-3">
           {!selAllianceData ? (
-            <div className="panel p-8 text-center text-gray-500">
+            <div className="panel p-8 text-center text-gray-400">
               <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p>Select an alliance to open its workspace</p>
             </div>
@@ -418,19 +418,19 @@ export function AllianceWorkspace() {
                   {/* Messages */}
                   <div className="panel p-3 md:col-span-2 flex flex-col">
                     {!selChannel ? (
-                      <p className="text-sm text-gray-500 py-8 text-center">Select a channel</p>
+                      <p className="text-sm text-gray-400 py-8 text-center">Select a channel</p>
                     ) : (
                       <>
                         <div className="flex items-center gap-2 mb-2">
                           <Hash className="w-4 h-4 text-neon-cyan" />
                           <span className="font-medium text-white">{channels.find((c) => c.id === selChannel)?.name}</span>
-                          <span className="text-xs text-gray-500 truncate">{channels.find((c) => c.id === selChannel)?.topic}</span>
+                          <span className="text-xs text-gray-400 truncate">{channels.find((c) => c.id === selChannel)?.topic}</span>
                           <button onClick={() => markRead(selChannel)} className="ml-auto text-[11px] text-gray-400 hover:text-neon-cyan flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" /> Mark read
                           </button>
                         </div>
                         <div className="flex-1 space-y-2 max-h-80 overflow-auto pr-1">
-                          {messages.length === 0 && <p className="text-sm text-gray-500 py-6 text-center">No messages yet</p>}
+                          {messages.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No messages yet</p>}
                           {messages.map((m) => (
                             <MessageBubble key={m.id} m={m} onReact={react} onReply={setReplyTo} busy={busy} />
                           ))}
@@ -440,7 +440,7 @@ export function AllianceWorkspace() {
                           {replyTo && (
                             <div className="flex items-center gap-1.5 text-[11px] text-neon-cyan">
                               <CornerDownRight className="w-3 h-3" /> Replying in thread
-                              <button onClick={() => setReplyTo(null)} className="text-gray-500 hover:text-white">cancel</button>
+                              <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white">cancel</button>
                             </div>
                           )}
                           {(attachName || attachUrl) && (
@@ -460,7 +460,7 @@ export function AllianceWorkspace() {
                               {busy === 'send' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                             </button>
                           </div>
-                          <details className="text-[11px] text-gray-500">
+                          <details className="text-[11px] text-gray-400">
                             <summary className="cursor-pointer hover:text-gray-300">+ attach file link</summary>
                             <div className="flex gap-1.5 mt-1">
                               <input value={attachName} onChange={(e) => setAttachName(e.target.value)} placeholder="file name" className="input-lattice flex-1 text-xs" />
@@ -496,7 +496,7 @@ export function AllianceWorkspace() {
                       </button>
                     </div>
                   )}
-                  {proposals.length === 0 && <p className="text-sm text-gray-500 py-4 text-center">No proposals yet</p>}
+                  {proposals.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">No proposals yet</p>}
                   {proposals.map((p) => (
                     <ProposalCard
                       key={p.id} p={p} busy={busy} isAdmin={isAdmin}
@@ -526,9 +526,9 @@ export function AllianceWorkspace() {
                   <div className="space-y-1.5">
                     {selAllianceData.members.map((m) => (
                       <div key={m.userId} className="flex items-center gap-2 text-sm bg-lattice-deep p-2 rounded">
-                        {m.role === 'owner' ? <Crown className="w-4 h-4 text-amber-400" /> : <Shield className="w-4 h-4 text-gray-500" />}
+                        {m.role === 'owner' ? <Crown className="w-4 h-4 text-amber-400" /> : <Shield className="w-4 h-4 text-gray-400" />}
                         <span className="text-white">{m.displayName}</span>
-                        <span className="text-xs text-gray-500">{m.userId}</span>
+                        <span className="text-xs text-gray-400">{m.userId}</span>
                         {myRole === 'owner' && m.role !== 'owner' ? (
                           <select
                             value={m.role}
@@ -573,7 +573,7 @@ function MessageBubble({ m, onReact, onReply, busy }: {
     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="bg-lattice-deep p-2 rounded">
       <div className="flex items-center gap-2 mb-0.5">
         <span className="text-sm font-medium text-neon-cyan">{m.displayName}</span>
-        <span className="text-[11px] text-gray-600">{new Date(m.createdAt).toLocaleTimeString()}</span>
+        <span className="text-[11px] text-gray-400">{new Date(m.createdAt).toLocaleTimeString()}</span>
       </div>
       <p className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</p>
       {m.attachments?.length > 0 && (
@@ -594,10 +594,10 @@ function MessageBubble({ m, onReact, onReply, busy }: {
             className="text-[11px] px-1.5 py-0.5 rounded-full bg-lattice-surface hover:bg-neon-cyan/20 disabled:opacity-50"
           >{emoji} {users.length}</button>
         ))}
-        <button onClick={() => setShowReactions((v) => !v)} className="text-gray-500 hover:text-neon-cyan" aria-label="add reaction">
+        <button onClick={() => setShowReactions((v) => !v)} className="text-gray-400 hover:text-neon-cyan" aria-label="add reaction">
           <ThumbsUp className="w-3 h-3" />
         </button>
-        <button onClick={() => onReply(m.id)} className="text-[11px] text-gray-500 hover:text-neon-cyan flex items-center gap-0.5">
+        <button onClick={() => onReply(m.id)} className="text-[11px] text-gray-400 hover:text-neon-cyan flex items-center gap-0.5">
           <CornerDownRight className="w-3 h-3" /> reply
         </button>
       </div>
@@ -615,7 +615,7 @@ function MessageBubble({ m, onReact, onReply, busy }: {
               <div className="flex items-center gap-1.5">
                 <ChevronRight className="w-3 h-3 text-gray-600" />
                 <span className="text-xs font-medium text-neon-cyan">{r.displayName}</span>
-                <span className="text-[10px] text-gray-600">{new Date(r.createdAt).toLocaleTimeString()}</span>
+                <span className="text-[10px] text-gray-400">{new Date(r.createdAt).toLocaleTimeString()}</span>
               </div>
               <p className="text-sm text-gray-300 pl-4">{r.content}</p>
               <div className="flex items-center gap-1.5 pl-4 mt-0.5">
@@ -650,7 +650,7 @@ function ProposalCard({ p, busy, isAdmin, onVote, onClose }: {
         </span>
       </div>
       {p.body && <p className="text-xs text-gray-400">{p.body}</p>}
-      <div className="flex items-center gap-3 text-[11px] text-gray-500">
+      <div className="flex items-center gap-3 text-[11px] text-gray-400">
         <span>Quorum {Math.round(p.quorum * 100)}%</span>
         <span>· Participation {Math.round(t.participation * 100)}%</span>
         <span className={t.quorumMet ? 'text-neon-green' : 'text-amber-400'}>{t.quorumMet ? 'quorum met' : 'awaiting quorum'}</span>
@@ -666,7 +666,7 @@ function ProposalCard({ p, busy, isAdmin, onVote, onClose }: {
         <span className="text-neon-green">Yes {t.yes}</span>
         <span className="text-red-400">No {t.no}</span>
         <span className="text-gray-400">Abstain {t.abstain}</span>
-        <span className="text-gray-500">· {t.cast}/{t.eligible} cast</span>
+        <span className="text-gray-400">· {t.cast}/{t.eligible} cast</span>
       </div>
       {p.status === 'open' && (
         <div className="flex items-center gap-2">

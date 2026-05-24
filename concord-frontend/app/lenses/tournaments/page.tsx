@@ -235,7 +235,7 @@ function TournamentList({
                     <h3 className="font-semibold text-amber-100">{t.title}</h3>
                     <span className="text-xs text-slate-400">{t.game}</span>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                     <span className="rounded bg-slate-800 px-1.5 py-0.5">{FORMAT_LABELS[t.format]}</span>
                     <span className="rounded bg-slate-800 px-1.5 py-0.5">{STATUS_LABELS[t.status]}</span>
                     <span>{t.mode === 'team' ? `teams · ${t.teamSize}v${t.teamSize}` : 'solo'}</span>
@@ -291,7 +291,7 @@ function TournamentDetail({
             <div className="flex items-center gap-1 text-2xl font-bold text-amber-300">
               <Coins className="h-5 w-5" /> {t.prizePoolCc}
             </div>
-            <div className="text-xs text-slate-500">prize pool</div>
+            <div className="text-xs text-slate-400">prize pool</div>
           </div>
         </div>
 

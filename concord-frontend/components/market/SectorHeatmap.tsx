@@ -22,7 +22,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 function heatColor(pct: number | null): string {
-  if (pct == null) return 'bg-zinc-800 text-zinc-500';
+  if (pct == null) return 'bg-zinc-800 text-zinc-400';
   if (pct >= 2) return 'bg-emerald-700 text-emerald-50';
   if (pct >= 1) return 'bg-emerald-600 text-emerald-50';
   if (pct >= 0.5) return 'bg-emerald-500/70 text-emerald-50';
@@ -54,11 +54,11 @@ export function SectorHeatmapPanel() {
         </div>
         <div className="flex gap-1 rounded-md border border-zinc-800 bg-zinc-950 p-0.5">
           {(['1D', 'YTD'] as const).map((r) => (
-            <button key={r} type="button" onClick={() => setRange(r)} className={`rounded px-2.5 py-1 text-[10px] font-medium ${range === r ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500'}`}>{r}</button>
+            <button key={r} type="button" onClick={() => setRange(r)} className={`rounded px-2.5 py-1 text-[10px] font-medium ${range === r ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400'}`}>{r}</button>
           ))}
         </div>
       </header>
-      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading sectors…</div>}
+      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading sectors…</div>}
       {sectors.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -80,7 +80,7 @@ export function SectorHeatmapPanel() {
             ))}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-zinc-500">{sectors.length} SPDR sector ETFs · {range}</span>
+            <span className="text-[10px] text-zinc-400">{sectors.length} SPDR sector ETFs · {range}</span>
             <SaveAsDtuButton
               compact
               apiSource="yahoo-finance"

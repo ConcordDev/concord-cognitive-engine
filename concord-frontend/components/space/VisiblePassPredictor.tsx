@@ -99,7 +99,7 @@ export function VisiblePassPredictor() {
       </div>
 
       {coords && (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           Observer · {coords.lat.toFixed(3)}°, {coords.lon.toFixed(3)}° — next{' '}
           {result?.windowMinutes ?? 95} minutes
         </p>
@@ -112,13 +112,13 @@ export function VisiblePassPredictor() {
       )}
 
       {!coords && !error && (
-        <p className="text-xs text-zinc-500 border border-dashed border-zinc-800 rounded-lg p-4 text-center">
+        <p className="text-xs text-zinc-400 border border-dashed border-zinc-800 rounded-lg p-4 text-center">
           Share your location to compute when the ISS rises above your horizon.
         </p>
       )}
 
       {result && result.count === 0 && (
-        <p className="text-xs text-zinc-500 border border-dashed border-zinc-800 rounded-lg p-4 text-center">
+        <p className="text-xs text-zinc-400 border border-dashed border-zinc-800 rounded-lg p-4 text-center">
           No ISS passes above {result.minElevationDeg}° in the next {result.windowMinutes} minutes.
         </p>
       )}
@@ -134,14 +134,14 @@ export function VisiblePassPredictor() {
                 <p className="text-sm font-mono font-bold text-white tabular-nums">
                   {fmtTime(p.startUtc)}
                 </p>
-                <p className="text-[10px] text-zinc-500">start</p>
+                <p className="text-[10px] text-zinc-400">start</p>
               </div>
               <ArrowUpRight className="w-4 h-4 text-zinc-600 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-zinc-300">
                   Peak {fmtTime(p.peakUtc)} · {Math.round(p.durationSeconds / 60)} min visible
                 </p>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-zinc-400">
                   Max elevation {p.peakElevationDeg}° above horizon
                 </p>
               </div>

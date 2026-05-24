@@ -102,7 +102,7 @@ export function WorldHealthBadge() {
         <div className="absolute right-0 mt-1 w-96 max-h-96 overflow-auto rounded border border-gray-700 bg-black/90 p-3 text-xs shadow-lg z-50">
           <div className="flex items-center justify-between mb-2">
             <span className="font-bold text-gray-200">World Health</span>
-            <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-200">×</button>
+            <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-200">×</button>
           </div>
           {summary && (
             <p className="text-gray-400 mb-2">
@@ -125,12 +125,12 @@ export function WorldHealthBadge() {
                   </div>
                   <div className="text-gray-100">{f.message}</div>
                   {f.location && (
-                    <div className="font-mono text-[10px] text-gray-500">{f.location}</div>
+                    <div className="font-mono text-[10px] text-gray-400">{f.location}</div>
                   )}
                 </li>
               ))}
               {findings.length > 10 && (
-                <li className="text-gray-500 italic">…and {findings.length - 10} more</li>
+                <li className="text-gray-400 italic">…and {findings.length - 10} more</li>
               )}
             </ul>
           )}

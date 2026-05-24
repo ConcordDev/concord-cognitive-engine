@@ -74,7 +74,7 @@ function BreakerBadge({ name, state }: { name: string; state: string }) {
     <div className="flex items-center gap-2 text-xs">
       <StatusDot status={color} />
       <span className="text-gray-300 capitalize">{name}</span>
-      <span className="text-gray-500 ml-auto">{state}</span>
+      <span className="text-gray-400 ml-auto">{state}</span>
     </div>
   );
 }
@@ -140,7 +140,7 @@ function VitalsPanel() {
         <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-gray-400 uppercase">Scope Distribution</p>
-            <span className="text-[10px] text-gray-500">{scopeTotal} scoped</span>
+            <span className="text-[10px] text-gray-400">{scopeTotal} scoped</span>
           </div>
           <div className="h-3 rounded-full overflow-hidden flex bg-lattice-surface">
             {scopeGlobal > 0 && (
@@ -213,12 +213,12 @@ function EmergentPanel() {
             return (
               <div key={id} className="bg-lattice-surface rounded-lg p-2 border border-lattice-border">
                 <p className={`text-xs font-semibold ${meta.color}`}>{meta.label}</p>
-                <p className="text-[10px] text-gray-600">{meta.icon}</p>
+                <p className="text-[10px] text-gray-400">{meta.icon}</p>
                 <p className="text-lg font-mono font-bold text-white mt-1">{residents.length}</p>
                 {residents.slice(0, 3).map(r => (
                   <p key={r.id} className="text-[10px] text-gray-400 truncate">{r.name}</p>
                 ))}
-                {residents.length > 3 && <p className="text-[10px] text-gray-600">+{residents.length - 3} more</p>}
+                {residents.length > 3 && <p className="text-[10px] text-gray-400">+{residents.length - 3} more</p>}
               </div>
             );
           })}
@@ -233,8 +233,8 @@ function EmergentPanel() {
             <div key={e.id} className="flex items-center gap-2 bg-lattice-surface rounded p-2 border border-lattice-border text-sm">
               <StatusDot status={e.active ? 'green' : 'gray'} />
               <span className="text-white font-medium flex-1 truncate">{e.name}</span>
-              <span className={`text-[10px] ${DISTRICT_META[e.district || 'commons']?.color || 'text-gray-500'}`}>{DISTRICT_META[e.district || 'commons']?.label || e.district}</span>
-              <span className="text-xs text-gray-500">{e.role}</span>
+              <span className={`text-[10px] ${DISTRICT_META[e.district || 'commons']?.color || 'text-gray-400'}`}>{DISTRICT_META[e.district || 'commons']?.label || e.district}</span>
+              <span className="text-xs text-gray-400">{e.role}</span>
             </div>
           ))}
         </div>
@@ -247,11 +247,11 @@ function EmergentPanel() {
           <div key={e.id} className="flex items-center gap-2 bg-lattice-surface rounded p-2 border border-lattice-border text-sm">
             <StatusDot status={e.active ? 'green' : 'gray'} />
             <span className="text-white font-medium flex-1 truncate">{e.name}</span>
-            <span className={`text-[10px] ${DISTRICT_META[e.district || 'commons']?.color || 'text-gray-500'}`}>{DISTRICT_META[e.district || 'commons']?.label || e.district}</span>
-            <span className="text-xs text-gray-500">{e.role}</span>
+            <span className={`text-[10px] ${DISTRICT_META[e.district || 'commons']?.color || 'text-gray-400'}`}>{DISTRICT_META[e.district || 'commons']?.label || e.district}</span>
+            <span className="text-xs text-gray-400">{e.role}</span>
           </div>
         ))}
-        {local.length > 20 && <p className="text-xs text-gray-500">+ {local.length - 20} more</p>}
+        {local.length > 20 && <p className="text-xs text-gray-400">+ {local.length - 20} more</p>}
       </div>
     </div>
   );
@@ -298,11 +298,11 @@ function PluginPanel() {
           <div key={p.id} className="flex items-center gap-2 bg-lattice-surface rounded p-2 border border-lattice-border text-sm">
             <Puzzle className="w-4 h-4 text-neon-green" />
             <span className="text-white flex-1 truncate">{p.name}</span>
-            <span className="text-xs text-gray-500">v{p.version}</span>
+            <span className="text-xs text-gray-400">v{p.version}</span>
             {p.isEmergentGen && <span className="text-[10px] bg-neon-purple/20 text-neon-purple px-1.5 py-0.5 rounded">emergent</span>}
           </div>
         ))}
-        {plugins.length === 0 && <p className="text-xs text-gray-500 text-center py-3">No plugins loaded</p>}
+        {plugins.length === 0 && <p className="text-xs text-gray-400 text-center py-3">No plugins loaded</p>}
       </div>
     </div>
   );
@@ -350,7 +350,7 @@ function UserPanel() {
         <Stat label="New Today" value={data?.newToday ?? '—'} />
         <Stat label="WS Connections" value={data?.wsConnections ?? '—'} />
       </div>
-      <p className="text-[10px] text-gray-600 text-center">Aggregate metrics only. No individual user data exposed.</p>
+      <p className="text-[10px] text-gray-400 text-center">Aggregate metrics only. No individual user data exposed.</p>
     </div>
   );
 }
@@ -387,7 +387,7 @@ function ConfigPanel() {
                 {settingsMutation.isPending ? '...' : 'Toggle'}
               </button>
             ) : (
-              <span className="text-xs text-gray-500">{s.min}–{s.max}</span>
+              <span className="text-xs text-gray-400">{s.min}–{s.max}</span>
             )}
           </div>
         ))}
@@ -484,7 +484,7 @@ function DreamPanel() {
       {/* Recent dream DTUs — indigo/purple styling */}
       {dreams.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs text-gray-500">Recent dream DTUs</p>
+          <p className="text-xs text-gray-400">Recent dream DTUs</p>
           {dreams.slice(0, 5).map(d => (
             <div key={d.id} className="flex items-center gap-2 bg-indigo-500/5 border border-indigo-500/10 rounded p-2 text-xs">
               <Moon className="w-3 h-3 text-indigo-400 flex-shrink-0" />
@@ -514,10 +514,10 @@ function LogsPanel() {
           {(errors?.errors || []).slice(0, 15).map((e: { source: string; message: string; at: string }, i: number) => (
             <div key={i} className="text-[11px] bg-red-950/30 border border-red-900/30 rounded p-2">
               <span className="text-red-400">{e.source}</span>
-              <span className="text-gray-500 ml-2">{e.message?.slice(0, 80)}</span>
+              <span className="text-gray-400 ml-2">{e.message?.slice(0, 80)}</span>
             </div>
           ))}
-          {(!errors?.errors || errors.errors.length === 0) && <p className="text-xs text-gray-600">No recent errors</p>}
+          {(!errors?.errors || errors.errors.length === 0) && <p className="text-xs text-gray-400">No recent errors</p>}
         </div>
       </div>
 
@@ -562,7 +562,7 @@ function BrainsPanel() {
       <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Four-Brain Architecture</h3>
       <div className="flex items-center gap-3">
         <span className={`text-lg font-bold ${modeColor}`}>{mode.replace('_', '-')}</span>
-        <span className="text-sm text-gray-500">{onlineCount}/{totalBrains} online</span>
+        <span className="text-sm text-gray-400">{onlineCount}/{totalBrains} online</span>
       </div>
       {brains && Object.entries(brains).map(([name, brain]) => (
         <div key={name} className={`bg-lattice-surface rounded-lg p-3 border border-lattice-border ${!brain.enabled ? 'opacity-50' : ''}`}>
@@ -570,7 +570,7 @@ function BrainsPanel() {
             <div className="flex items-center gap-2">
               <StatusDot status={brain.enabled ? 'green' : 'red'} />
               <span className="text-sm font-medium text-white capitalize">{name}</span>
-              <span className="text-[10px] text-gray-500">{brain.model}</span>
+              <span className="text-[10px] text-gray-400">{brain.model}</span>
             </div>
           </div>
           <p className="text-xs text-gray-400 mb-2">{brain.role}</p>
@@ -620,11 +620,11 @@ function AttentionPanel() {
             <div className="flex-1 h-3 bg-lattice-deep rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${a.focused ? 'bg-yellow-500' : 'bg-neon-cyan/60'}`} style={{ width: `${Math.max(2, (a.budget / totalBudget) * 100)}%` }} />
             </div>
-            <span className="w-8 text-right text-gray-500 font-mono">{a.budget}</span>
-            <span className="w-12 text-right text-gray-500">{(a.urgency * 100).toFixed(0)}%</span>
+            <span className="w-8 text-right text-gray-400 font-mono">{a.budget}</span>
+            <span className="w-12 text-right text-gray-400">{(a.urgency * 100).toFixed(0)}%</span>
           </div>
         ))}
-        {allocation.length === 0 && <p className="text-xs text-gray-500 text-center py-3">No allocation data yet</p>}
+        {allocation.length === 0 && <p className="text-xs text-gray-400 text-center py-3">No allocation data yet</p>}
       </div>
     </div>
   );
@@ -660,7 +660,7 @@ function ForgettingPanel() {
             <Stat label="Threshold" value={status.threshold ?? 0} />
           </div>
           {status.lastRun && (
-            <p className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> Last: {new Date(status.lastRun).toLocaleString()}</p>
+            <p className="text-xs text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" /> Last: {new Date(status.lastRun).toLocaleString()}</p>
           )}
         </>
       )}
@@ -677,12 +677,12 @@ function ForgettingPanel() {
       {/* Recent tombstones */}
       {recentTombstones.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs text-gray-500">Recently archived</p>
+          <p className="text-xs text-gray-400">Recently archived</p>
           {recentTombstones.map(t => (
             <div key={t.id} className="flex items-center gap-2 bg-lattice-surface rounded p-2 text-xs border border-lattice-border">
               <Trash2 className="w-3 h-3 text-red-400 flex-shrink-0" />
               <span className="text-gray-300 truncate flex-1">{t.title || t.id}</span>
-              {t.tier && <span className="text-gray-500 text-[10px]">{t.tier}</span>}
+              {t.tier && <span className="text-gray-400 text-[10px]">{t.tier}</span>}
               {t.forgottenAt && <span className="text-gray-600 text-[10px]">{new Date(t.forgottenAt).toLocaleTimeString()}</span>}
             </div>
           ))}
@@ -710,10 +710,10 @@ function RepairCortexPanel() {
           <div className="flex items-center gap-2 text-xs">
             <StatusDot status={status.running ? 'green' : 'red'} />
             <span className="text-gray-400">Loop: {status.running ? 'Active' : 'Stopped'}</span>
-            {status.lastCycleAt && <span className="text-gray-500 ml-auto">Last: {new Date(status.lastCycleAt).toLocaleString()}</span>}
+            {status.lastCycleAt && <span className="text-gray-400 ml-auto">Last: {new Date(status.lastCycleAt).toLocaleString()}</span>}
           </div>
           {status.networkStatus && (
-            <p className="text-xs text-gray-500">Network: {status.networkStatus}</p>
+            <p className="text-xs text-gray-400">Network: {status.networkStatus}</p>
           )}
           <button onClick={() => forceMutation.mutate()} disabled={forceMutation.isPending}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 disabled:opacity-50 transition-colors">
@@ -721,7 +721,7 @@ function RepairCortexPanel() {
           </button>
         </>
       ) : (
-        <p className="text-xs text-gray-500">Loading...</p>
+        <p className="text-xs text-gray-400">Loading...</p>
       )}
     </div>
   );
@@ -750,7 +750,7 @@ function PromotionPanel() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Shadow DTU Promotion</h3>
-          <span className="text-xs text-gray-500">{totalShadows} total shadows</span>
+          <span className="text-xs text-gray-400">{totalShadows} total shadows</span>
         </div>
 
         {/* Momentum-based candidates (auto-detected via interactions) */}
@@ -787,7 +787,7 @@ function PromotionPanel() {
                   <span className="text-sm text-white font-medium truncate flex-1">{s.title}</span>
                   <span className="text-[10px] bg-gray-500/20 text-gray-400 px-1.5 py-0.5 rounded">{s.kind || 'shadow'}</span>
                 </div>
-                <div className="flex gap-3 text-[10px] text-gray-500 mb-2">
+                <div className="flex gap-3 text-[10px] text-gray-400 mb-2">
                   <span>Richness: {s.richness}</span>
                   <span>TTL: {s.ttlDays}d</span>
                   {s.createdAt && <span>Created: {new Date(s.createdAt).toLocaleDateString()}</span>}
@@ -797,12 +797,12 @@ function PromotionPanel() {
                 </div>
               </div>
             ))}
-            {pendingShadows.length > 10 && <p className="text-xs text-gray-500 text-center">+ {pendingShadows.length - 10} more</p>}
+            {pendingShadows.length > 10 && <p className="text-xs text-gray-400 text-center">+ {pendingShadows.length - 10} more</p>}
           </div>
         )}
 
         {shadowCandidates.length === 0 && pendingShadows.length === 0 && (
-          <p className="text-xs text-gray-500 text-center py-3">No shadow DTUs ready for promotion</p>
+          <p className="text-xs text-gray-400 text-center py-3">No shadow DTUs ready for promotion</p>
         )}
       </div>
 
@@ -810,7 +810,7 @@ function PromotionPanel() {
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">General Promotion Pipeline</h3>
         <div className="space-y-2">
-          {queue.length === 0 && <p className="text-xs text-gray-500 text-center py-3">No pending promotions</p>}
+          {queue.length === 0 && <p className="text-xs text-gray-400 text-center py-3">No pending promotions</p>}
           {queue.map(p => (
             <div key={p.id} className="bg-lattice-surface rounded-lg p-3 border border-lattice-border">
               <div className="flex items-center justify-between mb-1">
@@ -820,7 +820,7 @@ function PromotionPanel() {
                 </span>
               </div>
               <p className="text-xs text-gray-400">{p.fromStage} → {p.toStage}</p>
-              <p className="text-[10px] text-gray-500">{new Date(p.requestedAt).toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400">{new Date(p.requestedAt).toLocaleString()}</p>
               {p.status === 'pending' && (
                 <div className="flex gap-2 mt-2">
                   <button onClick={() => approveMutation.mutate(p.id)} disabled={approveMutation.isPending} className="flex-1 text-xs px-2 py-1.5 rounded bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 disabled:opacity-50">Approve</button>
@@ -886,7 +886,7 @@ function BreakthroughPanel() {
       ) : clusters.length === 0 ? (
         <div className="text-center py-8">
           <Lightbulb className="w-8 h-8 mx-auto mb-2 text-gray-600" />
-          <p className="text-sm text-gray-500">No breakthrough clusters initialized</p>
+          <p className="text-sm text-gray-400">No breakthrough clusters initialized</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -895,7 +895,7 @@ function BreakthroughPanel() {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <h4 className="text-sm font-semibold text-white">{c.name}</h4>
-                  <span className="text-[10px] text-gray-500">{c.domain}</span>
+                  <span className="text-[10px] text-gray-400">{c.domain}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] px-2 py-0.5 rounded ${c.initialized ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -970,13 +970,13 @@ function MetaDerivationPanel() {
       {/* Invariants */}
       {invariants.length > 0 && (
         <div>
-          <h4 className="text-xs uppercase text-gray-500 mb-2">Discovered Meta-Invariants</h4>
+          <h4 className="text-xs uppercase text-gray-400 mb-2">Discovered Meta-Invariants</h4>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {invariants.slice(0, 20).map((inv: { id: string; statement: string; confidence: number; domains: string[] }, i: number) => (
               <div key={inv.id || i} className="bg-lattice-surface border border-lattice-border rounded p-3">
                 <p className="text-xs text-white">{inv.statement || JSON.stringify(inv).slice(0, 200)}</p>
                 {inv.confidence != null && (
-                  <span className="text-[10px] text-gray-500">Confidence: {(inv.confidence * 100).toFixed(0)}%</span>
+                  <span className="text-[10px] text-gray-400">Confidence: {(inv.confidence * 100).toFixed(0)}%</span>
                 )}
                 {inv.domains?.length > 0 && (
                   <div className="flex gap-1 mt-1">
@@ -994,13 +994,13 @@ function MetaDerivationPanel() {
       {/* Convergences */}
       {convergences.length > 0 && (
         <div>
-          <h4 className="text-xs uppercase text-gray-500 mb-2">Dream-Lattice Convergences</h4>
+          <h4 className="text-xs uppercase text-gray-400 mb-2">Dream-Lattice Convergences</h4>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {convergences.slice(0, 10).map((c: { id: string; similarity: number; description: string }, i: number) => (
               <div key={c.id || i} className="bg-lattice-surface border border-purple-500/30 rounded p-3">
                 <p className="text-xs text-purple-300">{c.description || JSON.stringify(c).slice(0, 200)}</p>
                 {c.similarity != null && (
-                  <span className="text-[10px] text-gray-500">Similarity: {(c.similarity * 100).toFixed(0)}%</span>
+                  <span className="text-[10px] text-gray-400">Similarity: {(c.similarity * 100).toFixed(0)}%</span>
                 )}
               </div>
             ))}
@@ -1011,8 +1011,8 @@ function MetaDerivationPanel() {
       {invariants.length === 0 && convergences.length === 0 && (
         <div className="text-center py-8">
           <GitBranch className="w-8 h-8 mx-auto mb-2 text-gray-600" />
-          <p className="text-sm text-gray-500">No meta-derivations yet</p>
-          <p className="text-xs text-gray-600 mt-1">Meta-derivation runs every 200th tick when sufficient invariants exist</p>
+          <p className="text-sm text-gray-400">No meta-derivations yet</p>
+          <p className="text-xs text-gray-400 mt-1">Meta-derivation runs every 200th tick when sufficient invariants exist</p>
         </div>
       )}
     </div>
@@ -1074,7 +1074,7 @@ function FoundationPanel() {
             key={s.id}
             onClick={() => setSection(s.id)}
             className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition-colors ${
-              section === s.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              section === s.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
             {s.label}
@@ -1103,7 +1103,7 @@ function FoundationPanel() {
       {spectrumData?.channels && (
         <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-3">
           <p className="text-xs font-semibold text-zinc-400 mb-2">Spectrum Availability</p>
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-zinc-400">
             {Array.isArray(spectrumData.channels)
               ? `${spectrumData.channels.length} channels available`
               : 'Checking spectrum...'}
@@ -1182,14 +1182,14 @@ function ShieldStatusPanel() {
       <div className="bg-lattice-deep rounded-lg p-3 space-y-2 border border-lattice-border">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-gray-400 uppercase">Security Tool Tiers</p>
-          <span className="text-xs text-gray-500">{toolsAvailable}/{toolsTotal} online</span>
+          <span className="text-xs text-gray-400">{toolsAvailable}/{toolsTotal} online</span>
         </div>
         {Object.entries(TIER_MAP).map(([key, meta]) => (
           <div key={key} className="flex items-center gap-2 text-xs">
             <StatusDot status={tools[key] ? 'green' : 'red'} />
             <span className="text-gray-400">T{meta.tier}</span>
             <span className="text-gray-300 flex-1">{meta.label}</span>
-            <span className="text-gray-500">{tools[key] ? 'active' : 'unavailable'}</span>
+            <span className="text-gray-400">{tools[key] ? 'active' : 'unavailable'}</span>
           </div>
         ))}
       </div>
@@ -1233,7 +1233,7 @@ function ShieldStatusPanel() {
               <span className="text-purple-300 capitalize font-medium">{p.family || 'unknown'}</span>
               <span className="text-gray-600">-&gt;</span>
               <span className="text-gray-400 truncate flex-1">{p.predictedVariant || '—'}</span>
-              <span className="text-gray-500 tabular-nums">{p.confidence != null ? `${Math.round(p.confidence * 100)}%` : '—'}</span>
+              <span className="text-gray-400 tabular-nums">{p.confidence != null ? `${Math.round(p.confidence * 100)}%` : '—'}</span>
             </div>
           ))}
         </div>
@@ -1297,14 +1297,14 @@ function FederationStatusPanel() {
             <div key={node.id || i} className="flex items-center gap-2 text-xs">
               <StatusDot status="green" />
               <span className="text-gray-300 flex-1 truncate font-mono">{node.id}</span>
-              {node.trustScore != null && <span className="text-gray-500">trust: {node.trustScore}</span>}
+              {node.trustScore != null && <span className="text-gray-400">trust: {node.trustScore}</span>}
             </div>
           ))}
           {peerList.map((peer: { id?: string; entityId?: string; peerType?: string }, i: number) => (
             <div key={peer.id || peer.entityId || i} className="flex items-center gap-2 text-xs">
               <StatusDot status="green" />
               <span className="text-gray-300 flex-1 truncate font-mono">{peer.id || peer.entityId}</span>
-              {peer.peerType && <span className="text-gray-500">{peer.peerType}</span>}
+              {peer.peerType && <span className="text-gray-400">{peer.peerType}</span>}
             </div>
           ))}
         </div>
@@ -1455,7 +1455,7 @@ function LoafPanel() {
             <div className="space-y-1">
               {(knowledge.atRisk as Array<{ id: string; priority?: string }>)?.slice(0, 5).map((k: { id: string; priority?: string }) => (
                 <div key={k.id} className="text-[10px] text-yellow-300 flex items-center gap-1">
-                  <AlertTriangle className="w-2.5 h-2.5" /> {k.id} <span className="text-gray-500">{k.priority}</span>
+                  <AlertTriangle className="w-2.5 h-2.5" /> {k.id} <span className="text-gray-400">{k.priority}</span>
                 </div>
               ))}
             </div>
@@ -1471,7 +1471,7 @@ function LoafPanel() {
             {LOAF_TIERS.map(t => (
               <div key={t.tier} className="bg-lattice-deep rounded p-2 border border-lattice-border text-center">
                 <p className={`text-xs font-bold ${t.color}`}>LOAF {t.tier}</p>
-                <p className="text-[10px] text-gray-500">{t.label}</p>
+                <p className="text-[10px] text-gray-400">{t.label}</p>
                 <p className="text-sm font-mono text-white">{t.modules?.length ?? 0}</p>
               </div>
             ))}
@@ -1493,7 +1493,7 @@ function CognitiveEnginesPanel() {
   });
 
   if (isLoading) return <div className="h-32 bg-lattice-deep animate-pulse rounded-lg" />;
-  if (!data?.ok) return <p className="text-xs text-gray-500">Cognitive status unavailable</p>;
+  if (!data?.ok) return <p className="text-xs text-gray-400">Cognitive status unavailable</p>;
 
   const engines = [
     { name: 'Goal System', status: data.goals ? 'active' : 'idle', detail: data.goals ? `${data.goals.activeCount} active / ${data.goals.totalRegistered} total` : null },
@@ -1525,7 +1525,7 @@ function CognitiveEnginesPanel() {
             <div key={g.id} className="flex items-center gap-2 text-xs">
               <StatusDot status="green" />
               <span className="text-gray-300 flex-1 truncate">{g.description || g.id}</span>
-              {g.priority != null && <span className="text-gray-500">P{g.priority}</span>}
+              {g.priority != null && <span className="text-gray-400">P{g.priority}</span>}
             </div>
           ))}
         </div>
@@ -1570,7 +1570,7 @@ function AffectPanel() {
   });
 
   const state = data?.state;
-  if (!state) return <p className="text-xs text-gray-500">Affect state unavailable</p>;
+  if (!state) return <p className="text-xs text-gray-400">Affect state unavailable</p>;
 
   const dims = [
     { key: 'v', label: 'Valence', color: 'bg-pink-400' },
@@ -1608,7 +1608,7 @@ function AffectPanel() {
             <div className="flex-1 h-3 bg-lattice-deep rounded-full overflow-hidden">
               <div className={`h-full rounded-full ${d.color}`} style={{ width: `${Math.max(2, (state[d.key] ?? 0) * 100)}%` }} />
             </div>
-            <span className="w-8 text-right text-gray-500 font-mono">{((state[d.key] ?? 0) * 100).toFixed(0)}%</span>
+            <span className="w-8 text-right text-gray-400 font-mono">{((state[d.key] ?? 0) * 100).toFixed(0)}%</span>
           </div>
         ))}
       </div>
@@ -1646,7 +1646,7 @@ function OrganismPipelinePanel() {
         <div className="flex items-center gap-3 bg-lattice-surface rounded-lg p-3 border border-lattice-border">
           <StatusDot status={health.status === 'healthy' ? 'green' : health.status === 'degraded' ? 'yellow' : 'red'} />
           <span className={`text-sm font-medium ${healthColor}`}>{health.status}</span>
-          <span className="text-xs text-gray-500 ml-auto">
+          <span className="text-xs text-gray-400 ml-auto">
             {pipeline?.enabled ? 'Pipeline enabled' : 'Pipeline disabled'}
           </span>
         </div>
@@ -1673,12 +1673,12 @@ function OrganismPipelinePanel() {
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-gray-500">Size: </span>
+              <span className="text-gray-400">Size: </span>
               <span className="text-white font-mono">{wal.sizeFormatted}</span>
             </div>
             <div>
-              <span className="text-gray-500">Status: </span>
-              <span className={wal.exists ? 'text-neon-green' : 'text-gray-500'}>{wal.exists ? 'Active' : 'No WAL'}</span>
+              <span className="text-gray-400">Status: </span>
+              <span className={wal.exists ? 'text-neon-green' : 'text-gray-400'}>{wal.exists ? 'Active' : 'No WAL'}</span>
             </div>
           </div>
         </div>
@@ -1690,11 +1690,11 @@ function OrganismPipelinePanel() {
           <p className="text-xs font-semibold text-gray-400 uppercase">Snapshots (Rollback Points)</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-gray-500">Count: </span>
+              <span className="text-gray-400">Count: </span>
               <span className="text-white font-mono">{snapshots.count}</span>
             </div>
             <div className="truncate">
-              <span className="text-gray-500">Latest: </span>
+              <span className="text-gray-400">Latest: </span>
               <span className="text-gray-300 font-mono">{snapshots.latest || 'none'}</span>
             </div>
           </div>
@@ -1710,7 +1710,7 @@ function OrganismPipelinePanel() {
               <div key={c.id} className="flex items-center gap-2 bg-lattice-surface rounded p-2 border border-lattice-border text-xs">
                 <StatusDot status="green" />
                 <span className="text-white truncate flex-1">{c.dtuTitle || c.action}</span>
-                <span className="text-gray-500 shrink-0">{c.actor?.id?.slice(0, 15) || 'system'}</span>
+                <span className="text-gray-400 shrink-0">{c.actor?.id?.slice(0, 15) || 'system'}</span>
                 <span className="text-gray-600 shrink-0">{c.createdAt ? new Date(c.createdAt).toLocaleTimeString() : ''}</span>
               </div>
             ))}
@@ -1718,7 +1718,7 @@ function OrganismPipelinePanel() {
         </div>
       )}
 
-      {!data && <p className="text-xs text-gray-500 text-center py-4">Loading pipeline status...</p>}
+      {!data && <p className="text-xs text-gray-400 text-center py-4">Loading pipeline status...</p>}
     </div>
   );
 }
@@ -1992,7 +1992,7 @@ export default function CommandCenterPage() {
               <span className="text-xs text-gray-400">Result</span>
               <button
                 onClick={() => setActionResult(null)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-white transition-colors"
               aria-label="Xcircle">
                 <XCircle className="w-3.5 h-3.5" />
               </button>
@@ -2154,7 +2154,7 @@ function PredictionMarketPanel() {
       {isLoading ? (
         <p className="text-sm text-gray-400">Loading predictions...</p>
       ) : hypotheses.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-8">No predictions yet. Create one to get started.</p>
+        <p className="text-sm text-gray-400 text-center py-8">No predictions yet. Create one to get started.</p>
       ) : (
         <div className="space-y-2">
           {hypotheses.map((h: { id: string; claim: string; state: string; domain: string; robustnessScore: number; truthWeight: number; evidenceCount: number; challengeCount: number; defenseCount: number; createdAt: string; resolvedAt: string | null }) => (
@@ -2166,11 +2166,11 @@ function PredictionMarketPanel() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${stateColors[h.state] || 'text-gray-400 bg-gray-500/10'}`}>
                       {h.state.replace(/_/g, ' ')}
                     </span>
-                    <span className="text-xs text-gray-500">{h.domain}</span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-400">{h.domain}</span>
+                    <span className="text-xs text-gray-400">
                       {h.evidenceCount} evidence / {h.challengeCount} challenges / {h.defenseCount} defenses
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-400">
                       robustness: {(h.robustnessScore * 100).toFixed(0)}%
                     </span>
                   </div>
@@ -2199,10 +2199,10 @@ function PredictionMarketPanel() {
           <div className="space-y-1.5">
             {leaders.map((entry: { actorId: string; accuracy: number; totalClaims: number; weight: number }, i: number) => (
               <div key={entry.actorId} className="flex items-center gap-3 text-sm">
-                <span className="text-xs text-gray-500 w-5 text-right">{i + 1}.</span>
+                <span className="text-xs text-gray-400 w-5 text-right">{i + 1}.</span>
                 <span className="text-white flex-1 truncate font-mono text-xs">{entry.actorId}</span>
                 <span className="text-green-400 text-xs">{(entry.accuracy * 100).toFixed(0)}%</span>
-                <span className="text-gray-500 text-xs">{entry.totalClaims} claims</span>
+                <span className="text-gray-400 text-xs">{entry.totalClaims} claims</span>
               </div>
             ))}
           </div>

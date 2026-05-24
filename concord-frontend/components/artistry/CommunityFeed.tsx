@@ -71,15 +71,15 @@ export function CommunityFeed() {
         <div className="grid grid-cols-3 gap-2 mb-3">
           <div className="p-2 bg-white/5 rounded text-center">
             <div className="text-lg font-bold text-neon-pink">{graph?.followerCount ?? 0}</div>
-            <div className="text-[10px] text-gray-500">Followers</div>
+            <div className="text-[10px] text-gray-400">Followers</div>
           </div>
           <div className="p-2 bg-white/5 rounded text-center">
             <div className="text-lg font-bold text-neon-cyan">{graph?.followingCount ?? 0}</div>
-            <div className="text-[10px] text-gray-500">Following</div>
+            <div className="text-[10px] text-gray-400">Following</div>
           </div>
           <div className="p-2 bg-white/5 rounded text-center">
             <div className="text-lg font-bold text-purple-400">{graph?.mutualCount ?? 0}</div>
-            <div className="text-[10px] text-gray-500">Mutuals</div>
+            <div className="text-[10px] text-gray-400">Mutuals</div>
           </div>
         </div>
         <div className="flex gap-2 mb-2">
@@ -93,7 +93,7 @@ export function CommunityFeed() {
             {graph.following.map((u) => (
               <span key={u} className="text-[11px] px-2 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-1">
                 {u}
-                <button onClick={() => doUnfollow(u)} aria-label={`Unfollow ${u}`} className="text-gray-500 hover:text-red-400">
+                <button onClick={() => doUnfollow(u)} aria-label={`Unfollow ${u}`} className="text-gray-400 hover:text-red-400">
                   <UserMinus className="w-3 h-3" />
                 </button>
               </span>
@@ -112,7 +112,7 @@ export function CommunityFeed() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
       ) : feed.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-sm">No projects in your feed yet.</div>
+        <div className="text-center py-12 text-gray-400 text-sm">No projects in your feed yet.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {feed.map((f) => (
@@ -124,8 +124,8 @@ export function CommunityFeed() {
               </div>
               <div className="p-3">
                 <h3 className="font-medium text-sm truncate">{f.title}</h3>
-                <div className="text-[11px] text-gray-500">by {f.userId} · {f.discipline}</div>
-                <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
+                <div className="text-[11px] text-gray-400">by {f.userId} · {f.discipline}</div>
+                <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
                   <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{f.views}</span>
                   <button onClick={() => appreciate(f.id)} className="flex items-center gap-1 hover:text-neon-pink">
                     <Heart className="w-3 h-3" />{f.appreciations}

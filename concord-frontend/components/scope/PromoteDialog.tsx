@@ -56,7 +56,7 @@ function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProps) {
             <h3 className="font-semibold text-white">Concord Global</h3>
           </div>
           <p className="text-sm text-gray-400 mb-1">Academic &amp; Instructional</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Strict review. Claims verified. High authority. For knowledge that needs to be accurate
             and trustworthy.
           </p>
@@ -76,7 +76,7 @@ function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProps) {
             <h3 className="font-semibold text-white">Creative Concord Global</h3>
           </div>
           <p className="text-sm text-gray-400 mb-1">Creative Commons</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Citation review only. Artistic freedom. For music, art, code, and creative work that
             others can remix and build on.
           </p>

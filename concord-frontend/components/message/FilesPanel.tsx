@@ -96,7 +96,7 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
     <div className="p-4 space-y-3 overflow-y-auto">
       <div className="flex items-center gap-2">
         <h2 className="text-sm font-semibold text-gray-200">Files · #{channelName}</h2>
-        <span className="text-[10px] text-gray-500">{files.length} files · {fmtBytes(totalBytes)}</span>
+        <span className="text-[10px] text-gray-400">{files.length} files · {fmtBytes(totalBytes)}</span>
         <div className="ml-auto flex items-center gap-2">
           <select
             value={kindFilter}
@@ -124,9 +124,9 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
       {error && <div className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded px-2 py-1">{error}</div>}
 
       {loading ? (
-        <p className="text-xs text-gray-500 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+        <p className="text-xs text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
       ) : files.length === 0 ? (
-        <p className="text-xs text-gray-600">No files shared yet. Use Upload to add one.</p>
+        <p className="text-xs text-gray-400">No files shared yet. Use Upload to add one.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {files.map((f) => {
@@ -141,13 +141,13 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={f.dataUrl} alt={f.name} className="object-cover w-full h-full" />
                   ) : (
-                    <Icon className="w-7 h-7 text-gray-500" />
+                    <Icon className="w-7 h-7 text-gray-400" />
                   )}
                 </button>
                 <div className="flex items-start gap-1">
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] text-gray-200 truncate" title={f.name}>{f.name}</div>
-                    <div className="text-[9px] text-gray-500">{fmtBytes(f.sizeBytes)} · {f.uploadedBy}</div>
+                    <div className="text-[9px] text-gray-400">{fmtBytes(f.sizeBytes)} · {f.uploadedBy}</div>
                   </div>
                   <button onClick={() => remove(f)} className="opacity-0 group-hover:opacity-100 text-rose-300" title="Delete">
                     <Trash2 className="w-3 h-3" />
@@ -176,7 +176,7 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
             ) : (
               <p className="text-xs text-gray-400 py-6 text-center">No inline preview for {preview.ext || 'this'} files.</p>
             )}
-            <div className="text-[10px] text-gray-500 mt-2">
+            <div className="text-[10px] text-gray-400 mt-2">
               {fmtBytes(preview.sizeBytes)} · uploaded {new Date(preview.uploadedAt).toLocaleString()}
             </div>
           </div>

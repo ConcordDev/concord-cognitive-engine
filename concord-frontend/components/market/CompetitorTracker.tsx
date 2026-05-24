@@ -54,7 +54,7 @@ export function CompetitorTracker() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -68,7 +68,7 @@ export function CompetitorTracker() {
           {([['Competitors', dash.competitors], ['High threat', dash.highThreat], ['Tracked share', `${dash.trackedSharePct}%`]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -90,13 +90,13 @@ export function CompetitorTracker() {
       </div>
 
       <ul className="space-y-1">
-        {comps.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No competitors tracked.</li>}
+        {comps.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No competitors tracked.</li>}
         {comps.map(c => (
           <li key={c.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === c.id ? null : c.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.name}</p>
-                <p className="text-[10px] text-zinc-500">{c.segment} · {c.marketSharePct != null ? `${c.marketSharePct}% share` : 'share n/a'} · <span className={THREAT_COLOR[c.threatLevel]}>{c.threatLevel} threat</span></p>
+                <p className="text-[10px] text-zinc-400">{c.segment} · {c.marketSharePct != null ? `${c.marketSharePct}% share` : 'share n/a'} · <span className={THREAT_COLOR[c.threatLevel]}>{c.threatLevel} threat</span></p>
               </button>
               <button onClick={() => delComp(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>

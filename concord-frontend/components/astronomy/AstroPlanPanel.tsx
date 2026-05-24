@@ -13,7 +13,7 @@ interface WishItem { id: string; name: string; type: string; priority: string; o
 interface AstroEvent { id: string; name: string; kind: string; date: string; upcoming: boolean }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high: 'text-rose-400', medium: 'text-amber-400', low: 'text-zinc-500',
+  high: 'text-rose-400', medium: 'text-amber-400', low: 'text-zinc-400',
 };
 
 export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
@@ -60,7 +60,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
   const removeEvent = async (id: string) => { await lensRun('astronomy', 'event-delete', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -85,12 +85,12 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {wishlist.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Wishlist is empty.</p>
+          <p className="text-[11px] text-zinc-400 italic">Wishlist is empty.</p>
         ) : (
           <ul className="space-y-1">
             {wishlist.map((w) => (
               <li key={w.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <span className={cn('text-xs', w.observed ? 'text-zinc-500 line-through' : 'text-zinc-200')}>
+                <span className={cn('text-xs', w.observed ? 'text-zinc-400 line-through' : 'text-zinc-200')}>
                   {w.observed && <Check className="inline w-3 h-3 text-emerald-400 mr-1" />}
                   {w.name} <span className="text-zinc-600 capitalize">· {w.type}</span>
                 </span>
@@ -126,7 +126,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {events.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No events tracked.</p>
+          <p className="text-[11px] text-zinc-400 italic">No events tracked.</p>
         ) : (
           <ul className="space-y-1">
             {events.map((e) => (
@@ -134,7 +134,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
                 e.upcoming ? 'border-indigo-900/50' : 'border-zinc-800 opacity-60')}>
                 <div>
                   <p className="text-xs text-zinc-200">{e.name}</p>
-                  <p className="text-[10px] text-zinc-500 capitalize">{e.kind.replace(/_/g, ' ')} · {e.date}</p>
+                  <p className="text-[10px] text-zinc-400 capitalize">{e.kind.replace(/_/g, ' ')} · {e.date}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {e.upcoming && <span className="text-[10px] text-indigo-400 uppercase">upcoming</span>}

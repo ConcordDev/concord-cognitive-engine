@@ -1,0 +1,353 @@
+{
+  "generatedAt": "2026-05-24T17:49:24.163Z",
+  "lensesScanned": 10,
+  "lensesWithA11yViolations": 1,
+  "lensesWithConsoleErrors": 10,
+  "lensesWithNetworkErrors": 0,
+  "lensesWithMobileOverflow": 0,
+  "totalA11yViolations": 1,
+  "totalA11yNodes": 1,
+  "totalConsoleErrors": 95,
+  "topViolationIds": {
+    "color-contrast": {
+      "lensCount": 1,
+      "totalNodes": 1,
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds"
+    }
+  },
+  "results": [
+    {
+      "lens": "accounting",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 5196
+    },
+    {
+      "lens": "admin",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3499
+    },
+    {
+      "lens": "affect",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3422
+    },
+    {
+      "lens": "agents",
+      "ok": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": 1
+        }
+      ],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3459
+    },
+    {
+      "lens": "agriculture",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3458
+    },
+    {
+      "lens": "all",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3479
+    },
+    {
+      "lens": "alliance",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3493
+    },
+    {
+      "lens": "analytics",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3438
+    },
+    {
+      "lens": "animation",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3436
+    },
+    {
+      "lens": "anon",
+      "ok": true,
+      "violations": [],
+      "consoleErrors": [
+        "The script resource is behind a redirect, which is disallowed.",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+      ],
+      "networkErrors": [],
+      "viewports": {
+        "mobile": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "tablet": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        },
+        "desktop": {
+          "horizontalOverflow": false,
+          "overflowPx": 0
+        }
+      },
+      "durationMs": 3487
+    }
+  ]
+}

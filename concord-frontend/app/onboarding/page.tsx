@@ -193,7 +193,7 @@ export default function OnboardingPage() {
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               {selectedDomains.length} domain{selectedDomains.length !== 1 ? 's' : ''} selected
             </p>
             <button
@@ -259,14 +259,14 @@ export default function OnboardingPage() {
                 <ChevronRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
               <p className="text-gray-300 mb-2">{mode.description}</p>
-              <p className="text-sm text-gray-500">{mode.detail}</p>
+              <p className="text-sm text-gray-400">{mode.detail}</p>
             </button>
           ))}
         </div>
 
         {/* Info footer */}
         <div className="text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-400">
             You can always change your universe later by syncing from the global library.
           </p>
         </div>

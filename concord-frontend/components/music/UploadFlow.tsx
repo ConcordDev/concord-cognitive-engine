@@ -137,9 +137,9 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
 
           {progress.audioAnalysis && (
             <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="p-2 bg-white/5 rounded"><span className="text-gray-500">BPM</span><br/>{progress.audioAnalysis.bpm}</div>
-              <div className="p-2 bg-white/5 rounded"><span className="text-gray-500">Key</span><br/>{progress.audioAnalysis.key}</div>
-              <div className="p-2 bg-white/5 rounded"><span className="text-gray-500">LUFS</span><br/>{progress.audioAnalysis.loudnessLUFS.toFixed(1)}</div>
+              <div className="p-2 bg-white/5 rounded"><span className="text-gray-400">BPM</span><br/>{progress.audioAnalysis.bpm}</div>
+              <div className="p-2 bg-white/5 rounded"><span className="text-gray-400">Key</span><br/>{progress.audioAnalysis.key}</div>
+              <div className="p-2 bg-white/5 rounded"><span className="text-gray-400">LUFS</span><br/>{progress.audioAnalysis.loudnessLUFS.toFixed(1)}</div>
             </div>
           )}
 
@@ -160,14 +160,14 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
               onClick={() => { if (file) setStep(s); }}
               className={cn(
                 'px-3 py-1 rounded-full capitalize transition-colors',
-                step === s ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-500 hover:text-white',
+                step === s ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-400 hover:text-white',
               )}
             >
               {s}
             </button>
           </div>
         ))}
-        <button onClick={onCancel} className="ml-auto text-gray-500 hover:text-white" aria-label="Close">
+        <button onClick={onCancel} className="ml-auto text-gray-400 hover:text-white" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -180,9 +180,9 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
           onDrop={handleFileDrop}
           onClick={() => fileRef.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
-          <Upload className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-sm text-gray-300">Drop an audio file or click to browse</p>
-          <p className="text-xs text-gray-500 mt-1">WAV, MP3, FLAC, OGG, AAC (max 500MB)</p>
+          <p className="text-xs text-gray-400 mt-1">WAV, MP3, FLAC, OGG, AAC (max 500MB)</p>
         </div>
       )}
 
@@ -233,7 +233,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
               {tags.map(tag => (
                 <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-xs text-gray-300">
                   <Tag className="w-2.5 h-2.5" /> {tag}
-                  <button onClick={() => setTags(tags.filter(t => t !== tag))} className="text-gray-500 hover:text-white" aria-label="Close">
+                  <button onClick={() => setTags(tags.filter(t => t !== tag))} className="text-gray-400 hover:text-white" aria-label="Close">
                     <X className="w-2.5 h-2.5" />
                   </button>
                 </span>
@@ -290,7 +290,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
                   className="flex-1 px-2 py-1 bg-white/5 border border-white/10 rounded text-xs focus:outline-none"
                   placeholder="Role (producer, vocalist...)"
                 />
-                <button onClick={() => setCredits(credits.filter((_, j) => j !== i))} className="text-gray-500 hover:text-red-400" aria-label="Close">
+                <button onClick={() => setCredits(credits.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-400" aria-label="Close">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -341,7 +341,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
                   <Info className="w-4 h-4 text-neon-purple flex-shrink-0 mt-0.5" />
                   <div>
                     <p>Royalty cascade applies: <strong>{(ROYALTY_CONSTANTS.BASE_RATE * 100)}%</strong> of net revenue goes to the original creator. This halves at each derivative level (floor: {(ROYALTY_CONSTANTS.ROYALTY_FLOOR * 100)}%).</p>
-                    <p className="mt-1 text-gray-500">This is a system invariant — same for every creator.</p>
+                    <p className="mt-1 text-gray-400">This is a system invariant — same for every creator.</p>
                   </div>
                 </div>
                 <div>
@@ -374,7 +374,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
             <Info className="w-4 h-4 text-neon-cyan flex-shrink-0 mt-0.5" />
             <div>
               <p><strong>Artifact Sovereignty Tiers</strong> — You control pricing. The platform controls royalty rates (same for everyone).</p>
-              <p className="text-gray-500 mt-1">Platform fee: {(ROYALTY_CONSTANTS.PLATFORM_FEE_RATE * 100)}%. Derivative royalty: {(ROYALTY_CONSTANTS.BASE_RATE * 100)}% halving.</p>
+              <p className="text-gray-400 mt-1">Platform fee: {(ROYALTY_CONSTANTS.PLATFORM_FEE_RATE * 100)}%. Derivative royalty: {(ROYALTY_CONSTANTS.BASE_RATE * 100)}% halving.</p>
             </div>
           </div>
 
@@ -389,7 +389,7 @@ export function UploadFlow({ onUpload, onCancel, progress }: UploadFlowProps) {
                     <span className="text-sm font-semibold capitalize">{tier.tier}</span>
                   </label>
                 </div>
-                <p className="text-xs text-gray-500 mb-3">{meta.desc}</p>
+                <p className="text-xs text-gray-400 mb-3">{meta.desc}</p>
                 {tier.enabled && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>

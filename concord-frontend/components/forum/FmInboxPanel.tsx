@@ -63,7 +63,7 @@ export function FmInboxPanel({ onChange, onOpenTopic }: {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -84,7 +84,7 @@ export function FmInboxPanel({ onChange, onOpenTopic }: {
           )}
         </div>
         {notifications.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">No notifications yet. Subscribe to a thread to get reply alerts.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No notifications yet. Subscribe to a thread to get reply alerts.</p>
         ) : (
           <ul className="space-y-1.5">
             {notifications.map((n) => (
@@ -95,11 +95,11 @@ export function FmInboxPanel({ onChange, onOpenTopic }: {
                 <button type="button" onClick={() => onOpenTopic?.(n.topicId)}
                   className="flex-1 text-left min-w-0">
                   <p className="text-[11px] text-zinc-200">{n.message}</p>
-                  <p className="text-[10px] text-zinc-500">{timeAgo(n.createdAt)}</p>
+                  <p className="text-[10px] text-zinc-400">{timeAgo(n.createdAt)}</p>
                 </button>
                 {!n.read && (
                   <button type="button" onClick={() => markOne(n.id)}
-                    className="text-zinc-500 hover:text-orange-300" aria-label="Mark read">
+                    className="text-zinc-400 hover:text-orange-300" aria-label="Mark read">
                     <Check className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -112,20 +112,20 @@ export function FmInboxPanel({ onChange, onOpenTopic }: {
       <section>
         <h3 className="text-xs font-semibold text-zinc-200 mb-2">Watched threads</h3>
         {subscriptions.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">Not subscribed to any threads.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">Not subscribed to any threads.</p>
         ) : (
           <ul className="space-y-1.5">
             {subscriptions.map((s) => (
               <li key={s.topicId} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <button type="button" onClick={() => onOpenTopic?.(s.topicId)} className="flex-1 text-left min-w-0">
                   <p className="text-[11px] text-zinc-200 flex items-center gap-1 truncate">
-                    {s.locked && <Lock className="w-3 h-3 text-zinc-500" />}
+                    {s.locked && <Lock className="w-3 h-3 text-zinc-400" />}
                     {s.topicTitle}
                   </p>
-                  <p className="text-[10px] text-zinc-500">subscribed {timeAgo(s.createdAt)}</p>
+                  <p className="text-[10px] text-zinc-400">subscribed {timeAgo(s.createdAt)}</p>
                 </button>
                 <button type="button" onClick={() => unsubscribe(s.topicId)}
-                  className="text-[10px] text-zinc-500 hover:text-rose-300">Unsubscribe</button>
+                  className="text-[10px] text-zinc-400 hover:text-rose-300">Unsubscribe</button>
               </li>
             ))}
           </ul>

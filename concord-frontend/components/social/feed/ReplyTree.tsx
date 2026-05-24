@@ -49,13 +49,13 @@ function ReplyNode({ reply, postId, username, depth, onChanged }: ReplyNodeProps
       <div className="py-1.5">
         <div className="flex items-baseline gap-1.5">
           <span className="text-xs font-medium text-zinc-200">@{reply.username}</span>
-          <span className="text-[10px] text-zinc-600">{relTime(reply.createdAt)}</span>
+          <span className="text-[10px] text-zinc-400">{relTime(reply.createdAt)}</span>
         </div>
         <p className="text-xs text-zinc-300 leading-snug">{reply.body}</p>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 hover:text-indigo-300"
+          className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-indigo-300"
         >
           <CornerDownRight className="w-3 h-3" /> Reply
         </button>
@@ -132,7 +132,7 @@ export function ReplyTree({ postId, username }: ReplyTreeProps) {
       <button
         type="button"
         onClick={() => void load()}
-        className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-indigo-300"
+        className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-indigo-300"
       >
         <MessageSquare className="w-3.5 h-3.5" />
         {loading ? 'Loading replies…' : 'Show replies'}
@@ -161,7 +161,7 @@ export function ReplyTree({ postId, username }: ReplyTreeProps) {
         </button>
       </div>
       {total === 0 ? (
-        <p className="text-[11px] text-zinc-600 italic">No replies yet — be the first.</p>
+        <p className="text-[11px] text-zinc-400 italic">No replies yet — be the first.</p>
       ) : (
         <div>
           {tree.map((node) => (

@@ -230,7 +230,7 @@ export function CommonsenseActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -240,7 +240,7 @@ export function CommonsenseActionPanel() {
         {edgesResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Edges · {edgesResult.concept} ({edgesResult.count})</div>
-            {edgesResult.edges.slice(0, 12).map((e, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><span className="font-mono text-blue-200">{e.relation}</span> <span className="text-zinc-400">→</span> <strong>{e.end}</strong> {e.weight != null && <span className="text-[9px] text-zinc-500 ml-1">w={e.weight.toFixed(2)}</span>}{e.surfaceText && <div className="text-[10px] text-zinc-500 italic ml-3">&ldquo;{e.surfaceText}&rdquo;</div>}</div>)}
+            {edgesResult.edges.slice(0, 12).map((e, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><span className="font-mono text-blue-200">{e.relation}</span> <span className="text-zinc-400">→</span> <strong>{e.end}</strong> {e.weight != null && <span className="text-[9px] text-zinc-400 ml-1">w={e.weight.toFixed(2)}</span>}{e.surfaceText && <div className="text-[10px] text-zinc-400 italic ml-3">&ldquo;{e.surfaceText}&rdquo;</div>}</div>)}
           </div>
         )}
         {relResult && (
@@ -261,7 +261,7 @@ export function CommonsenseActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{analogResult.source} → {analogResult.target}</div>
             {analogResult.coherence != null && <div className="text-[11px] text-zinc-300">coherence: <span className="font-mono text-purple-200">{analogResult.coherence}</span></div>}
-            {(analogResult.mappings ?? []).slice(0, 5).map((m, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><span className="font-mono text-purple-200">{m.sourceConcept}</span> ↔ <span className="font-mono text-purple-200">{m.targetConcept}</span>{m.similarity != null && <span className="text-[10px] text-zinc-500 ml-2">sim {m.similarity}</span>}</div>)}
+            {(analogResult.mappings ?? []).slice(0, 5).map((m, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><span className="font-mono text-purple-200">{m.sourceConcept}</span> ↔ <span className="font-mono text-purple-200">{m.targetConcept}</span>{m.similarity != null && <span className="text-[10px] text-zinc-400 ml-2">sim {m.similarity}</span>}</div>)}
           </div>
         )}
       </div>

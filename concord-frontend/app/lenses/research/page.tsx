@@ -503,7 +503,7 @@ export default function ResearchLensPage() {
 
       {/* Search bar */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           ref={queryInputRef}
           type="text"
@@ -518,7 +518,7 @@ export default function ResearchLensPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500" />
+          <Filter className="w-4 h-4 text-gray-400" />
           <select
             value={domainFilter}
             onChange={(e) => setDomainFilter(e.target.value)}
@@ -552,7 +552,7 @@ export default function ResearchLensPage() {
           <option value="tier">Sort by Tier</option>
           <option value="relevance">Sort by Relevance</option>
         </select>
-        <span className="text-sm text-gray-500 self-center ml-auto">
+        <span className="text-sm text-gray-400 self-center ml-auto">
           {results.length} result{results.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -629,7 +629,7 @@ export default function ResearchLensPage() {
                         </span>
                       )}
                       {(dtu.tags || []).slice(0, 3).map((tag) => (
-                        <span key={tag} className="text-xs text-gray-500">
+                        <span key={tag} className="text-xs text-gray-400">
                           #{tag}
                         </span>
                       ))}
@@ -693,7 +693,7 @@ export default function ResearchLensPage() {
                     <div className="space-y-1">
                       {Object.entries(selectedDtu.creti).map(([key, val]) => (
                         <div key={key} className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-20">{key}</span>
+                          <span className="text-xs text-gray-400 w-20">{key}</span>
                           <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                             <div
                               className="h-full bg-neon-cyan rounded-full"
@@ -711,7 +711,7 @@ export default function ResearchLensPage() {
               </div>
             </>
           ) : (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-400">
               <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm">Select a result to view details</p>
             </div>

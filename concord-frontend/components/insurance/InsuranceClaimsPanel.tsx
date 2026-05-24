@@ -21,7 +21,7 @@ const STATUS_FLOW: Record<string, string> = {
 };
 const STATUS_COLOR: Record<string, string> = {
   submitted: 'text-sky-400', under_review: 'text-amber-400', approved: 'text-blue-400',
-  denied: 'text-rose-400', paid: 'text-emerald-400', closed: 'text-zinc-500',
+  denied: 'text-rose-400', paid: 'text-emerald-400', closed: 'text-zinc-400',
 };
 
 export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
@@ -63,7 +63,7 @@ export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
   const del = async (id: string) => { await lensRun('insurance', 'claim-delete', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -96,7 +96,7 @@ export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {claims.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No claims filed.
         </div>
       ) : (
@@ -106,7 +106,7 @@ export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{c.description}</p>
-                  <p className="text-[11px] text-zinc-500 capitalize">
+                  <p className="text-[11px] text-zinc-400 capitalize">
                     {c.carrier} · {c.kind} · ${c.claimAmount}
                     {c.payoutAmount != null ? ` · paid $${c.payoutAmount}` : ''}
                     {c.daysSinceSubmit != null ? ` · ${c.daysSinceSubmit}d ago` : ''}

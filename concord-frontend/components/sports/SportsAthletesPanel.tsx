@@ -63,7 +63,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (selected) {
@@ -75,7 +75,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h3 className="text-sm font-bold text-zinc-100">{selected.name}</h3>
-          <p className="text-[11px] text-zinc-500">{[selected.team, selected.position].filter(Boolean).join(' · ') || 'No details'}</p>
+          <p className="text-[11px] text-zinc-400">{[selected.team, selected.position].filter(Boolean).join(' · ') || 'No details'}</p>
         </div>
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -85,7 +85,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
             {Object.entries(averages).slice(0, 6).map(([k, v]) => (
               <div key={k} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
                 <p className="text-sm font-bold text-zinc-100">{v}</p>
-                <p className="text-[10px] text-zinc-500 capitalize">{k}/game</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{k}/game</p>
               </div>
             ))}
           </div>
@@ -101,13 +101,13 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
         </div>
 
         {lines.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No stat lines logged.</p>
+          <p className="text-[11px] text-zinc-400 italic">No stat lines logged.</p>
         ) : (
           <ul className="space-y-1">
             {lines.map((ln) => (
               <li key={ln.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-zinc-500">{ln.opponent || 'Game'} · {ln.date}</span>
+                  <span className="text-[11px] text-zinc-400">{ln.opponent || 'Game'} · {ln.date}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {Object.entries(ln.stats).map(([k, v]) => (
@@ -140,7 +140,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
       </button>
 
       {athletes.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No athletes tracked. Add one to log stat lines.
         </div>
       ) : (
@@ -152,7 +152,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
                 <UserRound className="w-4 h-4 text-red-400 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{a.name}</p>
-                  <p className="text-[11px] text-zinc-500">{[a.team, a.position].filter(Boolean).join(' · ') || 'No details'}</p>
+                  <p className="text-[11px] text-zinc-400">{[a.team, a.position].filter(Boolean).join(' · ') || 'No details'}</p>
                 </div>
               </button>
             </li>

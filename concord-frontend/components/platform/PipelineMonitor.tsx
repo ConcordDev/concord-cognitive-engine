@@ -58,7 +58,7 @@ function MetricCard({
       <div>
         <p className="text-xs text-gray-400 uppercase tracking-wider">{label}</p>
         <p className="text-2xl font-bold text-gray-100 mt-0.5">{value}</p>
-        {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
       </div>
     </div>
   );
@@ -146,7 +146,7 @@ function PipelineMonitor() {
             <span className="text-sm font-medium text-neon-cyan">
               {currentIntent.intent?.replace(/_/g, ' ')}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               ({currentIntent.score?.toFixed?.(0) ?? '?'})
             </span>
           </div>
@@ -262,7 +262,7 @@ function PipelineMonitor() {
                     .map((p: { titleA: string; titleB: string; similarity: number }, i: number) => (
                       <div
                         key={i}
-                        className="text-xs text-gray-500 bg-lattice-deep rounded px-2 py-1"
+                        className="text-xs text-gray-400 bg-lattice-deep rounded px-2 py-1"
                       >
                         <span className="text-neon-orange">{Math.round(p.similarity * 100)}%</span>{' '}
                         {p.titleA?.slice(0, 30)} ↔ {p.titleB?.slice(0, 30)}
@@ -272,7 +272,7 @@ function PipelineMonitor() {
               )}
             </div>
           ) : (
-            <p className="text-xs text-gray-500">Loading dedup scan...</p>
+            <p className="text-xs text-gray-400">Loading dedup scan...</p>
           )}
         </div>
       </div>

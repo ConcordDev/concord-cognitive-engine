@@ -100,7 +100,7 @@ export function SkyMap() {
       )}
 
       {!result && !error && (
-        <p className="text-xs text-zinc-500 border border-dashed border-zinc-800 rounded-lg p-4 text-center">
+        <p className="text-xs text-zinc-400 border border-dashed border-zinc-800 rounded-lg p-4 text-center">
           Share your location to render the planets currently above your horizon.
         </p>
       )}
@@ -156,7 +156,7 @@ export function SkyMap() {
             </svg>
           </div>
 
-          <p className="text-[11px] text-zinc-500 text-center">
+          <p className="text-[11px] text-zinc-400 text-center">
             {result.visibleCount} of {result.objects.length} planets above the horizon ·{' '}
             {new Date(result.instant).toLocaleTimeString()}
           </p>
@@ -175,7 +175,7 @@ export function SkyMap() {
                 <span className="text-zinc-400">
                   alt {o.altitudeDeg.toFixed(1)}° · az {o.azimuthDeg.toFixed(0)}°
                 </span>
-                <span className="text-zinc-500 ml-auto">{o.distanceAu.toFixed(2)} AU</span>
+                <span className="text-zinc-400 ml-auto">{o.distanceAu.toFixed(2)} AU</span>
                 <span
                   className={cn(
                     'flex items-center gap-1',

@@ -60,7 +60,7 @@ export function WikidataSearch() {
         className="flex items-center gap-2"
       >
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             value={draft}
@@ -74,15 +74,15 @@ export function WikidataSearch() {
       {results.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikidata unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Matches</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Matches</div>
           <div className="mt-0.5 font-mono text-lg text-cyan-300">{list.length}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">With description</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">With description</div>
           <div className="mt-0.5 font-mono text-lg text-cyan-300">{withDescriptions}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">With aliases</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">With aliases</div>
           <div className="mt-0.5 font-mono text-lg text-cyan-300">{withAliases}</div>
         </div>
       </div>
@@ -102,18 +102,18 @@ export function WikidataSearch() {
                   </div>
                 )}
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
             </div>
           </a>
         ))}
         {list.length === 0 && !results.isPending && !results.isError && query.length >= 2 && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No matches for &quot;{query}&quot;.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No matches for &quot;{query}&quot;.</div>
         )}
         {query.length < 2 && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Type at least 2 characters and press resolve.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Type at least 2 characters and press resolve.</div>
         )}
       </div>
-      {results.isPending && query.length >= 2 && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Resolving…</div>}
+      {results.isPending && query.length >= 2 && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Resolving…</div>}
     </div>
   );
 }

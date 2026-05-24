@@ -70,7 +70,7 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
     await refresh();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="space-y-3">
@@ -78,11 +78,11 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
         <div className="flex gap-2">
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-1.5 text-center">
             <p className="text-base font-bold text-amber-400">{counts.awaiting}</p>
-            <p className="text-[9px] text-zinc-500 uppercase">Awaiting</p>
+            <p className="text-[9px] text-zinc-400 uppercase">Awaiting</p>
           </div>
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-1.5 text-center">
             <p className="text-base font-bold text-emerald-400">{counts.approved}</p>
-            <p className="text-[9px] text-zinc-500 uppercase">Approved</p>
+            <p className="text-[9px] text-zinc-400 uppercase">Approved</p>
           </div>
         </div>
         <button onClick={() => { setOpen(true); setError(''); }}
@@ -92,14 +92,14 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
       </div>
 
       <ul className="space-y-1.5">
-        {shares.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No deliverables shared yet.</li>}
+        {shares.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No deliverables shared yet.</li>}
         {shares.map(sh => (
           <li key={sh.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <Share2 className="w-4 h-4 text-indigo-400 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{sh.title}</p>
-                <p className="text-[10px] text-zinc-500">{sh.client}{sh.engagementName ? ` · ${sh.engagementName}` : ''}</p>
+                <p className="text-[10px] text-zinc-400">{sh.client}{sh.engagementName ? ` · ${sh.engagementName}` : ''}</p>
               </div>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${STATUS_COLOR[sh.approvalStatus] || 'text-zinc-400 bg-zinc-800'}`}>{sh.approvalStatus}</span>
               {sh.approvalStatus === 'awaiting' && (
@@ -110,11 +110,11 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
             </div>
             {sh.summary && <p className="text-[10px] text-zinc-400 mt-1">{sh.summary}</p>}
             <div className="flex items-center gap-3 mt-1">
-              <span className="text-[10px] text-zinc-600 inline-flex items-center gap-1"><Link2 className="w-2.5 h-2.5" />token: {sh.shareToken}</span>
+              <span className="text-[10px] text-zinc-400 inline-flex items-center gap-1"><Link2 className="w-2.5 h-2.5" />token: {sh.shareToken}</span>
               {sh.link && <a href={sh.link} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-400 hover:underline truncate">{sh.link}</a>}
             </div>
             {sh.approvedAt && (
-              <p className="text-[10px] text-zinc-500 mt-1">
+              <p className="text-[10px] text-zinc-400 mt-1">
                 {sh.approvalStatus} by {sh.approvedBy} on {new Date(sh.approvedAt).toLocaleDateString()}
                 {sh.approvalNote ? ` — ${sh.approvalNote}` : ''}
               </p>
@@ -155,7 +155,7 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRespondFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-bold text-zinc-100 mb-1">Client reply — {respondFor.title}</h4>
-            <p className="text-[10px] text-zinc-500 mb-3">Record the decision a client made on this shared deliverable.</p>
+            <p className="text-[10px] text-zinc-400 mb-3">Record the decision a client made on this shared deliverable.</p>
             <div className="space-y-2">
               <select value={respForm.decision} onChange={e => setRespForm({ ...respForm, decision: e.target.value })}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">

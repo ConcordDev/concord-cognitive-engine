@@ -78,7 +78,7 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -101,7 +101,7 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
       </section>
 
       {versions.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">Create a cut version to start collecting review notes.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">Create a cut version to start collecting review notes.</p>
       ) : (
         <>
           <select value={activeVersion} onChange={(e) => setActiveVersion(e.target.value)}
@@ -116,7 +116,7 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
           {/* Approval status */}
           {activeVersion && (
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-zinc-500">Approval:</span>
+              <span className="text-[11px] text-zinc-400">Approval:</span>
               {['in_review', 'needs_changes', 'approved'].map((st) => {
                 const cur = versions.find((v) => v.id === activeVersion)?.approvalStatus || 'in_review';
                 return (
@@ -155,7 +155,7 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
               <MessageSquare className="w-3.5 h-3.5 text-fuchsia-400" /> Review notes
             </h3>
             {notes.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic py-4 text-center">No notes on this version yet.</p>
+              <p className="text-[11px] text-zinc-400 italic py-4 text-center">No notes on this version yet.</p>
             ) : (
               <ul className="space-y-1.5">
                 {notes.map((n) => (
@@ -163,8 +163,8 @@ export function FsReviewPanel({ projectId, onChange }: { projectId: string; onCh
                     n.resolved ? 'border-emerald-900/50' : 'border-zinc-800')}>
                     <span className="text-[10px] font-mono text-fuchsia-300 mt-0.5 shrink-0">{tc(n.timecodeSec)}</span>
                     <div className="flex-1 min-w-0">
-                      <p className={cn('text-xs', n.resolved ? 'text-zinc-500 line-through' : 'text-zinc-200')}>{n.body}</p>
-                      <p className="text-[10px] text-zinc-500">{n.author}</p>
+                      <p className={cn('text-xs', n.resolved ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{n.body}</p>
+                      <p className="text-[10px] text-zinc-400">{n.author}</p>
                     </div>
                     <button type="button" onClick={() => toggleResolve(n)}
                       className={cn('w-4 h-4 rounded flex items-center justify-center shrink-0',

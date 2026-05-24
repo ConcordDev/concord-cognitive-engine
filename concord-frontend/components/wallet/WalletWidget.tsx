@@ -76,7 +76,7 @@ function WalletWidget({ className, compact = false }: WalletWidgetProps) {
         ) : (
           <span className="text-zinc-200 font-mono">{Number(balance).toLocaleString()}</span>
         )}
-        <span className="text-zinc-500 text-xs">CC</span>
+        <span className="text-zinc-400 text-xs">CC</span>
       </Link>
     );
   }
@@ -104,10 +104,10 @@ function WalletWidget({ className, compact = false }: WalletWidgetProps) {
               {Number(balance).toLocaleString()}
             </span>
           )}
-          <span className="text-zinc-500 text-xs">CC</span>
+          <span className="text-zinc-400 text-xs">CC</span>
           <ChevronDown
             className={cn(
-              'w-3 h-3 text-gray-500 transition-transform',
+              'w-3 h-3 text-gray-400 transition-transform',
               dropdownOpen && 'rotate-180'
             )}
           />
@@ -131,14 +131,14 @@ function WalletWidget({ className, compact = false }: WalletWidgetProps) {
               >
                 {/* Balance Display */}
                 <div className="p-4 border-b border-lattice-border bg-lattice-deep">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Balance</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Balance</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-mono font-bold text-white">
                       {Number(balance).toLocaleString()}
                     </span>
                     <span className="text-sm text-gray-400">CC</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     = ${Number(balance).toLocaleString()}.00 USD
                   </p>
                 </div>

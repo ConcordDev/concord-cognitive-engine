@@ -199,12 +199,12 @@ export function GovernanceWorkbench() {
       {view === 'cluster' ? (
         <OpinionClusterPanel />
       ) : loading ? (
-        <div className="py-12 text-center text-sm text-zinc-500">Loading governance polls…</div>
+        <div className="py-12 text-center text-sm text-zinc-400">Loading governance polls…</div>
       ) : polls.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-800 py-12 text-center">
           <ListChecks className="mx-auto h-8 w-8 text-zinc-600" />
           <p className="mt-2 text-sm text-zinc-400">No governance polls yet.</p>
-          <p className="text-xs text-zinc-600">Create one to start collective decision-making.</p>
+          <p className="text-xs text-zinc-400">Create one to start collective decision-making.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -226,7 +226,7 @@ export function GovernanceWorkbench() {
                     {p.status}
                   </span>
                 </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-500">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-400">
                   <span className="flex items-center gap-1"><Layers className="h-3 w-3" />{p.method}</span>
                   <span className="flex items-center gap-1"><Users className="h-3 w-3" />{p.ballotCount} ballots</span>
                   {p.quorum > 0 && <span className="flex items-center gap-1"><Hash className="h-3 w-3" />quorum {p.quorum}</span>}
@@ -241,7 +241,7 @@ export function GovernanceWorkbench() {
             {selected ? (
               <PollDetail poll={selected} onChanged={loadPolls} />
             ) : (
-              <div className="rounded-lg border border-dashed border-zinc-800 py-12 text-center text-sm text-zinc-500">
+              <div className="rounded-lg border border-dashed border-zinc-800 py-12 text-center text-sm text-zinc-400">
                 Select a poll.
               </div>
             )}
@@ -272,7 +272,7 @@ function PollDetail({ poll, onChanged }: { poll: Poll; onChanged: () => void }) 
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-white">{poll.title}</h3>
           {poll.description && <p className="mt-1 text-xs text-zinc-400">{poll.description}</p>}
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-400">
             <span>{METHOD_LABEL[poll.method]}</span>
             <span>·</span>
             <span>by {poll.ownerLabel}</span>
@@ -381,7 +381,7 @@ function BallotPanel({ poll, onCast }: { poll: Poll; onCast: () => void }) {
 
       {poll.method === 'ranked' && (
         <div className="space-y-2">
-          <p className="text-xs text-zinc-500">Click options in your order of preference (first click = top choice).</p>
+          <p className="text-xs text-zinc-400">Click options in your order of preference (first click = top choice).</p>
           <div className="space-y-1.5">
             {poll.options.map((o) => {
               const rank = ranking.indexOf(o);
@@ -394,7 +394,7 @@ function BallotPanel({ poll, onCast }: { poll: Poll; onCast: () => void }) {
                   }`}
                 >
                   <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-                    rank >= 0 ? 'bg-neon-purple/30 text-neon-purple' : 'bg-zinc-800 text-zinc-500'
+                    rank >= 0 ? 'bg-neon-purple/30 text-neon-purple' : 'bg-zinc-800 text-zinc-400'
                   }`}>
                     {rank >= 0 ? rank + 1 : '–'}
                   </span>
@@ -408,7 +408,7 @@ function BallotPanel({ poll, onCast }: { poll: Poll; onCast: () => void }) {
 
       {poll.method === 'approval' && (
         <div className="space-y-1.5">
-          <p className="text-xs text-zinc-500">Approve as many options as you support.</p>
+          <p className="text-xs text-zinc-400">Approve as many options as you support.</p>
           {poll.options.map((o) => (
             <label key={o} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${
               approved.has(o) ? 'border-emerald-500/50 bg-emerald-500/10 text-white' : 'border-zinc-800 text-zinc-300 hover:border-zinc-700'
@@ -427,7 +427,7 @@ function BallotPanel({ poll, onCast }: { poll: Poll; onCast: () => void }) {
 
       {poll.method === 'score' && (
         <div className="space-y-2">
-          <p className="text-xs text-zinc-500">Score each option from 0 to {poll.scoreMax}.</p>
+          <p className="text-xs text-zinc-400">Score each option from 0 to {poll.scoreMax}.</p>
           {poll.options.map((o) => (
             <div key={o} className="flex items-center gap-3">
               <span className="w-32 truncate text-sm text-zinc-300">{o}</span>
@@ -445,7 +445,7 @@ function BallotPanel({ poll, onCast }: { poll: Poll; onCast: () => void }) {
 
       {poll.method === 'quadratic' && (
         <div className="space-y-2">
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             Allocate vote-credits — cost grows quadratically. Budget: {poll.creditBudget} ·
             <span className={creditsSpent > poll.creditBudget ? ' text-rose-400' : ' text-zinc-400'}> spent {creditsSpent}</span>
           </p>
@@ -458,7 +458,7 @@ function BallotPanel({ poll, onCast }: { poll: Poll; onCast: () => void }) {
                 onChange={(e) => setCredits((s) => ({ ...s, [o]: Number(e.target.value) }))}
                 className="w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-sm text-white"
               />
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-zinc-400">
                 ≈ {(((credits[o] ?? 0) >= 0 ? 1 : -1) * Math.sqrt(Math.abs(credits[o] ?? 0))).toFixed(1)} effective votes
               </span>
             </div>
@@ -511,8 +511,8 @@ function ResultsPanel({ poll, onClosed }: { poll: Poll; onClosed: () => void }) 
     load();
   };
 
-  if (loading) return <div className="py-8 text-center text-xs text-zinc-500">Tallying…</div>;
-  if (!res) return <div className="py-8 text-center text-xs text-zinc-500">No results available.</div>;
+  if (loading) return <div className="py-8 text-center text-xs text-zinc-400">Tallying…</div>;
+  if (!res) return <div className="py-8 text-center text-xs text-zinc-400">No results available.</div>;
 
   const outcomeTone = res.resolution.outcome === 'passed'
     ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
@@ -560,10 +560,10 @@ function ResultsPanel({ poll, onClosed }: { poll: Poll; onClosed: () => void }) 
               <div key={row.option} className={`flex items-center gap-2 rounded border px-2.5 py-1.5 text-xs ${
                 isWinner ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-zinc-800'
               }`}>
-                <span className="font-mono text-zinc-500">#{i + 1}</span>
+                <span className="font-mono text-zinc-400">#{i + 1}</span>
                 <span className="flex-1 text-zinc-200">{row.option}</span>
-                {row.share != null && <span className="text-zinc-500">{Math.round(row.share * 100)}%</span>}
-                {row.avg != null && <span className="text-zinc-500">avg {row.avg}</span>}
+                {row.share != null && <span className="text-zinc-400">{Math.round(row.share * 100)}%</span>}
+                {row.avg != null && <span className="text-zinc-400">avg {row.avg}</span>}
                 <span className="font-mono font-semibold text-neon-purple">{val}</span>
                 {isWinner && <span className="rounded bg-emerald-500/20 px-1.5 text-[10px] text-emerald-300">WINNER</span>}
               </div>
@@ -668,7 +668,7 @@ function DelegationPanel({ poll }: { poll: Poll }) {
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3">
         <p className="text-xs font-medium text-zinc-300">Delegate your voting power</p>
-        <p className="mt-0.5 text-[11px] text-zinc-500">
+        <p className="mt-0.5 text-[11px] text-zinc-400">
           Liquid democracy — your weight flows to the delegate&apos;s ballot at tally time if you don&apos;t vote directly.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -697,7 +697,7 @@ function DelegationPanel({ poll }: { poll: Poll }) {
         <div>
           <p className="mb-1.5 text-xs font-medium text-zinc-400">Outgoing ({outgoing.length})</p>
           {outgoing.length === 0 ? (
-            <p className="text-[11px] text-zinc-600">You delegate nothing.</p>
+            <p className="text-[11px] text-zinc-400">You delegate nothing.</p>
           ) : (
             <div className="space-y-1">
               {outgoing.map((d) => (
@@ -716,7 +716,7 @@ function DelegationPanel({ poll }: { poll: Poll }) {
         <div>
           <p className="mb-1.5 text-xs font-medium text-zinc-400">Incoming ({incoming.length})</p>
           {incoming.length === 0 ? (
-            <p className="text-[11px] text-zinc-600">No one delegates to you.</p>
+            <p className="text-[11px] text-zinc-400">No one delegates to you.</p>
           ) : (
             <div className="space-y-1">
               {incoming.map((d) => (
@@ -758,8 +758,8 @@ function AuditPanel({ poll }: { poll: Poll }) {
     setVerifyState((s) => ({ ...s, [receiptId]: data.ok && data.result?.valid ? 'ok' : 'bad' }));
   };
 
-  if (loading) return <div className="py-8 text-center text-xs text-zinc-500">Loading audit trail…</div>;
-  if (!audit) return <div className="py-8 text-center text-xs text-zinc-500">No audit data.</div>;
+  if (loading) return <div className="py-8 text-center text-xs text-zinc-400">Loading audit trail…</div>;
+  if (!audit) return <div className="py-8 text-center text-xs text-zinc-400">No audit data.</div>;
 
   return (
     <div className="space-y-3">
@@ -774,7 +774,7 @@ function AuditPanel({ poll }: { poll: Poll }) {
       </div>
 
       {audit.receipts.length === 0 ? (
-        <p className="text-[11px] text-zinc-600">No ballots cast yet.</p>
+        <p className="text-[11px] text-zinc-400">No ballots cast yet.</p>
       ) : (
         <div className="space-y-1">
           {audit.receipts.map((r) => {
@@ -783,7 +783,7 @@ function AuditPanel({ poll }: { poll: Poll }) {
               <div key={r.id} className="flex items-center gap-2 rounded border border-zinc-800 px-2.5 py-1.5 text-[11px]">
                 <Hash className="h-3 w-3 text-zinc-600" />
                 <code className="font-mono text-cyan-300">{r.hash}</code>
-                <span className="flex-1 text-zinc-500">{r.voter} · {fmtDate(r.castAt)}</span>
+                <span className="flex-1 text-zinc-400">{r.voter} · {fmtDate(r.castAt)}</span>
                 {st === 'ok' && <span className="flex items-center gap-1 text-emerald-400"><CheckCircle2 className="h-3 w-3" />verified</span>}
                 {st === 'bad' && <span className="flex items-center gap-1 text-rose-400"><XCircle className="h-3 w-3" />invalid</span>}
                 {st !== 'ok' && st !== 'bad' && (
@@ -844,7 +844,7 @@ function OpinionClusterPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-zinc-400">
         Polis-style clustering — enter comment statements and how voters stand on each (agree / pass / disagree),
         then group voters by agreement.
       </p>
@@ -900,7 +900,7 @@ function OpinionClusterPanel() {
                 <div className="mt-1.5 space-y-1">
                   {validComments.map((c, ci) => (
                     <div key={ci} className="flex items-center gap-2">
-                      <span className="flex-1 truncate text-[11px] text-zinc-500">{c}</span>
+                      <span className="flex-1 truncate text-[11px] text-zinc-400">{c}</span>
                       {([['agree', 1], ['pass', 0], ['disagree', -1]] as const).map(([label, val]) => (
                         <button
                           key={label}
@@ -908,7 +908,7 @@ function OpinionClusterPanel() {
                           className={`rounded px-2 py-0.5 text-[10px] transition-colors ${
                             (v.opinions[ci] ?? 0) === val
                               ? val > 0 ? 'bg-emerald-500/30 text-emerald-200' : val < 0 ? 'bg-rose-500/30 text-rose-200' : 'bg-zinc-700 text-zinc-200'
-                              : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+                              : 'bg-zinc-800 text-zinc-400 hover:text-zinc-300'
                           }`}
                         >
                           {label}
@@ -953,9 +953,9 @@ function OpinionClusterPanel() {
               <div key={g.groupId} className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-white">{g.groupId}</span>
-                  <span className="text-[11px] text-zinc-500">{g.size} member(s)</span>
+                  <span className="text-[11px] text-zinc-400">{g.size} member(s)</span>
                 </div>
-                <p className="mt-0.5 text-[11px] text-zinc-500">{g.members.join(', ')}</p>
+                <p className="mt-0.5 text-[11px] text-zinc-400">{g.members.join(', ')}</p>
                 {g.signatureComments.length > 0 && (
                   <div className="mt-1.5 space-y-0.5">
                     {g.signatureComments.map((c) => (

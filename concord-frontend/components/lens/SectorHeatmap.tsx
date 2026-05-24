@@ -59,20 +59,20 @@ export default function SectorHeatmap({ quotes, isLive, lastUpdated, className =
               <Wifi className="w-3 h-3 animate-pulse" /><span>live</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
               <WifiOff className="w-3 h-3" /><span>offline</span>
             </span>
           )}
         </div>
         {lastUpdated && (
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-400">
             {new Date(lastUpdated).toLocaleTimeString()}
           </span>
         )}
       </header>
 
       {list.length === 0 ? (
-        <div className="p-6 text-center text-xs text-zinc-500">Yahoo Finance feed connecting…</div>
+        <div className="p-6 text-center text-xs text-zinc-400">Yahoo Finance feed connecting…</div>
       ) : (
         <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {list.map((q) => {

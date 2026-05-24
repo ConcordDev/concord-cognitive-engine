@@ -93,7 +93,7 @@ export function CityMap({
   if (!geo) {
     return (
       <div
-        className="flex items-center justify-center rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 text-[11px] text-zinc-600"
+        className="flex items-center justify-center rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 text-[11px] text-zinc-400"
         style={{ height }}
       >
         Add parcels or transit stops with lat/lng to plot the city map.
@@ -181,7 +181,7 @@ export function CityMap({
           </g>
         ))}
       </svg>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pt-2 text-[10px] text-zinc-500">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pt-2 text-[10px] text-zinc-400">
         {Object.entries(ZONE_FILL).map(([z, col]) => (
           <span key={z} className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: col }} /> {z}

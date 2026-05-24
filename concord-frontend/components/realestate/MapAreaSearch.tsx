@@ -95,7 +95,7 @@ export function MapAreaSearch({ onSelect }: { onSelect?: (l: Listing) => void })
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MapIcon className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Map area search</span>
-        <span className="ml-auto text-[10px] text-gray-500">draw-area / bounding box</span>
+        <span className="ml-auto text-[10px] text-gray-400">draw-area / bounding box</span>
       </header>
 
       <div className="p-3 border-b border-white/10 space-y-2">
@@ -125,9 +125,9 @@ export function MapAreaSearch({ onSelect }: { onSelect?: (l: Listing) => void })
 
       <div className="max-h-72 overflow-y-auto">
         {results === null ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">Set a bounding box and search to find listings on the map.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">Set a bounding box and search to find listings on the map.</div>
         ) : results.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">No listings in this area yet.{withoutCoords > 0 ? ` ${withoutCoords} listing(s) have no coordinates.` : ''}</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No listings in this area yet.{withoutCoords > 0 ? ` ${withoutCoords} listing(s) have no coordinates.` : ''}</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {results.map((l) => (
@@ -135,7 +135,7 @@ export function MapAreaSearch({ onSelect }: { onSelect?: (l: Listing) => void })
                 <span className="text-sm font-mono font-semibold text-white w-20">{fmtPrice(l.price)}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-300 truncate">{l.address}</div>
-                  <div className="text-[10px] text-gray-500">{l.city}{l.state ? `, ${l.state}` : ''}</div>
+                  <div className="text-[10px] text-gray-400">{l.city}{l.state ? `, ${l.state}` : ''}</div>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-gray-400">
                   <span className="inline-flex items-center gap-0.5"><BedDouble className="w-3 h-3" />{l.beds}</span>
@@ -147,7 +147,7 @@ export function MapAreaSearch({ onSelect }: { onSelect?: (l: Listing) => void })
           </ul>
         )}
         {results !== null && withoutCoords > 0 && results.length > 0 && (
-          <p className="px-3 py-1.5 text-[10px] text-gray-600">{withoutCoords} listing(s) excluded — no coordinates.</p>
+          <p className="px-3 py-1.5 text-[10px] text-gray-400">{withoutCoords} listing(s) excluded — no coordinates.</p>
         )}
       </div>
     </div>

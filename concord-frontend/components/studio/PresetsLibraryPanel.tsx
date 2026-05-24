@@ -49,7 +49,7 @@ export function PresetsLibraryPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Sliders className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Presets library</span>
-        <span className="ml-auto text-[10px] text-gray-500">{filtered.length} / {presets.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{filtered.length} / {presets.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Preset name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -63,9 +63,9 @@ export function PresetsLibraryPanel() {
       </div>
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Sliders className="w-6 h-6 mx-auto mb-2 opacity-30" />No presets.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Sliders className="w-6 h-6 mx-auto mb-2 opacity-30" />No presets.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {filtered.map(p => (
@@ -73,7 +73,7 @@ export function PresetsLibraryPanel() {
                 <Sliders className="w-3 h-3 text-violet-300" />
                 <span className="text-sm text-white truncate">{p.name}</span>
                 <span className="text-[10px] text-gray-400 font-mono">{p.pluginName}</span>
-                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-500">{p.category}</span>
+                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{p.category}</span>
                 {p.tags.length > 0 && <span className="ml-auto text-[10px] text-violet-300">{p.tags.slice(0, 2).join(' · ')}</span>}
                 <button onClick={() => remove(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>

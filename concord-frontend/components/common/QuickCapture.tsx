@@ -135,7 +135,7 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 </span>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                  className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                   aria-label="Close capture"
                 >
                   <X className="w-4 h-4" />
@@ -169,7 +169,7 @@ function QuickCapture({ domain }: QuickCaptureProps) {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Ctrl+Enter to save</span>
+                  <span className="text-xs text-gray-400">Ctrl+Enter to save</span>
                   <button
                     onClick={handleSubmit}
                     disabled={!content.trim() || createMutation.isPending}

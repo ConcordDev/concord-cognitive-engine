@@ -120,7 +120,7 @@ export default function ChatRouteOverlay({
           </button>
           <button
             onClick={onCancel}
-            className="px-2 py-0.5 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+            className="px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
           >
             Cancel
           </button>

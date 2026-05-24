@@ -155,7 +155,7 @@ function WorkInstructionsTab() {
       )}
 
       {sets.length === 0 ? (
-        <p className="text-sm text-zinc-500">No work instruction sets yet. Create one to guide operators step-by-step.</p>
+        <p className="text-sm text-zinc-400">No work instruction sets yet. Create one to guide operators step-by-step.</p>
       ) : (
         sets.map((set) => {
           const done = set.steps.filter((s: any) => s.completed).length;
@@ -165,7 +165,7 @@ function WorkInstructionsTab() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-zinc-100">{set.title}</p>
-                  <p className="text-xs text-zinc-500">Rev {set.revision} · {set.product || 'no product'}</p>
+                  <p className="text-xs text-zinc-400">Rev {set.revision} · {set.product || 'no product'}</p>
                 </div>
                 <span className="text-sm font-mono text-amber-400">{pct}%</span>
               </div>
@@ -182,7 +182,7 @@ function WorkInstructionsTab() {
                     >
                       <CheckCircle2 className="h-4 w-4" />
                     </button>
-                    <span className={st.completed ? 'text-zinc-500 line-through' : 'text-zinc-300'}>
+                    <span className={st.completed ? 'text-zinc-400 line-through' : 'text-zinc-300'}>
                       {st.index}. {st.instruction}
                     </span>
                     {st.checkpoint && <span className="rounded bg-indigo-950 px-1.5 py-0.5 text-[10px] text-indigo-300">QC</span>}
@@ -267,7 +267,7 @@ function IoTTab() {
       {err && <p className="text-xs text-rose-400">{err}</p>}
 
       {state && state.source === 'empty' ? (
-        <p className="text-sm text-zinc-500">{state.notes}</p>
+        <p className="text-sm text-zinc-400">{state.notes}</p>
       ) : state && (
         <>
           <div className="grid gap-3 sm:grid-cols-4">
@@ -278,7 +278,7 @@ function IoTTab() {
               { k: 'Cycles in window', v: state.cyclesInWindow },
             ].map((m) => (
               <div key={m.k} className={card}>
-                <p className="text-xs text-zinc-500">{m.k}</p>
+                <p className="text-xs text-zinc-400">{m.k}</p>
                 <p className="text-lg font-bold text-zinc-100">{m.v}</p>
               </div>
             ))}
@@ -375,13 +375,13 @@ function SchedulingTab() {
       </div>
 
       {jobs.length === 0 ? (
-        <p className="text-sm text-zinc-500">No scheduled jobs. Add a job to see the finite-capacity Gantt.</p>
+        <p className="text-sm text-zinc-400">No scheduled jobs. Add a job to see the finite-capacity Gantt.</p>
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className={card}><p className="text-xs text-zinc-500">Jobs</p><p className="text-lg font-bold text-zinc-100">{jobs.length}</p></div>
-            <div className={card}><p className="text-xs text-zinc-500">Resources</p><p className="text-lg font-bold text-zinc-100">{resources.length}</p></div>
-            <div className={card}><p className="text-xs text-zinc-500">Late jobs</p><p className={`text-lg font-bold ${gantt.lateJobs > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{gantt.lateJobs}</p></div>
+            <div className={card}><p className="text-xs text-zinc-400">Jobs</p><p className="text-lg font-bold text-zinc-100">{jobs.length}</p></div>
+            <div className={card}><p className="text-xs text-zinc-400">Resources</p><p className="text-lg font-bold text-zinc-100">{resources.length}</p></div>
+            <div className={card}><p className="text-xs text-zinc-400">Late jobs</p><p className={`text-lg font-bold ${gantt.lateJobs > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{gantt.lateJobs}</p></div>
           </div>
           <div className={card}>
             <p className="mb-3 text-xs font-medium text-zinc-400">Gantt — drag-free reschedule via resource dropdown</p>
@@ -412,7 +412,7 @@ function SchedulingTab() {
           <div className={card}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
+                <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                   <th className="pb-2">Job</th><th className="pb-2">Resource</th><th className="pb-2">Start</th>
                   <th className="pb-2">End</th><th className="pb-2">Status</th><th className="pb-2">Move</th>
                 </tr>
@@ -422,8 +422,8 @@ function SchedulingTab() {
                   <tr key={j.id} className="border-b border-zinc-800/50">
                     <td className="py-1.5 text-zinc-200">{j.name}</td>
                     <td className="py-1.5 text-zinc-400">{j.resource}</td>
-                    <td className="py-1.5 text-zinc-500">{new Date(j.startAt).toLocaleString()}</td>
-                    <td className="py-1.5 text-zinc-500">{new Date(j.endAt).toLocaleString()}</td>
+                    <td className="py-1.5 text-zinc-400">{new Date(j.startAt).toLocaleString()}</td>
+                    <td className="py-1.5 text-zinc-400">{new Date(j.endAt).toLocaleString()}</td>
                     <td className="py-1.5">
                       {j.late
                         ? <span className="text-rose-400">{j.lateHours}h late</span>
@@ -529,11 +529,11 @@ function TraceabilityTab() {
       <div className={card}>
         <p className="mb-2 text-xs font-medium text-zinc-400">Lots ({lots.length})</p>
         {lots.length === 0 ? (
-          <p className="text-sm text-zinc-500">No lots registered.</p>
+          <p className="text-sm text-zinc-400">No lots registered.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
+              <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">Lot</th><th className="pb-2">Material</th><th className="pb-2">Kind</th>
                 <th className="pb-2">Qty</th><th className="pb-2">Trace</th>
               </tr>
@@ -565,12 +565,12 @@ function TraceabilityTab() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="mb-1 text-xs font-medium text-zinc-500">Upstream (what it came from)</p>
-              {genealogy.upstream ? <GenealogyTree nodes={[genealogy.upstream]} /> : <p className="text-xs text-zinc-600">No upstream lots.</p>}
+              <p className="mb-1 text-xs font-medium text-zinc-400">Upstream (what it came from)</p>
+              {genealogy.upstream ? <GenealogyTree nodes={[genealogy.upstream]} /> : <p className="text-xs text-zinc-400">No upstream lots.</p>}
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-zinc-500">Downstream (what consumed it)</p>
-              {genealogy.downstream?.length > 0 ? <GenealogyTree nodes={genealogy.downstream} /> : <p className="text-xs text-zinc-600">No downstream lots.</p>}
+              <p className="mb-1 text-xs font-medium text-zinc-400">Downstream (what consumed it)</p>
+              {genealogy.downstream?.length > 0 ? <GenealogyTree nodes={genealogy.downstream} /> : <p className="text-xs text-zinc-400">No downstream lots.</p>}
             </div>
           </div>
         </div>
@@ -638,14 +638,14 @@ function AndonTab() {
 
       {board && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className={card}><p className="text-xs text-zinc-500">Open alerts</p><p className="text-lg font-bold text-zinc-100">{board.openCount}</p></div>
-          <div className={card}><p className="text-xs text-zinc-500">Critical open</p><p className={`text-lg font-bold ${board.criticalOpen > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{board.criticalOpen}</p></div>
-          <div className={card}><p className="text-xs text-zinc-500">Avg response</p><p className="text-lg font-bold text-zinc-100">{board.avgResponseSeconds}s</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Open alerts</p><p className="text-lg font-bold text-zinc-100">{board.openCount}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Critical open</p><p className={`text-lg font-bold ${board.criticalOpen > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{board.criticalOpen}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Avg response</p><p className="text-lg font-bold text-zinc-100">{board.avgResponseSeconds}s</p></div>
         </div>
       )}
 
       {alerts.length === 0 ? (
-        <p className="text-sm text-zinc-500">No andon alerts. The floor is calm.</p>
+        <p className="text-sm text-zinc-400">No andon alerts. The floor is calm.</p>
       ) : (
         alerts.map((a) => (
           <div key={a.id} className={card}>
@@ -654,7 +654,7 @@ function AndonTab() {
                 <p className="font-semibold text-zinc-100">
                   <span className={sevColor[a.severity]}>● </span>{a.reason}
                 </p>
-                <p className="text-xs text-zinc-500">{a.station} · {a.category} · raised {new Date(a.raisedAt).toLocaleTimeString()}</p>
+                <p className="text-xs text-zinc-400">{a.station} · {a.category} · raised {new Date(a.raisedAt).toLocaleTimeString()}</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${a.status === 'resolved' ? 'bg-emerald-950 text-emerald-300' : a.status === 'acknowledged' ? 'bg-amber-950 text-amber-300' : 'bg-rose-950 text-rose-300'}`}>
@@ -727,7 +727,7 @@ function NCRTab() {
       </div>
 
       {ncrs.length === 0 ? (
-        <p className="text-sm text-zinc-500">No non-conformance reports.</p>
+        <p className="text-sm text-zinc-400">No non-conformance reports.</p>
       ) : (
         ncrs.map((n) => {
           const c = capa[n.id] || { rootCause: n.rootCause || '', correctiveAction: n.correctiveAction || '', preventiveAction: n.preventiveAction || '' };
@@ -737,7 +737,7 @@ function NCRTab() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-zinc-100">{n.number} · {n.title}</p>
-                  <p className="text-xs text-zinc-500">{n.product || 'no product'} · {n.defectType} · {n.severity} · {n.quantityAffected} affected</p>
+                  <p className="text-xs text-zinc-400">{n.product || 'no product'} · {n.defectType} · {n.severity} · {n.quantityAffected} affected</p>
                 </div>
                 <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${n.stage === 'closed' ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'}`}>{n.stage}</span>
               </div>
@@ -819,19 +819,19 @@ function MaintenanceTab() {
 
       {sched && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className={card}><p className="text-xs text-zinc-500">Plans</p><p className="text-lg font-bold text-zinc-100">{plans.length}</p></div>
-          <div className={card}><p className="text-xs text-zinc-500">Overdue</p><p className={`text-lg font-bold ${sched.overdueCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{sched.overdueCount}</p></div>
-          <div className={card}><p className="text-xs text-zinc-500">Due soon</p><p className={`text-lg font-bold ${sched.dueSoonCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{sched.dueSoonCount}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Plans</p><p className="text-lg font-bold text-zinc-100">{plans.length}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Overdue</p><p className={`text-lg font-bold ${sched.overdueCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{sched.overdueCount}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Due soon</p><p className={`text-lg font-bold ${sched.dueSoonCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{sched.dueSoonCount}</p></div>
         </div>
       )}
 
       {plans.length === 0 ? (
-        <p className="text-sm text-zinc-500">No maintenance plans.</p>
+        <p className="text-sm text-zinc-400">No maintenance plans.</p>
       ) : (
         <div className={card}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
+              <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">Machine</th><th className="pb-2">Task</th><th className="pb-2">Interval</th>
                 <th className="pb-2">Next due</th><th className="pb-2">Status</th><th className="pb-2">Action</th>
               </tr>
@@ -842,7 +842,7 @@ function MaintenanceTab() {
                   <td className="py-1.5 text-zinc-200">{p.machineName}</td>
                   <td className="py-1.5 text-zinc-300">{p.task}</td>
                   <td className="py-1.5 text-zinc-400">{p.intervalDays}d</td>
-                  <td className="py-1.5 text-zinc-500">{new Date(p.nextDue).toLocaleDateString()}</td>
+                  <td className="py-1.5 text-zinc-400">{new Date(p.nextDue).toLocaleDateString()}</td>
                   <td className={`py-1.5 ${stateColor[p.state]}`}>{p.state.replace('_', ' ')} ({p.daysUntilDue}d)</td>
                   <td className="py-1.5">
                     <button className={btnGhost} onClick={() => complete(p.id)}>
@@ -939,19 +939,19 @@ function InventoryTab() {
 
       {status && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className={card}><p className="text-xs text-zinc-500">Total value</p><p className="text-lg font-bold text-zinc-100">${status.totalValue?.toLocaleString()}</p></div>
-          <div className={card}><p className="text-xs text-zinc-500">Below reorder</p><p className={`text-lg font-bold ${status.belowReorderCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{status.belowReorderCount}</p></div>
-          <div className={card}><p className="text-xs text-zinc-500">WIP items</p><p className="text-lg font-bold text-zinc-100">{status.wipCount}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Total value</p><p className="text-lg font-bold text-zinc-100">${status.totalValue?.toLocaleString()}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Below reorder</p><p className={`text-lg font-bold ${status.belowReorderCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{status.belowReorderCount}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">WIP items</p><p className="text-lg font-bold text-zinc-100">{status.wipCount}</p></div>
         </div>
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-500">No inventory items.</p>
+        <p className="text-sm text-zinc-400">No inventory items.</p>
       ) : (
         <div className={card}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500">
+              <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">SKU</th><th className="pb-2">Name</th><th className="pb-2">Kind</th>
                 <th className="pb-2">On hand</th><th className="pb-2">Allocated</th><th className="pb-2">Available</th>
                 <th className="pb-2">Value</th><th className="pb-2">WO</th>
@@ -967,7 +967,7 @@ function InventoryTab() {
                   <td className="py-1.5 text-zinc-400">{it.allocated}</td>
                   <td className={`py-1.5 ${it.belowReorder ? 'text-rose-400' : 'text-emerald-400'}`}>{it.available}</td>
                   <td className="py-1.5 text-zinc-400">${it.value?.toLocaleString()}</td>
-                  <td className="py-1.5 text-zinc-500">{it.workOrderId || '—'}</td>
+                  <td className="py-1.5 text-zinc-400">{it.workOrderId || '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -55,7 +55,7 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ClipboardList className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Assignments {courseId && `· ${courseId.slice(0, 12)}`}</span>
-        <span className="ml-auto text-[10px] text-gray-500">{assignments.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{assignments.length}</span>
         {courseId && <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>}
       </header>
 
@@ -72,9 +72,9 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : assignments.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><ClipboardList className="w-6 h-6 mx-auto mb-2 opacity-30" />No assignments {courseId ? 'for this course' : 'yet'}.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><ClipboardList className="w-6 h-6 mx-auto mb-2 opacity-30" />No assignments {courseId ? 'for this course' : 'yet'}.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {assignments.map(a => (
@@ -83,7 +83,7 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
                   <ClipboardList className="w-4 h-4 text-cyan-300" />
                   <span className="text-sm font-medium text-white flex-1 truncate">{a.title}</span>
                   {a.peerReviewCount > 0 && <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 inline-flex items-center gap-0.5"><Users className="w-2.5 h-2.5" />{a.peerReviewCount}×review</span>}
-                  <span className="text-[10px] text-gray-500">{a.maxPoints}pts</span>
+                  <span className="text-[10px] text-gray-400">{a.maxPoints}pts</span>
                   {a.dueAt && <span className="text-[10px] text-amber-300">due {a.dueAt}</span>}
                 </div>
                 {a.description && <p className="text-[11px] text-gray-400 mt-1 ml-6">{a.description}</p>}

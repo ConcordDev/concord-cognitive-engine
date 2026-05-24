@@ -439,7 +439,7 @@ export function SlashCommandMenu({
             {Object.entries(groupedCommands).map(([category, cmds]) => (
               <div key={category} className="mb-2 last:mb-0">
                 <div className="px-2 py-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                     {categoryLabels[category] || category}
                   </span>
                 </div>
@@ -471,7 +471,7 @@ export function SlashCommandMenu({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{cmd.label}</p>
-                        <p className="text-xs text-gray-500 truncate">{cmd.description}</p>
+                        <p className="text-xs text-gray-400 truncate">{cmd.description}</p>
                       </div>
                       {cmd.category === 'ai' && (
                         <Sparkles className="w-3 h-3 text-neon-purple" />
@@ -491,7 +491,7 @@ export function SlashCommandMenu({
 
           {/* Footer hint */}
           <div className="px-3 py-2 border-t border-lattice-border bg-lattice-surface/30">
-            <div className="flex items-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center gap-3 text-xs text-gray-400">
               <span className="flex items-center gap-1">
                 <kbd className="px-1 py-0.5 bg-lattice-surface border border-lattice-border rounded">↑↓</kbd>
                 navigate

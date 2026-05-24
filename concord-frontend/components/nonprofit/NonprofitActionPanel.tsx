@@ -183,7 +183,7 @@ export function NonprofitActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -194,7 +194,7 @@ export function NonprofitActionPanel() {
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Retention ({retentionResult.band})</div>
             <div className="text-2xl font-bold text-emerald-300">{retentionResult.ratePct}%</div>
-            <div className="text-[10px] text-zinc-500">lapsed {retentionResult.lapsed} · recovered {retentionResult.recovered}</div>
+            <div className="text-[10px] text-zinc-400">lapsed {retentionResult.lapsed} · recovered {retentionResult.recovered}</div>
           </div>
         )}
         {campaignResult && (
@@ -202,20 +202,20 @@ export function NonprofitActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Campaign</div>
             <div className="text-2xl font-bold text-orange-300">${campaignResult.raised?.toLocaleString()} <span className="text-xs text-zinc-400">/ ${campaignResult.goal?.toLocaleString()}</span></div>
             <div className="h-2 bg-zinc-800 rounded-full mt-1 overflow-hidden"><div className="h-full bg-orange-400" style={{ width: `${Math.min(100, campaignResult.progressPct ?? 0)}%` }} /></div>
-            <div className="text-[10px] text-zinc-500 mt-1">{campaignResult.progressPct}% · {campaignResult.daysLeft}d left</div>
+            <div className="text-[10px] text-zinc-400 mt-1">{campaignResult.progressPct}% · {campaignResult.daysLeft}d left</div>
           </div>
         )}
         {grantResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Grants</div>
             <div className="text-sm text-zinc-100">${grantResult.totalGranted?.toLocaleString()} · {grantResult.reportsDue} reports due</div>
-            <div className="text-[10px] text-zinc-500">next: {grantResult.nextDeadline} · spend-down {grantResult.spendDownPct}%</div>
+            <div className="text-[10px] text-zinc-400">next: {grantResult.nextDeadline} · spend-down {grantResult.spendDownPct}%</div>
           </div>
         )}
         {orgs.length > 0 && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto md:col-span-3">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Orgs ({orgs.length})</div>
-            {orgs.slice(0, 8).map((o, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200">{o.name}</strong> <span className="font-mono text-zinc-500">{o.ein}</span>{o.rating && <span className="text-emerald-300 ml-2">{o.rating}</span>}{o.mission && <div className="text-zinc-400 line-clamp-1">{o.mission}</div>}</div>)}
+            {orgs.slice(0, 8).map((o, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200">{o.name}</strong> <span className="font-mono text-zinc-400">{o.ein}</span>{o.rating && <span className="text-emerald-300 ml-2">{o.rating}</span>}{o.mission && <div className="text-zinc-400 line-clamp-1">{o.mission}</div>}</div>)}
           </div>
         )}
       </div>

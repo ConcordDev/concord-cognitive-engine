@@ -149,7 +149,7 @@ function MonitorPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Register an invariant once, then feed substrate-state snapshots to evaluate it across ticks.
         Every violation is captured into the violation history.
       </p>
@@ -190,7 +190,7 @@ function MonitorPanel() {
             <span className="text-neon-green">{lastTick.summary.passed} passed</span>
             <span className="text-neon-pink">{lastTick.summary.violations} violations</span>
             <span className="text-yellow-400">{lastTick.summary.errors} errors</span>
-            <span className="text-gray-500">@ {new Date(lastTick.checkedAt).toLocaleTimeString()}</span>
+            <span className="text-gray-400">@ {new Date(lastTick.checkedAt).toLocaleTimeString()}</span>
           </div>
         )}
       </div>
@@ -198,23 +198,23 @@ function MonitorPanel() {
       {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
 
       <div className="space-y-2">
-        {monitors.length === 0 && <p className="text-xs text-gray-500">No monitors registered yet.</p>}
+        {monitors.length === 0 && <p className="text-xs text-gray-400">No monitors registered yet.</p>}
         {monitors.map((m) => (
           <div key={m.id} className="bg-lattice-surface rounded-lg p-3 flex items-start gap-3 border border-white/5">
             <span className="mt-0.5">
               {m.lastResult === 'pass' ? <CheckCircle2 className="w-4 h-4 text-neon-green" />
                 : m.lastResult === 'violation' ? <XCircle className="w-4 h-4 text-neon-pink" />
                 : m.lastResult === 'error' ? <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                : <Activity className="w-4 h-4 text-gray-500" />}
+                : <Activity className="w-4 h-4 text-gray-400" />}
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-semibold">{m.name}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${sevClass(m.severity)}`}>{m.severity}</span>
-                {!m.active && <span className="text-[10px] text-gray-500">paused</span>}
+                {!m.active && <span className="text-[10px] text-gray-400">paused</span>}
               </div>
               <p className="font-mono text-xs text-gray-400 mt-0.5 truncate">{m.expression}</p>
-              <div className="flex items-center gap-3 text-[10px] text-gray-500 mt-1">
+              <div className="flex items-center gap-3 text-[10px] text-gray-400 mt-1">
                 <span>{m.checkCount} checks</span>
                 <span className="text-neon-pink">{m.violationCount} violations</span>
                 <span className="text-neon-green">{m.consecutivePasses} streak</span>
@@ -261,7 +261,7 @@ function CounterexamplePanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Run a failing invariant against a record set to surface exactly which records — and which
         fields — break it.
       </p>
@@ -289,7 +289,7 @@ function CounterexamplePanel() {
             <span className={`font-semibold ${result.holds ? 'text-neon-green' : 'text-neon-pink'}`}>
               {result.holds ? 'Invariant holds for all records' : `${result.counterexampleCount} counterexample(s)`}
             </span>
-            <span className="text-gray-500 text-xs">{result.recordsChecked} records checked</span>
+            <span className="text-gray-400 text-xs">{result.recordsChecked} records checked</span>
           </div>
           {result.mostLikelyCause && (
             <div className="flex items-center gap-2 text-xs">
@@ -374,7 +374,7 @@ function TemplatesPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         A library of ready-made invariant templates — uniqueness, referential integrity, range
         bounds, presence, conservation laws, and temporal safety/liveness.
       </p>
@@ -388,7 +388,7 @@ function TemplatesPanel() {
             {c}
           </button>
         ))}
-        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
+        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
       </div>
 
       {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
@@ -400,7 +400,7 @@ function TemplatesPanel() {
               <Library className="w-3.5 h-3.5 text-neon-cyan" />
               <span className="text-sm font-semibold">{t.name}</span>
               <span className="text-[10px] rounded bg-white/5 px-1.5 py-0.5 text-gray-400 capitalize">{t.category}</span>
-              <span className="text-[10px] rounded bg-white/5 px-1.5 py-0.5 text-gray-500">{t.kind}</span>
+              <span className="text-[10px] rounded bg-white/5 px-1.5 py-0.5 text-gray-400">{t.kind}</span>
             </div>
             <p className="text-xs text-gray-400">{t.description}</p>
             <code className="block text-[11px] font-mono text-neon-green bg-lattice-surface rounded px-2 py-1">
@@ -408,7 +408,7 @@ function TemplatesPanel() {
             </code>
             <div className="flex flex-wrap gap-1">
               {t.params.map((p) => (
-                <span key={p} className="text-[10px] font-mono text-gray-500 bg-lattice-surface rounded px-1 py-0.5">
+                <span key={p} className="text-[10px] font-mono text-gray-400 bg-lattice-surface rounded px-1 py-0.5">
                   {p}
                 </span>
               ))}
@@ -485,7 +485,7 @@ function TemporalPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Verify temporal-logic invariants — □ always, ◇ eventually, U until — over a recorded
         history of substrate states.
       </p>
@@ -508,7 +508,7 @@ function TemporalPanel() {
           </button>
         </div>
         {historyLen !== null && (
-          <div className="text-[10px] text-gray-500">History length: {historyLen} snapshot(s)</div>
+          <div className="text-[10px] text-gray-400">History length: {historyLen} snapshot(s)</div>
         )}
       </div>
 
@@ -621,7 +621,7 @@ function ViolationHistoryPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Every violation detected by a continuous monitor lands here with severity and resolution
         status. Resolve a violation to close it out.
       </p>
@@ -638,7 +638,7 @@ function ViolationHistoryPanel() {
           ].map((s) => (
             <div key={s.k} className="bg-lattice-deep rounded p-2 border border-white/5">
               <div className={`text-base font-bold ${s.c}`}>{s.v}</div>
-              <div className="text-gray-500 capitalize">{s.k}</div>
+              <div className="text-gray-400 capitalize">{s.k}</div>
             </div>
           ))}
         </div>
@@ -654,7 +654,7 @@ function ViolationHistoryPanel() {
             {s}
           </button>
         ))}
-        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
+        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
       </div>
 
       {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
@@ -667,7 +667,7 @@ function ViolationHistoryPanel() {
 
       <div className="space-y-2">
         {violations.length === 0 && !busy && (
-          <p className="text-xs text-gray-500">No violations recorded.</p>
+          <p className="text-xs text-gray-400">No violations recorded.</p>
         )}
         {violations.map((v) => (
           <div key={v.id} className="bg-lattice-deep rounded-lg p-3 flex items-start gap-3 border border-white/5">
@@ -679,10 +679,10 @@ function ViolationHistoryPanel() {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-semibold">{v.name}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${sevClass(v.severity)}`}>{v.severity}</span>
-                <span className="text-[10px] text-gray-500">{v.status}</span>
+                <span className="text-[10px] text-gray-400">{v.status}</span>
               </div>
               <p className="font-mono text-xs text-gray-400 mt-0.5 truncate">{v.expression}</p>
-              <div className="text-[10px] text-gray-500 mt-1">
+              <div className="text-[10px] text-gray-400 mt-1">
                 detected {new Date(v.detectedAt).toLocaleString()}
                 {v.resolved && v.resolvedAt && ` · resolved ${new Date(v.resolvedAt).toLocaleString()}`}
               </div>
@@ -729,7 +729,7 @@ function QuantifiedPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Check ∀ (forall) / ∃ (exists) quantified invariants over a collection. Returns the
         counterexample for ∀ or the witness for ∃.
       </p>

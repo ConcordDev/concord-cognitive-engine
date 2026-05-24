@@ -47,7 +47,7 @@ export function NeighborhoodStats() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (address.trim()) lookup.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address — '1 Apple Park Way, Cupertino, CA'" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!address.trim() || lookup.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -61,8 +61,8 @@ export function NeighborhoodStats() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-white">{stats.matchedAddress || stats.address}</h3>
-              {stats.tract && <p className="text-[10px] text-zinc-500">{stats.tract.name} · tract {stats.tract.tract}, county {stats.tract.county}, state {stats.tract.state}</p>}
-              {stats.coords && <p className="text-[10px] text-zinc-500">{stats.coords.lat.toFixed(4)}, {stats.coords.lng.toFixed(4)}</p>}
+              {stats.tract && <p className="text-[10px] text-zinc-400">{stats.tract.name} · tract {stats.tract.tract}, county {stats.tract.county}, state {stats.tract.state}</p>}
+              {stats.coords && <p className="text-[10px] text-zinc-400">{stats.coords.lat.toFixed(4)}, {stats.coords.lng.toFixed(4)}</p>}
             </div>
             <SaveAsDtuButton
               compact
@@ -88,7 +88,7 @@ export function NeighborhoodStats() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-sm text-cyan-300">{value}</div>
     </div>
   );

@@ -346,7 +346,7 @@ export function LockProfiler() {
             <Activity className="w-4 h-4 text-neon-cyan" />
             Lock Trace Recorder
             {hasTrace && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {timeline.eventCount} event{timeline.eventCount !== 1 ? 's' : ''}
               </span>
             )}
@@ -484,7 +484,7 @@ export function LockProfiler() {
       </div>
 
       {!hasTrace && (
-        <div className="rounded-lg border border-white/10 bg-lattice-deep p-6 text-center text-sm text-gray-500">
+        <div className="rounded-lg border border-white/10 bg-lattice-deep p-6 text-center text-sm text-gray-400">
           No lock trace recorded yet. Record events above or click
           <span className="text-neon-cyan"> Record Sample Scenario </span>
           to populate the profiler.
@@ -618,7 +618,7 @@ function HotspotPanel({ hotspots }: { hotspots: any }) {
             </span>
             <div className="flex-1 min-w-0">
               <p className="font-mono text-sm truncate">{h.lock}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 {h.waitCount} waits · {h.uniqueWaiters} unique waiters · peak{' '}
                 {fmtMs(h.peakWaitMs)}
               </p>
@@ -627,7 +627,7 @@ function HotspotPanel({ hotspots }: { hotspots: any }) {
               <p className="text-sm font-bold text-amber-400">
                 {fmtMs(h.totalWaitMs)}
               </p>
-              <p className="text-xs text-gray-500">{h.waitShare}% of wait</p>
+              <p className="text-xs text-gray-400">{h.waitShare}% of wait</p>
             </div>
             <div className="w-20 h-2 bg-lattice-void rounded-full overflow-hidden shrink-0">
               <div
@@ -862,7 +862,7 @@ function BlamePanel({ blame }: { blame: any }) {
 
   if (sites.length === 0) {
     return (
-      <div className="rounded-lg border border-white/10 bg-lattice-deep p-6 text-center text-sm text-gray-500">
+      <div className="rounded-lg border border-white/10 bg-lattice-deep p-6 text-center text-sm text-gray-400">
         {blame?.message ||
           'No stack traces captured. Record lock events with a call stack to attribute blame.'}
       </div>
@@ -889,7 +889,7 @@ function BlamePanel({ blame }: { blame: any }) {
               </span>
               <div className="flex-1 min-w-0">
                 <p className="font-mono text-sm truncate">{s.site}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {s.acquireCount} acquires · {s.waitCount} waits ·{' '}
                   {s.locks.join(', ')}
                 </p>
@@ -898,11 +898,11 @@ function BlamePanel({ blame }: { blame: any }) {
                 <p className="text-sm font-bold text-purple-400">
                   {fmtMs(s.blameMs)}
                 </p>
-                <p className="text-xs text-gray-500">blame total</p>
+                <p className="text-xs text-gray-400">blame total</p>
               </div>
             </div>
             {s.fullStack.length > 1 && (
-              <div className="mt-2 pl-10 text-xs font-mono text-gray-500 space-y-0.5">
+              <div className="mt-2 pl-10 text-xs font-mono text-gray-400 space-y-0.5">
                 {s.fullStack.map((frame, i) => (
                   <p key={i} className={i === 0 ? 'text-neon-cyan' : ''}>
                     {i === 0 ? '→ ' : '  '}
@@ -995,7 +995,7 @@ function AmdahlPanel({
 
       {amdahl?.verdict && (
         <div className="rounded-lg border border-white/10 bg-lattice-deep p-3">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
             Verdict
           </p>
           <p className="text-sm text-gray-300">{amdahl.verdict}</p>
@@ -1006,7 +1006,7 @@ function AmdahlPanel({
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-gray-500 text-left border-b border-white/10">
+              <tr className="text-gray-400 text-left border-b border-white/10">
                 <th className="py-1 pr-3">Cores</th>
                 <th className="py-1 pr-3">Amdahl×</th>
                 <th className="py-1 pr-3">USL×</th>

@@ -124,7 +124,7 @@ export function StravaSegmentsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const geoMarkers: MapMarker[] = geoSegments.map((g) => ({
@@ -159,16 +159,16 @@ export function StravaSegmentsPanel() {
           <div className="flex items-center gap-2">
             <MapIcon className="w-4 h-4 text-orange-400" />
             <h3 className="text-sm font-semibold text-zinc-100">Segment explorer</h3>
-            <span className="text-[11px] text-zinc-500">{geoSegments.length} geo-located</span>
+            <span className="text-[11px] text-zinc-400">{geoSegments.length} geo-located</span>
           </div>
           {geoSegments.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic py-6 text-center">
+            <p className="text-xs text-zinc-400 italic py-6 text-center">
               No geo-located segments yet. Add latitude &amp; longitude when creating a segment to place it on the map.
             </p>
           ) : (
             <>
               <MapView markers={geoMarkers} height={260} onSelect={(m) => openLeaderboard(m.id)} />
-              <p className="text-[11px] text-zinc-500">Tap a pin to open its leaderboard.</p>
+              <p className="text-[11px] text-zinc-400">Tap a pin to open its leaderboard.</p>
             </>
           )}
         </div>
@@ -204,7 +204,7 @@ export function StravaSegmentsPanel() {
       )}
 
       {segments.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No segments yet. Create a climb or sprint to start a leaderboard.
         </div>
       ) : (
@@ -215,7 +215,7 @@ export function StravaSegmentsPanel() {
                 className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-zinc-900">
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{seg.name}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {seg.distanceKm} km · {seg.elevationGainM} m · {seg.effortCount} efforts
                     {seg.location ? ` · ${seg.location}` : ''}
                   </p>
@@ -233,14 +233,14 @@ export function StravaSegmentsPanel() {
               {openSeg === seg.id && (
                 <div className="border-t border-zinc-800 px-3 py-2 bg-zinc-950/50">
                   {board.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 italic py-2">No efforts recorded yet.</p>
+                    <p className="text-[11px] text-zinc-400 italic py-2">No efforts recorded yet.</p>
                   ) : (
                     <ol className="space-y-1 mb-2">
                       {board.map((row) => (
                         <li key={row.userId} className={cn('flex items-center justify-between text-[11px] px-2 py-1 rounded',
                           row.isMe ? 'bg-orange-950/40 text-orange-200' : 'text-zinc-300')}>
                           <span className="flex items-center gap-1.5">
-                            <span className="w-5 text-zinc-500">{row.rank}</span>
+                            <span className="w-5 text-zinc-400">{row.rank}</span>
                             {row.title && <Trophy className="w-3 h-3 text-amber-400" />}
                             <span className="font-mono">{row.userId.slice(0, 10)}</span>
                           </span>

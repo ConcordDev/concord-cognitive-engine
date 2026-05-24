@@ -152,7 +152,7 @@ export default function DailyRituals({
             {isReturningUser ? 'While You Were Away...' : 'Good Morning, Concordia'}
           </h2>
           {checkIn && (
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-gray-400">
               {isReturningUser
                 ? `Last seen ${checkIn.daysSinceLastLogin} day${checkIn.daysSinceLastLogin > 1 ? 's' : ''} ago`
                 : 'Welcome back'}
@@ -161,7 +161,7 @@ export default function DailyRituals({
         </div>
         <button
           onClick={handleDismiss}
-          className="text-[10px] text-gray-500 hover:text-white transition-colors"
+          className="text-[10px] text-gray-400 hover:text-white transition-colors"
         >
           Dismiss
         </button>
@@ -176,7 +176,7 @@ export default function DailyRituals({
               <span className="text-xs font-bold text-orange-400">{streak.currentStreak}-day streak</span>
             </div>
             {nextStreakMilestone && (
-              <span className="text-[9px] text-gray-500">
+              <span className="text-[9px] text-gray-400">
                 {nextStreakMilestone - streak.currentStreak} days to next reward
               </span>
             )}
@@ -242,7 +242,7 @@ export default function DailyRituals({
               <span className="text-[10px] font-semibold text-gray-300">
                 📰 Morning Newspaper ({newspaper.length})
               </span>
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 {expandedSection === 'newspaper' ? '−' : '+'}
               </span>
             </button>
@@ -260,7 +260,7 @@ export default function DailyRituals({
                         {h.headline}
                       </span>
                     </div>
-                    <p className="text-[9px] text-gray-500 mt-0.5">{h.summary}</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">{h.summary}</p>
                   </div>
                 ))}
               </div>
@@ -276,7 +276,7 @@ export default function DailyRituals({
               className="w-full flex items-center justify-between py-2 text-left"
             >
               <span className="text-[10px] font-semibold text-gray-300">🌙 Overnight Events</span>
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 {expandedSection === 'overnight' ? '−' : '+'}
               </span>
             </button>
@@ -288,12 +288,12 @@ export default function DailyRituals({
                   </div>
                 ))}
                 {overnightSummary.weatherChanges.map((w, i) => (
-                  <div key={`w-${i}`} className="text-[10px] text-gray-500">
+                  <div key={`w-${i}`} className="text-[10px] text-gray-400">
                     Weather in {w.district}: {w.from} → {w.to}
                   </div>
                 ))}
                 {overnightSummary.buildingStatusChanges.map((b, i) => (
-                  <div key={`b-${i}`} className="text-[10px] text-gray-500">
+                  <div key={`b-${i}`} className="text-[10px] text-gray-400">
                     {b.buildingName}: {b.change}
                   </div>
                 ))}
@@ -313,7 +313,7 @@ export default function DailyRituals({
                 ⚡ Daily Challenge
                 {dailyChallenge.completed && <span className="text-green-400 ml-1">✓</span>}
               </span>
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 {expandedSection === 'challenge' ? '−' : '+'}
               </span>
             </button>
@@ -327,8 +327,8 @@ export default function DailyRituals({
                 </div>
                 <p className="text-[9px] text-gray-400 mb-2">{dailyChallenge.description}</p>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[8px] text-gray-500">Progress</span>
-                  <span className="text-[8px] text-gray-500">{Math.round(dailyChallenge.progress * 100)}%</span>
+                  <span className="text-[8px] text-gray-400">Progress</span>
+                  <span className="text-[8px] text-gray-400">{Math.round(dailyChallenge.progress * 100)}%</span>
                 </div>
                 <div className="h-1 rounded-full bg-white/10 overflow-hidden mb-1.5">
                   <div
@@ -338,7 +338,7 @@ export default function DailyRituals({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[8px] text-yellow-400">Reward: {dailyChallenge.reward}</span>
-                  <span className="text-[8px] text-gray-600">Expires {dailyChallenge.expiresAt}</span>
+                  <span className="text-[8px] text-gray-400">Expires {dailyChallenge.expiresAt}</span>
                 </div>
               </div>
             )}
@@ -355,7 +355,7 @@ export default function DailyRituals({
               <span className="text-[10px] font-semibold text-gray-300">
                 🏘️ Community Board ({communityUpdates.length})
               </span>
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 {expandedSection === 'community' ? '−' : '+'}
               </span>
             </button>
@@ -370,7 +370,7 @@ export default function DailyRituals({
                     </span>
                     <div>
                       <p className="text-gray-300">{u.title}</p>
-                      <p className="text-[9px] text-gray-500">{u.description}</p>
+                      <p className="text-[9px] text-gray-400">{u.description}</p>
                       {onNavigate && (
                         <button
                           onClick={() => onNavigate(u.district)}
@@ -397,22 +397,22 @@ export default function DailyRituals({
               <span className="text-[10px] font-semibold text-gray-300">
                 🌤️ Weather Forecast
               </span>
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 {expandedSection === 'weather' ? '−' : '+'}
               </span>
             </button>
             {expandedSection === 'weather' && (
               <div className="grid grid-cols-2 gap-2 pb-2">
                 <div className="p-2 rounded bg-white/[0.03]">
-                  <p className="text-[9px] text-gray-500 mb-1">Today</p>
+                  <p className="text-[9px] text-gray-400 mb-1">Today</p>
                   <p className="text-[10px] text-white">{weatherForecast.today.condition}</p>
-                  <p className="text-[9px] text-gray-500">{weatherForecast.today.temp} · Wind: {weatherForecast.today.wind}</p>
+                  <p className="text-[9px] text-gray-400">{weatherForecast.today.temp} · Wind: {weatherForecast.today.wind}</p>
                   <p className="text-[9px] text-yellow-400/70 mt-1">{weatherForecast.today.implications}</p>
                 </div>
                 <div className="p-2 rounded bg-white/[0.03]">
-                  <p className="text-[9px] text-gray-500 mb-1">Tomorrow</p>
+                  <p className="text-[9px] text-gray-400 mb-1">Tomorrow</p>
                   <p className="text-[10px] text-white">{weatherForecast.tomorrow.condition}</p>
-                  <p className="text-[9px] text-gray-500">{weatherForecast.tomorrow.temp}</p>
+                  <p className="text-[9px] text-gray-400">{weatherForecast.tomorrow.temp}</p>
                 </div>
               </div>
             )}
@@ -429,7 +429,7 @@ export default function DailyRituals({
               <span className="text-[10px] font-semibold text-gray-300">
                 💬 NPC Memories ({npcMemories.length})
               </span>
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 {expandedSection === 'npc' ? '−' : '+'}
               </span>
             </button>
@@ -451,13 +451,13 @@ export default function DailyRituals({
       {/* Suggested action */}
       {suggestedAction && (
         <div className="mt-4 pt-3 border-t border-white/5">
-          <p className="text-[9px] text-gray-500 mb-1.5">Start your day</p>
+          <p className="text-[9px] text-gray-400 mb-1.5">Start your day</p>
           <button
             onClick={() => suggestedAction.district && onNavigate?.(suggestedAction.district)}
             className="w-full text-left p-2.5 rounded bg-cyan-500/5 border border-cyan-500/20 hover:bg-cyan-500/10 transition-colors"
           >
             <p className="text-[10px] text-cyan-400 font-medium">{suggestedAction.action}</p>
-            <p className="text-[9px] text-gray-500 mt-0.5">{suggestedAction.reason}</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">{suggestedAction.reason}</p>
           </button>
         </div>
       )}

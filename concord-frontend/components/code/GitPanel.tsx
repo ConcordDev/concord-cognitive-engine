@@ -86,7 +86,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
     await refresh(); onChanged?.();
   }
 
-  if (!projectId) return <div className="p-3 text-xs text-gray-500 italic">Open a project to use source control.</div>;
+  if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to use source control.</div>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -105,7 +105,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
 
       <div className="flex-1 overflow-y-auto">
         {loading || !status ? (
-          <div className="p-3 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
+          <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
         ) : (
           <>
             <div className="p-2 space-y-1.5 border-b border-white/10">
@@ -157,7 +157,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
                   <div key={s.id} className="px-3 py-1 flex items-center gap-2 text-xs hover:bg-white/[0.03] group">
                     <Archive className="w-3 h-3 text-violet-400" />
                     <span className="flex-1 truncate text-gray-300">{s.message}</span>
-                    <span className="text-[10px] text-gray-600">{s.fileCount}f</span>
+                    <span className="text-[10px] text-gray-400">{s.fileCount}f</span>
                     <button onClick={() => popStash(s.id)} className="text-[10px] text-blue-300 hover:text-blue-200">pop</button>
                   </div>
                 ))}
@@ -167,7 +167,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
             <Section title="Branches" count={status.branches.length}>
               {status.branches.map((b) => (
                 <div key={b} className="px-3 py-1 flex items-center gap-2 text-xs hover:bg-white/[0.03] group">
-                  <GitBranch className={cn('w-3 h-3', b === status.branch ? 'text-blue-400' : 'text-gray-500')} />
+                  <GitBranch className={cn('w-3 h-3', b === status.branch ? 'text-blue-400' : 'text-gray-400')} />
                   <span className={cn('flex-1 truncate font-mono', b === status.branch ? 'text-white' : 'text-gray-400')}>{b}</span>
                   {b !== status.branch && (
                     <>
@@ -194,10 +194,10 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
                   <div key={c.id} className="px-3 py-1.5 hover:bg-white/[0.03]">
                     <div className="flex items-center gap-2">
                       <GitCommit className="w-3 h-3 text-gray-400" />
-                      <span className="font-mono text-[10px] text-gray-500">{c.id.slice(0, 8)}</span>
+                      <span className="font-mono text-[10px] text-gray-400">{c.id.slice(0, 8)}</span>
                       <span className="text-xs text-white flex-1 truncate">{c.message}</span>
                     </div>
-                    <div className="ml-5 text-[10px] text-gray-500">{c.paths.length} files · {c.committedAt.slice(0, 16).replace('T', ' ')}</div>
+                    <div className="ml-5 text-[10px] text-gray-400">{c.paths.length} files · {c.committedAt.slice(0, 16).replace('T', ' ')}</div>
                   </div>
                 ))}
               </Section>
@@ -218,7 +218,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
             </div>
             <div className="overflow-auto font-mono text-[11px]">
               {diff.hunks.length === 0 ? (
-                <div className="p-3 text-gray-500">No changes vs HEAD.</div>
+                <div className="p-3 text-gray-400">No changes vs HEAD.</div>
               ) : diff.hunks.map((h, i) => (
                 <div key={i} className={cn('px-3 py-0.5 whitespace-pre-wrap',
                   h.type === 'add' ? 'bg-emerald-500/10 text-emerald-300'
@@ -238,7 +238,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <div className="border-b border-white/5">
-      <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-500 font-semibold bg-white/[0.02]">{title} · {count}</div>
+      <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold bg-white/[0.02]">{title} · {count}</div>
       {children}
     </div>
   );
@@ -257,7 +257,7 @@ function FileRow({
         {path}
       </button>
       {onDiscard && (
-        <button onClick={onDiscard} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-300">
+        <button onClick={onDiscard} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
           <Undo2 className="w-3 h-3" />
         </button>
       )}

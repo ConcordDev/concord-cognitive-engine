@@ -204,7 +204,7 @@ export function MarketingActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -215,21 +215,21 @@ export function MarketingActionPanel() {
           <div className={cn('rounded-md border p-2.5', roiResult.profitable ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{roiResult.campaign} · {roiResult.grade}</div>
             <div className={cn('text-2xl font-bold', GRADE_COLOR[roiResult.grade])}>{roiResult.roi}%<span className="text-xs text-zinc-400"> ROI</span></div>
-            <div className="text-[10px] text-zinc-500">CPL ${roiResult.costPerLead} · CPA ${roiResult.costPerAcquisition}</div>
-            <div className="text-[10px] text-zinc-500">conv rate {roiResult.conversionRate}%</div>
+            <div className="text-[10px] text-zinc-400">CPL ${roiResult.costPerLead} · CPA ${roiResult.costPerAcquisition}</div>
+            <div className="text-[10px] text-zinc-400">conv rate {roiResult.conversionRate}%</div>
           </div>
         )}
         {abResult && (
           <div className={cn('rounded-md border p-2.5 max-h-48 overflow-y-auto', abResult.statisticallySignificant ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">A/B · {abResult.winner} (+{abResult.lift}%)</div>
-            <div className="text-[10px] text-zinc-500">{abResult.totalVisitors.toLocaleString()} visitors · {abResult.statisticallySignificant ? '✓ significant' : '⏳ keep testing'}</div>
+            <div className="text-[10px] text-zinc-400">{abResult.totalVisitors.toLocaleString()} visitors · {abResult.statisticallySignificant ? '✓ significant' : '⏳ keep testing'}</div>
             {abResult.variants.map((v, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className="font-mono w-24 truncate">{v.name}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-purple-400" style={{ width: `${Math.min(100, v.conversionRate * 10)}%` }} /></div><span className="text-purple-200 font-mono">{v.conversionRate}%</span></div>)}
           </div>
         )}
         {funnelResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-48 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Funnel · {funnelResult.overallConversion}%</div>
-            {funnelResult.stages.map((s, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><div className="flex items-center gap-2"><span className="font-mono w-20 truncate">{s.stage}</span><div className="flex-1 h-1 bg-zinc-800 rounded-sm overflow-hidden"><div className="h-full bg-blue-400" style={{ width: `${s.convFromTop}%` }} /></div><span className="font-mono text-blue-200">{s.visitors.toLocaleString()}</span></div>{i > 0 && <div className="text-[9px] text-zinc-500 ml-20">drop {s.dropoff}%</div>}</div>)}
+            {funnelResult.stages.map((s, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><div className="flex items-center gap-2"><span className="font-mono w-20 truncate">{s.stage}</span><div className="flex-1 h-1 bg-zinc-800 rounded-sm overflow-hidden"><div className="h-full bg-blue-400" style={{ width: `${s.convFromTop}%` }} /></div><span className="font-mono text-blue-200">{s.visitors.toLocaleString()}</span></div>{i > 0 && <div className="text-[9px] text-zinc-400 ml-20">drop {s.dropoff}%</div>}</div>)}
             <div className="text-[10px] text-amber-300 mt-1 italic">{funnelResult.quickWin}</div>
           </div>
         )}

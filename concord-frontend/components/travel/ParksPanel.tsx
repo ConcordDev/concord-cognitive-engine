@@ -61,7 +61,7 @@ export function ParksPanel({ className }: ParksPanelProps) {
         <Trees className="w-4 h-4 text-emerald-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">National Parks · {state}{data?.total ? ` (${data.total})` : ''}</h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
-        <button type="button" onClick={() => void fetchData(state)} disabled={loading} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label="Refresh">
+        <button type="button" onClick={() => void fetchData(state)} disabled={loading} className="p-1 text-zinc-400 hover:text-zinc-200" aria-label="Refresh">
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
@@ -85,7 +85,7 @@ export function ParksPanel({ className }: ParksPanelProps) {
       )}
 
       {data?.ok && (data.parks?.length ?? 0) === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No parks listed for that state.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No parks listed for that state.</div>
       )}
 
       {data?.ok && data.parks && data.parks.length > 0 && (
@@ -98,7 +98,7 @@ export function ParksPanel({ className }: ParksPanelProps) {
               )}
               <div className="min-w-0 flex-1">
                 <a href={p.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-zinc-100 hover:text-emerald-300 line-clamp-1">{p.name}</a>
-                <div className="text-[10px] text-zinc-500">{p.designation}</div>
+                <div className="text-[10px] text-zinc-400">{p.designation}</div>
                 <p className="text-[11px] text-zinc-400 line-clamp-2">{p.description}</p>
               </div>
             </li>
@@ -106,7 +106,7 @@ export function ParksPanel({ className }: ParksPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: National Park Service · developer.nps.gov
       </footer>
     </section>

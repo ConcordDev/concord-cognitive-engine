@@ -1411,7 +1411,7 @@ export default function AgricultureLensPage() {
         <div className="space-y-2">
           {items.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">
+              <p className="text-gray-400">
                 No crops or fields tracked yet. Add your first planting to get started.
               </p>
               <p className="text-sm text-gray-400 mt-1">
@@ -1431,7 +1431,7 @@ export default function AgricultureLensPage() {
                     <p className={ds.textMuted}>{d.type}</p>
                   </div>
                   {renderStatusBadge(d.status)}
-                  <ArrowUpRight className="w-4 h-4 text-gray-500" />
+                  <ArrowUpRight className="w-4 h-4 text-gray-400" />
                 </div>
               );
             })
@@ -1864,19 +1864,19 @@ export default function AgricultureLensPage() {
                 <p className="text-sm font-bold text-neon-cyan">
                   {String(actionResult.fieldsAnalyzed)}
                 </p>
-                <p className="text-[10px] text-gray-500">Fields Analyzed</p>
+                <p className="text-[10px] text-gray-400">Fields Analyzed</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">
                   {String(actionResult.totalAcreage)} ac
                 </p>
-                <p className="text-[10px] text-gray-500">Total Acreage</p>
+                <p className="text-[10px] text-gray-400">Total Acreage</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">
                   {String(actionResult.totalActualYield)}
                 </p>
-                <p className="text-[10px] text-gray-500">Actual Yield</p>
+                <p className="text-[10px] text-gray-400">Actual Yield</p>
               </div>
               <div className={`p-2 bg-lattice-surface rounded text-center`}>
                 <p
@@ -1884,7 +1884,7 @@ export default function AgricultureLensPage() {
                 >
                   {String(actionResult.overallVariancePct)}%
                 </p>
-                <p className="text-[10px] text-gray-500">Variance vs Expected</p>
+                <p className="text-[10px] text-gray-400">Variance vs Expected</p>
               </div>
             </div>
           )}
@@ -1896,19 +1896,19 @@ export default function AgricultureLensPage() {
                   <p className="text-sm font-bold text-red-400">
                     {String(actionResult.overdueCount)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Overdue</p>
+                  <p className="text-[10px] text-gray-400">Overdue</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-amber-400">
                     {String(actionResult.upcomingCount)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Upcoming</p>
+                  <p className="text-[10px] text-gray-400">Upcoming</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">
                     {String(actionResult.totalEquipment)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Total Equipment</p>
+                  <p className="text-[10px] text-gray-400">Total Equipment</p>
                 </div>
               </div>
             )}
@@ -1919,11 +1919,11 @@ export default function AgricultureLensPage() {
                 <p className="text-sm font-bold text-neon-cyan">
                   {Number(actionResult.totalGallonsAllFields).toLocaleString()}
                 </p>
-                <p className="text-[10px] text-gray-500">Total Gallons</p>
+                <p className="text-[10px] text-gray-400">Total Gallons</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.daysAhead)}</p>
-                <p className="text-[10px] text-gray-500">Days Scheduled</p>
+                <p className="text-[10px] text-gray-400">Days Scheduled</p>
               </div>
             </div>
           )}
@@ -2025,7 +2025,7 @@ function DeereWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent')
             }
           >
             {t.label}

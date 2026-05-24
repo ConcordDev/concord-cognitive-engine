@@ -58,7 +58,7 @@ export function GutendexSearch() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search 75k public-domain books…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -74,7 +74,7 @@ export function GutendexSearch() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
                   <span className="line-clamp-1 text-sm text-white">{b.title}</span>
-                  <span className="font-mono text-[10px] text-zinc-500">#{b.id}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">#{b.id}</span>
                 </div>
                 <p className="text-[11px] text-cyan-300/80">
                   {b.authors.map((a) => `${a.name}${a.birth_year || a.death_year ? ` (${a.birth_year || '?'}–${a.death_year || '?'})` : ''}`).join(', ')}
@@ -83,14 +83,14 @@ export function GutendexSearch() {
                   {b.subjects.slice(0, 4).map((s) => <span key={s} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{s}</span>)}
                   {b.languages.map((l) => <span key={l} className="rounded bg-amber-500/10 px-1 font-mono text-[9px] text-amber-300">{l}</span>)}
                 </div>
-                <div className="mt-0.5 font-mono text-[10px] text-zinc-500"><Download className="mr-0.5 inline h-2.5 w-2.5" />{b.download_count.toLocaleString()} downloads</div>
+                <div className="mt-0.5 font-mono text-[10px] text-zinc-400"><Download className="mr-0.5 inline h-2.5 w-2.5" />{b.download_count.toLocaleString()} downloads</div>
               </div>
               <a href={preferredFormat(b)} target="_blank" rel="noopener noreferrer" className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-200"><ExternalLink className="h-3 w-3" /></a>
             </div>
           </div>
         ))}
         {books.length === 0 && !search.isPending && !error && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Search the live Project Gutenberg catalog.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Search the live Project Gutenberg catalog.</div>
         )}
       </div>
     </div>

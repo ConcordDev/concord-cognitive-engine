@@ -45,29 +45,29 @@ export function QualitySPC() {
         </select>
       </header>
       {loading || !data ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <>
           <div className="p-4 grid grid-cols-4 gap-3 text-center">
             <div className="p-2 bg-white/[0.02] rounded">
               <div className={`text-xl font-bold tabular-nums ${data.cpk >= 1.33 ? 'text-green-300' : data.cpk >= 1.0 ? 'text-cyan-300' : data.cpk >= 0.67 ? 'text-yellow-300' : 'text-red-300'}`}>{data.cpk.toFixed(2)}</div>
-              <div className="text-[9px] uppercase text-gray-500">Cpk (≥1.33 capable)</div>
+              <div className="text-[9px] uppercase text-gray-400">Cpk (≥1.33 capable)</div>
             </div>
             <div className="p-2 bg-white/[0.02] rounded">
               <div className="text-xl font-bold tabular-nums text-white">{data.ppm.toFixed(0)}</div>
-              <div className="text-[9px] uppercase text-gray-500">PPM defective</div>
+              <div className="text-[9px] uppercase text-gray-400">PPM defective</div>
             </div>
             <div className="p-2 bg-white/[0.02] rounded">
               <div className={`text-xl font-bold tabular-nums ${data.inControl ? 'text-green-300' : 'text-red-300'}`}>{data.inControl ? '✓' : '✗'}</div>
-              <div className="text-[9px] uppercase text-gray-500">In control</div>
+              <div className="text-[9px] uppercase text-gray-400">In control</div>
             </div>
             <div className="p-2 bg-white/[0.02] rounded">
               <div className="text-xl font-bold tabular-nums text-cyan-300">{data.samples.length}</div>
-              <div className="text-[9px] uppercase text-gray-500">Samples</div>
+              <div className="text-[9px] uppercase text-gray-400">Samples</div>
             </div>
           </div>
           <div className="px-4 pb-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">{data.measurement} ({data.unit}) — spec {data.lowerSpec.toFixed(3)}–{data.upperSpec.toFixed(3)}</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">{data.measurement} ({data.unit}) — spec {data.lowerSpec.toFixed(3)}–{data.upperSpec.toFixed(3)}</div>
             <svg viewBox="0 0 400 120" className="w-full h-32 bg-[#0a0e17] border border-white/10 rounded">
               {(() => {
                 const margin = 4;
@@ -93,7 +93,7 @@ export function QualitySPC() {
                 );
               })()}
             </svg>
-            <div className="text-[9px] text-gray-500 mt-1 flex items-center gap-3">
+            <div className="text-[9px] text-gray-400 mt-1 flex items-center gap-3">
               <span><span className="inline-block w-3 h-0.5 align-middle bg-red-400" /> spec limits</span>
               <span><span className="inline-block w-3 h-0.5 align-middle bg-yellow-400" /> control limits (3σ)</span>
               <span><span className="inline-block w-3 h-0.5 align-middle bg-cyan-400" /> centerline / data</span>

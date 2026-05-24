@@ -166,7 +166,7 @@ export function LiteratureReviewPanel() {
       />
 
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Dimensions</p>
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Dimensions</p>
         <div className="flex flex-wrap gap-1 mb-1.5">
           {dims.map((d) => (
             <span
@@ -206,15 +206,15 @@ export function LiteratureReviewPanel() {
       </div>
 
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
           References ({selected.size} selected)
         </p>
         {loading ? (
-          <div className="text-center py-4 text-xs text-gray-500">
+          <div className="text-center py-4 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin inline" />
           </div>
         ) : refs.length === 0 ? (
-          <p className="text-xs text-gray-500 py-3">
+          <p className="text-xs text-gray-400 py-3">
             No references yet. Add some via Academic Search or the library.
           </p>
         ) : (
@@ -232,7 +232,7 @@ export function LiteratureReviewPanel() {
                 />
                 <div className="min-w-0">
                   <p className="text-xs text-gray-100 truncate">{r.title}</p>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-gray-400">
                     {r.authors || 'Unknown'}
                     {r.year ? ` · ${r.year}` : ''}
                     {!r.abstract ? ' · no abstract' : ''}
@@ -290,7 +290,7 @@ export function LiteratureReviewPanel() {
                   <tr key={row.paperIndex} className="border-t border-white/5">
                     <td className="p-1.5 text-gray-200 align-top max-w-[140px]">
                       {row.title}
-                      {row.year ? <span className="text-gray-500"> ({row.year})</span> : null}
+                      {row.year ? <span className="text-gray-400"> ({row.year})</span> : null}
                     </td>
                     {review.dimensions.map((d) => (
                       <td key={d} className="p-1.5 text-gray-400 align-top max-w-[180px]">
@@ -307,7 +307,7 @@ export function LiteratureReviewPanel() {
 
       {saved.length > 0 && (
         <div className="border-t border-white/10 pt-2">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Saved reviews</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Saved reviews</p>
           <div className="space-y-1">
             {saved.map((rv) => (
               <div
@@ -320,7 +320,7 @@ export function LiteratureReviewPanel() {
                   className="text-left min-w-0 flex-1"
                 >
                   <p className="text-xs text-gray-200 truncate">{rv.title}</p>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-gray-400">
                     {rv.paperCount} papers · {rv.dimensions.length} dimensions · {rv.mode}
                   </p>
                 </button>

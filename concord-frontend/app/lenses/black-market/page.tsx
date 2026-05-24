@@ -180,7 +180,7 @@ export default function BlackMarketPage() {
 
         {reputation.length > 0 && (
           <section className="mb-6 rounded border border-slate-800 bg-slate-900/50 p-3">
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">Your standing</p>
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">Your standing</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
               {reputation.map((r) => (
                 <div key={r.fence_npc_id} className="flex items-center justify-between rounded border border-slate-800 bg-slate-950/50 px-2 py-1.5">
@@ -217,7 +217,7 @@ export default function BlackMarketPage() {
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">
               {loading ? 'Loading…' : encFilter === 'all'
                 ? `${visibleListings.length} active listing${visibleListings.length === 1 ? '' : 's'}`
                 : `${visibleListings.length} of ${listings.length} · ${encFilter}`}
@@ -257,12 +257,12 @@ export default function BlackMarketPage() {
             </div>
           </div>
           {!loading && listings.length === 0 && (
-            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-sm text-slate-500">
+            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-sm text-slate-400">
               No intercepted messages on the market right now. Check back after a Walker journey gets interrupted.
             </p>
           )}
           {!loading && listings.length > 0 && visibleListings.length === 0 && (
-            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-sm text-slate-500">
+            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-sm text-slate-400">
               No <span className="text-rose-300">{encFilter}</span>-tier listings right now. Try a wider filter.
             </p>
           )}
@@ -293,7 +293,7 @@ export default function BlackMarketPage() {
           </div>
         </section>
 
-        <footer className="mt-8 border-t border-slate-800 pt-4 text-center text-[10px] text-slate-500">
+        <footer className="mt-8 border-t border-slate-800 pt-4 text-center text-[10px] text-slate-400">
           All prices in sparks. No real-money codepaths.
         </footer>
       </div>

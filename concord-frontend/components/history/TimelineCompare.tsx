@@ -54,9 +54,9 @@ export function TimelineCompare({ timelines }: { timelines: TLMeta[] }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">Pick 2–6 timelines to stack on one axis.</p>
+      <p className="text-[11px] text-zinc-400">Pick 2–6 timelines to stack on one axis.</p>
       <div className="flex flex-wrap gap-1.5">
-        {timelines.length === 0 && <span className="text-[11px] text-zinc-600 italic">No timelines yet.</span>}
+        {timelines.length === 0 && <span className="text-[11px] text-zinc-400 italic">No timelines yet.</span>}
         {timelines.map((t) => (
           <button key={t.id} onClick={() => toggle(t.id)}
             className={cn('px-2.5 py-1 text-[11px] rounded-lg border',
@@ -75,7 +75,7 @@ export function TimelineCompare({ timelines }: { timelines: TLMeta[] }) {
 
       {result && span && (
         <div className="space-y-2.5">
-          <div className="flex justify-between text-[10px] font-mono text-zinc-500">
+          <div className="flex justify-between text-[10px] font-mono text-zinc-400">
             <span>{span.minYear}</span>
             <span>{span.maxYear}</span>
           </div>

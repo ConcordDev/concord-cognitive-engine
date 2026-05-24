@@ -63,7 +63,7 @@ export function FashionResalePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -85,7 +85,7 @@ export function FashionResalePanel({ onChange }: { onChange: () => void }) {
                 <div className="flex items-start justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-zinc-100 truncate">{f.name}</p>
-                    <p className="text-[10px] text-zinc-500 capitalize">
+                    <p className="text-[10px] text-zinc-400 capitalize">
                       {f.category}{f.brand ? ` · ${f.brand}` : ''} · worn {f.timesWorn}×
                     </p>
                   </div>
@@ -110,7 +110,7 @@ export function FashionResalePanel({ onChange }: { onChange: () => void }) {
                     </select>
                     <button type="button" onClick={list}
                       className="px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">List</button>
-                    <button type="button" onClick={() => setListForm(null)} className="text-zinc-500 hover:text-zinc-300">
+                    <button type="button" onClick={() => setListForm(null)} className="text-zinc-400 hover:text-zinc-300">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -134,14 +134,14 @@ export function FashionResalePanel({ onChange }: { onChange: () => void }) {
           {totalAsking > 0 && <span className="text-[11px] text-emerald-400">${totalAsking} asking total</span>}
         </h3>
         {listings.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No items listed for resale.</p>
+          <p className="text-[11px] text-zinc-400 italic">No items listed for resale.</p>
         ) : (
           <ul className="space-y-2">
             {listings.map((l) => (
               <li key={l.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-xl px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{l.name}</p>
-                  <p className="text-[10px] text-zinc-500 capitalize">
+                  <p className="text-[10px] text-zinc-400 capitalize">
                     ${l.askingPrice} on <span className="text-fuchsia-300">{l.channel}</span> · {l.condition}
                   </p>
                 </div>

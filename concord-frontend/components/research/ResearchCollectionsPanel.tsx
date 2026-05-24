@@ -60,7 +60,7 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -77,7 +77,7 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {collections.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No collections. Group your references by project or topic.
         </div>
       ) : (
@@ -90,7 +90,7 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
                   <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform', open === c.id && 'rotate-90')} />
                   <FolderOpen className="w-4 h-4 text-red-400" />
                   <span className="text-sm font-semibold text-zinc-100">{c.name}</span>
-                  <span className="text-[11px] text-zinc-500">{c.referenceCount} references</span>
+                  <span className="text-[11px] text-zinc-400">{c.referenceCount} references</span>
                 </button>
                 <button type="button" onClick={() => del(c.id)} className="px-3 text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
@@ -99,7 +99,7 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
               {open === c.id && (
                 <div className="border-t border-zinc-800 p-3 bg-zinc-950/50">
                   {allRefs.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 italic">No references in the library yet.</p>
+                    <p className="text-[11px] text-zinc-400 italic">No references in the library yet.</p>
                   ) : (
                     <ul className="space-y-1">
                       {allRefs.map((r) => {

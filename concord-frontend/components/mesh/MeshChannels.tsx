@@ -28,7 +28,7 @@ const STRENGTH_TONE: Record<string, string> = {
   'aes-256': 'text-emerald-300',
   'aes-128': 'text-teal-300',
   weak: 'text-amber-300',
-  none: 'text-zinc-500',
+  none: 'text-zinc-400',
 };
 
 export function MeshChannels() {
@@ -115,7 +115,7 @@ export function MeshChannels() {
             {list.map((c) => (
               <li key={c.id} className="rounded-lg border border-teal-900/30 bg-teal-950/10 p-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  {c.encrypted ? <Lock className="h-3.5 w-3.5 text-emerald-400" aria-hidden /> : <Unlock className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
+                  {c.encrypted ? <Lock className="h-3.5 w-3.5 text-emerald-400" aria-hidden /> : <Unlock className="h-3.5 w-3.5 text-zinc-400" aria-hidden />}
                   <span className="font-mono text-sm text-teal-100"># {c.name}</span>
                   <span className="inline-flex items-center gap-1 text-[10px]">
                     {c.encrypted

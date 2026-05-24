@@ -295,7 +295,7 @@ export function RuleEngineWorkbench() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold text-zinc-300">Rule / Fact Editor</h3>
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-zinc-400">
                 {`head(a,b).  head(?X) :- body1(?X), not body2(?X).`}
               </span>
             </div>
@@ -353,7 +353,7 @@ export function RuleEngineWorkbench() {
 
             {checkRows && (
               <div className="space-y-1 rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Syntax check report</p>
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Syntax check report</p>
                 {checkRows.map((row, i) => (
                   <div key={i} className="flex items-start gap-2 text-[11px]">
                     {row.valid
@@ -361,7 +361,7 @@ export function RuleEngineWorkbench() {
                       : <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-rose-400" />}
                     <span className="font-mono text-zinc-300">{row.line}</span>
                     {row.valid ? (
-                      <span className="text-zinc-500">
+                      <span className="text-zinc-400">
                         {row.kind} · {row.predicate}
                         {row.variables && row.variables.length > 0 && ` · vars: ${row.variables.join(', ')}`}
                       </span>
@@ -399,8 +399,8 @@ export function RuleEngineWorkbench() {
 
             <div className="max-h-[460px] space-y-3 overflow-y-auto">
               <div>
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Facts ({factCount})</p>
-                {factCount === 0 && <p className="text-[11px] text-zinc-600">No facts yet.</p>}
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Facts ({factCount})</p>
+                {factCount === 0 && <p className="text-[11px] text-zinc-400">No facts yet.</p>}
                 {kb?.facts.map((f) => (
                   <div key={f.id} className="group flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1">
                     <span className="font-mono text-[11px] text-emerald-300">
@@ -417,13 +417,13 @@ export function RuleEngineWorkbench() {
                 ))}
               </div>
               <div>
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Rules ({ruleCount})</p>
-                {ruleCount === 0 && <p className="text-[11px] text-zinc-600">No rules yet.</p>}
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Rules ({ruleCount})</p>
+                {ruleCount === 0 && <p className="text-[11px] text-zinc-400">No rules yet.</p>}
                 {kb?.rules.map((r) => (
                   <div key={r.id} className="group flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1">
                     <div className="min-w-0">
                       <span className="font-mono text-[11px] text-fuchsia-300">{r.text}</span>
-                      <span className="ml-2 text-[10px] text-zinc-500">
+                      <span className="ml-2 text-[10px] text-zinc-400">
                         {r.name} · prio {r.priority}
                       </span>
                     </div>
@@ -463,7 +463,7 @@ export function RuleEngineWorkbench() {
               Solve
             </button>
           </div>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             Supports negation-as-failure (<span className="font-mono">not pred(...)</span>) and built-ins:
             gt, lt, gte, lte, eq, neq, add, sub, mul, div, length, member.
           </p>
@@ -483,7 +483,7 @@ export function RuleEngineWorkbench() {
 
               {queryResult.answers.length > 0 && (
                 <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
-                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Variable bindings</p>
+                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Variable bindings</p>
                   <div className="space-y-1">
                     {queryResult.answers.map((ans, i) => (
                       <div key={i} className="flex flex-wrap gap-2 font-mono text-[11px]">
@@ -492,7 +492,7 @@ export function RuleEngineWorkbench() {
                           : Object.entries(ans).map(([v, val]) => (
                             <span key={v} className="rounded bg-zinc-800 px-1.5 py-0.5">
                               <span className="text-cyan-300">{v}</span>
-                              <span className="text-zinc-500"> = </span>
+                              <span className="text-zinc-400"> = </span>
                               <span className="text-emerald-300">{val}</span>
                             </span>
                           ))}
@@ -503,7 +503,7 @@ export function RuleEngineWorkbench() {
               )}
 
               <div>
-                <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+                <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
                   Proof tree{queryResult.proofTrees.length > 1 ? ` (${queryResult.proofTrees.length} shown)` : ''}
                 </p>
                 <TreeDiagram root={queryResult.proofTrees.length > 0 ? queryResult.proofTrees : null} />
@@ -552,7 +552,7 @@ export function RuleEngineWorkbench() {
 
               {explainResult.how.length > 0 && (
                 <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
-                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
                     How — derivation steps ({explainResult.how.length})
                   </p>
                   <ol className="space-y-1">
@@ -560,7 +560,7 @@ export function RuleEngineWorkbench() {
                       <li key={i} className="flex items-start gap-2 text-[11px]">
                         <span className="font-mono text-zinc-600">{i + 1}.</span>
                         <span className="font-mono text-cyan-300">{step.conclusion}</span>
-                        <span className="text-zinc-500">via {step.via}</span>
+                        <span className="text-zinc-400">via {step.via}</span>
                       </li>
                     ))}
                   </ol>
@@ -569,7 +569,7 @@ export function RuleEngineWorkbench() {
 
               {explainResult.proofTree && (
                 <div>
-                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Proof tree</p>
+                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Proof tree</p>
                   <TreeDiagram root={explainResult.proofTree} />
                 </div>
               )}
@@ -649,7 +649,7 @@ export function RuleEngineWorkbench() {
                     <span className="text-zinc-300" style={{ paddingLeft: s.depth * 12 }}>
                       <span className={STEP_TONE[s.kind] || 'text-zinc-400'}>[{s.kind}]</span>{' '}
                       <span className="text-cyan-300">{s.goal}</span>{' '}
-                      <span className="text-zinc-500">— {s.action}</span>{' '}
+                      <span className="text-zinc-400">— {s.action}</span>{' '}
                       <span className={s.result === true ? 'text-emerald-400' : s.result === false ? 'text-rose-400' : 'text-amber-400'}>
                         {String(s.result)}
                       </span>
@@ -716,7 +716,7 @@ export function RuleEngineWorkbench() {
 
               {forwardResult.derivedFacts.length > 0 && (
                 <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
-                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Derived facts</p>
+                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Derived facts</p>
                   <div className="flex flex-wrap gap-1.5">
                     {forwardResult.derivedFacts.map((f, i) => (
                       <span key={i} className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300">
@@ -729,7 +729,7 @@ export function RuleEngineWorkbench() {
 
               {forwardResult.derivationLog.length > 0 && (
                 <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
-                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+                  <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
                     Conflict-resolution log — strategy: {forwardResult.strategy}
                   </p>
                   <div className="space-y-0.5 font-mono text-[11px]">
@@ -737,9 +737,9 @@ export function RuleEngineWorkbench() {
                       <div key={i} className="flex flex-wrap items-baseline gap-2">
                         <span className="w-8 text-right text-zinc-600">#{d.iteration}</span>
                         <span className="text-fuchsia-300">{d.fired}</span>
-                        <span className="text-zinc-500">prio {d.priority}</span>
-                        <span className="text-zinc-500">conflict-set {d.conflictSetSize}</span>
-                        <span className="text-zinc-500">→</span>
+                        <span className="text-zinc-400">prio {d.priority}</span>
+                        <span className="text-zinc-400">conflict-set {d.conflictSetSize}</span>
+                        <span className="text-zinc-400">→</span>
                         <span className="text-emerald-300">{d.derived}</span>
                       </div>
                     ))}
@@ -765,7 +765,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'go
   const color = tone === 'good' ? 'text-emerald-300' : tone === 'bad' ? 'text-rose-300' : 'text-cyan-300';
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-lg ${color}`}>{value}</div>
     </div>
   );

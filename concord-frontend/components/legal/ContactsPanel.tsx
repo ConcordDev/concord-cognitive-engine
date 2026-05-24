@@ -93,7 +93,7 @@ export function ContactsPanel() {
                   <li key={i} className="text-xs text-rose-100">
                     {m.kind === 'contact' && m.contact && (
                       <>
-                        <span className="font-semibold">{m.contact.name}</span> <span className="text-gray-500">({m.contact.kind})</span>
+                        <span className="font-semibold">{m.contact.name}</span> <span className="text-gray-400">({m.contact.kind})</span>
                         {m.matters && m.matters.length > 0 && (
                           <span className="text-gray-400"> in {m.matters.length} matter(s): {m.matters.map(x => x.name).join(', ')}</span>
                         )}
@@ -115,7 +115,7 @@ export function ContactsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Users className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Contacts</span>
-          <span className="text-[10px] text-gray-500">{list.length}</span>
+          <span className="text-[10px] text-gray-400">{list.length}</span>
           <select value={filterKind} onChange={e => setFilterKind(e.target.value)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="all">All kinds</option>
             {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
@@ -142,9 +142,9 @@ export function ContactsPanel() {
 
         <div className="max-h-[28rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : list.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No contacts yet.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No contacts yet.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {list.map(c => (
@@ -158,7 +158,7 @@ export function ContactsPanel() {
                       {c.name}
                       <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{c.kind.replace(/_/g, ' ')}</span>
                     </div>
-                    <div className="text-[10px] text-gray-500 truncate">
+                    <div className="text-[10px] text-gray-400 truncate">
                       <span className="font-mono">{c.number}</span>
                       {c.organization && <span> · {c.organization}</span>}
                       {c.email && <span> · {c.email}</span>}

@@ -141,7 +141,7 @@ export default function PerformanceOverlay({
 
   return (
     <div className={`${PANEL} fixed top-4 right-4 z-[60] p-3 min-w-[200px]`}>
-      <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">
+      <div className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">
         Concordia Telemetry
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
@@ -160,7 +160,7 @@ export default function PerformanceOverlay({
         <span className="text-gray-400">Tex MB</span>
         <span className="text-cyan-300">{Math.round(sample.textureMemory)}</span>
       </div>
-      <div className="mt-2 text-[9px] text-gray-500">
+      <div className="mt-2 text-[9px] text-gray-400">
         Toggle with <kbd className="px-1 border border-white/20 rounded">`</kbd>
       </div>
     </div>

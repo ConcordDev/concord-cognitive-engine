@@ -193,7 +193,7 @@ export function StorefrontPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2 flex-wrap">
           <Store className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Storefront</span>
-          <span className="text-[10px] text-gray-500">{listings.length} listings</span>
+          <span className="text-[10px] text-gray-400">{listings.length} listings</span>
           <button
             onClick={() => setShowCart((v) => !v)}
             className="ml-auto relative px-2.5 py-1 text-xs rounded bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/25 inline-flex items-center gap-1"
@@ -211,7 +211,7 @@ export function StorefrontPanel() {
         {/* Filters */}
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
           <div className="col-span-5 relative">
-            <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -266,11 +266,11 @@ export function StorefrontPanel() {
         {/* Catalog */}
         <div className="p-4">
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-xs text-gray-500">
+            <div className="flex items-center justify-center py-12 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading catalog…
             </div>
           ) : listings.length === 0 ? (
-            <div className="py-12 text-center text-xs text-gray-500">
+            <div className="py-12 text-center text-xs text-gray-400">
               <Store className="w-7 h-7 mx-auto mb-2 opacity-30" />
               No published listings yet.
             </div>
@@ -291,7 +291,7 @@ export function StorefrontPanel() {
                   </div>
                   <div className="p-2.5 space-y-1.5 flex flex-col flex-1">
                     <div className="text-sm text-white font-medium truncate">{l.title}</div>
-                    <div className="text-[10px] text-gray-500 truncate">{l.shopName}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{l.shopName}</div>
                     <div className="flex items-center gap-2 text-[10px] text-gray-400">
                       {l.avgRating !== null ? (
                         <span className="text-amber-300">
@@ -366,7 +366,7 @@ export function StorefrontPanel() {
                 </button>
               </div>
             ) : cart.length === 0 ? (
-              <div className="py-16 text-center text-xs text-gray-500">
+              <div className="py-16 text-center text-xs text-gray-400">
                 <ShoppingCart className="w-7 h-7 mx-auto mb-2 opacity-30" />
                 Your cart is empty.
               </div>
@@ -383,9 +383,9 @@ export function StorefrontPanel() {
                           <div className="flex-1 min-w-0">
                             <div className="text-xs text-white truncate">{ln.listingTitle}</div>
                             {ln.variationLabel && (
-                              <div className="text-[10px] text-gray-500">{ln.variationLabel}</div>
+                              <div className="text-[10px] text-gray-400">{ln.variationLabel}</div>
                             )}
-                            <div className="text-[10px] text-gray-500 font-mono">
+                            <div className="text-[10px] text-gray-400 font-mono">
                               ${ln.unitPriceUsd.toFixed(2)} ea
                             </div>
                           </div>
@@ -442,7 +442,7 @@ export function StorefrontPanel() {
                   </span>
                 </div>
                 {cartTotal !== cartGrand && (
-                  <div className="text-[10px] text-gray-500 text-right">cart total ${cartTotal.toFixed(2)}</div>
+                  <div className="text-[10px] text-gray-400 text-right">cart total ${cartTotal.toFixed(2)}</div>
                 )}
                 {error && <div className="text-xs text-rose-300">{error}</div>}
                 <button

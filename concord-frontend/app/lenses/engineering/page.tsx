@@ -619,7 +619,7 @@ export default function EngineeringPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-gray-500 border-b border-white/10">
+                  <tr className="text-gray-400 border-b border-white/10">
                     <th className="text-left py-1 px-2">ID</th>
                     <th className="text-right py-1 px-2">X (ft)</th>
                     <th className="text-right py-1 px-2">Y (ft)</th>
@@ -678,7 +678,7 @@ export default function EngineeringPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-gray-500 border-b border-white/10">
+                  <tr className="text-gray-400 border-b border-white/10">
                     <th className="text-left py-1 px-2">ID</th>
                     <th className="text-left py-1 px-2">Node I</th>
                     <th className="text-left py-1 px-2">Node J</th>
@@ -813,7 +813,7 @@ export default function EngineeringPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-gray-500 border-b border-white/10">
+                <tr className="text-gray-400 border-b border-white/10">
                   <th className="text-left py-1 px-2">Node</th>
                   <th className="text-right py-1 px-2">Fx (lb)</th>
                   <th className="text-right py-1 px-2">Fy (lb)</th>
@@ -859,7 +859,7 @@ export default function EngineeringPage() {
             </table>
           </div>
           {model.loads.length === 0 && (
-            <p className="text-center text-gray-500 text-xs py-4">
+            <p className="text-center text-gray-400 text-xs py-4">
               No loads defined. Add point loads above.
             </p>
           )}
@@ -884,7 +884,7 @@ export default function EngineeringPage() {
               </button>
             </div>
             {loadCases.length === 0 ? (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 No saved load cases. Save the current loads/supports to reuse them.
               </p>
             ) : (
@@ -896,7 +896,7 @@ export default function EngineeringPage() {
                   >
                     <div className="min-w-0">
                       <p className="text-xs truncate">{lc.name}</p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-gray-400">
                         {lc.loads.length} loads · {lc.supports.length} supports
                       </p>
                     </div>
@@ -943,7 +943,7 @@ export default function EngineeringPage() {
             ))}
           </div>
           {libMaterials.length === 0 ? (
-            <div className="panel p-8 text-center text-gray-500 text-sm">
+            <div className="panel p-8 text-center text-gray-400 text-sm">
               <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
               Loading material library…
             </div>
@@ -962,27 +962,27 @@ export default function EngineeringPage() {
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-xs">
                       <div className="bg-black/20 rounded p-2 text-center">
-                        <p className="text-gray-500">E</p>
+                        <p className="text-gray-400">E</p>
                         <p className="font-mono text-neon-cyan">
                           {(mat.E / 1000).toFixed(0)} GPa
                         </p>
                       </div>
                       <div className="bg-black/20 rounded p-2 text-center">
-                        <p className="text-gray-500">σ_yield</p>
+                        <p className="text-gray-400">σ_yield</p>
                         <p className="font-mono text-green-400">{mat.yield} MPa</p>
                       </div>
                       <div className="bg-black/20 rounded p-2 text-center">
-                        <p className="text-gray-500">σ_ult</p>
+                        <p className="text-gray-400">σ_ult</p>
                         <p className="font-mono text-orange-400">{mat.ultimate} MPa</p>
                       </div>
                       <div className="bg-black/20 rounded p-2 text-center">
-                        <p className="text-gray-500">ρ</p>
+                        <p className="text-gray-400">ρ</p>
                         <p className="font-mono text-yellow-400">
                           {mat.density} kg/m³
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-[11px] text-gray-500">
+                    <div className="grid grid-cols-4 gap-2 text-[11px] text-gray-400">
                       <p>
                         ν <span className="text-white font-mono">{mat.poisson}</span>
                       </p>
@@ -1030,7 +1030,7 @@ export default function EngineeringPage() {
               ].map((s) => (
                 <div key={s.label} className="bg-black/20 rounded-lg p-2">
                   <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-gray-500">{s.label}</p>
+                  <p className="text-gray-400">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -1081,7 +1081,7 @@ export default function EngineeringPage() {
                     <p className="text-base font-bold text-purple-400">
                       {s.value}
                     </p>
-                    <p className="text-gray-500">{s.label}</p>
+                    <p className="text-gray-400">{s.label}</p>
                   </div>
                 ))}
               </div>

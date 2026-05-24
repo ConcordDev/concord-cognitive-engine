@@ -27,7 +27,7 @@ export function BountyFilters({
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 space-y-2.5">
       <div className="flex items-center gap-2">
-        <Search className="w-4 h-4 text-zinc-500 shrink-0" />
+        <Search className="w-4 h-4 text-zinc-400 shrink-0" />
         <input
           value={value.query}
           onChange={(e) => set({ query: e.target.value })}
@@ -36,7 +36,7 @@ export function BountyFilters({
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+        <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
         <select
           value={value.category}
           onChange={(e) => set({ category: e.target.value })}
@@ -76,7 +76,7 @@ export function BountyFilters({
           <option value="reward">Highest reward</option>
           <option value="submissions">Most submissions</option>
         </select>
-        <span className="ml-auto text-[11px] text-zinc-500">{total} result{total === 1 ? '' : 's'}</span>
+        <span className="ml-auto text-[11px] text-zinc-400">{total} result{total === 1 ? '' : 's'}</span>
       </div>
     </div>
   );

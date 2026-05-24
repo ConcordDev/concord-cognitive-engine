@@ -105,7 +105,7 @@ export function AlertBoard({
       </div>
 
       {alerts.length === 0 ? (
-        <p className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-6 text-center text-xs italic text-zinc-600">
+        <p className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-6 text-center text-xs italic text-zinc-400">
           No alerts. Run a multi-signal scan above to generate anomalies.
         </p>
       ) : (
@@ -137,7 +137,7 @@ export function AlertBoard({
                     value {a.value} · {a.sigmaAbove}σ above {a.cohortMean} baseline (σ {a.cohortStddev}) ·{' '}
                     {a.evidence.percentile}th pct
                   </p>
-                  <p className="font-mono text-[10px] text-zinc-500">{ts(a.detectedAt)}{a.assignee ? ` · ${a.assignee}` : ''}</p>
+                  <p className="font-mono text-[10px] text-zinc-400">{ts(a.detectedAt)}{a.assignee ? ` · ${a.assignee}` : ''}</p>
                 </div>
                 <button
                   type="button"
@@ -177,7 +177,7 @@ export function AlertBoard({
         </ul>
       )}
 
-      <label className="block text-[11px] text-zinc-500">
+      <label className="block text-[11px] text-zinc-400">
         Triage note (attached to the next triage action)
         <input
           type="text"
@@ -195,7 +195,7 @@ export function AlertBoard({
               <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
                 <Eye className="h-4 w-4 text-rose-400" /> Alert evidence drill-down
               </h3>
-              <button type="button" onClick={() => setDetail(null)} className="rounded p-1 text-zinc-500 hover:text-zinc-200" aria-label="close">
+              <button type="button" onClick={() => setDetail(null)} className="rounded p-1 text-zinc-400 hover:text-zinc-200" aria-label="close">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -204,14 +204,14 @@ export function AlertBoard({
               <p className="text-sm font-semibold text-zinc-100">{detail.alert.entityId}</p>
               <p className="font-mono text-[10px] text-zinc-400">{SIGNAL_LABELS[detail.alert.signal] || detail.alert.signal} · {detail.alert.severity} · {detail.alert.status}</p>
               <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[10px] text-zinc-300">
-                <dt className="text-zinc-500">Observed value</dt><dd>{detail.alert.value}</dd>
-                <dt className="text-zinc-500">Cohort mean</dt><dd>{detail.alert.cohortMean}</dd>
-                <dt className="text-zinc-500">Cohort σ</dt><dd>{detail.alert.cohortStddev}</dd>
-                <dt className="text-zinc-500">σ above</dt><dd className="text-rose-300">{detail.alert.sigmaAbove}</dd>
-                <dt className="text-zinc-500">Percentile</dt><dd>{detail.alert.evidence.percentile}th</dd>
-                <dt className="text-zinc-500">Cohort size</dt><dd>{detail.alert.evidence.cohortSize}</dd>
-                <dt className="text-zinc-500">Rule σ</dt><dd>{detail.alert.evidence.ruleSigma}</dd>
-                <dt className="text-zinc-500">Critical σ</dt><dd>{detail.alert.evidence.criticalSigma}</dd>
+                <dt className="text-zinc-400">Observed value</dt><dd>{detail.alert.value}</dd>
+                <dt className="text-zinc-400">Cohort mean</dt><dd>{detail.alert.cohortMean}</dd>
+                <dt className="text-zinc-400">Cohort σ</dt><dd>{detail.alert.cohortStddev}</dd>
+                <dt className="text-zinc-400">σ above</dt><dd className="text-rose-300">{detail.alert.sigmaAbove}</dd>
+                <dt className="text-zinc-400">Percentile</dt><dd>{detail.alert.evidence.percentile}th</dd>
+                <dt className="text-zinc-400">Cohort size</dt><dd>{detail.alert.evidence.cohortSize}</dd>
+                <dt className="text-zinc-400">Rule σ</dt><dd>{detail.alert.evidence.ruleSigma}</dd>
+                <dt className="text-zinc-400">Critical σ</dt><dd>{detail.alert.evidence.criticalSigma}</dd>
               </dl>
             </div>
 

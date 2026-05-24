@@ -71,7 +71,7 @@ export function FredSeriesPanel({ className }: FredSeriesPanelProps) {
         <LineChart className="w-4 h-4 text-emerald-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">FRED · {POPULAR_SERIES.find(s => s.id === seriesId)?.label || seriesId}</h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
-        <button type="button" onClick={() => void fetchData(seriesId)} disabled={loading} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label="Refresh">
+        <button type="button" onClick={() => void fetchData(seriesId)} disabled={loading} className="p-1 text-zinc-400 hover:text-zinc-200" aria-label="Refresh">
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
@@ -103,7 +103,7 @@ export function FredSeriesPanel({ className }: FredSeriesPanelProps) {
       )}
 
       {data?.ok && valid.length === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No data for that series.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No data for that series.</div>
       )}
 
       {data?.ok && valid.length > 0 && (
@@ -111,12 +111,12 @@ export function FredSeriesPanel({ className }: FredSeriesPanelProps) {
           <div className="px-3 py-3 flex items-baseline justify-between">
             <div>
               <div className="text-2xl font-bold text-zinc-100 tabular-nums">{latest.value.toLocaleString()}</div>
-              <div className="text-[10px] text-zinc-500 font-mono">{latest.date}</div>
+              <div className="text-[10px] text-zinc-400 font-mono">{latest.date}</div>
             </div>
             {earliest && earliest.date !== latest.date && (
               <div className="text-right">
                 <div className="text-xs text-zinc-400 tabular-nums">was {earliest.value.toLocaleString()}</div>
-                <div className="text-[10px] text-zinc-500 font-mono">{earliest.date}</div>
+                <div className="text-[10px] text-zinc-400 font-mono">{earliest.date}</div>
               </div>
             )}
           </div>
@@ -125,7 +125,7 @@ export function FredSeriesPanel({ className }: FredSeriesPanelProps) {
               <polyline fill="none" stroke="#34d399" strokeWidth={1.5}
                 points={valid.map((p, i) => `${i * 10},${40 - (p.value - min) / range * 36 - 2}`).join(' ')} />
             </svg>
-            <div className="flex justify-between text-[10px] text-zinc-500 font-mono mt-1">
+            <div className="flex justify-between text-[10px] text-zinc-400 font-mono mt-1">
               <span>{valid[0].date}</span>
               <span>{valid[valid.length - 1].date}</span>
             </div>
@@ -133,7 +133,7 @@ export function FredSeriesPanel({ className }: FredSeriesPanelProps) {
         </>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Federal Reserve Bank of St. Louis · fred.stlouisfed.org
       </footer>
     </section>

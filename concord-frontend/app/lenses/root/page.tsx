@@ -218,7 +218,7 @@ export default function RootLens() {
           <Hash className="w-7 h-7 text-violet-400" />
           <div>
             <h1 className="text-2xl font-bold text-violet-300">Refusal Algebra</h1>
-            <p className="text-sm text-gray-500">Base-6 numeral system — where numbers carry meaning</p>
+            <p className="text-sm text-gray-400">Base-6 numeral system — where numbers carry meaning</p>
           </div>
         </div>
 
@@ -236,7 +236,7 @@ export default function RootLens() {
               <div key={digit} className="bg-gray-800 rounded-lg p-3 flex items-center gap-3">
                 <span className="text-2xl text-violet-300 w-8 text-center">{glyph}</span>
                 <div>
-                  <div className="text-xs text-gray-500">base-6 digit {digit}</div>
+                  <div className="text-xs text-gray-400">base-6 digit {digit}</div>
                   <div className="text-sm text-gray-300">{name}</div>
                 </div>
               </div>
@@ -250,7 +250,7 @@ export default function RootLens() {
           <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
             {/* Decimal input */}
             <div className="space-y-2">
-              <label className="text-xs text-gray-500">Decimal</label>
+              <label className="text-xs text-gray-400">Decimal</label>
               <input
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
                 placeholder="e.g. 47"
@@ -271,7 +271,7 @@ export default function RootLens() {
 
             {/* Glyph input */}
             <div className="space-y-2">
-              <label className="text-xs text-gray-500">Glyph notation</label>
+              <label className="text-xs text-gray-400">Glyph notation</label>
               <input
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
                 placeholder="e.g. ⟲⟲⟐⊚"
@@ -291,7 +291,7 @@ export default function RootLens() {
         <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Operation Playground</h2>
-            <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
               <input type="checkbox" checked={showSemantic} onChange={e => setShowSemantic(e.target.checked)}
                 className="accent-violet-500" />
               Show semantic layer
@@ -307,7 +307,7 @@ export default function RootLens() {
             </select>
             <input className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
               placeholder="b (decimal)" value={opB} onChange={e => setOpB(e.target.value)} />
-            <span className="text-gray-500 text-sm">=</span>
+            <span className="text-gray-400 text-sm">=</span>
             <div className="text-xl text-violet-300 min-w-[4rem]">{opResult?.numerical ?? '–'}</div>
           </div>
 
@@ -376,7 +376,7 @@ export default function RootLens() {
               ⸱ (radix)
             </button>
             <button onClick={() => setGlyphInput('')}
-              className="px-3 py-2 bg-gray-800 hover:bg-red-900/30 border border-gray-700 hover:border-red-700 rounded-lg text-gray-500 hover:text-red-400 text-sm transition-colors" aria-label="Close">
+              className="px-3 py-2 bg-gray-800 hover:bg-red-900/30 border border-gray-700 hover:border-red-700 rounded-lg text-gray-400 hover:text-red-400 text-sm transition-colors" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>

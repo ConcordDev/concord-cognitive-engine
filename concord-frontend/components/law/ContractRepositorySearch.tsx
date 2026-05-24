@@ -41,7 +41,7 @@ export function ContractRepositorySearch({ onOpen }: { onOpen?: (id: string) => 
       <div className="flex items-center gap-2 mb-3">
         <Search className="w-4 h-4 text-neon-purple" />
         <h2 className="font-semibold text-white">Contract Repository Search</h2>
-        <span className="text-[10px] text-gray-500">full-text across all clauses</span>
+        <span className="text-[10px] text-gray-400">full-text across all clauses</span>
       </div>
       <div className="flex gap-2 mb-3">
         <input
@@ -60,11 +60,11 @@ export function ContractRepositorySearch({ onOpen }: { onOpen?: (id: string) => 
       {err && <p className="text-xs text-rose-400 mb-2">{err}</p>}
       {resp && (
         <div className="space-y-2">
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-gray-400">
             {resp.matchingContracts} of {resp.contractsSearched} contracts match &quot;{resp.query}&quot;
           </p>
           {resp.results.length === 0 && (
-            <p className="text-xs text-gray-600 italic py-3 text-center">No matching contracts.</p>
+            <p className="text-xs text-gray-400 italic py-3 text-center">No matching contracts.</p>
           )}
           {resp.results.map((res) => (
             <div key={res.contractId} className="bg-black/40 border border-white/10 rounded-lg p-2.5">
@@ -74,7 +74,7 @@ export function ContractRepositorySearch({ onOpen }: { onOpen?: (id: string) => 
                 <FileText className="w-3.5 h-3.5 text-neon-cyan shrink-0" />
                 <span className="text-xs font-semibold text-white flex-1 truncate hover:text-neon-cyan">{res.contractTitle}</span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400">{res.status}</span>
-                <span className="text-[9px] text-gray-500">{res.matchCount} hit{res.matchCount !== 1 ? 's' : ''}</span>
+                <span className="text-[9px] text-gray-400">{res.matchCount} hit{res.matchCount !== 1 ? 's' : ''}</span>
               </button>
               <div className="space-y-1 pl-5">
                 {res.hits.map((h, i) => (

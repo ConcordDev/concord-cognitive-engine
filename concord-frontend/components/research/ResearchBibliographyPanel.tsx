@@ -56,7 +56,7 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -67,14 +67,14 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
           <BookOpen className="w-3.5 h-3.5 text-red-400" /> Reading queue
         </h3>
         {queue.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Nothing queued — all references are read.</p>
+          <p className="text-[11px] text-zinc-400 italic">Nothing queued — all references are read.</p>
         ) : (
           <ul className="space-y-1">
             {queue.map((r) => (
               <li key={r.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-xs text-zinc-200 truncate">{r.title}</p>
-                  <p className="text-[10px] text-zinc-500">{r.authors || 'Unknown'}{r.year ? ` · ${r.year}` : ''}</p>
+                  <p className="text-[10px] text-zinc-400">{r.authors || 'Unknown'}{r.year ? ` · ${r.year}` : ''}</p>
                 </div>
                 <button type="button" onClick={() => advance(r)}
                   className={cn('text-[10px] px-2 py-0.5 rounded-lg border capitalize shrink-0',
@@ -108,7 +108,7 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
           </button>
         </div>
         {bibliography.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No references to format.</p>
+          <p className="text-[11px] text-zinc-400 italic">No references to format.</p>
         ) : (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
             <ol className="space-y-2">

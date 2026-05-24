@@ -54,15 +54,15 @@ export function DailyRecommendationPanel() {
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <Compass className="h-4 w-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-white">Today&apos;s recommendation</h3>
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />}
+        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         <button type="button" onClick={refresh} disabled={loading}
-          className="ml-auto p-1 text-zinc-500 hover:text-white disabled:opacity-40" title="Recompute">
+          className="ml-auto p-1 text-zinc-400 hover:text-white disabled:opacity-40" title="Recompute">
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </header>
 
       {!rec ? (
-        <div className="py-6 text-center text-xs text-zinc-500">No recommendation yet.</div>
+        <div className="py-6 text-center text-xs text-zinc-400">No recommendation yet.</div>
       ) : (
         <>
           <div className="rounded border border-white/10 bg-black/30 p-3 flex items-center gap-4">
@@ -75,7 +75,7 @@ export function DailyRecommendationPanel() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-lg font-mono font-bold" style={{ color: colour }}>{rec.recoveryScore}</span>
-                <span className="text-[7px] uppercase text-zinc-500">recovery</span>
+                <span className="text-[7px] uppercase text-zinc-400">recovery</span>
               </div>
             </div>
             <div className="min-w-0">
@@ -113,7 +113,7 @@ export function DailyRecommendationPanel() {
 function Sig({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-white/10 bg-black/30 p-2 text-center">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="text-sm font-mono text-white">{value}</div>
     </div>
   );

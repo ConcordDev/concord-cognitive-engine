@@ -50,7 +50,7 @@ export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChang
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -76,7 +76,7 @@ export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChang
       </section>
 
       {mechanics.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No mechanics defined yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No mechanics defined yet.</p>
       ) : (
         CATS.filter((c) => mechanics.some((m) => m.category === c)).map((cat) => (
           <section key={cat}>
@@ -84,7 +84,7 @@ export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChang
             <ul className="space-y-1.5">
               {mechanics.filter((m) => m.category === cat).map((m) => (
                 <li key={m.id} className="flex items-start gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                  <Cog className="w-3.5 h-3.5 text-zinc-500 mt-0.5 shrink-0" />
+                  <Cog className="w-3.5 h-3.5 text-zinc-400 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-zinc-100">{m.name}</p>
                     {m.description && <p className="text-[11px] text-zinc-400">{m.description}</p>}

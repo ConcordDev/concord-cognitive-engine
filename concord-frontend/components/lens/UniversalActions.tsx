@@ -228,9 +228,9 @@ function UniversalActions({
         <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-neon-cyan" />
           AI Actions
-          <span className="text-xs text-gray-500">(utility brain)</span>
+          <span className="text-xs text-gray-400">(utility brain)</span>
         </h3>
-        {!artifactId && <span className="text-xs text-gray-500">Select an artifact first</span>}
+        {!artifactId && <span className="text-xs text-gray-400">Select an artifact first</span>}
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -266,8 +266,8 @@ function UniversalActions({
           >
             <span className="flex items-center gap-2">
               <span className="text-neon-cyan font-medium">{result.action}</span>
-              {result.source && <span className="text-gray-500">via {result.source}</span>}
-              {result.model && <span className="text-gray-500">({result.model})</span>}
+              {result.source && <span className="text-gray-400">via {result.source}</span>}
+              {result.model && <span className="text-gray-400">({result.model})</span>}
               {result.confidence && (
                 <span
                   className={cn(
@@ -298,7 +298,7 @@ function UniversalActions({
               </div>
               <button
                 onClick={() => setResult(null)}
-                className="mt-2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300"
+                className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300"
               >
                 <X className="w-3 h-3" /> Dismiss
               </button>

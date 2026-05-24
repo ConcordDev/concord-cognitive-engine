@@ -79,14 +79,14 @@ export function WorldCard({
       <div className="flex flex-1 flex-col p-3 gap-2">
         <div>
           <p className="text-sm font-semibold text-zinc-100 truncate">{world.name}</p>
-          <p className="text-[10px] text-zinc-500 font-mono">
+          <p className="text-[10px] text-zinc-400 font-mono">
             {KIND_LABEL[world.kind] || world.kind} · by {world.spawned_by_user_id.slice(0, 8)}
           </p>
         </div>
         {world.description && (
           <p className="text-[11px] text-zinc-400 line-clamp-2">{world.description}</p>
         )}
-        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-zinc-500">
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
           <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" />{world.visits}</span>
           <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{world.unique_visitors}</span>
           <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{world.favorites}</span>

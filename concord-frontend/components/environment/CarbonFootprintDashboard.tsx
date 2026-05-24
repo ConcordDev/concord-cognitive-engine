@@ -105,11 +105,11 @@ export function CarbonFootprintDashboard() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : !hasData ? (
-        <div className="px-4 py-12 text-center text-xs text-gray-500">
+        <div className="px-4 py-12 text-center text-xs text-gray-400">
           <Globe className="w-7 h-7 mx-auto mb-2 opacity-30" />
           No data yet for {year}. Log emissions activities to build your Scope 1/2/3 rollup.
         </div>
@@ -124,7 +124,7 @@ export function CarbonFootprintDashboard() {
                   key={s}
                   className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5"
                 >
-                  <div className="text-[9px] uppercase tracking-wider text-gray-500">
+                  <div className="text-[9px] uppercase tracking-wider text-gray-400">
                     {tone.label}
                   </div>
                   <div className={cn('text-lg font-mono font-bold tabular-nums', tone.colour)}>
@@ -139,14 +139,14 @@ export function CarbonFootprintDashboard() {
                       style={{ width: `${breakdown!.scopeShare[s]}%` }}
                     />
                   </div>
-                  <div className="mt-0.5 text-[9px] text-gray-500">
+                  <div className="mt-0.5 text-[9px] text-gray-400">
                     {breakdown!.scopeShare[s]}% of total
                   </div>
                 </div>
               );
             })}
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5">
-              <div className="text-[9px] uppercase tracking-wider text-gray-500">
+              <div className="text-[9px] uppercase tracking-wider text-gray-400">
                 Gross total
               </div>
               <div className="text-lg font-mono font-bold tabular-nums text-emerald-300">
@@ -219,14 +219,14 @@ export function CarbonFootprintDashboard() {
                 Year-over-year trend
               </span>
               {trend?.hasTarget && trend.target && (
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-gray-400">
                   vs target · {trend.target.name} ({trend.target.baseYear}→
                   {trend.target.targetYear})
                 </span>
               )}
             </div>
             {trendSeries.length === 0 ? (
-              <div className="text-center text-xs text-gray-500 py-6">
+              <div className="text-center text-xs text-gray-400 py-6">
                 No multi-year history yet. Log activities across years to see the trend.
               </div>
             ) : (

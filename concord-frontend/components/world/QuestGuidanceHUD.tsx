@@ -109,7 +109,7 @@ export default function QuestGuidanceHUD() {
               {objective.questTitle || objective.description?.slice(0, 50) || 'Follow the beacon'}
             </span>
             {objective.npcId && (
-              <span className="text-[10px] text-zinc-500">→ {objective.npcId}</span>
+              <span className="text-[10px] text-zinc-400">→ {objective.npcId}</span>
             )}
           </button>
           {cardExpanded && (
@@ -119,7 +119,7 @@ export default function QuestGuidanceHUD() {
                 <p className="text-zinc-300 leading-snug mb-2">{objective.description}</p>
               )}
               {objective.worldPos && (
-                <div className="text-[10px] text-zinc-500 font-mono">
+                <div className="text-[10px] text-zinc-400 font-mono">
                   beacon at ({Math.round(objective.worldPos.x)},{' '}
                   {Math.round(objective.worldPos.z)})
                 </div>

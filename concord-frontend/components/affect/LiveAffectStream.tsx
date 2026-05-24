@@ -68,23 +68,23 @@ export function LiveAffectStream() {
       </header>
 
       {(state.isError || events.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Affect Translation Spine unreachable.</div>}
-      {state.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Reading affect state…</div>}
+      {state.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Reading affect state…</div>}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <div className="rounded-md border border-cyan-500/20 bg-zinc-950/60 p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Intensity</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Intensity</div>
           <div className="mt-1 font-mono text-3xl text-cyan-300">{intensity.toFixed(2)}</div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800"><div className="h-full bg-cyan-400" style={{ width: `${Math.min(100, Math.abs(intensity) * 100)}%` }} /></div>
         </div>
         <div className="rounded-md border border-cyan-500/20 bg-zinc-950/60 p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Polarity</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Polarity</div>
           <div className={`mt-1 font-mono text-3xl ${polColor}`}>{polarity > 0 ? '+' : ''}{polarity.toFixed(2)}</div>
-          <div className="mt-2 text-[11px] text-zinc-500">{polLabel}</div>
+          <div className="mt-2 text-[11px] text-zinc-400">{polLabel}</div>
         </div>
         <div className="rounded-md border border-cyan-500/20 bg-zinc-950/60 p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Mood</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Mood</div>
           <div className="mt-1 font-mono text-base text-cyan-300 line-clamp-1">{s.mood || '—'}</div>
-          {s.lastEventAt && <div className="mt-2 text-[10px] text-zinc-500">last event {new Date(s.lastEventAt).toLocaleTimeString()}</div>}
+          {s.lastEventAt && <div className="mt-2 text-[10px] text-zinc-400">last event {new Date(s.lastEventAt).toLocaleTimeString()}</div>}
         </div>
       </div>
 
@@ -105,14 +105,14 @@ export function LiveAffectStream() {
                   <span className="font-mono text-zinc-300">{e.type || '?'}</span>
                 </div>
                 <div className="flex items-center gap-3 font-mono text-[10px]">
-                  <span className="text-zinc-500">i={inten.toFixed(2)}</span>
+                  <span className="text-zinc-400">i={inten.toFixed(2)}</span>
                   <span className={polClass}>p={pol > 0 ? '+' : ''}{pol.toFixed(2)}</span>
                   <span className="text-zinc-600">{ts ? new Date(ts).toLocaleTimeString() : ''}</span>
                 </div>
               </div>
             );
           })}
-          {eventList.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No affect events yet — engage chat/world to emit.</div>}
+          {eventList.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No affect events yet — engage chat/world to emit.</div>}
         </div>
       </div>
     </div>

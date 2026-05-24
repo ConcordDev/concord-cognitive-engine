@@ -95,7 +95,7 @@ export function ArtworkCompare() {
       )}
 
       {!data && !error && !loading && (
-        <div className="py-6 text-center text-[12px] text-zinc-500 italic">No comparison yet. Enter 2–4 Cleveland Museum artwork ids.</div>
+        <div className="py-6 text-center text-[12px] text-zinc-400 italic">No comparison yet. Enter 2–4 Cleveland Museum artwork ids.</div>
       )}
 
       {data && (
@@ -110,7 +110,7 @@ export function ArtworkCompare() {
                   ) : <Frame className="w-7 h-7 text-zinc-700" />}
                 </div>
                 <div className="mt-1.5 text-[11px] font-semibold text-zinc-100 line-clamp-2">{it.title}</div>
-                <div className="text-[10px] text-zinc-500">{it.artist}{it.date ? ` · ${it.date}` : ''}</div>
+                <div className="text-[10px] text-zinc-400">{it.artist}{it.date ? ` · ${it.date}` : ''}</div>
               </div>
             ))}
           </div>

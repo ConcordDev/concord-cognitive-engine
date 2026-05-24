@@ -161,23 +161,23 @@ export function VariationsPanel() {
         </header>
 
         {!selected ? (
-          <div className="px-3 py-12 text-center text-xs text-gray-500">
+          <div className="px-3 py-12 text-center text-xs text-gray-400">
             <Layers className="w-6 h-6 mx-auto mb-2 opacity-30" />
             Pick a listing to manage its size / color / material options.
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : (
           <div className="p-4 space-y-2">
             {rows.length === 0 && (
-              <div className="text-xs text-gray-500 py-4 text-center">
+              <div className="text-xs text-gray-400 py-4 text-center">
                 No variations yet. Add option rows below.
               </div>
             )}
             {rows.length > 0 && (
-              <div className="grid grid-cols-12 gap-2 text-[10px] uppercase text-gray-500 px-1">
+              <div className="grid grid-cols-12 gap-2 text-[10px] uppercase text-gray-400 px-1">
                 <span className="col-span-3">Option</span>
                 <span className="col-span-3">Value</span>
                 <span className="col-span-2">SKU</span>

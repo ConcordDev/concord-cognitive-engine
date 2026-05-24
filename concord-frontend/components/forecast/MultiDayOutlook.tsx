@@ -67,10 +67,10 @@ export function MultiDayOutlook({ worldId }: { worldId: string }) {
         </select>
       </div>
 
-      {loading && <p className="text-xs text-zinc-500">Composing outlook…</p>}
+      {loading && <p className="text-xs text-zinc-400">Composing outlook…</p>}
 
       {!loading && (!outlook || outlook.length === 0) && (
-        <p className="py-8 text-center text-xs italic text-zinc-500">No data yet.</p>
+        <p className="py-8 text-center text-xs italic text-zinc-400">No data yet.</p>
       )}
 
       {!loading && outlook && outlook.length > 0 && (
@@ -101,7 +101,7 @@ export function MultiDayOutlook({ worldId }: { worldId: string }) {
                   {d.weather.temperature_c !== null ? `${d.weather.temperature_c}°C` : '—'}
                   {d.weather.humidity_pct !== null ? ` · ${d.weather.humidity_pct}%` : ''}
                 </span>
-                <span className="w-24 shrink-0 text-right font-mono text-[10px] text-zinc-500">
+                <span className="w-24 shrink-0 text-right font-mono text-[10px] text-zinc-400">
                   {(d.weather.confidence * 100).toFixed(0)}% conf
                 </span>
               </li>

@@ -198,7 +198,7 @@ export function PublicCommentPanel() {
             </span>
           </div>
           {list.comments.length === 0 ? (
-            <p className="py-6 text-center text-xs text-zinc-500">
+            <p className="py-6 text-center text-xs text-zinc-400">
               No comments yet on this subject.
             </p>
           ) : (

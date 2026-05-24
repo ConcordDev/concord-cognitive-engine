@@ -565,7 +565,7 @@ export function ArgumentMapStudio() {
                     <span className="text-[12px] font-semibold text-zinc-100">{sc.name}</span>
                     <span className="rounded bg-purple-500/15 px-1 py-0.5 text-[9px] uppercase text-purple-300">{sc.category}</span>
                   </div>
-                  <p className="mt-0.5 text-[10px] text-zinc-500 line-clamp-2">{sc.description}</p>
+                  <p className="mt-0.5 text-[10px] text-zinc-400 line-clamp-2">{sc.description}</p>
                 </button>
               ))}
             </div>
@@ -576,7 +576,7 @@ export function ArgumentMapStudio() {
                 <button
                   type="button"
                   onClick={() => { setActiveScheme(null); setSchemeValues({}); }}
-                  className="text-zinc-500 hover:text-zinc-200"
+                  className="text-zinc-400 hover:text-zinc-200"
                   aria-label="Back to scheme list"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -585,7 +585,7 @@ export function ArgumentMapStudio() {
               <p className="text-[10px] text-zinc-400">{activeScheme.description}</p>
               {activeScheme.slots.map((slot) => (
                 <div key={slot}>
-                  <label className="mb-0.5 block text-[10px] uppercase tracking-wider text-zinc-500">{slot}</label>
+                  <label className="mb-0.5 block text-[10px] uppercase tracking-wider text-zinc-400">{slot}</label>
                   <input
                     type="text"
                     value={schemeValues[slot] || ''}
@@ -620,9 +620,9 @@ export function ArgumentMapStudio() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[230px_1fr]">
         {/* Map list */}
         <div className="space-y-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Your maps ({maps.length})</p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Your maps ({maps.length})</p>
           {maps.length === 0 && (
-            <p className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-600">
+            <p className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-400">
               No argument maps yet. Create one or build from a scheme.
             </p>
           )}
@@ -646,9 +646,9 @@ export function ArgumentMapStudio() {
                       : m.status === 'archived' ? 'bg-zinc-700/40 text-zinc-400'
                       : 'bg-cyan-500/15 text-cyan-300',
                   )}>{m.status}</span>
-                  <span className="text-[9px] text-zinc-500">{m.nodeCount} nodes</span>
+                  <span className="text-[9px] text-zinc-400">{m.nodeCount} nodes</span>
                   {m.collaborators.length > 0 && (
-                    <span className="flex items-center gap-0.5 text-[9px] text-zinc-500">
+                    <span className="flex items-center gap-0.5 text-[9px] text-zinc-400">
                       <Users className="w-2.5 h-2.5" />{m.collaborators.length}
                     </span>
                   )}
@@ -672,7 +672,7 @@ export function ArgumentMapStudio() {
           {!activeMap ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-800 py-12">
               <GitBranch className="mb-2 w-8 h-8 text-zinc-700" />
-              <p className="text-[12px] text-zinc-500">Select a map to open the visual argument tree.</p>
+              <p className="text-[12px] text-zinc-400">Select a map to open the visual argument tree.</p>
             </div>
           ) : (
             <>
@@ -680,7 +680,7 @@ export function ArgumentMapStudio() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-[13px] font-semibold text-white">{activeMap.title}</p>
-                  <p className="text-[10px] text-zinc-500">Root claim: {activeMap.rootClaim}</p>
+                  <p className="text-[10px] text-zinc-400">Root claim: {activeMap.rootClaim}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <select
@@ -734,7 +734,7 @@ export function ArgumentMapStudio() {
 
               {/* Visual tree */}
               <div>
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
                   Visual argument tree — tap a node to branch / link evidence
                 </p>
                 <TreeDiagram root={treeRoot} onSelect={(n) => setSelectedNodeId(n.id)} />
@@ -746,7 +746,7 @@ export function ArgumentMapStudio() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-[12px] font-medium text-zinc-100">{selectedNode.text}</p>
-                      <p className="text-[10px] text-zinc-500">
+                      <p className="text-[10px] text-zinc-400">
                         {selectedNode.type} · stance {selectedNode.stance} · strength {selectedNode.strength}/5 · by {selectedNode.author}
                       </p>
                     </div>
@@ -789,7 +789,7 @@ export function ArgumentMapStudio() {
 
                   {/* Add child node — pro/con branching */}
                   <div className="rounded border border-zinc-800 bg-zinc-950/50 p-2 space-y-1.5">
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Branch from this node</p>
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Branch from this node</p>
                     <textarea
                       value={addText}
                       onChange={(e) => setAddText(e.target.value)}
@@ -810,7 +810,7 @@ export function ArgumentMapStudio() {
                                 ? s === 'pro' ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
                                   : s === 'con' ? 'border-rose-500/40 bg-rose-500/15 text-rose-300'
                                   : 'border-indigo-500/40 bg-indigo-500/15 text-indigo-300'
-                                : 'border-zinc-800 text-zinc-500 hover:bg-zinc-800',
+                                : 'border-zinc-800 text-zinc-400 hover:bg-zinc-800',
                             )}
                           >
                             {s === 'pro' && <ThumbsUp className="w-2.5 h-2.5" />}
@@ -819,7 +819,7 @@ export function ArgumentMapStudio() {
                           </button>
                         ))}
                       </div>
-                      <label className="flex items-center gap-1 text-[10px] text-zinc-500">
+                      <label className="flex items-center gap-1 text-[10px] text-zinc-400">
                         Strength
                         <select
                           value={addStrength}
@@ -843,14 +843,14 @@ export function ArgumentMapStudio() {
 
                   {/* Evidence linking */}
                   <div className="rounded border border-zinc-800 bg-zinc-950/50 p-2 space-y-1.5">
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold flex items-center gap-1">
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1">
                       <Link2 className="w-3 h-3" /> Evidence ({(selectedNode.evidence || []).length})
                     </p>
                     {(selectedNode.evidence || []).map((ev) => (
                       <div key={ev.id} className="flex items-start justify-between gap-2 rounded border border-zinc-800 bg-zinc-900/60 p-1.5">
                         <div className="min-w-0">
                           <p className="truncate text-[11px] text-zinc-200">{ev.title}</p>
-                          <p className="text-[9px] text-zinc-500">
+                          <p className="text-[9px] text-zinc-400">
                             {ev.source || 'no source'} · {ev.type.replace(/_/g, ' ')} · cred {ev.credibility}/5 · rel {ev.relevance}/5 · weight {ev.weight}/5
                           </p>
                         </div>
@@ -894,7 +894,7 @@ export function ArgumentMapStudio() {
                       <div className="flex items-center gap-1.5">
                         {([['Cred', evCred, setEvCred], ['Rel', evRel, setEvRel], ['Wt', evWeight, setEvWeight]] as const).map(
                           ([label, val, setter]) => (
-                            <label key={label} className="flex items-center gap-0.5 text-[9px] text-zinc-500">
+                            <label key={label} className="flex items-center gap-0.5 text-[9px] text-zinc-400">
                               {label}
                               <select
                                 value={val}
@@ -920,14 +920,14 @@ export function ArgumentMapStudio() {
                   </div>
                 </div>
               ) : (
-                <p className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-600">
+                <p className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-400">
                   Select a node in the tree above to branch arguments or attach evidence.
                 </p>
               )}
 
               {/* Collaborators */}
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5 space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold flex items-center gap-1">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1">
                   <Users className="w-3 h-3" /> Collaborative debate ({activeMap.collaborators.length})
                 </p>
                 {activeMap.collaborators.length > 0 && (
@@ -970,7 +970,7 @@ export function ArgumentMapStudio() {
 
               {/* Export */}
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5 space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold flex items-center gap-1">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1">
                   <Download className="w-3 h-3" /> Export argument map
                 </p>
                 <div className="flex items-center gap-1.5">

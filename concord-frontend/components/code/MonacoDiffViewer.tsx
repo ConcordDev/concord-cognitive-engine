@@ -92,7 +92,7 @@ export default function MonacoDiffViewer({
           enableSplitViewResizing: true,
           lineNumbers: 'on',
         }}
-        loading={<div className="flex items-center justify-center h-full text-gray-500 text-xs">Loading diff…</div>}
+        loading={<div className="flex items-center justify-center h-full text-gray-400 text-xs">Loading diff…</div>}
       />
     </div>
   );

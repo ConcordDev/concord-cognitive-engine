@@ -81,7 +81,7 @@ export function FashionCapsulePanel() {
   const unenroll = async (id: string) => { await lensRun('fashion', 'challenge-unenroll', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const enrolledIds = new Set(challenges.map((c) => c.itemId));
@@ -111,7 +111,7 @@ export function FashionCapsulePanel() {
           <Plus className="w-3.5 h-3.5" /> Create capsule
         </button>
         {capsules.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No capsule wardrobes yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No capsule wardrobes yet.</p>
         ) : (
           <ul className="space-y-2">
             {capsules.map((c) => (
@@ -122,7 +122,7 @@ export function FashionCapsulePanel() {
                     <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform', openCap === c.id && 'rotate-90')} />
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-zinc-100">{c.name}</p>
-                      <p className="text-[10px] text-zinc-500 capitalize">{c.season} · {c.filled}/{c.targetSize} items</p>
+                      <p className="text-[10px] text-zinc-400 capitalize">{c.season} · {c.filled}/{c.targetSize} items</p>
                     </div>
                   </button>
                   <span className="text-[11px] text-fuchsia-300 mr-2">{c.pctFilled}%</span>
@@ -136,7 +136,7 @@ export function FashionCapsulePanel() {
                 {openCap === c.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50">
                     {items.length === 0 ? (
-                      <p className="text-[11px] text-zinc-500 italic">Add closet items first.</p>
+                      <p className="text-[11px] text-zinc-400 italic">Add closet items first.</p>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {items.map((i) => {
@@ -181,7 +181,7 @@ export function FashionCapsulePanel() {
           </button>
         </div>
         {challenges.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No items enrolled. Pledge to wear pieces 30 times.</p>
+          <p className="text-[11px] text-zinc-400 italic">No items enrolled. Pledge to wear pieces 30 times.</p>
         ) : (
           <ul className="space-y-2">
             {challenges.map((ch) => (

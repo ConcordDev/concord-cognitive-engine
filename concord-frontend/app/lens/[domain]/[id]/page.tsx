@@ -124,7 +124,7 @@ export default async function PublicLensArtifactPage({
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-white">Not Found</h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-400">
             This content may have been removed or is no longer available.
           </p>
           <Link
@@ -164,11 +164,11 @@ export default async function PublicLensArtifactPage({
           </span>
           <span className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-400">{typeLabel}</span>
           {source && (
-            <span className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-500">
+            <span className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-400">
               from {source}
             </span>
           )}
-          {createdAt && <span className="text-xs text-zinc-600 ml-auto">{createdAt}</span>}
+          {createdAt && <span className="text-xs text-zinc-400 ml-auto">{createdAt}</span>}
         </div>
 
         {/* Title */}
@@ -186,7 +186,7 @@ export default async function PublicLensArtifactPage({
               .map((tag: string) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 rounded-full text-xs bg-zinc-800/80 text-zinc-500"
+                  className="px-2 py-0.5 rounded-full text-xs bg-zinc-800/80 text-zinc-400"
                 >
                   {tag}
                 </span>

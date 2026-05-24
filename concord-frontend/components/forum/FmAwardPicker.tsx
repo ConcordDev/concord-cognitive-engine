@@ -53,13 +53,13 @@ export function FmAwardPicker({
           <h3 className="flex items-center gap-2 text-sm font-bold text-zinc-100">
             <Award className="w-4 h-4 text-amber-400" /> Give an award
           </h3>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200" aria-label="Close">
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
         {error && <p className="text-[11px] text-rose-400 px-4 pt-2">{error}</p>}
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+          <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
         ) : (
           <div className="grid grid-cols-3 gap-2 p-4">
             {catalog.map((a) => (
@@ -67,7 +67,7 @@ export function FmAwardPicker({
                 className="flex flex-col items-center gap-1 p-3 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-amber-500/50 disabled:opacity-40">
                 {busy === a.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-xl">{a.icon}</span>}
                 <span className="text-[11px] text-zinc-200 font-medium">{a.name}</span>
-                <span className="text-[10px] text-zinc-500">+{a.weight}</span>
+                <span className="text-[10px] text-zinc-400">+{a.weight}</span>
               </button>
             ))}
           </div>

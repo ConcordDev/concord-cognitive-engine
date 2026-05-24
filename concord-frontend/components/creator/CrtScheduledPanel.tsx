@@ -85,7 +85,7 @@ export function CrtScheduledPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const queue = result?.queue ?? [];
@@ -166,7 +166,7 @@ export function CrtScheduledPanel() {
       </div>
 
       {queue.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No scheduled releases yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No scheduled releases yet.</p>
       ) : (
         <ul className="space-y-1">
           {queue.map((q) => (
@@ -174,9 +174,9 @@ export function CrtScheduledPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-zinc-100 truncate">
                   {q.title}
-                  <span className="text-zinc-500 capitalize"> · {q.format}</span>
+                  <span className="text-zinc-400 capitalize"> · {q.format}</span>
                 </p>
-                <p className="text-[10px] text-zinc-600">
+                <p className="text-[10px] text-zinc-400">
                   {q.status === 'published' && q.publishedAt
                     ? `published ${new Date(q.publishedAt).toLocaleString()}`
                     : `release ${new Date(q.releaseAt).toLocaleString()}`}
@@ -199,7 +199,7 @@ export function CrtScheduledPanel() {
                 <span className="text-[10px] text-emerald-400 uppercase">published</span>
               )}
               {q.status === 'cancelled' && (
-                <span className="text-[10px] text-zinc-500 uppercase">cancelled</span>
+                <span className="text-[10px] text-zinc-400 uppercase">cancelled</span>
               )}
             </li>
           ))}

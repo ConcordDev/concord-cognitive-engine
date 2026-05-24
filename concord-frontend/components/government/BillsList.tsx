@@ -63,10 +63,10 @@ export function BillsList() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono text-xs text-cyan-300">{b.type}{b.number}</span>
-                  <span className="text-[10px] text-zinc-500">{b.originChamber}</span>
+                  <span className="text-[10px] text-zinc-400">{b.originChamber}</span>
                 </div>
                 <p className="mt-0.5 line-clamp-2 text-sm text-white">{b.title}</p>
-                <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
+                <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-zinc-400">
                   {b.introducedDate && <span>Introduced {b.introducedDate}</span>}
                   {b.latestActionDate && <span>· Last action {b.latestActionDate}</span>}
                 </div>
@@ -82,7 +82,7 @@ export function BillsList() {
                   extraTags={['government', 'bill', 'congress', String(b.congress)]}
                   rawData={b}
                 />
-                {b.url && <a href={b.url} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>}
+                {b.url && <a href={b.url} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>}
               </div>
             </div>
           </motion.div>

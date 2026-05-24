@@ -198,7 +198,7 @@ export function AccountingActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -209,16 +209,16 @@ export function AccountingActionPanel() {
           <div className={cn('rounded-md border p-2.5', tbResult.balanced ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Trial balance</div>
             <div className={cn('text-2xl font-bold', tbResult.balanced ? 'text-emerald-300' : 'text-red-300')}>{tbResult.balanced ? '✓' : '⚠'}<span className="text-xs text-zinc-400"> {tbResult.balanced ? 'balanced' : 'off by $' + tbResult.difference}</span></div>
-            <div className="text-[10px] text-zinc-500">D ${tbResult.totalDebits?.toLocaleString()} · C ${tbResult.totalCredits?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">{tbResult.accountCount} accounts</div>
+            <div className="text-[10px] text-zinc-400">D ${tbResult.totalDebits?.toLocaleString()} · C ${tbResult.totalCredits?.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">{tbResult.accountCount} accounts</div>
           </div>
         )}
         {plResult && (
           <div className={cn('rounded-md border p-2.5', plResult.netIncome >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">P&L · {plResult.period}</div>
             <div className={cn('text-2xl font-bold', plResult.netIncome >= 0 ? 'text-emerald-300' : 'text-red-300')}>${plResult.netIncome.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">rev ${plResult.revenue.toLocaleString()} - exp ${plResult.expenses.toLocaleString()}</div>
-            {plResult.grossMargin != null && <div className="text-[10px] text-zinc-500">margin {plResult.grossMargin}%</div>}
+            <div className="text-[10px] text-zinc-400">rev ${plResult.revenue.toLocaleString()} - exp ${plResult.expenses.toLocaleString()}</div>
+            {plResult.grossMargin != null && <div className="text-[10px] text-zinc-400">margin {plResult.grossMargin}%</div>}
           </div>
         )}
         {agingResult && (
@@ -233,7 +233,7 @@ export function AccountingActionPanel() {
           <div className={cn('rounded-md border p-2.5 max-h-44 overflow-y-auto', varResult.totalVariance >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Variance · {varResult.status}</div>
             <div className={cn('text-2xl font-bold', varResult.totalVariance >= 0 ? 'text-emerald-300' : 'text-red-300')}>{varResult.totalVariance >= 0 ? '+' : ''}${varResult.totalVariance.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">${varResult.totalActual.toLocaleString()} / ${varResult.totalPlanned.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">${varResult.totalActual.toLocaleString()} / ${varResult.totalPlanned.toLocaleString()}</div>
             {varResult.lines.slice(0, 4).map((l, i) => <div key={i} className={cn('text-[10px] mt-0.5', l.variance < 0 ? 'text-red-300' : 'text-emerald-300')}><span className="font-mono">{l.category}</span> {l.variancePercent >= 0 ? '+' : ''}{l.variancePercent}%</div>)}
           </div>
         )}

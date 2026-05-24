@@ -49,7 +49,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
   const del = async (id: string) => { await lensRun('fashion', 'outfit-delete', { id }); await refresh(); onChange(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -75,7 +75,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
             </select>
           </div>
           {items.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">Add closet items first.</p>
+            <p className="text-[11px] text-zinc-400 italic">Add closet items first.</p>
           ) : (
             <div className="flex flex-wrap gap-1">
               {items.map((i) => (
@@ -96,7 +96,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {outfits.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No outfits. Combine closet items into outfits.
         </div>
       ) : (
@@ -108,7 +108,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
                   <Layers className="w-4 h-4 text-fuchsia-400" />
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{o.name}</p>
-                    <p className="text-[11px] text-zinc-500 capitalize">{o.occasion} · {o.itemIds.length} items · worn {o.timesWorn}×</p>
+                    <p className="text-[11px] text-zinc-400 capitalize">{o.occasion} · {o.itemIds.length} items · worn {o.timesWorn}×</p>
                   </div>
                   <ChevronRight className={cn('w-4 h-4 text-zinc-600 ml-auto transition-transform', open === o.id && 'rotate-90')} />
                 </button>
@@ -129,7 +129,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-zinc-500 italic">No items in this outfit.</p>
+                    <p className="text-[11px] text-zinc-400 italic">No items in this outfit.</p>
                   )}
                 </div>
               )}

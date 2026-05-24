@@ -100,11 +100,11 @@ export function VerifyQueue({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 py-6 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 py-6 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : quests.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-400">
           You have not posted any quests yet.
         </div>
       ) : (
@@ -118,8 +118,8 @@ export function VerifyQueue({ onChanged }: { onChanged?: () => void }) {
                 <button onClick={() => loadClaims(q.id)}
                   className="flex w-full items-center justify-between gap-3 p-3 text-left">
                   <div className="flex items-center gap-2">
-                    {open ? <ChevronDown className="h-4 w-4 text-zinc-500" />
-                      : <ChevronRight className="h-4 w-4 text-zinc-500" />}
+                    {open ? <ChevronDown className="h-4 w-4 text-zinc-400" />
+                      : <ChevronRight className="h-4 w-4 text-zinc-400" />}
                     <span className="text-sm font-medium text-white">{q.title}</span>
                     <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">
                       {q.status.replace('_', ' ')}
@@ -144,7 +144,7 @@ export function VerifyQueue({ onChanged }: { onChanged?: () => void }) {
                       </button>
                     )}
                     {qClaims.length === 0 && (
-                      <p className="text-xs text-zinc-500">No claims on this quest yet.</p>
+                      <p className="text-xs text-zinc-400">No claims on this quest yet.</p>
                     )}
                     {qClaims.map((c) => (
                       <div key={c.id} className="rounded border border-zinc-800 bg-zinc-900/60 p-2.5">
@@ -169,7 +169,7 @@ export function VerifyQueue({ onChanged }: { onChanged?: () => void }) {
                             )}
                           </div>
                         ) : (
-                          <p className="mt-1.5 text-[11px] text-zinc-600">No proof submitted yet.</p>
+                          <p className="mt-1.5 text-[11px] text-zinc-400">No proof submitted yet.</p>
                         )}
                         {c.status === 'submitted' && (
                           <div className="mt-2 space-y-1.5">

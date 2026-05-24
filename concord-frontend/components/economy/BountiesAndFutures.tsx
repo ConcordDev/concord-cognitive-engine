@@ -21,7 +21,7 @@ const BOUNTY_STATUS_COLORS: Record<string, string> = {
   claimed: 'text-blue-400',
   submitted: 'text-yellow-400',
   completed: 'text-neon-cyan',
-  expired: 'text-gray-500',
+  expired: 'text-gray-400',
 };
 
 interface Bounty {
@@ -169,7 +169,7 @@ function BountiesTab({ expanded }: { expanded: boolean }) {
       )}
 
       {bounties.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">No bounties yet.</p>
+        <p className="text-sm text-gray-400 text-center py-4">No bounties yet.</p>
       ) : (
         bounties.slice(0, expanded ? 20 : 5).map(bounty => (
           <div key={bounty.id} className="p-3 bg-lattice-deep rounded-lg">
@@ -179,7 +179,7 @@ function BountiesTab({ expanded }: { expanded: boolean }) {
               </span>
               {bounty.status === 'completed' && <CheckCircle className="w-3 h-3 text-green-400" />}
               {bounty.deadline && (
-                <span className="flex items-center gap-0.5 text-[10px] text-gray-500">
+                <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
                   <Clock className="w-2.5 h-2.5" />
                   {new Date(bounty.deadline).toLocaleDateString()}
                 </span>
@@ -267,7 +267,7 @@ function FuturesTab({ expanded }: { expanded: boolean }) {
       )}
 
       {futures.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">No predictions yet.</p>
+        <p className="text-sm text-gray-400 text-center py-4">No predictions yet.</p>
       ) : (
         futures.slice(0, expanded ? 20 : 5).map(future => (
           <div key={future.id} className="p-3 bg-lattice-deep rounded-lg">
@@ -289,7 +289,7 @@ function FuturesTab({ expanded }: { expanded: boolean }) {
                     )}
                   >
                     <p className="text-xs text-white font-medium">{opt.label}</p>
-                    <p className="text-[10px] text-gray-500">{opt.stakes} XP ({pct}%)</p>
+                    <p className="text-[10px] text-gray-400">{opt.stakes} XP ({pct}%)</p>
                   </button>
                 );
               })}
@@ -297,11 +297,11 @@ function FuturesTab({ expanded }: { expanded: boolean }) {
             <div className="flex items-center justify-between mt-1">
               <span className={cn(
                 'text-[10px]',
-                future.status === 'open' ? 'text-green-400' : future.status === 'resolved' ? 'text-neon-cyan' : 'text-gray-500'
+                future.status === 'open' ? 'text-green-400' : future.status === 'resolved' ? 'text-neon-cyan' : 'text-gray-400'
               )}>
                 {future.status}
               </span>
-              <span className="text-[10px] text-gray-500">{future.totalStaked} XP staked</span>
+              <span className="text-[10px] text-gray-400">{future.totalStaked} XP staked</span>
             </div>
           </div>
         ))

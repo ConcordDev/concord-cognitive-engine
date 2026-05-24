@@ -250,7 +250,7 @@ export function ContentPublisher({
                 <h3 className="text-sm font-semibold">
                   {published ? 'Published!' : 'Share & Publish'}
                 </h3>
-                <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white p-1" aria-label="Close">
+                <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white p-1" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -290,7 +290,7 @@ export function ContentPublisher({
                           'flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs transition-colors',
                           activeTab === tab.id
                             ? 'text-neon-cyan border-b-2 border-neon-cyan bg-neon-cyan/5'
-                            : 'text-gray-500 hover:text-gray-300'
+                            : 'text-gray-400 hover:text-gray-300'
                         )}
                       >
                         <tab.icon className="w-3.5 h-3.5" />
@@ -316,13 +316,13 @@ export function ContentPublisher({
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => setVisibility(visibility === 'public' ? 'followers' : 'public')}
-                                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
                               >
                                 {visibility === 'public' ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
                                 {visibility === 'public' ? 'Public' : 'Followers only'}
                               </button>
                             </div>
-                            <span className="text-[10px] text-gray-600">
+                            <span className="text-[10px] text-gray-400">
                               from {domain} lens
                             </span>
                           </div>
@@ -336,7 +336,7 @@ export function ContentPublisher({
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium truncate">{title}</p>
-                              <p className="text-[10px] text-gray-500">{contentType} from {domain}</p>
+                              <p className="text-[10px] text-gray-400">{contentType} from {domain}</p>
                             </div>
                           </div>
                         )}
@@ -375,7 +375,7 @@ export function ContentPublisher({
                           >
                             <div className="text-left">
                               <p className="font-medium">{target.label}</p>
-                              <p className="text-[10px] text-gray-600">{target.desc}</p>
+                              <p className="text-[10px] text-gray-400">{target.desc}</p>
                             </div>
                             {selectedLens === target.id && publishing ? (
                               <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />
@@ -419,7 +419,7 @@ export function ContentPublisher({
                     {/* Tab: Marketplace */}
                     {activeTab === 'marketplace' && (
                       <div className="space-y-3">
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           Publish this {contentType} to the Marketplace where others can discover, fork, or purchase it.
                         </p>
                         <button
@@ -431,7 +431,7 @@ export function ContentPublisher({
                           Publish to Marketplace
                         </button>
                         {!artifactId && (
-                          <p className="text-[10px] text-gray-600 text-center">
+                          <p className="text-[10px] text-gray-400 text-center">
                             Save your work first to publish to the marketplace
                           </p>
                         )}

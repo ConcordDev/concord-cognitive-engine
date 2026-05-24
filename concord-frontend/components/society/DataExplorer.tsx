@@ -363,7 +363,7 @@ function ChartView({ aliases }: { aliases: Record<string, string> }) {
         </div>
       )}
       {data && data.series.length === 0 && !error && (
-        <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-4 text-center text-xs text-zinc-500">
+        <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-4 text-center text-xs text-zinc-400">
           No data points for that country / indicator.
         </p>
       )}
@@ -483,7 +483,7 @@ function BubbleView({ aliases }: { aliases: Record<string, string> }) {
             <text x={340} y={350} textAnchor="middle" fontSize={10} fill="#71717a">{data.xIndicator} →</text>
             <text x={14} y={170} textAnchor="middle" fontSize={10} fill="#71717a" transform="rotate(-90 14 170)">{data.yIndicator} →</text>
           </svg>
-          <p className="mt-1 text-center text-[10px] text-zinc-600">
+          <p className="mt-1 text-center text-[10px] text-zinc-400">
             {frame.bubbles.length} countries · bubble area ∝ population · {data.frameCount} frames {data.startYear}–{data.endYear}
           </p>
         </div>
@@ -578,13 +578,13 @@ function DashboardView() {
               <div key={c.code} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
                 <div className="mb-1 flex items-baseline justify-between">
                   <span className="text-xs font-medium text-zinc-300">{c.indicator}</span>
-                  <span className="font-mono text-[10px] text-zinc-600">{c.code}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">{c.code}</span>
                 </div>
                 {c.latest ? (
                   <>
                     <p className="font-mono text-lg font-semibold text-cyan-300">
                       {c.latest.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      <span className="ml-1 text-[10px] text-zinc-500">{c.latest.year}</span>
+                      <span className="ml-1 text-[10px] text-zinc-400">{c.latest.year}</span>
                     </p>
                     {c.series.length > 1 && (
                       <div className="mt-1">
@@ -601,7 +601,7 @@ function DashboardView() {
                     )}
                   </>
                 ) : (
-                  <p className="text-[11px] text-zinc-600">no data</p>
+                  <p className="text-[11px] text-zinc-400">no data</p>
                 )}
               </div>
             ))}
@@ -665,7 +665,7 @@ function RankingsView({ aliases }: { aliases: Record<string, string> }) {
           <div className="space-y-1">
             {data.rankings.map((r) => (
               <div key={r.code} className="flex items-center gap-2 text-[11px]">
-                <span className="w-6 text-right font-mono text-zinc-500">{r.rank}</span>
+                <span className="w-6 text-right font-mono text-zinc-400">{r.rank}</span>
                 <span className="w-40 truncate text-zinc-300">{r.name}</span>
                 <div className="flex-1 rounded-full bg-zinc-800">
                   <div className="h-3 rounded-full bg-cyan-500/60" style={{ width: `${Math.max(2, (r.value / max) * 100)}%` }} />
@@ -710,7 +710,7 @@ function SavedView() {
       </div>
       {error && <ErrorBox msg={error} />}
       {charts.length === 0 && !loading && !error && (
-        <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-600">
+        <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           No saved charts yet — plot a chart and click &ldquo;Share link&rdquo;.
         </p>
       )}
@@ -721,7 +721,7 @@ function SavedView() {
             <li key={c.id} className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-xs">
               <Link2 className="h-3.5 w-3.5 text-cyan-400" />
               <span className="text-zinc-200">{c.title}</span>
-              <span className="text-[10px] text-zinc-600">{new Date(c.createdAt).toLocaleDateString()}</span>
+              <span className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleDateString()}</span>
               <button
                 onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(full).catch(() => {}); }}
                 className="ml-auto rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">

@@ -69,7 +69,7 @@ export function NotificationBell({
             )}
           </div>
           {notifications.length === 0 ? (
-            <p className="py-4 text-center text-[11px] italic text-zinc-600">No critical alerts paged.</p>
+            <p className="py-4 text-center text-[11px] italic text-zinc-400">No critical alerts paged.</p>
           ) : (
             <ul className="mt-2 max-h-72 space-y-1.5 overflow-y-auto">
               {notifications.map((n) => (
@@ -79,7 +79,7 @@ export function NotificationBell({
                 >
                   <p className="text-[11px] text-zinc-200">{n.message}</p>
                   <div className="mt-1 flex items-center justify-between">
-                    <span className="font-mono text-[9px] text-zinc-500">{new Date(n.createdAt).toLocaleString()}</span>
+                    <span className="font-mono text-[9px] text-zinc-400">{new Date(n.createdAt).toLocaleString()}</span>
                     {!n.acknowledged && (
                       <button
                         type="button"

@@ -201,7 +201,7 @@ export function AnalyticsActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -211,7 +211,7 @@ export function AnalyticsActionPanel() {
         {funnelResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Funnel · {funnelResult.overallConversion}%</div>
-            {funnelResult.stages.map((s, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><div className="flex items-center gap-2"><span className="font-mono w-24 truncate">{s.stage}</span><div className="flex-1 h-2 bg-zinc-800 rounded-sm overflow-hidden"><div className="h-full bg-blue-400" style={{ width: `${s.conversionFromTop}%` }} /></div><span className="font-mono text-blue-200 text-[10px]">{s.count.toLocaleString()}</span></div>{i > 0 && <div className="text-[9px] text-zinc-500 ml-24">drop {s.dropoff}%</div>}</div>)}
+            {funnelResult.stages.map((s, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><div className="flex items-center gap-2"><span className="font-mono w-24 truncate">{s.stage}</span><div className="flex-1 h-2 bg-zinc-800 rounded-sm overflow-hidden"><div className="h-full bg-blue-400" style={{ width: `${s.conversionFromTop}%` }} /></div><span className="font-mono text-blue-200 text-[10px]">{s.count.toLocaleString()}</span></div>{i > 0 && <div className="text-[9px] text-zinc-400 ml-24">drop {s.dropoff}%</div>}</div>)}
             {funnelResult.worstDropoff && <div className="text-[10px] text-red-300 mt-1">⚠ worst drop: {funnelResult.worstDropoff} ({funnelResult.worstDropoffRate}%)</div>}
           </div>
         )}
@@ -224,7 +224,7 @@ export function AnalyticsActionPanel() {
         {anomResult && (
           <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">Anomalies · {anomResult.anomaliesFound}</div>
-            <div className="text-[10px] text-zinc-500">μ {anomResult.mean} · σ {anomResult.stdDev} · {anomResult.threshold}</div>
+            <div className="text-[10px] text-zinc-400">μ {anomResult.mean} · σ {anomResult.stdDev} · {anomResult.threshold}</div>
             {anomResult.anomalies.slice(0, 6).map((a, i) => <div key={i} className={cn('text-[10px] mt-0.5', a.direction === 'high' ? 'text-amber-300' : 'text-blue-300')}><span className="font-mono">{a.date}</span> · {a.value} (z={a.zScore} · {a.direction})</div>)}
           </div>
         )}
@@ -232,7 +232,7 @@ export function AnalyticsActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Forecast · {trendResult.confidence}</div>
             <div className={cn('text-2xl font-bold capitalize', TREND_COLOR[trendResult.trend])}>{trendResult.trend}</div>
-            <div className="text-[10px] text-zinc-500">slope {trendResult.slope} · last {trendResult.lastValue}</div>
+            <div className="text-[10px] text-zinc-400">slope {trendResult.slope} · last {trendResult.lastValue}</div>
             {trendResult.forecast.map((f, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5">+{f.periodsAhead}p: <span className="text-green-200 font-mono">{f.predicted}</span></div>)}
           </div>
         )}

@@ -82,9 +82,9 @@ export function BudgetPanel() {
     <section className="rounded-xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h2 className="text-sm font-semibold text-zinc-100">Monthly budget caps</h2>
-        {month && <span className="text-[10px] text-zinc-500 font-mono">{month}</span>}
+        {month && <span className="text-[10px] text-zinc-400 font-mono">{month}</span>}
       </div>
-      <p className="text-[11px] text-zinc-500 mb-3">
+      <p className="text-[11px] text-zinc-400 mb-3">
         Set a hard monthly USD or token ceiling per slot. When a cap is hit, Concord stops
         routing inference through that BYO key for the rest of the month.
       </p>
@@ -107,7 +107,7 @@ export function BudgetPanel() {
                     )}
                   </div>
                   {!isEditing && (
-                    <div className="text-[11px] text-zinc-500 mt-0.5">
+                    <div className="text-[11px] text-zinc-400 mt-0.5">
                       {hasBudget ? (
                         <>
                           {r?.budget?.monthlyUsdCap != null && (
@@ -147,7 +147,7 @@ export function BudgetPanel() {
               {isEditing && (
                 <div className="mt-3 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-3">
                   <div>
-                    <label className="block text-[10px] text-zinc-500 mb-1">Monthly USD cap</label>
+                    <label className="block text-[10px] text-zinc-400 mb-1">Monthly USD cap</label>
                     <input
                       type="number" min="0" step="0.01"
                       value={form.usd}
@@ -157,7 +157,7 @@ export function BudgetPanel() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-zinc-500 mb-1">Monthly token cap</label>
+                    <label className="block text-[10px] text-zinc-400 mb-1">Monthly token cap</label>
                     <input
                       type="number" min="0" step="1000"
                       value={form.tokens}

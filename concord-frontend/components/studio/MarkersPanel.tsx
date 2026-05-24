@@ -44,7 +44,7 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Flag className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Markers</span>
-        <span className="ml-auto text-[10px] text-gray-500">{markers.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{markers.length}</span>
       </header>
       {projectId && (
         <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
@@ -58,19 +58,19 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
       )}
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : !projectId ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Flag className="w-6 h-6 mx-auto mb-2 opacity-30" />Select a project.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Flag className="w-6 h-6 mx-auto mb-2 opacity-30" />Select a project.</div>
         ) : markers.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Flag className="w-6 h-6 mx-auto mb-2 opacity-30" />No markers yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Flag className="w-6 h-6 mx-auto mb-2 opacity-30" />No markers yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {markers.map(m => (
               <li key={m.id} className="px-3 py-1.5 hover:bg-white/[0.03] group flex items-center gap-2">
                 <Flag className="w-3 h-3" style={{ color: m.colour }} />
                 <span className="text-sm text-white flex-1 truncate">{m.name}</span>
-                <span className="text-[10px] text-gray-500 font-mono">{m.timeBeats}b</span>
-                <span className="text-[9px] uppercase text-gray-500">{m.kind.replace('_', ' ')}</span>
+                <span className="text-[10px] text-gray-400 font-mono">{m.timeBeats}b</span>
+                <span className="text-[9px] uppercase text-gray-400">{m.kind.replace('_', ' ')}</span>
                 <button onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}

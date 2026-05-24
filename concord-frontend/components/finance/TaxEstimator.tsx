@@ -48,7 +48,7 @@ export function TaxEstimator() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calculator className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Tax estimator</span>
-        <span className="ml-auto text-[10px] text-gray-500">IRS 2026 brackets</span>
+        <span className="ml-auto text-[10px] text-gray-400">IRS 2026 brackets</span>
       </header>
       <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-3">
@@ -82,11 +82,11 @@ export function TaxEstimator() {
 
         <div>
           {loading ? (
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" /> Computing…
             </div>
           ) : !result ? (
-            <div className="text-xs text-gray-500">Edit inputs to see your tax estimate.</div>
+            <div className="text-xs text-gray-400">Edit inputs to see your tax estimate.</div>
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
@@ -95,7 +95,7 @@ export function TaxEstimator() {
                 <Stat label="Effective rate" value={`${(result.effectiveRate * 100).toFixed(1)}%`} />
               </div>
               <div className="p-3 rounded bg-white/[0.02]">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Vs withholding</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Vs withholding</div>
                 {result.refund != null ? (
                   <div className="text-2xl font-bold text-green-400">+${result.refund.toLocaleString()} refund</div>
                 ) : result.owed != null ? (
@@ -103,10 +103,10 @@ export function TaxEstimator() {
                 ) : (
                   <div className="text-lg text-gray-400">Even</div>
                 )}
-                <div className="text-[10px] text-gray-500 mt-1">{result.withholdingRecommendation}</div>
+                <div className="text-[10px] text-gray-400 mt-1">{result.withholdingRecommendation}</div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Bracket walk-through</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Bracket walk-through</div>
                 <ul className="space-y-1">
                   {result.brackets.map((b, i) => (
                     <li key={i} className="flex items-center text-[11px] gap-2">
@@ -120,7 +120,7 @@ export function TaxEstimator() {
                   ))}
                 </ul>
               </div>
-              <div className="text-[10px] text-gray-500">
+              <div className="text-[10px] text-gray-400">
                 Marginal rate: <span className="text-white">{(result.marginalRate * 100).toFixed(0)}%</span>. Federal only — state taxes not included.
               </div>
             </div>
@@ -134,7 +134,7 @@ export function TaxEstimator() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-gray-500 block mb-0.5">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-gray-400 block mb-0.5">{label}</span>
       {children}
     </label>
   );
@@ -144,7 +144,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <div className="p-2 bg-white/[0.02] rounded text-center">
       <div className={cn('text-sm font-bold tabular-nums', accent || 'text-white')}>{value}</div>
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
     </div>
   );
 }

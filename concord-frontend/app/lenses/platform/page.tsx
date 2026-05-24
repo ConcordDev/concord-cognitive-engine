@@ -84,7 +84,7 @@ function EventStreamPanel({ events, connected }: { events: Array<{ type: string;
             connected ? 'bg-neon-green/10 border border-neon-green/20' : 'bg-gray-600/10 border border-gray-600/20'
           }`}>
             <div className={`w-2 h-2 rounded-full ${connected ? 'bg-neon-green animate-pulse' : 'bg-gray-500'}`} />
-            <span className={`text-xs ${connected ? 'text-neon-green' : 'text-gray-500'}`}>
+            <span className={`text-xs ${connected ? 'text-neon-green' : 'text-gray-400'}`}>
               {connected ? 'Connected' : 'Disconnected'}
             </span>
           </div>
@@ -92,7 +92,7 @@ function EventStreamPanel({ events, connected }: { events: Array<{ type: string;
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-400">
           <Radio className="w-8 h-8 mx-auto mb-3 opacity-40" />
           <p className="text-sm">Waiting for events...</p>
           <p className="text-xs mt-1">Events will appear here in real-time as the system operates.</p>
@@ -118,13 +118,13 @@ function EventStreamPanel({ events, connected }: { events: Array<{ type: string;
                   <span className={`text-xs font-mono ${colors[event.type] || 'text-gray-400'}`}>
                     {event.type}
                   </span>
-                  <span className="text-xs text-gray-500 flex-1 truncate">
+                  <span className="text-xs text-gray-400 flex-1 truncate">
                     {JSON.stringify(event.data).slice(0, 120)}
                   </span>
-                  <span className="text-[10px] text-gray-600 shrink-0">
+                  <span className="text-[10px] text-gray-400 shrink-0">
                     {new Date(event.timestamp).toLocaleTimeString()}
                   </span>
-                  {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
+                  {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-400" /> : <ChevronRight className="w-3 h-3 text-gray-400" />}
                 </div>
                 {isExpanded && (
                   <pre className="mx-4 mt-1 mb-2 p-3 bg-lattice-surface rounded text-xs text-gray-300 font-mono overflow-auto max-h-40">
@@ -194,28 +194,28 @@ function OverviewDashboard() {
           <Server className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{organCount + 6}</p>
-            <p className="text-xs text-gray-500">Services</p>
+            <p className="text-xs text-gray-400">Services</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Gauge className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{healthScore !== null ? `${(typeof healthScore === 'number' ? (healthScore * 100).toFixed(0) : healthScore)}%` : '99%'}</p>
-            <p className="text-xs text-gray-500">Uptime Avg</p>
+            <p className="text-xs text-gray-400">Uptime Avg</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Activity className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{pipelineRuns}</p>
-            <p className="text-xs text-gray-500">Deployments</p>
+            <p className="text-xs text-gray-400">Deployments</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Clock className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{formatUptime(uptime)}</p>
-            <p className="text-xs text-gray-500">Uptime</p>
+            <p className="text-xs text-gray-400">Uptime</p>
           </div>
         </motion.div>
       </div>
@@ -225,27 +225,27 @@ function OverviewDashboard() {
         <div className="panel p-4 text-center">
           <Database className="w-5 h-5 text-neon-blue mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{dtuCount}</p>
-          <p className="text-xs text-gray-500">DTUs</p>
+          <p className="text-xs text-gray-400">DTUs</p>
         </div>
         <div className="panel p-4 text-center">
           <Eye className="w-5 h-5 text-neon-purple mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{shadowCount}</p>
-          <p className="text-xs text-gray-500">Shadows</p>
+          <p className="text-xs text-gray-400">Shadows</p>
         </div>
         <div className="panel p-4 text-center">
           <Heart className="w-5 h-5 text-neon-pink mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{organCount}</p>
-          <p className="text-xs text-gray-500">Organs</p>
+          <p className="text-xs text-gray-400">Organs</p>
         </div>
         <div className="panel p-4 text-center">
           <Activity className="w-5 h-5 text-neon-green mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{pipelineRuns}</p>
-          <p className="text-xs text-gray-500">Runs</p>
+          <p className="text-xs text-gray-400">Runs</p>
         </div>
         <div className="panel p-4 text-center">
           <Clock className="w-5 h-5 text-neon-yellow mx-auto mb-2" />
           <p className="text-2xl font-bold font-mono">{formatUptime(uptime)}</p>
-          <p className="text-xs text-gray-500">Uptime</p>
+          <p className="text-xs text-gray-400">Uptime</p>
         </div>
         <div className="panel p-4 text-center">
           {healthScore !== null ? (
@@ -260,13 +260,13 @@ function OverviewDashboard() {
               <p className="text-2xl font-bold font-mono">
                 {typeof healthScore === 'number' ? `${(healthScore * 100).toFixed(0)}%` : healthScore}
               </p>
-              <p className="text-xs text-gray-500">Health</p>
+              <p className="text-xs text-gray-400">Health</p>
             </>
           ) : (
             <>
-              <Shield className="w-5 h-5 text-gray-500 mx-auto mb-2" />
+              <Shield className="w-5 h-5 text-gray-400 mx-auto mb-2" />
               <p className="text-2xl font-bold font-mono">—</p>
-              <p className="text-xs text-gray-500">Health</p>
+              <p className="text-xs text-gray-400">Health</p>
             </>
           )}
         </div>
@@ -289,25 +289,25 @@ function OverviewDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             {status.version && (
               <div>
-                <span className="text-xs text-gray-500">Version</span>
+                <span className="text-xs text-gray-400">Version</span>
                 <p className="font-mono">{status.version}</p>
               </div>
             )}
             {status.nodeVersion && (
               <div>
-                <span className="text-xs text-gray-500">Node.js</span>
+                <span className="text-xs text-gray-400">Node.js</span>
                 <p className="font-mono">{status.nodeVersion}</p>
               </div>
             )}
             {status.platform && (
               <div>
-                <span className="text-xs text-gray-500">Platform</span>
+                <span className="text-xs text-gray-400">Platform</span>
                 <p className="font-mono">{status.platform}</p>
               </div>
             )}
             {status.memoryUsage && (
               <div>
-                <span className="text-xs text-gray-500">Memory</span>
+                <span className="text-xs text-gray-400">Memory</span>
                 <p className="font-mono">
                   {typeof status.memoryUsage === 'object'
                     ? `${Math.round((status.memoryUsage.heapUsed || 0) / 1024 / 1024)}MB`
@@ -371,7 +371,7 @@ export default function PlatformPage() {
               <Shield className="w-7 h-7 text-neon-blue" />
               <div>
                 <h1 className="text-lg font-bold text-gray-100">Concord Platform</h1>
-                <p className="text-xs text-gray-500">v5.5.0 — Pipeline + Empirical Gates + Capability Bridge</p>
+                <p className="text-xs text-gray-400">v5.5.0 — Pipeline + Empirical Gates + Capability Bridge</p>
               </div>
 
       {/* Real-time Enhancement Toolbar */}
@@ -390,11 +390,11 @@ export default function PlatformPage() {
                 connected ? 'bg-neon-green/10' : 'bg-gray-600/10'
               }`}>
                 <div className={`w-2 h-2 rounded-full ${connected ? 'bg-neon-green animate-pulse' : 'bg-gray-500'}`} />
-                <span className={`text-xs ${connected ? 'text-neon-green' : 'text-gray-500'}`}>
+                <span className={`text-xs ${connected ? 'text-neon-green' : 'text-gray-400'}`}>
                   {connected ? 'Live' : 'Polling'}
                 </span>
                 {events.length > 0 && (
-                  <span className="text-[10px] text-gray-500 ml-1">({events.length} events)</span>
+                  <span className="text-[10px] text-gray-400 ml-1">({events.length} events)</span>
                 )}
               </div>
             </div>
@@ -498,7 +498,7 @@ export default function PlatformPage() {
                   {Object.entries(actionResult.resources as Record<string, unknown>).map(([k, v]) => (
                     v && typeof v === 'object' ? (
                       <div key={k} className="bg-lattice-surface rounded px-2 py-1">
-                        <span className="text-gray-500 uppercase text-[10px]">{k}</span>
+                        <span className="text-gray-400 uppercase text-[10px]">{k}</span>
                         <div className="flex gap-2 text-xs mt-0.5">
                           {Object.entries(v as Record<string, unknown>).map(([ik, iv]) => (
                             <span key={ik} className="text-gray-300">{ik}: <span className="text-neon-cyan">{String(iv)}</span></span>

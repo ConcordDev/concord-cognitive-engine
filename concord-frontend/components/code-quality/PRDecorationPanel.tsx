@@ -41,7 +41,7 @@ export function PRDecorationPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Paste the before / after versions of a changed file — the analyzer
         fingerprints findings (line-shift tolerant) and reports exactly which
         issues this diff introduces, fixes, or leaves unchanged.
@@ -108,7 +108,7 @@ export function PRDecorationPanel() {
                 <span className="font-mono text-sm text-gray-200">
                   {f.file} {f.isNew && <span className="text-emerald-400">(new file)</span>}
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   MI Δ {f.maintainabilityDelta >= 0 ? '+' : ''}
                   {f.maintainabilityDelta}
                 </span>
@@ -129,7 +129,7 @@ export function PRDecorationPanel() {
                           {iss.severity}
                         </span>
                         <span className="font-mono text-gray-300">{iss.rule}</span>
-                        <span className="font-mono text-gray-500">L{iss.line}</span>
+                        <span className="font-mono text-gray-400">L{iss.line}</span>
                       </div>
                       <p className="mt-1 text-sm text-gray-100">{iss.message}</p>
                       {iss.fixHint && (

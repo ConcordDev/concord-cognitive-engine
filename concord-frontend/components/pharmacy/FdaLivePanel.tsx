@@ -160,7 +160,7 @@ export function FdaLivePanel({ className }: { className?: string }) {
           >
             <Icon className="w-3 h-3" aria-hidden="true" />{label}
             {totals[t as keyof typeof totals] != null && (
-              <span className="text-[10px] text-zinc-500 font-mono">{Math.min(totals[t as keyof typeof totals]!, 999)}</span>
+              <span className="text-[10px] text-zinc-400 font-mono">{Math.min(totals[t as keyof typeof totals]!, 999)}</span>
             )}
           </button>
         ))}
@@ -168,7 +168,7 @@ export function FdaLivePanel({ className }: { className?: string }) {
 
       {(tab === 'labels' || tab === 'adverse') && (
         <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
           <input
             type="search"
             value={query}
@@ -182,7 +182,7 @@ export function FdaLivePanel({ className }: { className?: string }) {
       <div className="max-h-[600px] overflow-y-auto">
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-zinc-500" aria-hidden="true" />
+            <Loader2 className="w-5 h-5 animate-spin text-zinc-400" aria-hidden="true" />
           </div>
         )}
         {error && (
@@ -194,7 +194,7 @@ export function FdaLivePanel({ className }: { className?: string }) {
 
         {tab === 'labels' && !loading && !error && (
           labels.length === 0 ? (
-            <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+            <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
               {query.trim().length < 2 ? 'Type a drug name to search.' : `No FDA labels found for "${query.trim()}".`}
             </div>
           ) : (
@@ -241,7 +241,7 @@ export function FdaLivePanel({ className }: { className?: string }) {
 
         {tab === 'adverse' && !loading && !error && (
           adverse.length === 0 ? (
-            <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+            <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
               {query.trim().length < 2 ? 'Type a drug name to query FAERS.' : `No adverse events found for "${query.trim()}".`}
             </div>
           ) : (
@@ -249,11 +249,11 @@ export function FdaLivePanel({ className }: { className?: string }) {
               {adverse.map((a, idx) => (
                 <li key={idx} className="px-3 py-2 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-zinc-500 w-20 shrink-0">{a.reportDate}</span>
+                    <span className="font-mono text-[10px] text-zinc-400 w-20 shrink-0">{a.reportDate}</span>
                     {a.serious && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950/60 text-rose-300 border border-rose-500/30">serious</span>
                     )}
-                    <span className="text-[10px] text-zinc-500 ml-auto font-mono">
+                    <span className="text-[10px] text-zinc-400 ml-auto font-mono">
                       {a.patientSex} {a.patientAge ? `age ${a.patientAge}` : ''} {a.reportingCountry ? `· ${a.reportingCountry}` : ''}
                     </span>
                   </div>
@@ -272,7 +272,7 @@ export function FdaLivePanel({ className }: { className?: string }) {
 
         {tab === 'recalls' && !loading && !error && (
           recalls.length === 0 ? (
-            <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+            <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
               No recent drug recalls.
             </div>
           ) : (
@@ -280,19 +280,19 @@ export function FdaLivePanel({ className }: { className?: string }) {
               {recalls.map((r) => (
                 <li key={r.recallNumber} className="px-3 py-2 text-xs space-y-1">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="font-mono text-[10px] text-zinc-500 shrink-0">{r.initiationDate}</span>
+                    <span className="font-mono text-[10px] text-zinc-400 shrink-0">{r.initiationDate}</span>
                     <span className={cn(
                       'text-[10px] px-1.5 py-0.5 rounded border shrink-0',
                       r.classification === 'Class I' ? 'bg-rose-950/60 text-rose-300 border-rose-500/30'
                         : r.classification === 'Class II' ? 'bg-amber-950/60 text-amber-300 border-amber-500/30'
                         : 'bg-zinc-900 text-zinc-300 border-zinc-700',
                     )}>{r.classification}</span>
-                    <span className="text-[10px] text-zinc-500 shrink-0">{r.status}</span>
-                    <span className="text-[10px] text-zinc-500 ml-auto truncate font-mono">{r.recallNumber}</span>
+                    <span className="text-[10px] text-zinc-400 shrink-0">{r.status}</span>
+                    <span className="text-[10px] text-zinc-400 ml-auto truncate font-mono">{r.recallNumber}</span>
                   </div>
                   <div className="text-zinc-200 line-clamp-2">{r.productDescription}</div>
                   <div className="text-[11px] text-zinc-400 italic line-clamp-2">{r.reason}</div>
-                  <div className="text-[10px] text-zinc-500"><Building2 className="inline w-2.5 h-2.5 -mt-0.5 mr-0.5" />{r.recallingFirm}{r.state ? ` · ${r.state}` : ''}</div>
+                  <div className="text-[10px] text-zinc-400"><Building2 className="inline w-2.5 h-2.5 -mt-0.5 mr-0.5" />{r.recallingFirm}{r.state ? ` · ${r.state}` : ''}</div>
                 </li>
               ))}
             </ul>
@@ -300,7 +300,7 @@ export function FdaLivePanel({ className }: { className?: string }) {
         )}
       </div>
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40 flex items-center gap-2">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40 flex items-center gap-2">
         <span>Source: FDA OpenFDA · public domain</span>
         {tab === 'recalls' && (
           <button onClick={() => void fetchRecalls()} className="ml-auto inline-flex items-center gap-1 hover:text-zinc-300" disabled={loading}>

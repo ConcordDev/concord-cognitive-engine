@@ -127,7 +127,7 @@ function DreamPanel() {
       {/* Recent dreams */}
       {dreams.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs text-gray-500">Recent dreams</p>
+          <p className="text-xs text-gray-400">Recent dreams</p>
           {dreams.slice(0, 5).map((d) => (
             <div
               key={d.id}

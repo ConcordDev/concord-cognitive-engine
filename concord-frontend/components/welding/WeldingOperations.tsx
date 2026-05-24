@@ -141,19 +141,19 @@ function ScheduleTab() {
         <input className={`${inputCls} sm:col-span-6`} placeholder="Crew (comma-separated welder names)" value={crew} onChange={(e) => setCrew(e.target.value)} />
       </div>
 
-      {busy && !cal && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading calendar…</div>}
+      {busy && !cal && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading calendar…</div>}
 
       {cal && (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Scheduled jobs</div><div className="font-mono text-lg text-orange-300">{cal.scheduledCount}</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Unscheduled</div><div className="font-mono text-lg text-amber-300">{cal.unscheduled.length}</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Crew on roster</div><div className="font-mono text-lg text-cyan-300">{Object.keys(cal.crewLoad).length}</div></div>
+            <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Scheduled jobs</div><div className="font-mono text-lg text-orange-300">{cal.scheduledCount}</div></div>
+            <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Unscheduled</div><div className="font-mono text-lg text-amber-300">{cal.unscheduled.length}</div></div>
+            <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Crew on roster</div><div className="font-mono text-lg text-cyan-300">{Object.keys(cal.crewLoad).length}</div></div>
           </div>
 
           {crewLoad.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-              <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Crew load (job-days assigned)</div>
+              <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Crew load (job-days assigned)</div>
               <ChartKit kind="bar" data={crewLoad} xKey="name" series={[{ key: 'days', label: 'Job-days', color: '#f59e0b' }]} height={180} showLegend={false} />
             </div>
           )}
@@ -163,7 +163,7 @@ function ScheduleTab() {
               const day = new Date(d.date);
               return (
                 <div key={d.date} className={`min-h-[64px] rounded border p-1 ${d.jobs.length ? 'border-orange-500/30 bg-orange-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
-                  <div className="text-[9px] text-zinc-500">{day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                  <div className="text-[9px] text-zinc-400">{day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
                   {d.jobs.map((j) => (
                     <div key={j.id} className="mt-0.5 truncate rounded bg-orange-500/20 px-1 py-0.5 text-[9px] text-orange-100" title={`${j.title}${j.client ? ` · ${j.client}` : ''}`}>{j.title}</div>
                   ))}
@@ -261,7 +261,7 @@ function QuotesTab() {
             <select className={inputCls} value={it.kind} onChange={(e) => setItems((xs) => xs.map((x, idx) => idx === i ? { ...x, kind: e.target.value } : x))}>
               <option value="labor">labor</option><option value="material">material</option><option value="equipment">equipment</option>
             </select>
-            <button type="button" className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300" onClick={() => setItems((xs) => xs.filter((_, idx) => idx !== i))} aria-label="Remove line"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setItems((xs) => xs.filter((_, idx) => idx !== i))} aria-label="Remove line"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center gap-2">
@@ -272,8 +272,8 @@ function QuotesTab() {
 
       {data && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Pipeline (draft+sent)</div><div className="font-mono text-lg text-amber-300">{fmt(data.pipelineValue)}</div></div>
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Won (accepted)</div><div className="font-mono text-lg text-emerald-300">{fmt(data.wonValue)}</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Pipeline (draft+sent)</div><div className="font-mono text-lg text-amber-300">{fmt(data.pipelineValue)}</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Won (accepted)</div><div className="font-mono text-lg text-emerald-300">{fmt(data.wonValue)}</div></div>
         </div>
       )}
 
@@ -284,13 +284,13 @@ function QuotesTab() {
       )}
 
       <div className="space-y-1.5">
-        {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+        {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
         {data?.estimates.map((e) => (
           <div key={e.id} className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
             <div className="flex items-center justify-between">
               <div className="min-w-0">
                 <div className="truncate text-[12px] font-medium text-white">{e.title}</div>
-                <div className="text-[10px] text-zinc-500">{e.client || 'no client'} · {e.lineItems.length} line items</div>
+                <div className="text-[10px] text-zinc-400">{e.client || 'no client'} · {e.lineItems.length} line items</div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm text-emerald-300">{fmt(e.total)}</span>
@@ -304,7 +304,7 @@ function QuotesTab() {
             </div>
           </div>
         ))}
-        {data && data.estimates.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No estimates yet.</div>}
+        {data && data.estimates.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No estimates yet.</div>}
       </div>
     </div>
   );
@@ -354,16 +354,16 @@ function InvoicesTab() {
 
       {data && (
         <div className="grid grid-cols-3 gap-2">
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Outstanding</div><div className="font-mono text-lg text-amber-300">{fmt(data.outstanding)}</div></div>
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Collected</div><div className="font-mono text-lg text-emerald-300">{fmt(data.collected)}</div></div>
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Overdue</div><div className="font-mono text-lg text-rose-300">{data.overdueCount}</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Outstanding</div><div className="font-mono text-lg text-amber-300">{fmt(data.outstanding)}</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Collected</div><div className="font-mono text-lg text-emerald-300">{fmt(data.collected)}</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Overdue</div><div className="font-mono text-lg text-rose-300">{data.overdueCount}</div></div>
         </div>
       )}
 
       <div className="space-y-1.5">
-        {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+        {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
         {data?.invoices.map((inv) => <InvoiceRow key={inv.id} invoice={inv} onPaid={reload} />)}
-        {data && data.invoices.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No invoices yet — generate one from a completed job.</div>}
+        {data && data.invoices.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No invoices yet — generate one from a completed job.</div>}
       </div>
     </div>
   );
@@ -387,7 +387,7 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
       <div className="flex items-center justify-between">
         <div className="min-w-0">
           <div className="truncate text-[12px] font-medium text-white">{invoice.invoiceNumber} · {invoice.title || invoice.client}</div>
-          <div className="text-[10px] text-zinc-500">due {invoice.dueDate}{invoice.overdue ? ' · OVERDUE' : ''}</div>
+          <div className="text-[10px] text-zinc-400">due {invoice.dueDate}{invoice.overdue ? ' · OVERDUE' : ''}</div>
         </div>
         <div className="flex items-center gap-2">
           <span className="font-mono text-[11px] text-zinc-400">{fmt(invoice.amountPaid)} / {fmt(invoice.amount)}</span>
@@ -404,7 +404,7 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
         </div>
       )}
       {invoice.payments.length > 0 && (
-        <div className="mt-1 text-[10px] text-zinc-500">{invoice.payments.length} payment(s): {invoice.payments.map((p) => `${fmt(p.amount)} ${p.method}`).join(', ')}</div>
+        <div className="mt-1 text-[10px] text-zinc-400">{invoice.payments.length} payment(s): {invoice.payments.map((p) => `${fmt(p.amount)} ${p.method}`).join(', ')}</div>
       )}
     </div>
   );
@@ -467,13 +467,13 @@ function WpsTab() {
       </div>
 
       <div className="space-y-1.5">
-        {busy && list.length === 0 && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+        {busy && list.length === 0 && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
         {list.map((w) => (
           <div key={w.id} className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[12px] font-medium text-white">{w.wpsNumber} <span className="font-normal text-zinc-500">· {w.process} · {w.code} rev {w.revision}</span></div>
-                <div className="text-[10px] text-zinc-500">{w.baseMetal} · {w.jointDesign} · {w.positions.join(', ')}{w.fillerMetal ? ` · ${w.fillerMetal}` : ''}{w.amperageRange ? ` · ${w.amperageRange}` : ''}</div>
+                <div className="text-[12px] font-medium text-white">{w.wpsNumber} <span className="font-normal text-zinc-400">· {w.process} · {w.code} rev {w.revision}</span></div>
+                <div className="text-[10px] text-zinc-400">{w.baseMetal} · {w.jointDesign} · {w.positions.join(', ')}{w.fillerMetal ? ` · ${w.fillerMetal}` : ''}{w.amperageRange ? ` · ${w.amperageRange}` : ''}</div>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`rounded px-1.5 py-0.5 text-[10px] ${w.status === 'approved' ? 'bg-emerald-500/20 text-emerald-200' : 'bg-zinc-700 text-zinc-300'}`}>{w.status}</span>
@@ -483,7 +483,7 @@ function WpsTab() {
             {w.approvedBy && <div className="mt-1 text-[10px] text-emerald-400">approved by {w.approvedBy}</div>}
           </div>
         ))}
-        {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No WPS documents yet.</div>}
+        {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No WPS documents yet.</div>}
       </div>
     </div>
   );
@@ -526,15 +526,15 @@ function CertsTab() {
         <input className={inputCls} placeholder="Process" value={form.process} onChange={set('process')} />
         <input className={inputCls} placeholder="Position" value={form.position} onChange={set('position')} />
         <input className={inputCls} placeholder="Issued by" value={form.issuedBy} onChange={set('issuedBy')} />
-        <label className="text-[10px] text-zinc-500">Issued<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.issuedDate} onChange={set('issuedDate')} /></label>
-        <label className="text-[10px] text-zinc-500">Expires<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.expiryDate} onChange={set('expiryDate')} /></label>
+        <label className="text-[10px] text-zinc-400">Issued<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.issuedDate} onChange={set('issuedDate')} /></label>
+        <label className="text-[10px] text-zinc-400">Expires<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.expiryDate} onChange={set('expiryDate')} /></label>
         <button type="button" className={`${btnCls} sm:col-span-4`} onClick={add} disabled={busy || !form.welder.trim()}><Plus className="h-3.5 w-3.5" /> Add certification</button>
       </div>
 
       {data && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Valid</div><div className="font-mono text-lg text-emerald-300">{data.validCount}</div></div>
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">At risk</div><div className="font-mono text-lg text-rose-300">{data.atRiskCount}</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Valid</div><div className="font-mono text-lg text-emerald-300">{data.validCount}</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">At risk</div><div className="font-mono text-lg text-rose-300">{data.atRiskCount}</div></div>
         </div>
       )}
 
@@ -548,9 +548,9 @@ function CertsTab() {
       )}
 
       <div className="space-y-1.5">
-        {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+        {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
         {data?.certs.map((c) => <CertRow key={c.id} cert={c} onRenew={renew} />)}
-        {data && data.certs.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No certifications tracked.</div>}
+        {data && data.certs.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No certifications tracked.</div>}
       </div>
     </div>
   );
@@ -562,8 +562,8 @@ function CertRow({ cert, onRenew }: { cert: Cert; onRenew: (id: string, expiry: 
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[12px] font-medium text-white">{cert.welder} <span className="font-normal text-zinc-500">· {cert.certType}</span></div>
-          <div className="text-[10px] text-zinc-500">
+          <div className="text-[12px] font-medium text-white">{cert.welder} <span className="font-normal text-zinc-400">· {cert.certType}</span></div>
+          <div className="text-[10px] text-zinc-400">
             {cert.certNumber ? `#${cert.certNumber} · ` : ''}
             {cert.daysToExpiry != null ? (cert.daysToExpiry < 0 ? `expired ${Math.abs(cert.daysToExpiry)}d ago` : `expires in ${cert.daysToExpiry}d`) : 'no expiry'}
             {cert.daysSinceContinuity != null ? ` · ${cert.daysSinceContinuity}d since last use` : ''}
@@ -647,22 +647,22 @@ function PhotosTab() {
       )}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {busy && !photos && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+        {busy && !photos && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
         {photos?.photos.map((p) => (
           <div key={p.id} className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/40">
             <img src={p.url} alt={p.caption || p.stage} className="h-28 w-full object-cover" />
             <div className="p-1.5">
               <div className="flex items-center justify-between">
                 <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-[9px] text-orange-200">{p.stage}</span>
-                <button type="button" className="text-zinc-500 hover:text-rose-300" onClick={() => remove(p.id)} aria-label="Remove photo"><Trash2 className="h-3 w-3" /></button>
+                <button type="button" className="text-zinc-400 hover:text-rose-300" onClick={() => remove(p.id)} aria-label="Remove photo"><Trash2 className="h-3 w-3" /></button>
               </div>
               {p.caption && <div className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{p.caption}</div>}
-              {p.weldId && <div className="text-[9px] text-zinc-600">weld {p.weldId}</div>}
+              {p.weldId && <div className="text-[9px] text-zinc-400">weld {p.weldId}</div>}
             </div>
           </div>
         ))}
       </div>
-      {jobId && photos && photos.photos.length === 0 && !busy && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No photos for this job yet.</div>}
+      {jobId && photos && photos.photos.length === 0 && !busy && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No photos for this job yet.</div>}
     </div>
   );
 }
@@ -689,7 +689,7 @@ function CodesTab() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input className={`${inputCls} w-full pl-8`} placeholder="Search AWS D1.1 / ASME IX / API 1104 clauses…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <select className={inputCls} value={codeFilter} onChange={(e) => setCodeFilter(e.target.value)}>
@@ -698,7 +698,7 @@ function CodesTab() {
         </select>
       </div>
 
-      {busy && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Searching…</div>}
+      {busy && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Searching…</div>}
 
       <div className="space-y-1.5">
         {results.map((c) => (
@@ -706,15 +706,15 @@ function CodesTab() {
             <div className="flex items-center gap-2">
               <span className="rounded bg-orange-500/20 px-1.5 py-0.5 font-mono text-[10px] text-orange-200">{c.code} {c.clause}</span>
               <span className="text-[12px] font-medium text-white">{c.title}</span>
-              {c.relevance != null && <span className="ml-auto text-[9px] text-zinc-600">relevance {c.relevance}</span>}
+              {c.relevance != null && <span className="ml-auto text-[9px] text-zinc-400">relevance {c.relevance}</span>}
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{c.body}</p>
             <div className="mt-1 flex flex-wrap gap-1">
-              {c.keywords.map((k) => <span key={k} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] text-zinc-500">{k}</span>)}
+              {c.keywords.map((k) => <span key={k} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] text-zinc-400">{k}</span>)}
             </div>
           </div>
         ))}
-        {!busy && results.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No matching clauses.</div>}
+        {!busy && results.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No matching clauses.</div>}
       </div>
     </div>
   );
@@ -753,7 +753,7 @@ export function WeldingOperations() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           {stats.map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">{s.label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{s.label}</div>
               <div className={`font-mono text-base ${s.tone}`}>{s.value}</div>
             </div>
           ))}

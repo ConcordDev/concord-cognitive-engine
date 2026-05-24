@@ -34,8 +34,8 @@ export function HealthcareDashboard({ onJumpTo }: { onJumpTo?: (n: EpicNav) => v
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>;
-  if (!data) return <div className="p-10 text-center text-xs text-gray-500">No data yet.</div>;
+  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>;
+  if (!data) return <div className="p-10 text-center text-xs text-gray-400">No data yet.</div>;
 
   return (
     <div className="space-y-3">
@@ -73,12 +73,12 @@ export function HealthcareDashboard({ onJumpTo }: { onJumpTo?: (n: EpicNav) => v
         <div className="p-3 rounded border border-white/10 bg-black/30">
           <ClipboardList className="w-3.5 h-3.5 text-cyan-300 mx-auto mb-1" />
           <div className="text-2xl font-mono text-cyan-300">{data.activeProblems}</div>
-          <div className="text-[10px] text-gray-500">active problems across all patients</div>
+          <div className="text-[10px] text-gray-400">active problems across all patients</div>
         </div>
         <div className="p-3 rounded border border-white/10 bg-black/30">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-300 mx-auto mb-1" />
           <div className="text-2xl font-mono text-amber-300">{data.allergiesCount}</div>
-          <div className="text-[10px] text-gray-500">allergies documented</div>
+          <div className="text-[10px] text-gray-400">allergies documented</div>
         </div>
       </div>
     </div>
@@ -90,8 +90,8 @@ function Tile({ label, value, icon: Icon, tone = 'neutral', onClick }: { label: 
   return (
     <button onClick={onClick} className="p-3 rounded-lg border border-white/10 bg-black/30 text-left hover:bg-white/[0.04]">
       <div className="flex items-center gap-1.5 mb-1">
-        <Icon className="w-3 h-3 text-gray-500" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <Icon className="w-3 h-3 text-gray-400" />
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className={cn('text-2xl font-mono tabular-nums', c)}>{value}</div>
     </button>

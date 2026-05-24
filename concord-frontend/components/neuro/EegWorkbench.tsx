@@ -380,7 +380,7 @@ export function EegWorkbench() {
 
   // ── Render helpers ──────────────────────────────────────────────────
   const inputCls = 'bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[12px] text-white w-full';
-  const labelCls = 'text-[10px] uppercase tracking-wider text-zinc-500 mb-1 block';
+  const labelCls = 'text-[10px] uppercase tracking-wider text-zinc-400 mb-1 block';
   const btnCls = 'flex items-center gap-1.5 rounded-md bg-purple-600/80 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-[12px] font-semibold text-white transition-colors';
 
   return (
@@ -475,15 +475,15 @@ export function EegWorkbench() {
 
           {recordings.length > 0 && (
             <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Imported recordings ({recordings.length})</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Imported recordings ({recordings.length})</div>
               <div className="space-y-1 max-h-40 overflow-y-auto">
                 {recordings.map((r) => (
                   <div key={r.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
                     <span className="font-mono flex-1 truncate">{r.name}</span>
-                    <span className="text-zinc-500">{r.format}</span>
-                    <span className="text-zinc-500">{r.channelCount}ch</span>
-                    <span className="text-zinc-500">{r.sampleCount} samp</span>
-                    <span className="text-zinc-500">{r.eventCount} ev</span>
+                    <span className="text-zinc-400">{r.format}</span>
+                    <span className="text-zinc-400">{r.channelCount}ch</span>
+                    <span className="text-zinc-400">{r.sampleCount} samp</span>
+                    <span className="text-zinc-400">{r.eventCount} ev</span>
                   </div>
                 ))}
               </div>
@@ -512,7 +512,7 @@ export function EegWorkbench() {
                 <div key={tr.channel} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
                   <div className="flex items-center justify-between text-[10px] mb-1">
                     <span className="font-mono uppercase tracking-wider text-purple-300">{tr.channel}</span>
-                    <span className="text-zinc-500 font-mono">min {tr.min} · mean {tr.mean} · max {tr.max}</span>
+                    <span className="text-zinc-400 font-mono">min {tr.min} · mean {tr.mean} · max {tr.max}</span>
                   </div>
                   <ChartKit kind="line" data={tr.points as unknown as Record<string, unknown>[]} xKey="t"
                     series={[{ key: 'v', label: tr.channel, color: '#a855f7' }]} height={90} showLegend={false} />
@@ -572,7 +572,7 @@ export function EegWorkbench() {
                     <div key={e.channel} className="flex items-center gap-2">
                       <span className="font-mono w-10">{e.channel}</span>
                       <div className="w-24 h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${heat(e.normalized)} ${e.normalized * 100}%, #27272a ${e.normalized * 100}%)` }} />
-                      <span className="font-mono text-zinc-500">{e.value}</span>
+                      <span className="font-mono text-zinc-400">{e.value}</span>
                     </div>
                   ))}
                 </div>
@@ -607,7 +607,7 @@ export function EegWorkbench() {
               </div>
               {preproc.icaComponents && (
                 <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">ICA component decomposition</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">ICA component decomposition</div>
                   <ChartKit kind="bar" data={preproc.icaComponents as unknown as Record<string, unknown>[]} xKey="component"
                     series={[{ key: 'varianceExplained', label: '% variance', color: '#22c55e' }]} height={140} showLegend={false} />
                   <div className="mt-1 space-y-0.5">
@@ -649,7 +649,7 @@ export function EegWorkbench() {
                 {epoch.epochCount} epochs · {epoch.rejectedCount} rejected · channel {epoch.channel} · condition {epoch.condition} · {epoch.epochLength} samples/epoch
               </div>
               <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Grand-average ERP waveform</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Grand-average ERP waveform</div>
                 <ChartKit kind="line"
                   data={epoch.grandAverage.map((v, i) => ({ t: epoch.timeMs[i], v })) as unknown as Record<string, unknown>[]}
                   xKey="t" series={[{ key: 'v', label: 'μV', color: '#f59e0b' }]} height={180} showLegend={false} />
@@ -680,7 +680,7 @@ export function EegWorkbench() {
               </div>
               <div className="overflow-x-auto rounded-md border border-zinc-800 bg-zinc-900/40 p-2">
                 <div className="flex" style={{ minWidth: tf.times.length * 4 }}>
-                  <div className="flex flex-col-reverse justify-between pr-1 text-[8px] text-zinc-500 font-mono">
+                  <div className="flex flex-col-reverse justify-between pr-1 text-[8px] text-zinc-400 font-mono">
                     {tf.frequencies.filter((_, i) => i % Math.max(1, Math.floor(tf.frequencies.length / 8)) === 0).map((f) => <span key={f}>{f}Hz</span>)}
                   </div>
                   <div className="flex flex-col-reverse">
@@ -693,7 +693,7 @@ export function EegWorkbench() {
                     ))}
                   </div>
                 </div>
-                <div className="text-[8px] text-zinc-500 font-mono mt-1">time → ({tf.times[0]}s – {tf.times[tf.times.length - 1]}s)</div>
+                <div className="text-[8px] text-zinc-400 font-mono mt-1">time → ({tf.times[0]}s – {tf.times[tf.times.length - 1]}s)</div>
               </div>
             </div>
           )}
@@ -728,13 +728,13 @@ export function EegWorkbench() {
               <div className="text-[11px] text-zinc-300 space-y-1">
                 <div className="text-zinc-400">{source.method}</div>
                 <div className="font-mono">{source.sensorCount} sensors · {source.gridSize}×{source.gridSize} grid</div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mt-2">Peak sources</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400 mt-2">Peak sources</div>
                 {source.peakSources.map((p, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="font-mono text-purple-300 w-6">#{i + 1}</span>
                     <span className="flex-1">{p.region}</span>
                     <div className="w-20 h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${heat(p.strength)} ${p.strength * 100}%, #27272a ${p.strength * 100}%)` }} />
-                    <span className="font-mono text-zinc-500">{p.strength}</span>
+                    <span className="font-mono text-zinc-400">{p.strength}</span>
                   </div>
                 ))}
               </div>
@@ -746,7 +746,7 @@ export function EegWorkbench() {
       {/* ── Statistics ─────────────────────────────────────────────── */}
       {tab === 'stats' && (
         <div className="space-y-3">
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             Welch two-sample t-test + Cohen&apos;s d. Enter numeric observations per group (epoch means, band powers),
             or pull the epoched grand-average means from the Epoch tab.
           </p>

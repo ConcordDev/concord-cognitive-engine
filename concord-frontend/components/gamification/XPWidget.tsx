@@ -102,9 +102,9 @@ function XPWidget({ expanded: defaultExpanded = false, className }: XPWidgetProp
           />
         </div>
         {expanded ? (
-          <ChevronUp className="w-3 h-3 text-gray-500" />
+          <ChevronUp className="w-3 h-3 text-gray-400" />
         ) : (
-          <ChevronDown className="w-3 h-3 text-gray-500" />
+          <ChevronDown className="w-3 h-3 text-gray-400" />
         )}
       </button>
 
@@ -117,7 +117,7 @@ function XPWidget({ expanded: defaultExpanded = false, className }: XPWidgetProp
               <div className="flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-neon-cyan" />
                 <span className="font-semibold text-white">{profile.title}</span>
-                <span className="text-xs text-gray-500">Lv {profile.level}</span>
+                <span className="text-xs text-gray-400">Lv {profile.level}</span>
               </div>
               <span className="text-sm font-mono text-neon-cyan">
                 {profile.totalXP.toLocaleString()} XP
@@ -131,7 +131,7 @@ function XPWidget({ expanded: defaultExpanded = false, className }: XPWidgetProp
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between text-[11px] text-gray-500">
+              <div className="flex items-center justify-between text-[11px] text-gray-400">
                 <span>
                   {profile.xpProgress.toLocaleString()} / {profile.xpRequired.toLocaleString()}
                 </span>
@@ -145,24 +145,24 @@ function XPWidget({ expanded: defaultExpanded = false, className }: XPWidgetProp
             <div className="bg-lattice-surface p-3 text-center">
               <Flame className="w-4 h-4 text-amber-400 mx-auto mb-1" />
               <p className="text-lg font-bold text-white">{profile.streak.current}</p>
-              <p className="text-[10px] text-gray-500">Day Streak</p>
+              <p className="text-[10px] text-gray-400">Day Streak</p>
             </div>
             <div className="bg-lattice-surface p-3 text-center">
               <TrendingUp className="w-4 h-4 text-neon-green mx-auto mb-1" />
               <p className="text-lg font-bold text-white">{profile.streak.longest}</p>
-              <p className="text-[10px] text-gray-500">Best Streak</p>
+              <p className="text-[10px] text-gray-400">Best Streak</p>
             </div>
             <div className="bg-lattice-surface p-3 text-center">
               <Zap className="w-4 h-4 text-neon-cyan mx-auto mb-1" />
               <p className="text-lg font-bold text-white">{profile.level}</p>
-              <p className="text-[10px] text-gray-500">Level</p>
+              <p className="text-[10px] text-gray-400">Level</p>
             </div>
           </div>
 
           {/* Contribution heatmap */}
           {heatmapData?.heatmap && (
             <div className="p-3">
-              <p className="text-[11px] text-gray-500 mb-2">90-day contribution heatmap</p>
+              <p className="text-[11px] text-gray-400 mb-2">90-day contribution heatmap</p>
               <div className="flex flex-wrap gap-[2px]">
                 {heatmapData.heatmap.map((day) => {
                   const intensity =

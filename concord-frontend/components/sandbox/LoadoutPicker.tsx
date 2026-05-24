@@ -155,7 +155,7 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
       </div>
 
       {saved.length === 0 ? (
-        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-500">
+        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-400">
           No saved loadouts yet.
         </div>
       ) : (
@@ -164,9 +164,9 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
             <li key={l.id} className="flex items-center gap-1.5 rounded bg-slate-800/60 px-2 py-1">
               <button onClick={() => loadSaved(l)} className="min-w-0 flex-1 text-left hover:text-amber-200">
                 <div className="truncate text-slate-200">{l.name}</div>
-                <div className="text-[9px] text-slate-500">{l.weaponId} · {l.skillId} · {l.lightDamage}/{l.heavyDamage}</div>
+                <div className="text-[9px] text-slate-400">{l.weaponId} · {l.skillId} · {l.lightDamage}/{l.heavyDamage}</div>
               </button>
-              <button onClick={() => remove(l.id)} aria-label="Delete loadout" className="text-slate-500 hover:text-rose-400">
+              <button onClick={() => remove(l.id)} aria-label="Delete loadout" className="text-slate-400 hover:text-rose-400">
                 <Trash2 className="h-3 w-3" />
               </button>
             </li>

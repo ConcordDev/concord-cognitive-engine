@@ -74,7 +74,7 @@ export function FmRichEditor({
         <div className="min-h-[64px] bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2">
           {value.body.trim()
             ? <FmMarkdown text={value.body} format={value.format} />
-            : <p className="text-[11px] text-zinc-600 italic">Nothing to preview yet.</p>}
+            : <p className="text-[11px] text-zinc-400 italic">Nothing to preview yet.</p>}
         </div>
       ) : (
         <textarea ref={ref} value={value.body} rows={rows} placeholder={placeholder}
@@ -84,7 +84,7 @@ export function FmRichEditor({
 
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2">
-          <ImagePlus className="w-3.5 h-3.5 text-zinc-500" />
+          <ImagePlus className="w-3.5 h-3.5 text-zinc-400" />
           <input placeholder="Embed image URL" value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addImage(); } }}
@@ -98,7 +98,7 @@ export function FmRichEditor({
           {value.images.map((u) => (
             <span key={u} className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-lg pl-2 pr-1 py-0.5">
               <span className="text-[10px] text-zinc-300 max-w-[140px] truncate">{u}</span>
-              <button type="button" onClick={() => removeImage(u)} className="text-zinc-500 hover:text-rose-400" aria-label="Remove image">
+              <button type="button" onClick={() => removeImage(u)} className="text-zinc-400 hover:text-rose-400" aria-label="Remove image">
                 <X className="w-3 h-3" />
               </button>
             </span>

@@ -152,14 +152,14 @@ export function TelemetryImportPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+      <div className="flex items-center justify-center py-10 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading fleet…
       </div>
     );
   }
   if (equipment.length === 0) {
     return (
-      <div className="py-10 text-center text-xs text-gray-500">
+      <div className="py-10 text-center text-xs text-gray-400">
         <Cpu className="w-6 h-6 mx-auto mb-2 opacity-30" />
         No equipment yet. Add a machine in the Equipment tab to import telemetry.
       </div>
@@ -203,7 +203,7 @@ export function TelemetryImportPanel() {
           ].map((m) => (
             <div key={m.k} className="rounded bg-lattice-deep px-2 py-1.5">
               <div className="text-sm font-bold text-cyan-300">{m.v}</div>
-              <div className="text-[10px] text-gray-500">{m.k}</div>
+              <div className="text-[10px] text-gray-400">{m.k}</div>
             </div>
           ))}
         </div>
@@ -251,7 +251,7 @@ export function TelemetryImportPanel() {
           <Clock className="w-3 h-3" /> Sync history
         </div>
         {syncs.length === 0 ? (
-          <div className="text-xs text-gray-500 py-3">No imports for this machine yet.</div>
+          <div className="text-xs text-gray-400 py-3">No imports for this machine yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {syncs.map((s) => (
@@ -260,7 +260,7 @@ export function TelemetryImportPanel() {
                 <span className="text-gray-300">
                   {s.rowsApplied}/{s.rowsReceived} rows
                 </span>
-                <span className="text-gray-500">{s.areaWorkedAcres} ac</span>
+                <span className="text-gray-400">{s.areaWorkedAcres} ac</span>
                 <span className="ml-auto text-gray-600">
                   {new Date(s.importedAt).toLocaleString()}
                 </span>

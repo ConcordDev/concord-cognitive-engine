@@ -155,7 +155,7 @@ const rarityBgColors: Record<string, string> = {
 };
 
 const priorityFlame: Record<string, string> = {
-  low: 'text-gray-500',
+  low: 'text-gray-400',
   medium: 'text-yellow-400',
   high: 'text-red-400',
 };
@@ -203,7 +203,7 @@ function XpLevelBar({ xp }: { xp: number }) {
     <div className="w-full space-y-1">
       <div className="flex items-center justify-between text-xs">
         <span className={`font-semibold ${lvl.color}`}>{lvl.label}</span>
-        <span className="text-gray-500">{xp.toLocaleString()} / {lvl.next.toLocaleString()} XP</span>
+        <span className="text-gray-400">{xp.toLocaleString()} / {lvl.next.toLocaleString()} XP</span>
       </div>
       <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
         <motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" initial={{ width: 0 }} animate={{ width: `${Math.min(pct * 100, 100)}%` }} transition={{ duration: 1.2, ease: 'easeOut' }} />
@@ -228,7 +228,7 @@ function WeeklyActivityBar({ goals }: { goals: Goal[] }) {
       {days.map((day, i) => (
         <div key={day} className="flex flex-col items-center gap-0.5 flex-1">
           <motion.div className="w-full rounded-sm bg-gradient-to-t from-cyan-600 to-cyan-400" initial={{ height: 0 }} animate={{ height: `${(activity[i] / max) * 100}%` }} transition={{ duration: 0.6, delay: i * 0.05 }} title={`${activity[i]} goals`} />
-          <span className="text-[8px] text-gray-500">{day}</span>
+          <span className="text-[8px] text-gray-400">{day}</span>
         </div>
       ))}
     </div>
@@ -550,11 +550,11 @@ export default function GoalsLensPage() {
       {/* XP Level Progress + Weekly Activity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="panel p-4 space-y-2">
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Level Progress</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Level Progress</p>
           <XpLevelBar xp={totalXp} />
         </div>
         <div className="panel p-4 space-y-2">
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Weekly Activity</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Weekly Activity</p>
           <WeeklyActivityBar goals={goals} />
         </div>
       </div>
@@ -723,7 +723,7 @@ export default function GoalsLensPage() {
 
                     <button
                       onClick={() => setExpandedGoal(isExpanded ? null : goal.id)}
-                      className="text-gray-500 hover:text-gray-300 p-1 transition-colors"
+                      className="text-gray-400 hover:text-gray-300 p-1 transition-colors"
                     >
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
@@ -754,7 +754,7 @@ export default function GoalsLensPage() {
                               >
                                 {st.done && <CheckCircle2 className="w-3 h-3" />}
                               </span>
-                              <span className={st.done ? 'text-gray-500 line-through' : 'text-gray-300'}>
+                              <span className={st.done ? 'text-gray-400 line-through' : 'text-gray-300'}>
                                 {st.label}
                               </span>
                             </button>
@@ -768,7 +768,7 @@ export default function GoalsLensPage() {
             })}
 
             {filteredGoals.length === 0 && (
-              <div className="panel p-12 text-center text-gray-500">
+              <div className="panel p-12 text-center text-gray-400">
                 <Target className="w-12 h-12 mx-auto mb-4 opacity-30" />
                 <p>No goals match this filter.</p>
               </div>
@@ -829,7 +829,7 @@ export default function GoalsLensPage() {
                     <Zap className="w-4 h-4" />
                     {ch.xp} XP
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1 justify-end">
+                  <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
                     <Clock className="w-3 h-3" />
                     {ch.endsIn}
                   </p>
@@ -927,14 +927,14 @@ export default function GoalsLensPage() {
                           <IconComp className={`w-5 h-5 ${ms.unlocked ? 'text-cyan-400' : 'text-gray-600'}`} />
                         </div>
                         <div className="flex-1">
-                          <h3 className={`font-semibold ${ms.unlocked ? 'text-white' : 'text-gray-500'}`}>
+                          <h3 className={`font-semibold ${ms.unlocked ? 'text-white' : 'text-gray-400'}`}>
                             {ms.title}
                           </h3>
                           <p className="text-xs text-gray-400">{ms.description}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           {ms.date && (
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <span className="text-xs text-gray-400 flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
                               {ms.date}
                             </span>
@@ -1007,7 +1007,7 @@ export default function GoalsLensPage() {
                         </div>
                         <h4
                           className={`text-sm font-semibold ${
-                            ach.unlocked ? 'text-white' : 'text-gray-500'
+                            ach.unlocked ? 'text-white' : 'text-gray-400'
                           }`}
                         >
                           {ach.name}
@@ -1073,7 +1073,7 @@ export default function GoalsLensPage() {
           ))}
         </div>
         {!goalItems[0]?.id && (
-          <p className="text-xs text-gray-500 text-center">Create a goal to run analytics actions.</p>
+          <p className="text-xs text-gray-400 text-center">Create a goal to run analytics actions.</p>
         )}
 
         {runAction.isPending && (
@@ -1120,7 +1120,7 @@ export default function GoalsLensPage() {
                       <div key={obj.id} className="lens-card flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-white truncate max-w-xs">{obj.title}</p>
-                          <p className="text-xs text-gray-500">{obj.krCount} key results — {obj.krOnTrack} on track</p>
+                          <p className="text-xs text-gray-400">{obj.krCount} key results — {obj.krOnTrack} on track</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-2 bg-lattice-deep rounded-full overflow-hidden">
@@ -1219,7 +1219,7 @@ export default function GoalsLensPage() {
                 )}
                 {regression && (
                   <div className="lens-card">
-                    <p className="text-xs text-gray-500 mb-1">Regression fit: <span className={`font-medium ${(regression.rSquared as number) > 0.8 ? 'text-neon-green' : 'text-yellow-400'}`}>{regression.fit as string}</span> (R²={regression.rSquared as number})</p>
+                    <p className="text-xs text-gray-400 mb-1">Regression fit: <span className={`font-medium ${(regression.rSquared as number) > 0.8 ? 'text-neon-green' : 'text-yellow-400'}`}>{regression.fit as string}</span> (R²={regression.rSquared as number})</p>
                     <p className="text-xs font-mono text-gray-400">{regression.equation as string}</p>
                   </div>
                 )}

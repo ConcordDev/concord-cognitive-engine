@@ -37,7 +37,7 @@ export default function GlobalError({
 
           {/* Error digest for debugging */}
           {error.digest && (
-            <p className="text-xs text-gray-500 font-mono mb-6">
+            <p className="text-xs text-gray-400 font-mono mb-6">
               Error ID: {error.digest}
             </p>
           )}
@@ -62,7 +62,7 @@ export default function GlobalError({
         </div>
 
         {/* Sovereignty reminder */}
-        <p className="text-center text-gray-500 text-sm mt-6">
+        <p className="text-center text-gray-400 text-sm mt-6">
           Your data remains safe and local. Errors don&apos;t leave your machine.
         </p>
       </div>

@@ -182,7 +182,7 @@ export default function AtlasLensPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Atlas</h1>
-            <p className="text-sm text-zinc-500">Signal Tomography & Spatial Intelligence</p>
+            <p className="text-sm text-zinc-400">Signal Tomography & Spatial Intelligence</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap ml-4">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
@@ -215,7 +215,7 @@ export default function AtlasLensPage() {
               <stat.icon className="w-4 h-4" />
             </div>
             <p className="text-xl font-bold text-white">{stat.value}</p>
-            <p className="text-xs text-zinc-500">{stat.label}</p>
+            <p className="text-xs text-zinc-400">{stat.label}</p>
           </motion.div>
         ))}
       </div>
@@ -225,7 +225,7 @@ export default function AtlasLensPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="flex items-center gap-2 text-xs text-zinc-500"
+        className="flex items-center gap-2 text-xs text-zinc-400"
       >
         <Compass className="w-3.5 h-3.5 text-emerald-400" />
         <span>Lat: {queryLat || '--'}</span>
@@ -289,7 +289,7 @@ export default function AtlasLensPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              tab === t.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              tab === t.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
             {t.icon}
@@ -379,8 +379,8 @@ export default function AtlasLensPage() {
             {actionResult.resolved !== undefined && actionResult.count !== undefined && (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.resolvedCount as number || 0}</p><p className="text-[10px] text-gray-500">Resolved</p></div>
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-red-400">{actionResult.unresolvedCount as number || 0}</p><p className="text-[10px] text-gray-500">Unresolved</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.resolvedCount as number || 0}</p><p className="text-[10px] text-gray-400">Resolved</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-red-400">{actionResult.unresolvedCount as number || 0}</p><p className="text-[10px] text-gray-400">Unresolved</p></div>
                 </div>
                 {(actionResult.resolved as Array<{ name: string; lat: number; lon: number; distanceFromOriginKm?: number }>)?.slice(0, 5).map((p, i) => (
                   <div key={i} className="flex items-center justify-between text-xs p-1.5 bg-lattice-surface rounded">
@@ -405,15 +405,15 @@ export default function AtlasLensPage() {
                 <div className="text-lg font-bold text-green-400">{actionResult.regionCount as number} Regions</div>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(actionResult.totals as Record<string, unknown>).map(([key, val]) => (
-                    <div key={`total-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-500 capitalize">Total {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
+                    <div key={`total-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-400 capitalize">Total {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
                   ))}
                   {Object.entries(actionResult.averages as Record<string, unknown>).map(([key, val]) => (
-                    <div key={`avg-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-500 capitalize">Avg {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
+                    <div key={`avg-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-400 capitalize">Avg {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
                   ))}
                 </div>
                 {actionResult.distribution ? (
                   <div className="p-2 bg-lattice-surface rounded">
-                    <p className="text-[10px] text-gray-500">Distribution</p>
+                    <p className="text-[10px] text-gray-400">Distribution</p>
                     <p className="text-sm font-bold text-white">{String((actionResult.distribution as Record<string, unknown>).concentration)}</p>
                   </div>
                 ) : null}
@@ -423,8 +423,8 @@ export default function AtlasLensPage() {
             {actionResult.optimizedRoute !== undefined && actionResult.totalDistanceKm !== undefined && (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.totalDistanceKm as number}km</p><p className="text-[10px] text-gray-500">Total Distance</p></div>
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{(actionResult.optimizedRoute as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-500">Stops</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.totalDistanceKm as number}km</p><p className="text-[10px] text-gray-400">Total Distance</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{(actionResult.optimizedRoute as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-400">Stops</p></div>
                 </div>
                 {(actionResult.optimizedRoute as Array<{ name: string; step: number }>)?.map((s, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-lattice-surface rounded">

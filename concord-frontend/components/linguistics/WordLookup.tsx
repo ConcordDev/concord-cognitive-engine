@@ -98,7 +98,7 @@ export function WordLookup() {
               </div>
               {e.meanings.map((m, j) => (
                 <div key={j} className="mt-2 space-y-1">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">{m.partOfSpeech}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">{m.partOfSpeech}</div>
                   {m.definitions.slice(0, 4).map((d, k) => (
                     <div key={k} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-xs">
                       <p className="text-zinc-200">{d.definition}</p>
@@ -125,9 +125,9 @@ export function WordLookup() {
 function RelatedCard({ label, words }: { label: string; words: DatamuseWord[] }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 p-2">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-1 flex flex-wrap gap-1">
-        {words.length === 0 ? <span className="text-[10px] text-zinc-600">—</span> : words.map((w) => (
+        {words.length === 0 ? <span className="text-[10px] text-zinc-400">—</span> : words.map((w) => (
           <span key={w.word} className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">{w.word}</span>
         ))}
       </div>

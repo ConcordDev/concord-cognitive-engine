@@ -232,7 +232,7 @@ export function NoteCanvasBoard() {
           style={{ height: 460 }}
         >
           {active.cards.length === 0 && (
-            <p className="absolute inset-0 grid place-items-center text-xs text-gray-500">
+            <p className="absolute inset-0 grid place-items-center text-xs text-gray-400">
               Add cards and drag to arrange.
             </p>
           )}
@@ -260,7 +260,7 @@ export function NoteCanvasBoard() {
                 <button
                   type="button"
                   onClick={() => removeCard(c.id)}
-                  className="text-gray-500 hover:text-rose-300"
+                  className="text-gray-400 hover:text-rose-300"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -273,7 +273,7 @@ export function NoteCanvasBoard() {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-gray-500">
+        <p className="text-[10px] text-gray-400">
           Drag a card header to move it. Save persists the layout.
         </p>
       </div>
@@ -307,11 +307,11 @@ export function NoteCanvasBoard() {
         </button>
       </div>
       {loading ? (
-        <div className="text-center py-6 text-xs text-gray-500">
+        <div className="text-center py-6 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin inline" />
         </div>
       ) : canvases.length === 0 ? (
-        <p className="text-center text-xs text-gray-500 py-6">No boards yet.</p>
+        <p className="text-center text-xs text-gray-400 py-6">No boards yet.</p>
       ) : (
         <div className="space-y-1">
           {canvases.map((c) => (
@@ -325,7 +325,7 @@ export function NoteCanvasBoard() {
                 className="text-left min-w-0 flex-1"
               >
                 <p className="text-sm text-gray-100 truncate">{c.name}</p>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-gray-400">
                   {c.cardCount} cards · {c.edgeCount} links
                 </p>
               </button>

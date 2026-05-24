@@ -23,7 +23,7 @@ export function RealtimeDataPanel({
   if (Array.isArray(data)) {
     if (data.length === 0) {
       return (
-        <div className="p-3 rounded-lg bg-zinc-800/50 text-xs text-zinc-500">
+        <div className="p-3 rounded-lg bg-zinc-800/50 text-xs text-zinc-400">
           No realtime insights yet
         </div>
       );
@@ -33,7 +33,7 @@ export function RealtimeDataPanel({
         <div className="px-3 py-2 bg-zinc-700/50 flex items-center justify-between">
           <span className="text-xs font-medium text-zinc-300">Realtime Insights</span>
           {lastUpdated && (
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] text-zinc-400">
               {new Date(lastUpdated).toLocaleTimeString()}
             </span>
           )}
@@ -54,7 +54,7 @@ export function RealtimeDataPanel({
 
   if (!data && !insights?.length) {
     return (
-      <div className="p-3 rounded-lg bg-zinc-800/50 text-xs text-zinc-500">
+      <div className="p-3 rounded-lg bg-zinc-800/50 text-xs text-zinc-400">
         {isLive
           ? `Waiting for ${domain} data...`
           : 'Connect to receive real-time updates'}
@@ -82,7 +82,7 @@ export function RealtimeDataPanel({
           Live {domain} Data
         </span>
         {lastUpdated && (
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-400">
             {new Date(lastUpdated).toLocaleTimeString()}
           </span>
         )}
@@ -91,7 +91,7 @@ export function RealtimeDataPanel({
         {data && renderDetailedData(domain, data)}
         {insights && insights.length > 0 && (
           <div className="mt-2 pt-2 border-t border-zinc-700">
-            <div className="text-[10px] text-zinc-500 mb-1">AI Insights</div>
+            <div className="text-[10px] text-zinc-400 mb-1">AI Insights</div>
             {insights.slice(-3).map((i, idx) => (
               <div key={idx} className="text-amber-400/80 text-[11px] mb-1">
                 {i.insight} <span className="text-zinc-600">({(i.confidence * 100).toFixed(0)}%)</span>
@@ -177,7 +177,7 @@ function renderCompactData(domain: string, data: Record<string, unknown>) {
     }
   }
 
-  return <span className="text-zinc-500">Data available</span>;
+  return <span className="text-zinc-400">Data available</span>;
 }
 
 function renderDetailedData(domain: string, data: Record<string, unknown>) {
@@ -197,7 +197,7 @@ function renderDetailedData(domain: string, data: Record<string, unknown>) {
               </div>
             </div>
           ))}
-          <div className="text-[10px] text-zinc-600 mt-1">
+          <div className="text-[10px] text-zinc-400 mt-1">
             Market: {String(data.marketStatus || 'unknown')}
           </div>
         </div>
@@ -234,7 +234,7 @@ function renderDetailedData(domain: string, data: Record<string, unknown>) {
           {articles.slice(0, 5).map((a, i) => (
             <div key={i}>
               <div className="text-zinc-300">{a.title}</div>
-              <div className="text-[10px] text-zinc-500">{a.source} {a.pubDate ? `· ${a.pubDate}` : ''}</div>
+              <div className="text-[10px] text-zinc-400">{a.source} {a.pubDate ? `· ${a.pubDate}` : ''}</div>
             </div>
           ))}
         </div>
@@ -276,7 +276,7 @@ function renderDetailedData(domain: string, data: Record<string, unknown>) {
           {papers.slice(0, 4).map((p, i) => (
             <div key={i}>
               <div className="text-zinc-300 text-[11px]">{p.title}</div>
-              <div className="text-[10px] text-zinc-500">{p.category} · {p.published?.slice(0, 10)}</div>
+              <div className="text-[10px] text-zinc-400">{p.category} · {p.published?.slice(0, 10)}</div>
             </div>
           ))}
         </div>
@@ -309,7 +309,7 @@ function renderDetailedData(domain: string, data: Record<string, unknown>) {
               ) : (
                 <div className="text-zinc-300 text-[11px]">{a.title}</div>
               )}
-              <div className="text-[10px] text-zinc-500">
+              <div className="text-[10px] text-zinc-400">
                 {a.source}{a.pubDate ? ` · ${formatRelativeDate(a.pubDate)}` : ''}
               </div>
             </div>

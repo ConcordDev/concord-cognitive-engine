@@ -233,7 +233,7 @@ export function PhysicsActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -246,15 +246,15 @@ export function PhysicsActionPanel() {
             <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1">
               {(['v0', 'v', 'a', 't', 'x'] as const).map(k => <div key={k} className="text-[11px] text-zinc-300">{k} <span className="text-blue-200 font-mono">{kinResult.solved[k] ?? '-'}</span></div>)}
             </div>
-            <div className="text-[10px] text-zinc-500 mt-1 font-mono">v = v₀ + at</div>
+            <div className="text-[10px] text-zinc-400 mt-1 font-mono">v = v₀ + at</div>
           </div>
         )}
         {projResult && (
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Projectile</div>
             <div className="text-2xl font-bold text-orange-300">{projResult.range_m} <span className="text-xs text-zinc-400">m range</span></div>
-            <div className="text-[10px] text-zinc-500">apex {projResult.maxHeight_m} m · ToF {projResult.timeOfFlight_s} s</div>
-            <div className="text-[10px] text-zinc-500">impact {projResult.impactSpeed_mps} m/s</div>
+            <div className="text-[10px] text-zinc-400">apex {projResult.maxHeight_m} m · ToF {projResult.timeOfFlight_s} s</div>
+            <div className="text-[10px] text-zinc-400">impact {projResult.impactSpeed_mps} m/s</div>
           </div>
         )}
         {unitResult && (
@@ -267,7 +267,7 @@ export function PhysicsActionPanel() {
         {constantsResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Constants ({Object.keys(constantsResult.constants).length})</div>
-            {Object.entries(constantsResult.constants).slice(0, 8).map(([k, c]) => <div key={k} className="text-[10px] text-zinc-300 mt-0.5"><span className="text-purple-200 font-mono">{k}</span> = {c.value.toExponential(3)} <span className="text-zinc-500">{c.units}</span></div>)}
+            {Object.entries(constantsResult.constants).slice(0, 8).map(([k, c]) => <div key={k} className="text-[10px] text-zinc-300 mt-0.5"><span className="text-purple-200 font-mono">{k}</span> = {c.value.toExponential(3)} <span className="text-zinc-400">{c.units}</span></div>)}
           </div>
         )}
       </div>

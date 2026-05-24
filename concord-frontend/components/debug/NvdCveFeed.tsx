@@ -85,7 +85,7 @@ export function NvdCveFeed() {
       <div className="grid grid-cols-4 gap-2">
         {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((s) => (
           <div key={s} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">{s}</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">{s}</div>
             <div className={`mt-0.5 font-mono text-lg ${s === 'CRITICAL' ? 'text-rose-300' : s === 'HIGH' ? 'text-orange-300' : s === 'MEDIUM' ? 'text-amber-300' : 'text-zinc-300'}`}>{sevCounts[s] || 0}</div>
           </div>
         ))}
@@ -109,18 +109,18 @@ export function NvdCveFeed() {
                     {cweList.slice(0, 2).map((w) => <span key={w} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{w}</span>)}
                   </div>
                   <p className="mt-1 line-clamp-2 text-[12px] text-zinc-200">{desc}</p>
-                  <div className="mt-1 text-[10px] text-zinc-500">published {v.cve.published?.slice(0, 10)}</div>
+                  <div className="mt-1 text-[10px] text-zinc-400">published {v.cve.published?.slice(0, 10)}</div>
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
               </div>
             </a>
           );
         })}
         {list.length === 0 && !cves.isPending && !cves.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No CVEs returned.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No CVEs returned.</div>
         )}
       </div>
-      {cves.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling NVD…</div>}
+      {cves.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling NVD…</div>}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export function LineageView({
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 text-xs text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Tracing lineage…
       </div>
     );
@@ -86,7 +86,7 @@ export function LineageView({
       <header className="flex items-center gap-2">
         <GitBranch className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-semibold text-white">Naming lineage</h3>
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-zinc-400">
           {ancestry.length} ancestor{ancestry.length === 1 ? '' : 's'} · {descendants.length} descendant
           {descendants.length === 1 ? '' : 's'}
         </span>
@@ -96,7 +96,7 @@ export function LineageView({
 
       {cohort.length > 0 && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-          <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-500">
+          <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-400">
             Shares naming origin “{root.naming_origin}”
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -115,7 +115,7 @@ export function LineageView({
       )}
 
       {ancestry.length === 0 && descendants.length === 0 && cohort.length === 0 && (
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-zinc-400">
           No recorded lineage — this emergent has no ancestry, descendants, or origin cohort yet.
         </p>
       )}

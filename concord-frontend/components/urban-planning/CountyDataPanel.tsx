@@ -109,10 +109,10 @@ export function CountyDataPanel() {
                 <Cell label="Owner-occupied" value={census.ownerPct != null ? `${census.ownerPct}%` : '—'} icon={Home} />
                 <Cell label="60+ min commute" value={census.longCommutePct != null ? `${census.longCommutePct}%` : '—'} />
               </div>
-              <p className="mt-2 text-[10px] text-zinc-500">FIPS {census.stateFips}/{census.countyFips} · {census.source}</p>
+              <p className="mt-2 text-[10px] text-zinc-400">FIPS {census.stateFips}/{census.countyFips} · {census.source}</p>
             </>
           ) : (
-            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Click pull to load.</div>
+            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Click pull to load.</div>
           )}
         </div>
 
@@ -130,7 +130,7 @@ export function CountyDataPanel() {
                   if (sizes.length === 0) return null;
                   return (
                     <div key={k}>
-                      <div className="mb-0.5 text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+                      <div className="mb-0.5 text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
                       <div className="flex flex-wrap gap-1">
                         {sizes.map((sz) => (
                           <span key={sz} className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">{familySize(sz)} {fmtCurrency(tier[sz])}</span>
@@ -144,7 +144,7 @@ export function CountyDataPanel() {
           ) : hudError ? (
             <div className="rounded border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-200">{hudError}</div>
           ) : (
-            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Click pull to load (requires HUD_API_TOKEN).</div>
+            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Click pull to load (requires HUD_API_TOKEN).</div>
           )}
         </div>
       </div>
@@ -155,7 +155,7 @@ export function CountyDataPanel() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-sm text-cyan-300">{value}</div>
     </div>
   );

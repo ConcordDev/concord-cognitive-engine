@@ -43,7 +43,7 @@ export function PredictionCards({ predictions, onView, onDismiss }: PredictionCa
         >
           <div>
             <p className="text-sm text-zinc-200">{p.title}</p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-400">
               {p.lens} &middot; {p.action.replace(/-/g, ' ')}
             </p>
           </div>

@@ -132,7 +132,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
 
           {tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-zinc-500">Tags:</span>
+              <span className="text-[10px] uppercase tracking-wider text-zinc-400">Tags:</span>
               {activeTag && (
                 <button
                   type="button"
@@ -183,7 +183,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
                           )}
                         </div>
                         <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">{d.prose}</p>
-                        <p className="mt-1 font-mono text-[10px] text-zinc-600">
+                        <p className="mt-1 font-mono text-[10px] text-zinc-400">
                           {d.fragmentCount ?? 0} fragments ·{' '}
                           {d.composedAt ? new Date(d.composedAt * 1000).toLocaleDateString() : '—'}
                         </p>
@@ -224,7 +224,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
                       weekday: 'short', month: 'short', day: 'numeric',
                     })}
                   </span>
-                  <span className="font-mono text-[10px] text-zinc-500">{d.count} dream{d.count === 1 ? '' : 's'}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">{d.count} dream{d.count === 1 ? '' : 's'}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {d.dreams.map((dr) => (

@@ -102,7 +102,7 @@ export function MacroGoalRings({ refreshKey = 0 }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 flex items-center justify-center text-xs text-gray-500">
+      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 flex items-center justify-center text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading goals…
       </div>
     );
@@ -115,7 +115,7 @@ export function MacroGoalRings({ refreshKey = 0 }: { refreshKey?: number }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Target className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Daily Macro Goals</span>
-        <span className="ml-auto text-[10px] text-gray-500">
+        <span className="ml-auto text-[10px] text-gray-400">
           {summary?.entryCount ? `${summary.entryCount} logged today` : 'nothing logged yet'}
         </span>
         <button
@@ -155,7 +155,7 @@ export function MacroGoalRings({ refreshKey = 0 }: { refreshKey?: number }) {
 
       <div className="p-3">
         {!hasGoal && !editing ? (
-          <div className="py-8 text-center text-xs text-gray-500">
+          <div className="py-8 text-center text-xs text-gray-400">
             <Target className="w-6 h-6 mx-auto mb-2 opacity-30" />
             No goals set yet. Set your daily calorie and macro targets to track progress.
           </div>
@@ -170,14 +170,14 @@ export function MacroGoalRings({ refreshKey = 0 }: { refreshKey?: number }) {
                     <Ring pct={p.pct} color={over ? '#ef4444' : m.color} />
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-sm font-bold text-white">{Math.round(p.pct)}%</span>
-                      <span className="text-[9px] text-gray-500">{m.label}</span>
+                      <span className="text-[9px] text-gray-400">{m.label}</span>
                     </div>
                   </div>
                   <div className="mt-1.5 text-center">
                     <div className="text-xs text-white">
                       {p.consumed}<span className="text-gray-600"> / {p.goal}{m.unit}</span>
                     </div>
-                    <div className={cn('text-[10px]', p.remaining < 0 ? 'text-red-400' : 'text-gray-500')}>
+                    <div className={cn('text-[10px]', p.remaining < 0 ? 'text-red-400' : 'text-gray-400')}>
                       {p.remaining < 0 ? `${Math.abs(p.remaining)}${m.unit} over` : `${p.remaining}${m.unit} left`}
                     </div>
                   </div>

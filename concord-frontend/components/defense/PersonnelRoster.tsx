@@ -148,14 +148,14 @@ export function PersonnelRoster() {
               <div className={`text-sm font-bold ${AVAIL_COLOR[a]}`}>
                 {data.byAvailability[a] || 0}
               </div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">{a}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{a}</div>
             </div>
           ))}
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-zinc-500">
+        <div className="flex items-center justify-center py-12 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -166,10 +166,10 @@ export function PersonnelRoster() {
               className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5"
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                {p.rank && <span className="text-[10px] text-zinc-500 shrink-0 font-mono">{p.rank}</span>}
+                {p.rank && <span className="text-[10px] text-zinc-400 shrink-0 font-mono">{p.rank}</span>}
                 <span className="text-xs text-white truncate">{p.name}</span>
                 {p.role && <span className="text-[10px] text-indigo-400 shrink-0">{p.role}</span>}
-                {p.unit && <span className="text-[10px] text-zinc-500 shrink-0">{p.unit}</span>}
+                {p.unit && <span className="text-[10px] text-zinc-400 shrink-0">{p.unit}</span>}
                 {p.assignment ? (
                   <span className="text-[10px] text-zinc-400 shrink-0 truncate">→ {p.assignment}</span>
                 ) : (
@@ -193,7 +193,7 @@ export function PersonnelRoster() {
                     })
                   }
                   aria-label="Edit personnel"
-                  className="p-1 text-zinc-500 hover:text-blue-400"
+                  className="p-1 text-zinc-400 hover:text-blue-400"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
@@ -201,7 +201,7 @@ export function PersonnelRoster() {
                   onClick={() => remove(p.id)}
                   disabled={busy}
                   aria-label="Delete personnel"
-                  className="p-1 text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                  className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -209,7 +209,7 @@ export function PersonnelRoster() {
             </div>
           ))}
           {roster.length === 0 && (
-            <div className="text-center py-6 text-xs text-zinc-500">
+            <div className="text-center py-6 text-xs text-zinc-400">
               <Users className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No personnel on the roster. Add one below.
             </div>
@@ -224,7 +224,7 @@ export function PersonnelRoster() {
             <span className="text-xs font-semibold text-white">
               {form.id ? 'Edit Personnel' : 'New Personnel'}
             </span>
-            <button onClick={() => setForm(null)} aria-label="Close editor" className="text-zinc-500 hover:text-white">
+            <button onClick={() => setForm(null)} aria-label="Close editor" className="text-zinc-400 hover:text-white">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>

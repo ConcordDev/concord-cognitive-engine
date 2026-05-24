@@ -63,11 +63,11 @@ export function MpSearch() {
               <div>
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono text-base font-bold text-cyan-300">{m.formula}</span>
-                  <span className="font-mono text-[10px] text-zinc-500">{m.materialId}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">{m.materialId}</span>
                   {m.isStable && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-300">stable</span>}
                   {m.isMagnetic && <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[9px] font-bold text-violet-300">magnetic</span>}
                 </div>
-                <div className="mt-1 grid grid-cols-2 gap-x-3 text-[10px] text-zinc-500 sm:grid-cols-4">
+                <div className="mt-1 grid grid-cols-2 gap-x-3 text-[10px] text-zinc-400 sm:grid-cols-4">
                   {m.crystalSystem && <Cell label="Crystal" value={m.crystalSystem} />}
                   {m.spaceGroup && <Cell label="Space group" value={m.spaceGroup} />}
                   {m.density != null && <Cell label="Density" value={`${m.density.toFixed(2)} g/cm³`} />}
@@ -112,7 +112,7 @@ export function MpSearch() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="font-mono text-cyan-300">{value}</div>
     </div>
   );

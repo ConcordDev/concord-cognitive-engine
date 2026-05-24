@@ -69,7 +69,7 @@ export function OperatorErrorBanner() {
       <div className="flex justify-end px-4 py-1">
         <button
           onClick={() => setDismissed(false)}
-          className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-gray-400 hover:text-gray-300 hover:bg-white/5 transition-colors"
           aria-label="Show debug panel"
         >
           <AlertTriangle className="h-3 w-3" />

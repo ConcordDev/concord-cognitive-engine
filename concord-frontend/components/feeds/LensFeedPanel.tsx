@@ -132,12 +132,12 @@ export function LensFeedPanel({ lensId, domain, limit = 20, className }: LensFee
             </span>
           )}
           {liveCount > 0 && !isLive && (
-            <span className="text-[10px] text-gray-500">{liveCount} new</span>
+            <span className="text-[10px] text-gray-400">{liveCount} new</span>
           )}
         </div>
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="text-gray-500 hover:text-gray-300 transition"
+          className="text-gray-400 hover:text-gray-300 transition"
           aria-label={collapsed ? 'Expand feed' : 'Collapse feed'}
         >
           {collapsed ? (
@@ -157,7 +157,7 @@ export function LensFeedPanel({ lensId, domain, limit = 20, className }: LensFee
               <div key={i} className="h-16 rounded-lg bg-gray-800/50 animate-pulse" />
             ))
           ) : displayItems.length === 0 ? (
-            <p className="text-[11px] text-gray-500 text-center py-3">No live feed items yet</p>
+            <p className="text-[11px] text-gray-400 text-center py-3">No live feed items yet</p>
           ) : (
             displayItems.map((item) => (
               <div key={item.id} data-testid="feed-dtu-card">

@@ -220,7 +220,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ChefHat className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Recipe Library</span>
-        <span className="ml-auto text-[10px] text-gray-500">{recipes.length} recipes</span>
+        <span className="ml-auto text-[10px] text-gray-400">{recipes.length} recipes</span>
         <button onClick={() => setCreating((v) => !v)} className="p-1 text-gray-400 hover:text-white" title="Add recipe">
           <Plus className="w-4 h-4" />
         </button>
@@ -245,9 +245,9 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : recipes.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">
+          <div className="px-3 py-10 text-center text-xs text-gray-400">
             <ChefHat className="w-6 h-6 mx-auto mb-2 opacity-30" /> No recipes yet. Hit + to build your library.
           </div>
         ) : (
@@ -258,10 +258,10 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                   onClick={() => toggle(r.id)}
                   className="w-full px-3 py-2 hover:bg-white/[0.03] flex items-center gap-2 text-left"
                 >
-                  <ChevronRight className={cn('w-3.5 h-3.5 text-gray-500 transition-transform', expanded === r.id && 'rotate-90')} />
+                  <ChevronRight className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', expanded === r.id && 'rotate-90')} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate">{r.title}</div>
-                    <div className="text-[10px] text-gray-500 flex items-center gap-2">
+                    <div className="text-[10px] text-gray-400 flex items-center gap-2">
                       <span className="text-cyan-400">{r.slot}</span>
                       {r.calories > 0 && <span>{r.calories} kcal</span>}
                       {r.cookCount > 0 && <span className="flex items-center gap-0.5"><Flame className="w-3 h-3" />{r.cookCount}×</span>}
@@ -270,7 +270,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                   </div>
                   <div className="text-right">
                     <Stars value={r.avgRating} />
-                    <div className="text-[9px] text-gray-600">{r.ratingCount} rating{r.ratingCount === 1 ? '' : 's'}</div>
+                    <div className="text-[9px] text-gray-400">{r.ratingCount} rating{r.ratingCount === 1 ? '' : 's'}</div>
                   </div>
                 </button>
 
@@ -290,7 +290,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                     {/* Cook history */}
                     {cooks.length > 0 && (
                       <div>
-                        <div className="text-[10px] uppercase text-gray-500 mb-1 flex items-center gap-1">
+                        <div className="text-[10px] uppercase text-gray-400 mb-1 flex items-center gap-1">
                           <History className="w-3 h-3" /> Cook history
                         </div>
                         <ul className="space-y-0.5">
@@ -306,7 +306,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                     {/* Photo gallery */}
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] uppercase text-gray-500 flex items-center gap-1">
+                        <span className="text-[10px] uppercase text-gray-400 flex items-center gap-1">
                           <Camera className="w-3 h-3" /> Photos
                         </span>
                         <input
@@ -338,7 +338,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                         />
                       </div>
                       {photos.length === 0 ? (
-                        <div className="text-[10px] text-gray-600 py-2">No photos yet — capture the dish or a step.</div>
+                        <div className="text-[10px] text-gray-400 py-2">No photos yet — capture the dish or a step.</div>
                       ) : (
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                           {photos.map((p) => (
@@ -358,7 +358,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                                 <X className="w-3 h-3" />
                               </button>
                               {p.caption && (
-                                <div className="text-[9px] text-gray-500 truncate mt-0.5">{p.caption}</div>
+                                <div className="text-[9px] text-gray-400 truncate mt-0.5">{p.caption}</div>
                               )}
                             </div>
                           ))}

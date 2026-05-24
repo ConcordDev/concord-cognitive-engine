@@ -81,11 +81,11 @@ export function NewsDigestSchedule() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-fuchsia-600/15 to-transparent">
         <CalendarClock className="w-5 h-5 text-fuchsia-400" />
         <h2 className="text-sm font-bold text-zinc-100">Digest Schedule</h2>
-        <span className="text-[11px] text-zinc-500">Choose your delivery time</span>
+        <span className="text-[11px] text-zinc-400">Choose your delivery time</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500">
+        <div className="flex items-center justify-center py-10 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -99,19 +99,19 @@ export function NewsDigestSchedule() {
                   at <span className="font-semibold text-fuchsia-300">{fmtHour(schedule.hour)}</span>
                 </p>
                 {nextDelivery && (
-                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
                     Next delivery: {new Date(nextDelivery).toLocaleString()}
                   </p>
                 )}
               </>
             ) : (
-              <p className="text-xs text-zinc-500 italic">No digest scheduled.</p>
+              <p className="text-xs text-zinc-400 italic">No digest scheduled.</p>
             )}
           </div>
 
           {/* Cadence picker */}
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5">Cadence</p>
+            <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Cadence</p>
             <div className="grid grid-cols-2 gap-1.5">
               {(Object.keys(CADENCE_LABEL) as Cadence[]).map((c) => (
                 <button
@@ -134,7 +134,7 @@ export function NewsDigestSchedule() {
           {/* Hour picker */}
           {cadence !== 'off' && (
             <div>
-              <label className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5 block">
+              <label className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5 block">
                 Delivery hour — {fmtHour(hour)}
               </label>
               <input
@@ -146,7 +146,7 @@ export function NewsDigestSchedule() {
                 onChange={(e) => setHour(Number(e.target.value))}
                 className="w-full accent-fuchsia-500"
               />
-              <div className="flex justify-between text-[9px] text-zinc-600">
+              <div className="flex justify-between text-[9px] text-zinc-400">
                 <span>12 AM</span>
                 <span>12 PM</span>
                 <span>11 PM</span>

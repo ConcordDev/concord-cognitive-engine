@@ -75,7 +75,7 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -95,10 +95,10 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
               <blockquote className="text-sm text-zinc-200 italic leading-relaxed">
                 &ldquo;{q.content}&rdquo;
               </blockquote>
-              <div className="mt-1.5 text-xs text-zinc-500 flex items-baseline gap-2">
+              <div className="mt-1.5 text-xs text-zinc-400 flex items-baseline gap-2">
                 <span>— {q.author}</span>
                 {q.tags.length > 0 && (
-                  <span className="text-[10px] text-zinc-600 truncate">{q.tags.slice(0, 3).join(' · ')}</span>
+                  <span className="text-[10px] text-zinc-400 truncate">{q.tags.slice(0, 3).join(' · ')}</span>
                 )}
               </div>
             </li>
@@ -106,7 +106,7 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Quotable · api.quotable.io
       </footer>
     </section>

@@ -79,7 +79,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -100,7 +100,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
           </button>
         </div>
         {albums.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No albums.</p>
+          <p className="text-[11px] text-zinc-400 italic">No albums.</p>
         ) : (
           <ul className="space-y-2">
             {albums.map((al) => (
@@ -110,7 +110,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
                     className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left hover:bg-zinc-900">
                     <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform', openAlbum === al.id && 'rotate-90')} />
                     <span className="text-sm font-semibold text-zinc-100">{al.name}</span>
-                    <span className="text-[11px] text-zinc-500">{al.photoCount} photos</span>
+                    <span className="text-[11px] text-zinc-400">{al.photoCount} photos</span>
                   </button>
                   <button type="button" onClick={() => delAlbum(al.id)} className="px-3 text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
@@ -119,7 +119,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
                 {openAlbum === al.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 space-y-1">
                     {photos.length === 0 ? (
-                      <p className="text-[11px] text-zinc-500 italic">No photos in the catalog yet.</p>
+                      <p className="text-[11px] text-zinc-400 italic">No photos in the catalog yet.</p>
                     ) : photos.map((p) => {
                       const inAlbum = albumPhotos.some((x) => x.id === p.id);
                       return (
@@ -157,14 +157,14 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
           </button>
         </div>
         {shoots.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No shoots.</p>
+          <p className="text-[11px] text-zinc-400 italic">No shoots.</p>
         ) : (
           <ul className="space-y-1">
             {shoots.map((sh) => (
               <li key={sh.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{sh.name}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {[sh.date, sh.location].filter(Boolean).join(' · ') || 'No details'} · {sh.photoCount} photos
                   </p>
                 </div>
@@ -174,7 +174,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
         )}
         {shoots.length > 0 && photos.length > 0 && (
           <div className="mt-2 space-y-1">
-            <p className="text-[10px] text-zinc-600 uppercase tracking-wide">Assign photos to a shoot</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Assign photos to a shoot</p>
             {photos.slice(0, 12).map((p) => (
               <div key={p.id} className="flex items-center justify-between text-xs">
                 <span className="text-zinc-300">{p.title}</span>

@@ -93,7 +93,7 @@ function SubstrateWeather({ className }: { className?: string }) {
               <Thermometer className="w-4 h-4 text-red-400" />
               <span className="text-2xl font-bold text-white">{data.temperature}°</span>
             </div>
-            <p className="text-xs text-gray-500">Activity temp</p>
+            <p className="text-xs text-gray-400">Activity temp</p>
           </div>
         </div>
 
@@ -101,26 +101,26 @@ function SubstrateWeather({ className }: { className?: string }) {
         <div className="grid grid-cols-4 gap-3 mt-4">
           <div className="text-center">
             <p className="text-lg font-bold text-white">{stats.totalDTUs || 0}</p>
-            <p className="text-[10px] text-gray-500">Total DTUs</p>
+            <p className="text-[10px] text-gray-400">Total DTUs</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-neon-cyan">{stats.last24h || 0}</p>
-            <p className="text-[10px] text-gray-500">Last 24h</p>
+            <p className="text-[10px] text-gray-400">Last 24h</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-blue-400">{stats.last7d || 0}</p>
-            <p className="text-[10px] text-gray-500">Last 7d</p>
+            <p className="text-[10px] text-gray-400">Last 7d</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-purple-400">{data.causalEdges || 0}</p>
-            <p className="text-[10px] text-gray-500">Causal Links</p>
+            <p className="text-[10px] text-gray-400">Causal Links</p>
           </div>
         </div>
       </div>
 
       {/* Freshness bar */}
       <div className="px-5 py-3 flex items-center gap-2">
-        <span className="text-xs text-gray-500 w-16">Freshness</span>
+        <span className="text-xs text-gray-400 w-16">Freshness</span>
         <div className="flex-1 flex h-3 rounded-full overflow-hidden bg-lattice-deep">
           {freshness.fresh > 0 && (
             <div
@@ -172,7 +172,7 @@ function SubstrateWeather({ className }: { className?: string }) {
                 <BrainIcon
                   className={cn('w-3.5 h-3.5', health.enabled ? 'text-green-400' : 'text-gray-600')}
                 />
-                <span className="text-[10px] text-gray-500 capitalize">{name}</span>
+                <span className="text-[10px] text-gray-400 capitalize">{name}</span>
                 <span
                   className={cn(
                     'w-1.5 h-1.5 rounded-full',
@@ -188,7 +188,7 @@ function SubstrateWeather({ className }: { className?: string }) {
       {/* Expand for details */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-5 py-2 border-t border-lattice-border text-xs text-gray-500 hover:text-white hover:bg-lattice-deep transition-colors flex items-center justify-center gap-1"
+        className="w-full px-5 py-2 border-t border-lattice-border text-xs text-gray-400 hover:text-white hover:bg-lattice-deep transition-colors flex items-center justify-center gap-1"
       >
         {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         {expanded ? 'Less' : 'Details'}
@@ -241,7 +241,7 @@ function SubstrateWeather({ className }: { className?: string }) {
           </div>
 
           {/* System features */}
-          <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-500">
+          <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-400">
             <span>Gardens: {data.gardens}</span>
             <span>Episodes: {data.episodes}</span>
             <span>Dreams: {data.dreams}</span>

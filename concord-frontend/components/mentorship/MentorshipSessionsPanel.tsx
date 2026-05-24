@@ -190,14 +190,14 @@ export function MentorshipSessionsPanel() {
         <div className="panel p-4 space-y-2">
           <h4 className="font-semibold text-sm flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-neon-blue" /> Action items
-            <span className="text-[10px] text-zinc-500">{openItems} open</span>
+            <span className="text-[10px] text-zinc-400">{openItems} open</span>
           </h4>
           {selected.actionItems.length === 0 ? (
-            <p className="text-xs text-zinc-500">No action items yet.</p>
+            <p className="text-xs text-zinc-400">No action items yet.</p>
           ) : selected.actionItems.map((it) => (
             <button key={it.id} onClick={() => toggleItem(it.id)} className="flex items-center gap-2 text-sm w-full text-left hover:text-white">
-              {it.done ? <CheckSquare className="w-4 h-4 text-neon-green" /> : <Square className="w-4 h-4 text-zinc-500" />}
-              <span className={cn(it.done && 'line-through text-zinc-500')}>{it.text}</span>
+              {it.done ? <CheckSquare className="w-4 h-4 text-neon-green" /> : <Square className="w-4 h-4 text-zinc-400" />}
+              <span className={cn(it.done && 'line-through text-zinc-400')}>{it.text}</span>
             </button>
           ))}
           <div className="flex gap-2">
@@ -262,9 +262,9 @@ export function MentorshipSessionsPanel() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-8">No sessions. Book one to get started.</p>
+        <p className="text-sm text-zinc-400 text-center py-8">No sessions. Book one to get started.</p>
       ) : (
         <>
           <div className="space-y-2">
@@ -275,7 +275,7 @@ export function MentorshipSessionsPanel() {
                   <span className={cn('text-[10px] px-2 py-0.5 rounded', STATUS_STYLE[s.status])}>{s.status}</span>
                 </div>
                 <p className="text-xs text-zinc-400">{s.partnerName} · {s.durationMin} min</p>
-                <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+                <p className="text-[10px] text-zinc-400 flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {new Date(s.startAt).toLocaleString()}
                   {s.actionItems.length > 0 && <span className="ml-2">· {s.actionItems.filter((i) => !i.done).length} open items</span>}
                 </p>

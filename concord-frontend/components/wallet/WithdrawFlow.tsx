@@ -302,7 +302,7 @@ function WithdrawFlow({
                 </span>
               </div>
               {pendingAmount > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   {pendingAmount.toLocaleString()} CC in pending withdrawals
                 </p>
               )}
@@ -312,7 +312,7 @@ function WithdrawFlow({
             <div>
               <label className={ds.label}>Withdrawal Amount</label>
               <div className="relative">
-                <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   inputMode="numeric"
@@ -384,7 +384,7 @@ function WithdrawFlow({
                 'w-full px-6 py-3',
                 isValidAmount
                   ? 'bg-neon-green/20 text-neon-green border border-neon-green/50 hover:bg-neon-green/30 focus:ring-neon-green'
-                  : 'bg-lattice-elevated text-gray-500 cursor-not-allowed'
+                  : 'bg-lattice-elevated text-gray-400 cursor-not-allowed'
               )}
             >
               <ArrowDownToLine className="w-5 h-5" />
@@ -394,7 +394,7 @@ function WithdrawFlow({
             </button>
 
             {/* Limits Info */}
-            <div className="flex items-start gap-2 text-xs text-gray-500">
+            <div className="flex items-start gap-2 text-xs text-gray-400">
               <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <span>
                 Min: {MIN_WITHDRAWAL} CC | Max daily: {MAX_DAILY_WITHDRAWAL.toLocaleString()} CC |
@@ -417,7 +417,7 @@ function WithdrawFlow({
                         <span className="text-sm font-mono text-white">
                           {w.amount.toLocaleString()} CC
                         </span>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           {new Date(w.created_at).toLocaleDateString()}
                         </p>
                       </div>
@@ -469,7 +469,7 @@ function WithdrawFlow({
               </div>
             </div>
 
-            <p className="text-xs text-gray-500 flex items-start gap-2">
+            <p className="text-xs text-gray-400 flex items-start gap-2">
               <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               Withdrawals are typically processed within 1-3 business days. Funds will be sent to
               your connected Stripe account.
@@ -525,7 +525,7 @@ function WithdrawFlow({
               </span>{' '}
               (${netPayout.toLocaleString()} after fees) has been submitted for review.
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               You will receive ${netPayout.toLocaleString()}.00 within 1-3 business days.
             </p>
             <button

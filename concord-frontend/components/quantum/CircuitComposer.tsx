@@ -144,7 +144,7 @@ export function CircuitComposer({
     <div className="space-y-3">
       {/* Palette */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500 mr-1">Gates</span>
+        <span className="text-[10px] uppercase tracking-wider text-zinc-400 mr-1">Gates</span>
         {gateLibrary.map((g) => (
           <button
             key={g.id}
@@ -182,11 +182,11 @@ export function CircuitComposer({
         {pendingWires && (
           <span className="text-amber-400 flex items-center gap-1">
             wiring {armed?.id}: {pendingWires.wires.length}/{armed?.qubits} wires
-            <button onClick={cancelPending} className="text-zinc-500 hover:text-white"><X className="w-3 h-3" /></button>
+            <button onClick={cancelPending} className="text-zinc-400 hover:text-white"><X className="w-3 h-3" /></button>
           </span>
         )}
         {placed.length > 0 && !armed && !pendingWires && (
-          <span className="text-zinc-500">Click a placed gate to remove it</span>
+          <span className="text-zinc-400">Click a placed gate to remove it</span>
         )}
         <button
           onClick={() => onPlacedChange([])}

@@ -226,7 +226,7 @@ export function ExpeditionPlanner() {
               {waypoints.length > 2 && (
                 <button
                   onClick={() => setWaypoints((ws) => ws.filter((_, j) => j !== i))}
-                  className="p-1 text-zinc-500 hover:text-red-400"
+                  className="p-1 text-zinc-400 hover:text-red-400"
                   aria-label="Remove waypoint"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -271,7 +271,7 @@ export function ExpeditionPlanner() {
           </div>
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-zinc-500 text-left">
+              <tr className="text-zinc-400 text-left">
                 <th className="py-1">Leg</th>
                 <th>Terrain</th>
                 <th>Dist</th>
@@ -311,11 +311,11 @@ export function ExpeditionPlanner() {
             <div key={rt.id} className="flex items-center justify-between rounded bg-zinc-950 border border-zinc-800 px-3 py-2">
               <button onClick={() => loadRoute(rt)} className="text-left">
                 <span className="text-sm text-white">{rt.name}</span>
-                <span className="ml-2 text-xs text-zinc-500">
+                <span className="ml-2 text-xs text-zinc-400">
                   {rt.totals.distanceKm} km · {rt.totals.waterLiters} L · {rt.waypoints.length} WP
                 </span>
               </button>
-              <button onClick={() => remove(rt.id)} className="p-1 text-zinc-500 hover:text-red-400" aria-label="Delete route">
+              <button onClick={() => remove(rt.id)} className="p-1 text-zinc-400 hover:text-red-400" aria-label="Delete route">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -331,7 +331,7 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
     <div className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
       <div className="flex items-center gap-1.5">
         {icon}
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       </div>
       <div className="mt-0.5 font-mono text-base text-white">{value}</div>
     </div>

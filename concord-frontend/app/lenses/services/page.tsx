@@ -621,7 +621,7 @@ export default function ServicesLensPage() {
                 {(d.tip as number) > 0 && <span className={ds.textMuted}>Tip: ${d.tip as number}</span>}
                 {(d.discount as number) > 0 && <span className="text-red-400">-${d.discount as number}</span>}
               </div>
-              {Boolean(d.receiptNumber) && <p className={cn(ds.textMono, 'text-xs text-gray-500')}>{d.receiptNumber as string}</p>}
+              {Boolean(d.receiptNumber) && <p className={cn(ds.textMono, 'text-xs text-gray-400')}>{d.receiptNumber as string}</p>}
             </>
           )}
 
@@ -842,28 +842,28 @@ export default function ServicesLensPage() {
           <Scissors className="w-5 h-5 text-pink-400" />
           <div>
             <p className="text-lg font-bold text-white">{items.length}</p>
-            <p className="text-xs text-gray-500">Services</p>
+            <p className="text-xs text-gray-400">Services</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className={ds.panel + ' flex items-center gap-3'}>
           <Activity className="w-5 h-5 text-green-400" />
           <div>
             <p className="text-lg font-bold text-white">{appointments.filter(a => a.meta.status !== 'cancelled' && a.meta.status !== 'no_show').length}</p>
-            <p className="text-xs text-gray-500">Healthy</p>
+            <p className="text-xs text-gray-400">Healthy</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className={ds.panel + ' flex items-center gap-3'}>
           <TrendingUp className="w-5 h-5 text-blue-400" />
           <div>
             <p className="text-lg font-bold text-white">{dashboardStats.noShowRate > 0 ? `${(100 - dashboardStats.noShowRate).toFixed(0)}%` : '100%'}</p>
-            <p className="text-xs text-gray-500">Avg Uptime</p>
+            <p className="text-xs text-gray-400">Avg Uptime</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className={ds.panel + ' flex items-center gap-3'}>
           <BarChart3 className="w-5 h-5 text-purple-400" />
           <div>
             <p className="text-lg font-bold text-white">{appointments.length + staff.length}</p>
-            <p className="text-xs text-gray-500">Endpoints</p>
+            <p className="text-xs text-gray-400">Endpoints</p>
           </div>
         </motion.div>
       </div>
@@ -961,18 +961,18 @@ export default function ServicesLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{(actionResult.optimizedOrder as unknown[]).length}</p>
-                    <p className="text-[10px] text-gray-500">Appointments</p>
+                    <p className="text-[10px] text-gray-400">Appointments</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.totalGapMinutes) > 60 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.totalGapMinutes)} min</p>
-                    <p className="text-[10px] text-gray-500">Total Gap</p>
+                    <p className="text-[10px] text-gray-400">Total Gap</p>
                   </div>
                 </div>
                 {(actionResult.optimizedOrder as {client:string;time:string;service:string}[]).slice(0,5).map((a, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 bg-lattice-surface rounded">
                     <span className="w-5 h-5 rounded-full bg-neon-cyan/20 text-neon-cyan text-center leading-5 flex-shrink-0">{i+1}</span>
                     <span className="text-gray-300 flex-1">{a.client}</span>
-                    <span className="text-gray-500">{a.service}</span>
+                    <span className="text-gray-400">{a.service}</span>
                   </div>
                 ))}
               </div>
@@ -982,7 +982,7 @@ export default function ServicesLensPage() {
               <div className="space-y-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">{String(actionResult.count)}</p>
-                  <p className="text-[10px] text-gray-500">Reminders Generated</p>
+                  <p className="text-[10px] text-gray-400">Reminders Generated</p>
                 </div>
                 {(actionResult.reminders as {client:string;service:string;date:string}[]).slice(0,4).map((r, i) => (
                   <div key={i} className="px-2 py-1 bg-lattice-surface rounded text-xs">
@@ -998,11 +998,11 @@ export default function ServicesLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.totalRevenue).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Total Revenue</p>
+                    <p className="text-[10px] text-gray-400">Total Revenue</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.period)}d period</p>
-                    <p className="text-[10px] text-gray-500">Period</p>
+                    <p className="text-[10px] text-gray-400">Period</p>
                   </div>
                 </div>
                 {(actionResult.summary as {provider:string;appointments:number;revenue:number}[]).slice(0,4).map((p, i) => (
@@ -1019,11 +1019,11 @@ export default function ServicesLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.count) > 0 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.count)}</p>
-                    <p className="text-[10px] text-gray-500">Low Stock Items</p>
+                    <p className="text-[10px] text-gray-400">Low Stock Items</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalItems)}</p>
-                    <p className="text-[10px] text-gray-500">Total Items</p>
+                    <p className="text-[10px] text-gray-400">Total Items</p>
                   </div>
                 </div>
                 {(actionResult.lowStock as {name:string;currentStock:number;reorderPoint:number}[]).slice(0,4).map((s, i) => (

@@ -189,7 +189,7 @@ export function NewsActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -201,20 +201,20 @@ export function NewsActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-rose-300 font-semibold">Bias: {biasResult.lean}</div>
             <div className="text-2xl font-bold text-zinc-100">{biasResult.score}</div>
             {biasResult.loadedWords && <div className="text-[10px] text-zinc-400 mt-1">Loaded: {biasResult.loadedWords.slice(0, 5).join(', ')}</div>}
-            {biasResult.balanceScore != null && <div className="text-[10px] text-zinc-500">Balance: {biasResult.balanceScore}/100</div>}
+            {biasResult.balanceScore != null && <div className="text-[10px] text-zinc-400">Balance: {biasResult.balanceScore}/100</div>}
           </div>
         )}
         {eventsResult?.events && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Events ({eventsResult.total})</div>
-            {eventsResult.events.slice(0, 6).map((e, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{e.who}</strong> {e.what}{e.where && <span className="text-zinc-500"> · {e.where}</span>}</div>)}
+            {eventsResult.events.slice(0, 6).map((e, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{e.who}</strong> {e.what}{e.where && <span className="text-zinc-400"> · {e.where}</span>}</div>)}
           </div>
         )}
         {narrativeResult && (
           <div className={cn('rounded-md border p-2.5', narrativeResult.shiftDetected ? 'border-amber-500/40 bg-amber-500/5' : 'border-purple-500/30 bg-purple-500/5')}>
             <div className={cn('text-[10px] uppercase tracking-wider font-semibold', narrativeResult.shiftDetected ? 'text-amber-300' : 'text-purple-300')}>Narrative {narrativeResult.shiftDetected && '(SHIFT)'}</div>
             <div className="text-sm font-semibold text-zinc-100 mt-1">{narrativeResult.dominantNarrative}</div>
-            {narrativeResult.competingNarratives && <div className="text-[10px] text-zinc-500 mt-1">vs: {narrativeResult.competingNarratives.slice(0, 3).join(' · ')}</div>}
+            {narrativeResult.competingNarratives && <div className="text-[10px] text-zinc-400 mt-1">vs: {narrativeResult.competingNarratives.slice(0, 3).join(' · ')}</div>}
           </div>
         )}
         {briefingResult?.headlines && (

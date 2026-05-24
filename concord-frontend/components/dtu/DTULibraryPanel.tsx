@@ -52,7 +52,7 @@ function DTULibraryPanel({
               e.stopPropagation();
               refetch();
             }}
-            className="p-1 rounded text-gray-500 hover:text-white transition-colors"
+            className="p-1 rounded text-gray-400 hover:text-white transition-colors"
             title="Refresh"
           >
             <RefreshCw className="w-3 h-3" />
@@ -73,8 +73,8 @@ function DTULibraryPanel({
             </div>
           ) : myDTUs.length === 0 ? (
             <div className="px-4 py-5 text-center">
-              <p className="text-xs text-gray-500">No creations yet.</p>
-              <p className="text-[10px] text-gray-600 mt-1">
+              <p className="text-xs text-gray-400">No creations yet.</p>
+              <p className="text-[10px] text-gray-400 mt-1">
                 Save a project to create a DTU artifact.
               </p>
             </div>
@@ -87,7 +87,7 @@ function DTULibraryPanel({
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{dtu.title}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
+                    <p className="text-[10px] text-gray-400 mt-0.5">
                       {dtu.timestamp
                         ? new Date(dtu.timestamp).toLocaleDateString()
                         : 'Unknown date'}
@@ -107,7 +107,7 @@ function DTULibraryPanel({
                       href={`/dtu/${dtu.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-500 hover:text-white transition-colors"
+                      className="text-gray-400 hover:text-white transition-colors"
                       title="Open"
                     >
                       <ExternalLink className="w-3 h-3" />

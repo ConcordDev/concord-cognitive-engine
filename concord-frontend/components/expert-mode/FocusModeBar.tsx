@@ -45,7 +45,7 @@ export function FocusModeBar({
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mr-1">Focus</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mr-1">Focus</span>
       {modes.map((m) => {
         const Icon = ICONS[m.id] || Globe2;
         const active = m.id === value;

@@ -78,14 +78,14 @@ export function PersonalAgentPanel({ socket, onAction }: PersonalAgentPanelProps
           )}
         </h3>
         {statusData?.lastTick && (
-          <span className="text-[10px] text-zinc-600">
+          <span className="text-[10px] text-zinc-400">
             Last tick: {new Date(statusData.lastTick).toLocaleTimeString()}
           </span>
         )}
         <button
           onClick={handleTick}
           disabled={ticking}
-          className="p-1 text-zinc-500 hover:text-purple-400 transition-colors"
+          className="p-1 text-zinc-400 hover:text-purple-400 transition-colors"
           title="Refresh insights"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${ticking ? 'animate-spin' : ''}`} />
@@ -110,7 +110,7 @@ export function PersonalAgentPanel({ socket, onAction }: PersonalAgentPanelProps
             <button
               onClick={() => { window.dispatchEvent(new CustomEvent('agent:insight-defer', { detail: { insight } })); }}
               className="text-xs px-2 py-1 rounded bg-zinc-800
-              text-zinc-500 border border-zinc-700
+              text-zinc-400 border border-zinc-700
               hover:bg-zinc-700 transition-colors"
             >
               Later

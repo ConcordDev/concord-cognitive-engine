@@ -130,7 +130,7 @@ export function StravaActivitiesPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -180,7 +180,7 @@ export function StravaActivitiesPanel() {
       )}
 
       {activities.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No activities yet. Log your first run, ride or swim.
         </div>
       ) : (
@@ -190,7 +190,7 @@ export function StravaActivitiesPanel() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{a.name}</p>
-                  <p className="text-[11px] text-zinc-500 capitalize">{a.type} · {a.date}</p>
+                  <p className="text-[11px] text-zinc-400 capitalize">{a.type} · {a.date}</p>
                 </div>
                 <button type="button" onClick={() => remove(a)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
@@ -252,7 +252,7 @@ export function StravaActivitiesPanel() {
                         </button>
                       </div>
                     ))}
-                    <label className="w-20 h-20 rounded-lg border border-dashed border-zinc-700 flex flex-col items-center justify-center gap-1 cursor-pointer text-zinc-500 hover:text-orange-300 hover:border-orange-700/60">
+                    <label className="w-20 h-20 rounded-lg border border-dashed border-zinc-700 flex flex-col items-center justify-center gap-1 cursor-pointer text-zinc-400 hover:text-orange-300 hover:border-orange-700/60">
                       <ImagePlus className="w-4 h-4" />
                       <span className="text-[10px]">Add photo</span>
                       <input
@@ -270,7 +270,7 @@ export function StravaActivitiesPanel() {
                       <li key={ci} className="flex items-start gap-2 text-[11px]">
                         <div className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5">
                           <p className="text-zinc-300">{c.text}</p>
-                          <p className="text-[10px] text-zinc-600 mt-0.5">
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
                             {c.userId} · {new Date(c.at).toLocaleString()}
                           </p>
                         </div>
@@ -285,7 +285,7 @@ export function StravaActivitiesPanel() {
                       </li>
                     ))}
                     {(a.comments || []).length === 0 && (
-                      <li className="text-[11px] text-zinc-600 italic">No comments yet.</li>
+                      <li className="text-[11px] text-zinc-400 italic">No comments yet.</li>
                     )}
                   </ul>
                   <div className="flex items-center gap-1.5">

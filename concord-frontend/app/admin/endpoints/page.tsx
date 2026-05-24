@@ -251,7 +251,7 @@ export default function AdminEndpointsPage() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[240px]">
-            <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -294,7 +294,7 @@ export default function AdminEndpointsPage() {
                   <span className="flex items-center gap-2">
                     {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     <span className="font-mono text-sm text-zinc-200">{group}</span>
-                    <span className="text-xs text-zinc-500">{rows.length} route{rows.length === 1 ? '' : 's'}</span>
+                    <span className="text-xs text-zinc-400">{rows.length} route{rows.length === 1 ? '' : 's'}</span>
                   </span>
                 </button>
                 {open && (
@@ -309,7 +309,7 @@ export default function AdminEndpointsPage() {
                           </span>
                           <div className="min-w-0">
                             <div className="font-mono text-zinc-100 truncate">{e.path}</div>
-                            <div className="text-[10px] text-zinc-500 flex items-center gap-2 flex-wrap">
+                            <div className="text-[10px] text-zinc-400 flex items-center gap-2 flex-wrap">
                               {authBadge(e.auth)}
                               <span className="font-mono">{e.file}:{e.line}</span>
                               {e.mountPrefixDetected === false && e.file.startsWith('routes/') && (
@@ -347,7 +347,7 @@ export default function AdminEndpointsPage() {
             );
           })}
           {grouped.length === 0 && (
-            <div className="text-sm text-zinc-500 py-12 text-center">No endpoints match your filter.</div>
+            <div className="text-sm text-zinc-400 py-12 text-center">No endpoints match your filter.</div>
           )}
         </div>
       </div>
@@ -363,7 +363,7 @@ function Counter({ label, value, tone }: { label: string; value: number; tone?: 
     'border-zinc-800 text-zinc-200';
   return (
     <div className={cn('rounded border bg-zinc-900/50 px-3 py-2', toneCls)}>
-      <div className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</div>
       <div className="text-xl font-semibold">{value.toLocaleString()}</div>
     </div>
   );

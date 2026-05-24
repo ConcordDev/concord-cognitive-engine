@@ -146,11 +146,11 @@ export default function TrustGraphView() {
   }, [graph, positions.length]);
 
   if (!graph) {
-    return <div className="text-gray-500 italic">Loading federation graph...</div>;
+    return <div className="text-gray-400 italic">Loading federation graph...</div>;
   }
   if (graph.nodes.length <= 1) {
     return (
-      <div className="text-gray-500 italic">
+      <div className="text-gray-400 italic">
         No peers yet. Use <code className="text-amber-300">POST /api/federation/register</code> to peer with another instance.
       </div>
     );
@@ -214,7 +214,7 @@ export default function TrustGraphView() {
           </g>
         ))}
       </svg>
-      <div className="mt-3 text-xs text-gray-500">
+      <div className="mt-3 text-xs text-gray-400">
         {graph.nodes.length} instance{graph.nodes.length === 1 ? '' : 's'},
         {' '}{graph.edges.length} trust edge{graph.edges.length === 1 ? '' : 's'}.
         Edge weight = trust score (0..1).

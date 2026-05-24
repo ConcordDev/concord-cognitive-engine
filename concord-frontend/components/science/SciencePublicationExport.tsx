@@ -89,7 +89,7 @@ export function SciencePublicationExport() {
         placeholder="Results" className={taCls} />
 
       <div className="space-y-1.5">
-        <p className="text-[10px] text-gray-500 uppercase">Figures</p>
+        <p className="text-[10px] text-gray-400 uppercase">Figures</p>
         {figures.map((f, i) => (
           <div key={i} className="flex gap-1">
             <input value={f.caption}

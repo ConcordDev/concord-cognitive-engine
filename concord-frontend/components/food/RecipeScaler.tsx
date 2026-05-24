@@ -45,7 +45,7 @@ export function RecipeScaler({ baseServings, ingredients }: RecipeScalerProps) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calculator className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Scale recipe</span>
-        <span className="ml-auto text-[10px] text-gray-500">base = {baseServings} servings</span>
+        <span className="ml-auto text-[10px] text-gray-400">base = {baseServings} servings</span>
       </header>
       <div className="p-3 border-b border-white/10 flex items-center gap-3 text-sm">
         <label className="text-gray-400">Servings:</label>
@@ -56,7 +56,7 @@ export function RecipeScaler({ baseServings, ingredients }: RecipeScalerProps) {
       </div>
       <ul className="divide-y divide-white/5 max-h-72 overflow-y-auto">
         {loading ? (
-          <li className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Scaling…</li>
+          <li className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Scaling…</li>
         ) : (
           scaled.map((s, i) => (
             <li key={i} className="px-3 py-2 text-sm">

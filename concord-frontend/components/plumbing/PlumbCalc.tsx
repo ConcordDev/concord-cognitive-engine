@@ -93,16 +93,16 @@ function PipeSizer() {
       <div className="grid gap-3 p-4 md:grid-cols-[200px_1fr]">
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Flow (GPM)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Flow (GPM)</span>
             <input type="number" min={0} step={0.5} value={flowGPM || ''} onChange={(e) => setFlowGPM(Math.max(0, Number(e.target.value) || 0))} placeholder="Enter flow rate" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Velocity (ft/s)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Velocity (ft/s)</span>
             <input type="number" min={1} max={15} step={0.5} value={velocity} onChange={(e) => setVelocity(Math.max(1, Math.min(15, Number(e.target.value) || 5)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
-            <span className="mt-0.5 block text-[9px] text-zinc-600">8 ft/s ≈ erosion threshold</span>
+            <span className="mt-0.5 block text-[9px] text-zinc-400">8 ft/s ≈ erosion threshold</span>
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Material</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Material</span>
             <select value={material} onChange={(e) => setMaterial(e.target.value as typeof material)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="copper">Copper (Type L)</option>
               <option value="pex">PEX-B</option>
@@ -118,7 +118,7 @@ function PipeSizer() {
         <div className="space-y-3">
           {/* Pipe-size wheel — horizontal strip with each nominal size as a swatch; recommended is highlighted */}
           <div className="rounded-lg border border-blue-500/15 bg-zinc-950/40 p-3">
-            <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Nominal sizes</div>
+            <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Nominal sizes</div>
             <div className="flex items-end gap-1">
               {NOMINAL_SIZES.map((size) => {
                 const isRec = recommendedNominal === size;
@@ -126,19 +126,19 @@ function PipeSizer() {
                 return (
                   <div key={size} className={`flex flex-col items-center gap-1 rounded px-2 pt-2 pb-1 transition ${isRec ? 'bg-blue-500/30 ring-2 ring-blue-400' : 'bg-zinc-900/40'}`}>
                     <div className={`rounded ${isRec ? 'bg-blue-400' : 'bg-zinc-700'}`} style={{ width: heightPx, height: heightPx }} />
-                    <span className={`font-mono text-[10px] ${isRec ? 'text-blue-100 font-bold' : 'text-zinc-500'}`}>{size}&Prime;</span>
+                    <span className={`font-mono text-[10px] ${isRec ? 'text-blue-100 font-bold' : 'text-zinc-400'}`}>{size}&Prime;</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter flow rate above and tap "Size pipe".</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter flow rate above and tap "Size pipe".</div>}
           {result && (
             <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Calculated</div><div className="font-mono text-blue-200">{result.calculatedDiameter}</div></div>
+              <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Calculated</div><div className="font-mono text-blue-200">{result.calculatedDiameter}</div></div>
               <div className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1.5"><div className="text-[9px] text-blue-300">Recommended</div><div className="font-mono text-blue-100">{result.recommendedSize}</div></div>
-              <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Material</div><div className="font-mono text-zinc-300">{result.material}</div></div>
+              <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Material</div><div className="font-mono text-zinc-300">{result.material}</div></div>
               {result.note && <div className="col-span-3 rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1 text-amber-200">{result.note}</div>}
             </div>
           )}
@@ -180,14 +180,14 @@ function WaterHeaterSizer() {
       <div className="grid gap-3 p-4 md:grid-cols-[200px_1fr]">
         <div className="space-y-3">
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Household size</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Household size</span>
             <input type="range" min={1} max={8} value={household} onChange={(e) => setHousehold(Number(e.target.value))} className="mt-1 w-full" />
-            <div className="font-mono text-xl text-orange-200">{household || '—'} <span className="text-xs text-zinc-500">people</span></div>
+            <div className="font-mono text-xl text-orange-200">{household || '—'} <span className="text-xs text-zinc-400">people</span></div>
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Simultaneous fixtures</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Simultaneous fixtures</span>
             <input type="range" min={1} max={6} value={simultaneous} onChange={(e) => setSimultaneous(Number(e.target.value))} className="mt-1 w-full" />
-            <div className="font-mono text-xl text-orange-200">{simultaneous || '—'} <span className="text-xs text-zinc-500">at peak</span></div>
+            <div className="font-mono text-xl text-orange-200">{simultaneous || '—'} <span className="text-xs text-zinc-400">at peak</span></div>
           </label>
           <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || household < 1 || simultaneous < 1} className="w-full rounded bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-400 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Recommend'}
@@ -195,7 +195,7 @@ function WaterHeaterSizer() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Set household + simultaneous-fixtures sliders above.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Set household + simultaneous-fixtures sliders above.</div>}
           {result && (
             <>
               <div className="grid grid-cols-2 gap-2">
@@ -258,11 +258,11 @@ function DrainSlopeCalculator() {
       <div className="grid gap-3 p-4 md:grid-cols-[200px_1fr]">
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Pipe size (inches)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Pipe size (inches)</span>
             <input type="number" min={0} step={0.25} value={pipeSize || ''} onChange={(e) => setPipeSize(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 2" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Run length (ft)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Run length (ft)</span>
             <input type="number" min={0} value={length || ''} onChange={(e) => setLength(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 20" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || pipeSize <= 0 || length <= 0} className="w-full rounded bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-400 disabled:opacity-50">
@@ -271,7 +271,7 @@ function DrainSlopeCalculator() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter pipe size + run length above.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter pipe size + run length above.</div>}
           {result && dropInches > 0 && (
             <>
               {/* Side-view ASCII-style cross-section */}
@@ -288,12 +288,12 @@ function DrainSlopeCalculator() {
                 </svg>
               </div>
               <div className="grid grid-cols-3 gap-2 text-[11px]">
-                <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Slope</div><div className="font-mono text-emerald-200">{result.slopePerFoot}</div></div>
+                <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Slope</div><div className="font-mono text-emerald-200">{result.slopePerFoot}</div></div>
                 <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1"><div className="text-[9px] text-amber-300">Total drop</div><div className="font-mono text-amber-100">{result.totalDrop}</div></div>
-                <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Pipe</div><div className="font-mono text-zinc-300">{result.pipeSize}</div></div>
+                <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Pipe</div><div className="font-mono text-zinc-300">{result.pipeSize}</div></div>
               </div>
               {result.ipcCode && <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[10px] text-zinc-400">{result.ipcCode}</div>}
-              {result.tip && <div className="text-[10px] text-zinc-500">💡 {result.tip}</div>}
+              {result.tip && <div className="text-[10px] text-zinc-400">💡 {result.tip}</div>}
             </>
           )}
         </div>
@@ -345,7 +345,7 @@ function FixtureSupplyCalc() {
                 {FIXTURE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <input type="number" min={0} value={f.count} onChange={(e) => updateFixture(i, 'count', e.target.value)} placeholder="0" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono text-right" />
-              <button type="button" onClick={() => removeFixture(i)} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => removeFixture(i)} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -358,10 +358,10 @@ function FixtureSupplyCalc() {
 
         {result && (
           <div className="mt-3 grid grid-cols-4 gap-2 text-[11px]">
-            <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Fixtures</div><div className="font-mono text-cyan-200">{result.fixtures}</div></div>
+            <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Fixtures</div><div className="font-mono text-cyan-200">{result.fixtures}</div></div>
             <div className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-1"><div className="text-[9px] text-cyan-300">Total WSFU</div><div className="font-mono text-cyan-100">{result.totalWSFU}</div></div>
             <div className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1"><div className="text-[9px] text-blue-300">Meter</div><div className="font-mono text-blue-100">{result.meterSize}</div></div>
-            <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Supply line</div><div className="font-mono text-cyan-200">{result.supplyLine}</div></div>
+            <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Supply line</div><div className="font-mono text-cyan-200">{result.supplyLine}</div></div>
             {result.note && <div className="col-span-4 rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[10px] text-zinc-400">{result.note}</div>}
           </div>
         )}

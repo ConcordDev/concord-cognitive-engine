@@ -119,13 +119,13 @@ export function ApodFeed() {
           <div className="p-4 space-y-1.5">
             <div className="flex items-baseline justify-between gap-2">
               <p className="text-sm font-semibold text-white">{active.title}</p>
-              <span className="text-[11px] text-zinc-500 shrink-0">{active.date}</span>
+              <span className="text-[11px] text-zinc-400 shrink-0">{active.date}</span>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed line-clamp-4">
               {active.explanation}
             </p>
             {active.copyright && (
-              <p className="text-[11px] text-zinc-600">© {active.copyright.trim()}</p>
+              <p className="text-[11px] text-zinc-400">© {active.copyright.trim()}</p>
             )}
           </div>
         </div>
@@ -148,7 +148,7 @@ export function ApodFeed() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={it.url} alt={it.title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-zinc-950 text-[10px] text-zinc-500">
+                <div className="w-full h-full flex items-center justify-center bg-zinc-950 text-[10px] text-zinc-400">
                   video
                 </div>
               )}

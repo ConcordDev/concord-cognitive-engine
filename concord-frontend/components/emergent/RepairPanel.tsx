@@ -83,7 +83,7 @@ function RepairPanel() {
 
           {/* Executor Status */}
           {status.executors && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-400">
               {Object.entries(status.executors).filter(([, v]) => v.canApply).length} executors
               ready
             </div>
@@ -106,7 +106,7 @@ function RepairPanel() {
           </button>
         </>
       ) : (
-        <p className="text-xs text-gray-500">Loading...</p>
+        <p className="text-xs text-gray-400">Loading...</p>
       )}
     </div>
   );

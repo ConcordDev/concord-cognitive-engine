@@ -2027,7 +2027,7 @@ export default function ChatLensPage() {
                     : 'bg-lattice-bg border-lattice-border'
                 )}
               >
-                <div className="flex items-center gap-1 mb-1 text-gray-500">
+                <div className="flex items-center gap-1 mb-1 text-gray-400">
                   <Quote className="w-3 h-3" />
                   <span>Replying to</span>
                 </div>
@@ -2041,7 +2041,7 @@ export default function ChatLensPage() {
                   response={message.oracleResponse}
                   onOpenDTU={(id) => setInspectingDtuId(id)}
                 />
-                {timeStr && <p className="text-[10px] text-gray-500 mt-1 select-none">{timeStr}</p>}
+                {timeStr && <p className="text-[10px] text-gray-400 mt-1 select-none">{timeStr}</p>}
               </div>
             ) : (
               <div
@@ -2089,7 +2089,7 @@ export default function ChatLensPage() {
                   <MessageRenderer content={message.content} />
                 )}
                 {timeStr && editingMessageId !== message.id && (
-                  <p className="text-[10px] text-gray-500 mt-1 select-none">{timeStr}</p>
+                  <p className="text-[10px] text-gray-400 mt-1 select-none">{timeStr}</p>
                 )}
 
                 {/* Attachment chips on user messages */}
@@ -2180,7 +2180,7 @@ export default function ChatLensPage() {
                             <p className="text-xs text-neon-cyan/90 truncate group-hover/src:text-neon-cyan">
                               {src.title}
                             </p>
-                            <p className="text-[10px] text-gray-500 truncate">{src.source}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{src.source}</p>
                           </div>
                         </a>
                       ))}
@@ -2193,7 +2193,7 @@ export default function ChatLensPage() {
             {/* Message action bar */}
             <div
               className={cn(
-                'flex items-center gap-2 mt-2 text-xs text-gray-500',
+                'flex items-center gap-2 mt-2 text-xs text-gray-400',
                 message.role === 'user' ? 'justify-end' : ''
               )}
             >
@@ -2585,7 +2585,7 @@ export default function ChatLensPage() {
 
           <div className="p-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={conversationSearch}
@@ -2599,7 +2599,7 @@ export default function ChatLensPage() {
 
           <div className="flex-1 overflow-y-auto" role="list" aria-label="Conversations">
             {filteredConversations.length === 0 && (
-              <div className="p-6 text-center text-gray-500 text-sm">
+              <div className="p-6 text-center text-gray-400 text-sm">
                 {conversationSearch
                   ? 'No matching conversations'
                   : 'No conversations yet. Start a new chat!'}
@@ -2657,7 +2657,7 @@ export default function ChatLensPage() {
                       ) : (
                         <h3 className="font-medium text-white truncate text-sm">{conv.title}</h3>
                       )}
-                      <span className="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">
+                      <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">
                         {formatRelativeTime(conv.updatedAt)}
                       </span>
                     </div>
@@ -2665,7 +2665,7 @@ export default function ChatLensPage() {
                       {conv.lastMessage || 'No messages'}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-[10px] text-gray-400">
                         {conv.messageCount} message{conv.messageCount !== 1 ? 's' : ''}
                       </span>
                     </div>
@@ -2678,7 +2678,7 @@ export default function ChatLensPage() {
                       e.stopPropagation();
                       startRenameConversation(conv);
                     }}
-                    className="p-1.5 rounded-md hover:bg-lattice-bg text-gray-500 hover:text-white transition-colors"
+                    className="p-1.5 rounded-md hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors"
                     title="Rename conversation"
                     aria-label={`Rename conversation: ${conv.title}`}
                   >
@@ -2690,7 +2690,7 @@ export default function ChatLensPage() {
                       deleteConversationMutation.mutate(conv.id);
                     }}
                     disabled={deleteConversationMutation.isPending}
-                    className="p-1.5 rounded-md hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors"
+                    className="p-1.5 rounded-md hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
                     title="Delete conversation"
                     aria-label={`Delete conversation: ${conv.title}`}
                   >
@@ -3048,7 +3048,7 @@ export default function ChatLensPage() {
                     >
                       <Search className="w-4 h-4" />
                       Search all chats
-                      <kbd className="ml-auto text-[10px] text-gray-500">⌘⇧F</kbd>
+                      <kbd className="ml-auto text-[10px] text-gray-400">⌘⇧F</kbd>
                     </button>
                     <button
                       onClick={handleExportChat}
@@ -3181,7 +3181,7 @@ export default function ChatLensPage() {
                         <span className="text-sm font-medium text-white block">
                           {suggestion.label}
                         </span>
-                        <span className="text-xs text-gray-500">{suggestion.desc}</span>
+                        <span className="text-xs text-gray-400">{suggestion.desc}</span>
                       </div>
                     </button>
                   ))}
@@ -3190,7 +3190,7 @@ export default function ChatLensPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.6, duration: 0.4 }}
-                  className="text-xs text-gray-500 mt-6"
+                  className="text-xs text-gray-400 mt-6"
                 >
                   Type{' '}
                   <code className="px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400">
@@ -3337,7 +3337,7 @@ export default function ChatLensPage() {
                         <FileText className="w-4 h-4 text-gray-400" />
                       )}
                       <span className="text-gray-300 truncate max-w-[150px]">{att.name}</span>
-                      <span className="text-gray-500 text-xs">{formatBytes(att.size)}</span>
+                      <span className="text-gray-400 text-xs">{formatBytes(att.size)}</span>
                       <button
                         onClick={() => removeAttachment(att.id)}
                         className="p-0.5 hover:bg-lattice-surface rounded transition-colors"
@@ -3389,7 +3389,7 @@ export default function ChatLensPage() {
                           </button>
                         ))}
                       </div>
-                      <div className="p-2 border-t border-lattice-border text-xs text-gray-500 flex items-center gap-3">
+                      <div className="p-2 border-t border-lattice-border text-xs text-gray-400 flex items-center gap-3">
                         <span>
                           <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Tab</kbd>{' '}
                           select
@@ -3527,7 +3527,7 @@ export default function ChatLensPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-gray-500 text-center mt-2">
+              <p className="text-xs text-gray-400 text-center mt-2">
                 Messages are saved as DTUs in your local lattice. AI runs through Ollama when
                 available.
               </p>
@@ -3606,7 +3606,7 @@ export default function ChatLensPage() {
                 {Array.isArray(threadSummarizeResult.keyPoints) &&
                   (threadSummarizeResult.keyPoints as string[]).length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Key Points</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">Key Points</p>
                       {(threadSummarizeResult.keyPoints as string[]).map((pt, i) => (
                         <div key={i} className="flex items-start gap-2 text-xs text-gray-300">
                           <CheckCircle2 className="w-3 h-3 text-neon-cyan flex-shrink-0 mt-0.5" />{' '}
@@ -3621,14 +3621,14 @@ export default function ChatLensPage() {
                       <p className="text-sm font-bold text-neon-cyan">
                         {threadSummarizeResult.messageCount as number}
                       </p>
-                      <p className="text-[10px] text-gray-500">Messages</p>
+                      <p className="text-[10px] text-gray-400">Messages</p>
                     </div>
                     {threadSummarizeResult.participants !== undefined && (
                       <div className="p-2 bg-lattice-bg rounded text-center">
                         <p className="text-sm font-bold text-neon-purple">
                           {threadSummarizeResult.participants as number}
                         </p>
-                        <p className="text-[10px] text-gray-500">Participants</p>
+                        <p className="text-[10px] text-gray-400">Participants</p>
                       </div>
                     )}
                   </div>
@@ -3662,14 +3662,14 @@ export default function ChatLensPage() {
                       <p className="text-sm font-bold text-neon-purple">
                         {participantAnalysisResult.totalParticipants as number}
                       </p>
-                      <p className="text-[10px] text-gray-500">Total</p>
+                      <p className="text-[10px] text-gray-400">Total</p>
                     </div>
                     {participantAnalysisResult.activeParticipants !== undefined && (
                       <div className="p-2 bg-lattice-bg rounded text-center">
                         <p className="text-sm font-bold text-neon-green">
                           {participantAnalysisResult.activeParticipants as number}
                         </p>
-                        <p className="text-[10px] text-gray-500">Active</p>
+                        <p className="text-[10px] text-gray-400">Active</p>
                       </div>
                     )}
                     {participantAnalysisResult.engagementScore !== undefined && (
@@ -3677,7 +3677,7 @@ export default function ChatLensPage() {
                         <p className="text-sm font-bold text-neon-cyan">
                           {participantAnalysisResult.engagementScore as number}
                         </p>
-                        <p className="text-[10px] text-gray-500">Engagement</p>
+                        <p className="text-[10px] text-gray-400">Engagement</p>
                       </div>
                     )}
                   </div>
@@ -3686,7 +3686,7 @@ export default function ChatLensPage() {
                   (participantAnalysisResult.participants as Array<Record<string, unknown>>)
                     .length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">
                         Top Participants
                       </p>
                       {(participantAnalysisResult.participants as Array<Record<string, unknown>>)
@@ -3729,7 +3729,7 @@ export default function ChatLensPage() {
               <div className="space-y-2 text-sm text-gray-300">
                 {!!topicDetectionResult.primaryTopic && (
                   <div className="p-2 bg-neon-green/10 border border-neon-green/30 rounded">
-                    <p className="text-xs text-gray-500 mb-0.5">Primary Topic</p>
+                    <p className="text-xs text-gray-400 mb-0.5">Primary Topic</p>
                     <p className="text-white font-medium">
                       {topicDetectionResult.primaryTopic as string}
                     </p>
@@ -3738,7 +3738,7 @@ export default function ChatLensPage() {
                 {Array.isArray(topicDetectionResult.topics) &&
                   (topicDetectionResult.topics as Array<Record<string, unknown>>).length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">
                         Detected Topics
                       </p>
                       {(topicDetectionResult.topics as Array<Record<string, unknown>>).map(
@@ -3817,13 +3817,13 @@ export default function ChatLensPage() {
                         <span className="text-xs font-medium text-white group-hover:text-neon-purple transition-colors">
                           {rec.name}
                         </span>
-                        <span className="text-[10px] text-gray-500">
+                        <span className="text-[10px] text-gray-400">
                           {Math.round(rec.score * 100)}%
                         </span>
                       </button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-gray-400">
                     Based on your current conversation context
                   </p>
                 </div>
@@ -3953,7 +3953,7 @@ export default function ChatLensPage() {
                       />
                     ))
                   ) : (
-                    <p className="text-xs text-gray-500 text-center py-8">
+                    <p className="text-xs text-gray-400 text-center py-8">
                       No proactive initiatives right now. Claude will surface them here when
                       opportunities arise.
                     </p>
@@ -4133,12 +4133,12 @@ export default function ChatLensPage() {
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {globalSearchQuery.trim().length < 2 && (
-                  <div className="px-4 py-8 text-center text-xs text-gray-500">
+                  <div className="px-4 py-8 text-center text-xs text-gray-400">
                     Type at least 2 characters to search
                   </div>
                 )}
                 {globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && (
-                  <div className="px-4 py-8 text-center text-xs text-gray-500">
+                  <div className="px-4 py-8 text-center text-xs text-gray-400">
                     No matches across {conversations.length} conversation{conversations.length === 1 ? '' : 's'}
                   </div>
                 )}
@@ -4154,7 +4154,7 @@ export default function ChatLensPage() {
                       onClick={() => jumpToSearchResult(r.convId, r.message.id)}
                       className="w-full text-left px-4 py-3 border-b border-lattice-border hover:bg-lattice-elevated transition-colors group"
                     >
-                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400 mb-1">
                         <MessageSquare className="w-3 h-3" />
                         <span className="text-neon-cyan/80">{r.convTitle}</span>
                         <span>·</span>
@@ -4176,7 +4176,7 @@ export default function ChatLensPage() {
                 })}
               </div>
               {globalSearchResults.length > 0 && (
-                <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-500 flex justify-between">
+                <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-400 flex justify-between">
                   <span>{globalSearchResults.length} match{globalSearchResults.length === 1 ? '' : 'es'}</span>
                   <span>scanning {conversations.length} conversation{conversations.length === 1 ? '' : 's'}</span>
                 </div>

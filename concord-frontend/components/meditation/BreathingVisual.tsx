@@ -93,7 +93,7 @@ export function BreathingVisual() {
   }, [pattern]);
 
   if (loading || !spec) {
-    return <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   const phase = spec.phases[phaseIdx];
@@ -107,7 +107,7 @@ export function BreathingVisual() {
       <div className="flex items-center gap-2 mb-3">
         <Wind className="w-4 h-4 text-emerald-300" />
         <h3 className="text-sm font-bold text-zinc-100">Animated Breathing</h3>
-        <span className="text-[11px] text-zinc-500">{spec.name}</span>
+        <span className="text-[11px] text-zinc-400">{spec.name}</span>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
@@ -118,7 +118,7 @@ export function BreathingVisual() {
           </button>
         ))}
         <div className="ml-auto flex items-center gap-1">
-          <span className="text-[10px] text-zinc-500">cycles</span>
+          <span className="text-[10px] text-zinc-400">cycles</span>
           {[4, 6, 8, 12].map((c) => (
             <button key={c} type="button" onClick={() => setCycles(c)}
               className={cn('w-7 h-7 rounded text-[11px]', cycles === c ? 'bg-emerald-600/40 text-emerald-100 ring-1 ring-emerald-500/50' : 'bg-zinc-900 text-zinc-400')}>
@@ -147,10 +147,10 @@ export function BreathingVisual() {
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-zinc-400">
           Cycle {Math.min(cycleNum + (done ? 0 : 1), spec.cycles)} / {spec.cycles}
         </span>
-        <span className="text-[11px] text-zinc-500">{spec.totalSeconds}s total</span>
+        <span className="text-[11px] text-zinc-400">{spec.totalSeconds}s total</span>
       </div>
 
       <div className="flex items-center justify-center gap-3">

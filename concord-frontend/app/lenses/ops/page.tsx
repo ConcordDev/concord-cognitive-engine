@@ -115,7 +115,7 @@ export default function OpsLensPage() {
           <Activity className="h-6 w-6 text-slate-400" aria-hidden />
           <div>
             <h1 className="font-mono text-lg font-semibold tracking-wide">Substrate Ops</h1>
-            <p className="text-xs text-slate-500">Attention · Repair net · Physical DTUs · Explorations · DTU substrate</p>
+            <p className="text-xs text-slate-400">Attention · Repair net · Physical DTUs · Explorations · DTU substrate</p>
           </div>
         </div>
       </header>
@@ -127,7 +127,7 @@ export default function OpsLensPage() {
 
       <div className="mx-auto mt-8 max-w-7xl px-4 md:px-8">
         <h2 className="font-mono text-sm font-semibold text-slate-400">Substrate observability</h2>
-        <p className="text-xs text-slate-600">Attention budget · repair network · physical DTUs · explorations</p>
+        <p className="text-xs text-slate-400">Attention budget · repair network · physical DTUs · explorations</p>
       </div>
 
       <nav className="border-b border-slate-800/50 px-4 md:px-8" aria-label="Ops sections">
@@ -170,7 +170,7 @@ export default function OpsLensPage() {
                     ))}
                   </div>
                 </>
-              ) : <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
+              ) : <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
             </Section>
           )}
 
@@ -183,7 +183,7 @@ export default function OpsLensPage() {
                   <Stat label="Pending fixes" value={repairNet.data.pendingFixes ?? 0} />
                   <Stat label="Last sync" value={repairNet.data.lastSync ? new Date(repairNet.data.lastSync).toLocaleTimeString() : '—'} />
                 </div>
-              ) : <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
+              ) : <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
               <button
                 onClick={() => pushRepair.mutate()}
                 disabled={pushRepair.isPending}
@@ -212,7 +212,7 @@ export default function OpsLensPage() {
                     </div>
                   )}
                 </>
-              ) : <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
+              ) : <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
             </Section>
           )}
 
@@ -225,10 +225,10 @@ export default function OpsLensPage() {
                 <ul className="space-y-1">
                   {(explore.data?.explorations ?? []).map(e => (
                     <li key={e.id} className="flex items-center gap-3 rounded border border-slate-800/50 bg-slate-900/30 px-3 py-2 text-xs">
-                      <Compass className="h-3.5 w-3.5 text-slate-500" aria-hidden />
+                      <Compass className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                       <span className="font-mono text-slate-300">{e.id}</span>
                       {e.domain && <span className="rounded bg-slate-800/60 px-1.5 py-0.5 text-[10px]">{e.domain}</span>}
-                      {e.createdAt && <span className="ml-auto text-[10px] text-slate-600">{new Date(e.createdAt).toLocaleString()}</span>}
+                      {e.createdAt && <span className="ml-auto text-[10px] text-slate-400">{new Date(e.createdAt).toLocaleString()}</span>}
                     </li>
                   ))}
                 </ul>
@@ -239,7 +239,7 @@ export default function OpsLensPage() {
           {activeTab === 'dtu' && (
             <Section k="dtu">
               <h2 className="mb-3 text-base font-semibold text-slate-200">DTU substrate</h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 The DTU substrate has 9 admin-tier macros for direct CRUD + lifecycle control.
                 Most are reached via the Marketplace and Author lenses; this tab is reserved for
                 the v1.1 admin console.
@@ -295,12 +295,12 @@ function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.18 }}
       className="rounded-lg border border-slate-800/50 bg-slate-900/30 p-3 text-slate-200">
-      <div className="mb-1 text-[11px] uppercase tracking-wider text-slate-600">{label}</div>
+      <div className="mb-1 text-[11px] uppercase tracking-wider text-slate-400">{label}</div>
       <div className="font-mono text-xl font-semibold">{value}</div>
     </motion.div>
   );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded border border-slate-800/50 bg-slate-900/30 px-4 py-6 text-center text-xs text-slate-500">{children}</p>;
+  return <p className="rounded border border-slate-800/50 bg-slate-900/30 px-4 py-6 text-center text-xs text-slate-400">{children}</p>;
 }

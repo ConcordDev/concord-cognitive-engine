@@ -122,7 +122,7 @@ export default function VeterinaryLensPage() {
                 'flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 activeMode === key
                   ? 'bg-zinc-800 text-white'
-                  : 'text-zinc-500 hover:text-zinc-300',
+                  : 'text-zinc-400 hover:text-zinc-300',
               )}
             >
               <Icon className="h-4 w-4" /> {label}

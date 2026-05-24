@@ -85,14 +85,14 @@ function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedSessionI
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <Loader className="w-6 h-6 text-zinc-500 animate-spin" />
+        <Loader className="w-6 h-6 text-zinc-400 animate-spin" />
       </div>
     );
   }
 
   if (!data?.ok) {
     return (
-      <div className="max-w-lg mx-auto p-8 text-center text-zinc-500">
+      <div className="max-w-lg mx-auto p-8 text-center text-zinc-400">
         Session not found or already ended.
       </div>
     );
@@ -115,11 +115,11 @@ function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedSessionI
       {/* Current participants */}
       {data.participants.length > 0 && (
         <div className="bg-zinc-800/50 rounded-lg p-3">
-          <p className="text-xs text-zinc-500 mb-2">Already in session:</p>
+          <p className="text-xs text-zinc-400 mb-2">Already in session:</p>
           {data.participants.map((p, i) => (
             <div key={i} className="flex items-center justify-between text-sm">
               <span className="text-zinc-300">{p.name}</span>
-              <span className="text-xs text-zinc-600">
+              <span className="text-xs text-zinc-400">
                 {p.sharingLevel === 'full'
                   ? 'Full sharing'
                   : p.sharingLevel === 'query'
@@ -170,7 +170,7 @@ function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedSessionI
               <Icon
                 className={cn(
                   'w-4 h-4 mt-0.5 shrink-0',
-                  sharingLevel === option.id ? 'text-cyan-400' : 'text-zinc-500'
+                  sharingLevel === option.id ? 'text-cyan-400' : 'text-zinc-400'
                 )}
               />
               <div>
@@ -197,14 +197,14 @@ function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedSessionI
                   'px-2 py-1 text-xs rounded-lg border transition-colors',
                   sharingDomains.includes(d)
                     ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400'
-                    : 'border-zinc-700 text-zinc-500 hover:border-zinc-600'
+                    : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
                 )}
               >
                 {d}
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-zinc-600 mt-1">Leave empty to share all your domains</p>
+          <p className="text-[10px] text-zinc-400 mt-1">Leave empty to share all your domains</p>
         </div>
       )}
 

@@ -170,7 +170,7 @@ export function MusicArtistExplorer() {
             type="button"
             onClick={() => setShowIsrc((v) => !v)}
             className={`rounded-md px-2 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-              showIsrc ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200'
+              showIsrc ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
             }`}
           >
             ISRC lookup
@@ -179,7 +179,7 @@ export function MusicArtistExplorer() {
             <button
               type="button"
               onClick={reset}
-              className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              className="rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
             >
               New search
             </button>
@@ -193,7 +193,7 @@ export function MusicArtistExplorer() {
 
       <form onSubmit={submitSearch} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             value={queryInput}
@@ -219,7 +219,7 @@ export function MusicArtistExplorer() {
       )}
 
       {!selectedArtist && !searchResults && !searchMutation.isPending && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
           Search the MusicBrainz database — the open music encyclopedia powering
           ~2M artists and ~25M releases. Disambiguation is first-class: when more
           than one artist shares a name, you pick the right one yourself.
@@ -229,7 +229,7 @@ export function MusicArtistExplorer() {
       {/* Disambiguation popover */}
       {searchResults && !selectedArtist && searchResults.length > 0 && (
         <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">
             {searchResults.length} artist{searchResults.length === 1 ? '' : 's'} match — pick one
           </div>
           <div className="space-y-1">
@@ -248,10 +248,10 @@ export function MusicArtistExplorer() {
                       <span className="text-[11px] italic text-amber-300">({a.disambiguation})</span>
                     )}
                     {typeof a.score === 'number' && (
-                      <span className="ml-auto font-mono text-[10px] text-zinc-500">{a.score}%</span>
+                      <span className="ml-auto font-mono text-[10px] text-zinc-400">{a.score}%</span>
                     )}
                   </div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-zinc-500">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-zinc-400">
                     {a.type && <span>{a.type}</span>}
                     {a.country && (
                       <span className="flex items-center gap-1">
@@ -286,7 +286,7 @@ export function MusicArtistExplorer() {
 
           {selectedArtist.tags && selectedArtist.tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <Tag className="h-3 w-3 text-zinc-500" />
+              <Tag className="h-3 w-3 text-zinc-400" />
               {selectedArtist.tags.slice(0, 12).map((t) => (
                 <button
                   key={t}
@@ -305,7 +305,7 @@ export function MusicArtistExplorer() {
                 <button
                   type="button"
                   onClick={() => setTagFilter(null)}
-                  className="ml-1 rounded-full px-2 py-0.5 text-[10px] text-zinc-500 hover:text-zinc-200"
+                  className="ml-1 rounded-full px-2 py-0.5 text-[10px] text-zinc-400 hover:text-zinc-200"
                 >
                   <X className="inline h-2.5 w-2.5" /> clear filter
                 </button>
@@ -314,13 +314,13 @@ export function MusicArtistExplorer() {
           )}
 
           {releasesMutation.isPending && (
-            <div className="flex items-center justify-center py-6 text-xs text-zinc-500">
+            <div className="flex items-center justify-center py-6 text-xs text-zinc-400">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading discography…
             </div>
           )}
 
           {!releasesMutation.isPending && releases.length === 0 && (
-            <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+            <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
               No releases indexed in MusicBrainz for this artist yet.
             </div>
           )}
@@ -369,7 +369,7 @@ function ArtistHero({ artist, releases }: { artist: ArtistHit; releases: Release
               href={`https://musicbrainz.org/artist/${artist.mbid}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1 text-zinc-500 transition-colors hover:text-cyan-400"
+              className="ml-auto flex items-center gap-1 text-zinc-400 transition-colors hover:text-cyan-400"
             >
               <ExternalLink className="h-3 w-3" />
               MusicBrainz
@@ -417,7 +417,7 @@ function ReleaseGroup({ group, releases, artistName }: { group: string; releases
             {releases.length}
           </span>
         </div>
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-zinc-500" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />}
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />}
       </button>
       {open && (
         <div className="border-t border-zinc-800">
@@ -434,7 +434,7 @@ function ReleaseRow({ release, artistName }: { release: Release; artistName: str
   return (
     <div className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-zinc-900/40">
       <div className="w-12 shrink-0 text-center">
-        <span className="font-mono text-[10px] text-zinc-500">
+        <span className="font-mono text-[10px] text-zinc-400">
           {release.date?.slice(0, 4) || '—'}
         </span>
       </div>
@@ -445,7 +445,7 @@ function ReleaseRow({ release, artistName }: { release: Release; artistName: str
             <span className="truncate text-[10px] italic text-amber-300/80">({release.disambiguation})</span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-500">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-400">
           {release.country && <span>{release.country}</span>}
           {release.status && <span>{release.status}</span>}
           {release.packaging && <span>{release.packaging}</span>}
@@ -479,7 +479,7 @@ function ReleaseRow({ release, artistName }: { release: Release; artistName: str
           href={`https://musicbrainz.org/release/${release.mbid}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           title="Open release on MusicBrainz"
           aria-label="Open release"
         >
@@ -522,7 +522,7 @@ function IsrcLookup() {
           <span className="text-[10px] uppercase tracking-wider text-cyan-300">
             ISRC lookup
           </span>
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-400">
             12-char code: 2 country + 3 registrant + 2 year + 5 designation
           </span>
         </div>
@@ -551,12 +551,12 @@ function IsrcLookup() {
               <div key={rec.mbid} className="rounded border border-zinc-800 bg-zinc-950/40 p-2 text-xs">
                 <div className="font-medium text-white">{rec.title} — <span className="text-cyan-300/80">{rec.artistCredit}</span></div>
                 {rec.lengthMs && (
-                  <div className="text-[10px] text-zinc-500">
+                  <div className="text-[10px] text-zinc-400">
                     {Math.floor(rec.lengthMs / 60000)}:{String(Math.floor((rec.lengthMs % 60000) / 1000)).padStart(2, '0')}
                   </div>
                 )}
                 {rec.releases.length > 0 && (
-                  <div className="mt-1 text-[10px] text-zinc-500">
+                  <div className="mt-1 text-[10px] text-zinc-400">
                     Released on: {rec.releases.slice(0, 3).map((rel) => `${rel.title}${rel.date ? ` (${rel.date.slice(0, 4)})` : ''}`).join('; ')}
                     {rec.releases.length > 3 && ` +${rec.releases.length - 3} more`}
                   </div>
@@ -566,7 +566,7 @@ function IsrcLookup() {
           </div>
         )}
         {result && result.recordings.length === 0 && (
-          <p className="text-[11px] text-zinc-500">No recordings indexed for that ISRC.</p>
+          <p className="text-[11px] text-zinc-400">No recordings indexed for that ISRC.</p>
         )}
       </form>
     </motion.div>

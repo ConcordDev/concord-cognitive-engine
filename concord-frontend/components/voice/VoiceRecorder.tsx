@@ -211,7 +211,7 @@ export function VoiceRecorder({
         ) : (
           <div className="text-center">
             <Mic className="w-12 h-12 text-gray-600 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">Click to start recording</p>
+            <p className="text-sm text-gray-400">Click to start recording</p>
           </div>
         )}
       </div>
@@ -225,7 +225,7 @@ export function VoiceRecorder({
           {formatTime(duration)}
         </span>
         {state === 'recording' && (
-          <span className="text-xs text-gray-500 block mt-1">
+          <span className="text-xs text-gray-400 block mt-1">
             / {formatTime(maxDuration)} max
           </span>
         )}

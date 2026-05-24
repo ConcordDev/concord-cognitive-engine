@@ -46,10 +46,10 @@ export function SovereigntyPrompt({ message, onResolve, isResolving }: Sovereign
       {/* Preview of what global has */}
       {message.globalPreview && message.globalPreview.length > 0 && (
         <div className="mb-3 space-y-1">
-          <p className="text-xs text-zinc-500">Available from global commons:</p>
+          <p className="text-xs text-zinc-400">Available from global commons:</p>
           {message.globalPreview.map((g, i) => (
             <div key={i} className="text-xs text-zinc-400 flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">
+              <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
                 {g.domain}
               </span>
               {g.title}
@@ -91,7 +91,7 @@ export function SovereigntyPrompt({ message, onResolve, isResolving }: Sovereign
         </button>
       </div>
 
-      <label className="flex items-center gap-2 mt-3 text-xs text-zinc-500 cursor-pointer">
+      <label className="flex items-center gap-2 mt-3 text-xs text-zinc-400 cursor-pointer">
         <input
           type="checkbox"
           checked={remember}

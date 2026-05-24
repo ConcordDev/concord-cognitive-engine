@@ -77,15 +77,15 @@ export function DesertWeatherWatch() {
       </header>
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Avg temp</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Avg temp</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{loaded.length > 0 ? `${avgTemp.toFixed(1)}°C` : '—'}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Hottest now</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Hottest now</div>
           <div className="mt-0.5 font-mono text-lg text-rose-300">{loaded.length > 0 ? `${maxTemp.toFixed(1)}°C` : '—'}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Avg humidity</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Avg humidity</div>
           <div className="mt-0.5 font-mono text-lg text-cyan-300">{loaded.length > 0 ? `${avgHum.toFixed(0)}%` : '—'}</div>
         </div>
       </div>
@@ -96,9 +96,9 @@ export function DesertWeatherWatch() {
             <div key={d.id} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-mono text-xs text-amber-200">{d.label}</span>
-                <span className="font-mono text-[10px] text-zinc-500">{d.lat.toFixed(1)}°, {d.lon.toFixed(1)}°</span>
+                <span className="font-mono text-[10px] text-zinc-400">{d.lat.toFixed(1)}°, {d.lon.toFixed(1)}°</span>
               </div>
-              {q.isPending && <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-500"><Loader2 className="h-3 w-3 animate-spin" /> live…</div>}
+              {q.isPending && <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> live…</div>}
               {q.isError && <div className="mt-2 text-[10px] text-rose-400">unreachable</div>}
               {c && (
                 <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
@@ -111,7 +111,7 @@ export function DesertWeatherWatch() {
           );
         })}
       </div>
-      <p className="flex items-center gap-1 text-[10px] text-zinc-500">
+      <p className="flex items-center gap-1 text-[10px] text-zinc-400">
         <ExternalLink className="h-3 w-3" />
         Powered by Open-Meteo. Polls every 5 min.
       </p>

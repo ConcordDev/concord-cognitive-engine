@@ -193,7 +193,7 @@ export function TravelActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -204,7 +204,7 @@ export function TravelActionPanel() {
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Budget</div>
             <div className="text-2xl font-bold text-emerald-300">${budgetResult.total?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">${budgetResult.dailyAverage}/day</div>
+            <div className="text-[10px] text-zinc-400">${budgetResult.dailyAverage}/day</div>
             {budgetResult.categories && <div className="text-[10px] text-zinc-400 mt-1">{Object.entries(budgetResult.categories).map(([k, v]) => `${k}:$${v}`).join(' · ')}</div>}
           </div>
         )}
@@ -220,7 +220,7 @@ export function TravelActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Jet lag</div>
             <div className="text-2xl font-bold text-cyan-300">{jetlagResult.hoursOffset}h</div>
-            <div className="text-[10px] text-zinc-500">~{jetlagResult.daysToAdjust} days to adjust</div>
+            <div className="text-[10px] text-zinc-400">~{jetlagResult.daysToAdjust} days to adjust</div>
             {jetlagResult.strategy && <ul className="text-[11px] text-zinc-300 list-disc list-inside mt-1">{jetlagResult.strategy.slice(0, 3).map((s, i) => <li key={i}>{s}</li>)}</ul>}
           </div>
         )}

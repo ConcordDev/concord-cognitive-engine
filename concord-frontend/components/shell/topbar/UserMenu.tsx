@@ -103,7 +103,7 @@ export function UserMenu({ powerMode, onTogglePowerMode }: UserMenuProps) {
                 className={`ml-auto text-xs px-1.5 py-0.5 rounded ${
                   powerMode
                     ? 'bg-neon-blue/20 text-neon-blue'
-                    : 'bg-lattice-elevated text-gray-500'
+                    : 'bg-lattice-elevated text-gray-400'
                 }`}
               >
                 {powerMode ? 'ON' : 'OFF'}

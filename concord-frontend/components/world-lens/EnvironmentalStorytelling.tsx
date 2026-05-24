@@ -331,7 +331,7 @@ export default function EnvironmentalStorytelling({
       {/* District age indicator */}
       {districtAge && (
         <div className={`absolute top-2 left-2 ${panel} px-2 py-1`}>
-          <span className="text-[9px] text-gray-500">
+          <span className="text-[9px] text-gray-400">
             Est. {districtAge.foundedAt} — {districtAge.label}
           </span>
         </div>
@@ -363,7 +363,7 @@ export default function EnvironmentalStorytelling({
             {' '}Cited {selectedHistory.citationCount} times.
           </p>
           <div className="flex items-center gap-2">
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 capitalize">
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 capitalize">
               {selectedHistory.weathering}
             </span>
             {selectedHistory.disastersSurvived.map((badge, i) => (

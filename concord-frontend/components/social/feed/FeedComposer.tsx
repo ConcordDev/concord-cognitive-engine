@@ -110,7 +110,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
           <div className="flex items-center gap-1.5 text-zinc-400">
             <Quote className="w-3 h-3" />
             <span className="font-medium text-zinc-300">@{quotePost.username}</span>
-            <button type="button" onClick={onClearQuote} className="ml-auto text-zinc-500 hover:text-zinc-300">
+            <button type="button" onClick={onClearQuote} className="ml-auto text-zinc-400 hover:text-zinc-300">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -161,7 +161,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
                 <button
                   type="button"
                   onClick={() => setPollOptions((o) => o.filter((_, idx) => idx !== i))}
-                  className="text-zinc-500 hover:text-zinc-300"
+                  className="text-zinc-400 hover:text-zinc-300"
                   aria-label="Remove option"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -216,7 +216,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
         >
           <BarChart3 className="w-4 h-4" />
         </button>
-        <span className="ml-auto text-[10px] font-mono text-zinc-600">{body.length}/{MAX_LEN}</span>
+        <span className="ml-auto text-[10px] font-mono text-zinc-400">{body.length}/{MAX_LEN}</span>
         <button
           type="button"
           onClick={() => void submit()}

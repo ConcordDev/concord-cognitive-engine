@@ -346,7 +346,7 @@ export default function IntegrationsLensPage() {
                       <Clock className="w-3 h-3" /> Recent Deliveries
                     </h4>
                     {!deliveryLog || (Array.isArray(deliveryLog) && deliveryLog.length === 0) ? (
-                      <p className="text-xs text-gray-500">No deliveries recorded yet.</p>
+                      <p className="text-xs text-gray-400">No deliveries recorded yet.</p>
                     ) : (
                       <div className="space-y-1 max-h-48 overflow-y-auto">
                         {(Array.isArray(deliveryLog) ? deliveryLog : (deliveryLog as Record<string, unknown>)?.deliveries as Record<string, unknown>[] || []).slice(0, 20).map((d: Record<string, unknown>, i: number) => {
@@ -359,8 +359,8 @@ export default function IntegrationsLensPage() {
                             <span className={failed ? 'text-red-400' : 'text-green-400'}>
                               {String(d.statusCode || d.status || '—')}
                             </span>
-                            <span className="text-gray-500">{d.timestamp ? new Date(String(d.timestamp)).toLocaleString() : d.createdAt ? new Date(String(d.createdAt)).toLocaleString() : '—'}</span>
-                            <span className="text-gray-500">{d.durationMs ? `${d.durationMs}ms` : d.duration ? `${d.duration}ms` : '—'}</span>
+                            <span className="text-gray-400">{d.timestamp ? new Date(String(d.timestamp)).toLocaleString() : d.createdAt ? new Date(String(d.createdAt)).toLocaleString() : '—'}</span>
+                            <span className="text-gray-400">{d.durationMs ? `${d.durationMs}ms` : d.duration ? `${d.duration}ms` : '—'}</span>
                             {failed && Boolean(d.id) && (
                               <button
                                 onClick={() => retryDeliveryMutation.mutate({ webhookId: wh.id as string, deliveryId: d.id as string })}
@@ -394,7 +394,7 @@ export default function IntegrationsLensPage() {
                 <div>
                   <h3 className="font-semibold">{String((auto.data as Record<string, unknown>)?.name ?? auto.title)}</h3>
                   <p className="text-xs text-gray-400">Trigger: {String((auto.data as Record<string, unknown>)?.trigger ?? '')} | Actions: {String((auto.data as Record<string, unknown>)?.actionCount ?? 0)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Runs: {String((auto.data as Record<string, unknown>)?.runCount ?? 0)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Runs: {String((auto.data as Record<string, unknown>)?.runCount ?? 0)}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
@@ -442,7 +442,7 @@ export default function IntegrationsLensPage() {
                 </div>
               </div>
               <p className="text-sm text-gray-400">{String(svcData?.description ?? '')}</p>
-              <p className="text-xs text-gray-500 mt-2">Type: {String(svcData?.type ?? '')}</p>
+              <p className="text-xs text-gray-400 mt-2">Type: {String(svcData?.type ?? '')}</p>
             </div>
             );
           })}
@@ -478,7 +478,7 @@ export default function IntegrationsLensPage() {
             </button>
           ))}
         </div>
-        {!actionItems[0] && <p className="text-xs text-gray-500">Create an integration artifact to run analysis actions.</p>}
+        {!actionItems[0] && <p className="text-xs text-gray-400">Create an integration artifact to run analysis actions.</p>}
         {actionResult && (
           <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
             {'overallStatus' in actionResult && (
@@ -640,7 +640,7 @@ function WebhookIngestInfo() {
           {copied ? 'Copied!' : 'Copy URL'}
         </button>
       </div>
-      <details className="text-xs text-gray-500">
+      <details className="text-xs text-gray-400">
         <summary className="cursor-pointer hover:text-gray-300 transition-colors">Example payload</summary>
         <pre className="mt-2 bg-lattice-deep p-3 rounded text-gray-400 overflow-auto">
 {`curl -X POST ${webhookUrl} \\
@@ -812,7 +812,7 @@ function AutomationBuilderPanel({ onSave, onCancel }: { onSave: (data: Automatio
             onChange={(e) => setForm({ ...form, condition: e.target.value })}
             className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm font-mono"
           />
-          <p className="text-xs text-gray-500 mt-1">Leave blank to trigger on all matching events.</p>
+          <p className="text-xs text-gray-400 mt-1">Leave blank to trigger on all matching events.</p>
         </div>
       </div>
 

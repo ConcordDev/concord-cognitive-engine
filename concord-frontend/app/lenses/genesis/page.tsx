@@ -122,7 +122,7 @@ function ActivityItem({ event }: { event: FeedEvent }) {
         return (
           <span>
             <strong className="text-amber-300">{d.from}</strong>
-            <span className="mx-1 text-gray-500">↔</span>
+            <span className="mx-1 text-gray-400">↔</span>
             <strong className="text-amber-300">{d.to}</strong>
             {d.summary ? <span className="text-gray-400">: {d.summary}</span> : null}
           </span>
@@ -155,7 +155,7 @@ function ActivityItem({ event }: { event: FeedEvent }) {
       <span className={`text-lg font-mono mt-0.5 w-5 flex-shrink-0 ${color}`}>{icon}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-300 leading-relaxed">{renderContent()}</p>
-        <time className="text-xs text-gray-600">{formatRelativeTime(event.timestamp)}</time>
+        <time className="text-xs text-gray-400">{formatRelativeTime(event.timestamp)}</time>
       </div>
     </motion.div>
   );
@@ -279,7 +279,7 @@ export default function GenesisLens() {
             <div className="flex items-center gap-2 mb-3">
               <Eye className="w-4 h-4 text-neon-cyan" />
               <h2 className="text-lg font-semibold">Live Activity</h2>
-              <Filter className="w-3.5 h-3.5 text-gray-500 ml-1" />
+              <Filter className="w-3.5 h-3.5 text-gray-400 ml-1" />
             </div>
 
             {/* Event-type filter chips */}
@@ -316,9 +316,9 @@ export default function GenesisLens() {
             )}
 
             {loading ? (
-              <p className="text-gray-500 text-sm">Loading feed…</p>
+              <p className="text-gray-400 text-sm">Loading feed…</p>
             ) : visibleFeed.length === 0 ? (
-              <p className="text-gray-500 text-sm">
+              <p className="text-gray-400 text-sm">
                 {feedFilter.length > 0 ? 'No events match the selected types.' : 'No activity yet. Emergents are waking up.'}
               </p>
             ) : (
@@ -365,7 +365,7 @@ export default function GenesisLens() {
               <button
                 type="button"
                 onClick={() => setSelectedId(null)}
-                className="ml-auto flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
+                className="ml-auto flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-300"
               >
                 <X className="h-3.5 w-3.5" /> close
               </button>

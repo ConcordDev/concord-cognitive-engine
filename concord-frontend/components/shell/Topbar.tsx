@@ -88,10 +88,10 @@ export function Topbar() {
         <Search className="w-4 h-4 text-gray-400 group-hover:text-neon-blue" />
         <span className="text-sm text-gray-400 hidden md:inline">Search...</span>
         <div className="hidden lg:flex items-center gap-1 ml-4 lg:ml-8">
-          <kbd className="px-1.5 py-0.5 text-xs bg-lattice-elevated rounded text-gray-500">
+          <kbd className="px-1.5 py-0.5 text-xs bg-lattice-elevated rounded text-gray-400">
             <Command className="w-3 h-3 inline" />
           </kbd>
-          <kbd className="px-1.5 py-0.5 text-xs bg-lattice-elevated rounded text-gray-500">
+          <kbd className="px-1.5 py-0.5 text-xs bg-lattice-elevated rounded text-gray-400">
             K
           </kbd>
         </div>
@@ -120,11 +120,11 @@ export function Topbar() {
                   ? 'text-amber-400'
                   : systemHealthy
                     ? 'text-green-400'
-                    : 'text-gray-500 animate-pulse'
+                    : 'text-gray-400 animate-pulse'
               }`}
             />
             <span className={`hidden lg:inline text-xs ${
-              systemDegraded ? 'text-amber-400' : systemHealthy ? 'text-green-400' : 'text-gray-500'
+              systemDegraded ? 'text-amber-400' : systemHealthy ? 'text-green-400' : 'text-gray-400'
             }`}>
               {systemDegraded ? 'Degraded' : systemHealthy ? 'Healthy' : 'Checking'}
             </span>

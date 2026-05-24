@@ -77,11 +77,11 @@ export function AudioEditor({
 
   if (!audioBuffer) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-gray-400">
         <div className="text-center">
           <Volume2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No audio loaded</p>
-          <p className="text-xs text-gray-600 mt-1">Select an audio clip or record a new one</p>
+          <p className="text-xs text-gray-400 mt-1">Select an audio clip or record a new one</p>
           <button
             onClick={onStartRecording}
             className="mt-3 flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm mx-auto hover:bg-red-500/30"
@@ -99,8 +99,8 @@ export function AudioEditor({
       {/* Toolbar */}
       <div className="h-8 bg-black/40 border-b border-white/10 flex items-center px-3 gap-2 flex-shrink-0">
         <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Audio Editor</span>
-        <span className="text-[9px] text-gray-500">{audioBuffer.name}</span>
-        <span className="text-[9px] text-gray-600">{audioBuffer.duration.toFixed(2)}s &middot; {audioBuffer.sampleRate}Hz &middot; {audioBuffer.channels}ch</span>
+        <span className="text-[9px] text-gray-400">{audioBuffer.name}</span>
+        <span className="text-[9px] text-gray-400">{audioBuffer.duration.toFixed(2)}s &middot; {audioBuffer.sampleRate}Hz &middot; {audioBuffer.channels}ch</span>
 
         <div className="flex-1" />
 
@@ -116,7 +116,7 @@ export function AudioEditor({
               key={item.op}
               onClick={() => onOperation({ type: item.op })}
               disabled={item.disabled}
-              className="p-1 text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
               title={item.label}
             >
               <item.icon className="w-3.5 h-3.5" />
@@ -136,7 +136,7 @@ export function AudioEditor({
             <button
               key={item.op}
               onClick={() => onOperation({ type: item.op })}
-              className="p-1 text-gray-500 hover:text-white"
+              className="p-1 text-gray-400 hover:text-white"
               title={item.label}
             >
               <item.icon className="w-3.5 h-3.5" />
@@ -238,7 +238,7 @@ export function AudioEditor({
       </div>
 
       {/* Info bar */}
-      <div className="h-6 bg-black/40 border-t border-white/10 flex items-center px-3 gap-4 text-[9px] text-gray-500 flex-shrink-0">
+      <div className="h-6 bg-black/40 border-t border-white/10 flex items-center px-3 gap-4 text-[9px] text-gray-400 flex-shrink-0">
         <span>Duration: {audioBuffer.duration.toFixed(3)}s</span>
         <span>Sample Rate: {audioBuffer.sampleRate}Hz</span>
         <span>Channels: {audioBuffer.channels}</span>

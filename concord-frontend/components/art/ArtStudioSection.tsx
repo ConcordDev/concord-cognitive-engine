@@ -73,7 +73,7 @@ export function ArtStudioSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-violet-600/15 to-transparent">
         <Palette className="w-5 h-5 text-violet-400" />
         <h2 className="text-sm font-bold text-zinc-100">Art Studio</h2>
-        <span className="text-[11px] text-zinc-500">Procreate + Krita shape · layered canvas, real brushes</span>
+        <span className="text-[11px] text-zinc-400">Procreate + Krita shape · layered canvas, real brushes</span>
       </header>
 
       <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
@@ -122,9 +122,9 @@ export function ArtStudioSection() {
 
               {/* Gallery */}
               {loading ? (
-                <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+                <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
               ) : artworks.length === 0 ? (
-                <p className="text-[11px] text-zinc-500 italic py-6 text-center">No artworks yet. Create a canvas above and start drawing.</p>
+                <p className="text-[11px] text-zinc-400 italic py-6 text-center">No artworks yet. Create a canvas above and start drawing.</p>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {artworks.map((a) => (
@@ -135,13 +135,13 @@ export function ArtStudioSection() {
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img src={a.thumbnail} alt={a.title} className="w-full h-full object-contain" />
                         ) : (
-                          <span className="flex items-center justify-center h-full text-[10px] text-zinc-600">No preview</span>
+                          <span className="flex items-center justify-center h-full text-[10px] text-zinc-400">No preview</span>
                         )}
                       </button>
                       <div className="flex items-center justify-between px-2.5 py-1.5">
                         <div className="min-w-0">
                           <p className="text-xs text-zinc-100 truncate">{a.title}</p>
-                          <p className="text-[10px] text-zinc-500">{a.width}×{a.height} · {a.strokeCount} strokes</p>
+                          <p className="text-[10px] text-zinc-400">{a.width}×{a.height} · {a.strokeCount} strokes</p>
                         </div>
                         <button type="button" onClick={() => delArtwork(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                           <Trash2 className="w-3.5 h-3.5" />

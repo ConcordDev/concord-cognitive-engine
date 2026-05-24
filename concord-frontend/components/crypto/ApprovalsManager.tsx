@@ -74,7 +74,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
       <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
         <ShieldCheck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Token approvals</span>
-        <span className="ml-auto text-[10px] text-gray-500">{allowances.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{allowances.length}</span>
         <button
           onClick={refresh}
           title="Refresh"
@@ -94,7 +94,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={cn('px-2 py-0.5 text-[10px] uppercase tracking-wider rounded', filter === f ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-500 hover:text-white')}
+            className={cn('px-2 py-0.5 text-[10px] uppercase tracking-wider rounded', filter === f ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white')}
           >
             {f}
           </button>
@@ -102,11 +102,11 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Scanning approvals…
           </div>
         ) : visible.length === 0 ? (
-          <div className="px-3 py-10 text-xs text-gray-500 text-center">
+          <div className="px-3 py-10 text-xs text-gray-400 text-center">
             {allowances.length === 0 ? 'No approvals on record.' : `No approvals match "${filter}".`}
           </div>
         ) : (
@@ -115,7 +115,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
               <li key={a.id} className="px-3 py-2 hover:bg-white/[0.03]">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-white">{a.tokenSymbol}</span>
-                  <span className="text-gray-500">→</span>
+                  <span className="text-gray-400">→</span>
                   <span className="text-cyan-300 truncate flex-1">{a.spenderLabel || abbreviate(a.spenderAddress)}</span>
                   <span className={cn(
                     'text-[10px] font-bold uppercase px-1.5 py-0.5 rounded',
@@ -127,7 +127,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
                     {a.allowance === 'unlimited' ? 'unlimited' : a.allowance.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-[10px] text-gray-500">
+                <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
                   <span>{a.chain} · approved {new Date(a.approvedAt).toLocaleDateString()}</span>
                   <div className="flex items-center gap-2">
                     {a.explorerUrl && (

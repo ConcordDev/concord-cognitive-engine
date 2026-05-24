@@ -80,7 +80,7 @@ export function GisPitMap() {
         <MapPin className="h-4 w-4 text-rose-400" />
         <h3 className="text-sm font-semibold text-white">GIS pit/bench mapping layer</h3>
         {layer && (
-          <span className="ml-auto text-[10px] text-zinc-500">
+          <span className="ml-auto text-[10px] text-zinc-400">
             {layer.sites} sites · {layer.drillholes} drill collars
           </span>
         )}
@@ -91,7 +91,7 @@ export function GisPitMap() {
       {/* geo-reference a site */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 items-end">
         <div>
-          <label className="text-[9px] text-zinc-500 block mb-0.5">Site</label>
+          <label className="text-[9px] text-zinc-400 block mb-0.5">Site</label>
           <select value={siteId} onChange={(e) => setSiteId(e.target.value)}
             className="w-full bg-zinc-900 border border-zinc-800 rounded px-1 py-1.5 text-[11px] text-white">
             {sites.length === 0 && <option value="">no sites — add one first</option>}
@@ -103,12 +103,12 @@ export function GisPitMap() {
           </select>
         </div>
         <div>
-          <label className="text-[9px] text-zinc-500 block mb-0.5">Latitude</label>
+          <label className="text-[9px] text-zinc-400 block mb-0.5">Latitude</label>
           <input value={lat} onChange={(e) => setLat(e.target.value.replace(/[^\d.-]/g, ''))} placeholder="-23.45"
             className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" />
         </div>
         <div>
-          <label className="text-[9px] text-zinc-500 block mb-0.5">Longitude</label>
+          <label className="text-[9px] text-zinc-400 block mb-0.5">Longitude</label>
           <input value={lng} onChange={(e) => setLng(e.target.value.replace(/[^\d.-]/g, ''))} placeholder="119.7"
             className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" />
         </div>
@@ -119,7 +119,7 @@ export function GisPitMap() {
       </div>
 
       {selectedSite && selectedSite.lat != null && (
-        <div className="text-[10px] text-zinc-500">
+        <div className="text-[10px] text-zinc-400">
           {selectedSite.name} is at {selectedSite.lat}, {selectedSite.lng}. Drill collars logged against this site are
           projected onto the map relative to its coordinates.
         </div>
@@ -144,7 +144,7 @@ export function GisPitMap() {
                 ? <Mountain className="w-3 h-3 text-amber-400 shrink-0" />
                 : <Drill className="w-3 h-3 text-cyan-400 shrink-0" />}
               <span className="text-zinc-200 truncate flex-1">{f.label}</span>
-              <span className="font-mono text-zinc-500">{f.lat.toFixed(4)}, {f.lng.toFixed(4)}</span>
+              <span className="font-mono text-zinc-400">{f.lat.toFixed(4)}, {f.lng.toFixed(4)}</span>
             </div>
           ))}
         </div>

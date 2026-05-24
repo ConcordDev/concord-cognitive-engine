@@ -55,7 +55,7 @@ export function PinnedShelf({ refreshKey, onChange }: { refreshKey: number; onCh
 
   if (loading) {
     return (
-      <div className="panel p-4 flex items-center gap-2 text-xs text-gray-500">
+      <div className="panel p-4 flex items-center gap-2 text-xs text-gray-400">
         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading pinned lenses…
       </div>
     );
@@ -67,10 +67,10 @@ export function PinnedShelf({ refreshKey, onChange }: { refreshKey: number; onCh
         <h2 className="text-sm uppercase tracking-wider text-amber-400 flex items-center gap-2">
           <Star className="w-4 h-4" /> Pinned
         </h2>
-        <span className="text-[10px] text-gray-500">{pins.length} / {max}</span>
+        <span className="text-[10px] text-gray-400">{pins.length} / {max}</span>
       </div>
       {pins.length === 0 ? (
-        <p className="text-xs text-gray-500">No pinned lenses yet. Click the star on any lens card below to pin it here.</p>
+        <p className="text-xs text-gray-400">No pinned lenses yet. Click the star on any lens card below to pin it here.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {pins.map((id, idx) => {
@@ -83,10 +83,10 @@ export function PinnedShelf({ refreshKey, onChange }: { refreshKey: number; onCh
                   <span className="truncate">{lens?.name || id}</span>
                 </Link>
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button type="button" disabled={busy || idx === 0} onClick={() => move(idx, -1)} aria-label={`Move ${lens?.name || id} earlier`} className="p-1 text-gray-500 hover:text-white disabled:opacity-30">
+                  <button type="button" disabled={busy || idx === 0} onClick={() => move(idx, -1)} aria-label={`Move ${lens?.name || id} earlier`} className="p-1 text-gray-400 hover:text-white disabled:opacity-30">
                     <ArrowLeft className="w-3 h-3" />
                   </button>
-                  <button type="button" disabled={busy || idx === pins.length - 1} onClick={() => move(idx, 1)} aria-label={`Move ${lens?.name || id} later`} className="p-1 text-gray-500 hover:text-white disabled:opacity-30">
+                  <button type="button" disabled={busy || idx === pins.length - 1} onClick={() => move(idx, 1)} aria-label={`Move ${lens?.name || id} later`} className="p-1 text-gray-400 hover:text-white disabled:opacity-30">
                     <ArrowRight className="w-3 h-3" />
                   </button>
                   <button type="button" disabled={busy} onClick={() => unpin(id)} aria-label={`Unpin ${lens?.name || id}`} className="p-1 text-amber-400 hover:text-amber-200 disabled:opacity-30">

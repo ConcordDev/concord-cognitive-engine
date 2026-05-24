@@ -77,7 +77,7 @@ export function HrLearningPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const visibleAssignments = openCourse
@@ -129,7 +129,7 @@ export function HrLearningPanel() {
                         <div>
                           <p className="text-xs text-zinc-100">{c.title}
                             {c.mandatory && <span className="ml-1 text-[9px] text-amber-400">MANDATORY</span>}</p>
-                          <p className="text-[10px] text-zinc-500">{c.category} · {c.durationHours}h</p>
+                          <p className="text-[10px] text-zinc-400">{c.category} · {c.durationHours}h</p>
                         </div>
                       </div>
                       <span className="text-[10px] text-zinc-400">{c.completedCount}/{c.assignedCount} done</span>
@@ -173,7 +173,7 @@ export function HrLearningPanel() {
           {overdue > 0 && <span className="text-[10px] text-rose-400">{overdue} overdue</span>}
         </div>
         {visibleAssignments.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No assignments yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No assignments yet.</p>
         ) : (
           <ul className="space-y-1">
             {visibleAssignments.map((a) => (
@@ -181,7 +181,7 @@ export function HrLearningPanel() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-zinc-200">{a.employeeName} · {a.courseTitle}</p>
                   <span className={cn('text-[10px] capitalize',
-                    a.status === 'completed' ? 'text-emerald-300' : a.status === 'in_progress' ? 'text-amber-300' : 'text-zinc-500')}>
+                    a.status === 'completed' ? 'text-emerald-300' : a.status === 'in_progress' ? 'text-amber-300' : 'text-zinc-400')}>
                     {a.status.replace(/_/g, ' ')}
                   </span>
                 </div>
@@ -199,7 +199,7 @@ export function HrLearningPanel() {
                       {p}%
                     </button>
                   ))}
-                  {a.dueDate && <span className="ml-auto text-[10px] text-zinc-500">due {a.dueDate}</span>}
+                  {a.dueDate && <span className="ml-auto text-[10px] text-zinc-400">due {a.dueDate}</span>}
                 </div>
               </li>
             ))}

@@ -46,7 +46,7 @@ export function CommerceSuite() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
               active === t.id
                 ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent',
+                : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent',
             )}
           >
             {t.label}

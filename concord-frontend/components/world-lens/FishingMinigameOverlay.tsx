@@ -161,7 +161,7 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
         {phase === 'waiting' && biteAt && (
           <div className="py-8 text-center">
             <div className="mb-2 animate-pulse text-cyan-200">Waiting for a bite…</div>
-            <div className="text-[10px] text-slate-500 tabular-nums">
+            <div className="text-[10px] text-slate-400 tabular-nums">
               ~{Math.max(0, Math.ceil((biteAt - Date.now()) / 1000))}s
             </div>
           </div>
@@ -204,7 +204,7 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
             <div className="text-lg font-bold text-amber-100">Caught: {outcome.fishName}</div>
             {outcome.tier && <div className="mt-1 text-xs text-slate-300">Quality: {outcome.tier}</div>}
             {outcome.qualityScore !== undefined && (
-              <div className="text-[10px] text-slate-500">Score: {Math.round(outcome.qualityScore * 100)}%</div>
+              <div className="text-[10px] text-slate-400">Score: {Math.round(outcome.qualityScore * 100)}%</div>
             )}
             <button
               onClick={onClose}

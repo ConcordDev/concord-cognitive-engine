@@ -318,7 +318,7 @@ export default function HypothesisLensPage() {
               <h2 className="font-semibold">
                 Hypotheses
                 {(searchQuery || statusFilter !== 'all') && (
-                  <span className="text-xs text-gray-500 font-normal ml-2">
+                  <span className="text-xs text-gray-400 font-normal ml-2">
                     {visibleHypotheses.length} of {hypotheses.length}
                   </span>
                 )}
@@ -353,10 +353,10 @@ export default function HypothesisLensPage() {
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {hypotheses.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">No hypotheses yet. Create one above to get started.</p>
+                <p className="text-sm text-gray-400 text-center py-4">No hypotheses yet. Create one above to get started.</p>
               )}
               {hypotheses.length > 0 && visibleHypotheses.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-gray-400 text-center py-4">
                   No matches{searchQuery && ` for "${searchQuery}"`}{statusFilter !== 'all' && ` in ${statusFilter}`}.
                 </p>
               )}
@@ -397,7 +397,7 @@ export default function HypothesisLensPage() {
               </h2>
               {(() => {
                 const h = hypotheses.find((x) => x.id === selectedId);
-                if (!h) return <p className="text-gray-500">Not found</p>;
+                if (!h) return <p className="text-gray-400">Not found</p>;
                 return (
                   <>
                     <p className="text-sm">{h.statement}</p>
@@ -471,7 +471,7 @@ export default function HypothesisLensPage() {
               })()}
             </>
           ) : (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-400">
               <FlaskConical className="w-12 h-12 mx-auto mb-4 opacity-30" />
               <p>Select a hypothesis to view details and manage evidence</p>
             </div>
@@ -498,7 +498,7 @@ export default function HypothesisLensPage() {
           Statistical Analysis Actions
         </h2>
         {!hypArtifacts[0]?.id && (
-          <p className="text-xs text-gray-500">Create a hypothesis-data artifact to run statistical actions.</p>
+          <p className="text-xs text-gray-400">Create a hypothesis-data artifact to run statistical actions.</p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
@@ -566,12 +566,12 @@ export default function HypothesisLensPage() {
                   <div className="lens-card">
                     <p className="text-xs text-gray-400 mb-2">Control</p>
                     <p className="text-xl font-bold text-gray-300">{parseFloat(d.control?.rate as unknown as string || '0').toFixed(2)}%</p>
-                    <p className="text-xs text-gray-500">{(d.control?.conversions || 0).toLocaleString()} / {(d.control?.visitors || 0).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">{(d.control?.conversions || 0).toLocaleString()} / {(d.control?.visitors || 0).toLocaleString()}</p>
                   </div>
                   <div className="lens-card">
                     <p className="text-xs text-gray-400 mb-2">Variant</p>
                     <p className="text-xl font-bold text-neon-green">{parseFloat(d.variant?.rate as unknown as string || '0').toFixed(2)}%</p>
-                    <p className="text-xs text-gray-500">{(d.variant?.conversions || 0).toLocaleString()} / {(d.variant?.visitors || 0).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">{(d.variant?.conversions || 0).toLocaleString()} / {(d.variant?.visitors || 0).toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -582,7 +582,7 @@ export default function HypothesisLensPage() {
                   <span className="text-xs text-gray-400">Power: {parseFloat(d.statisticalPower as unknown as string || '0').toFixed(0)}%</span>
                 </div>
                 {d.recommendation && <p className="text-xs text-gray-300 italic">{d.recommendation}</p>}
-                {d.sampleSizeForPower80 && <p className="text-xs text-gray-500">Sample for 80% power: {d.sampleSizeForPower80.toLocaleString()}</p>}
+                {d.sampleSizeForPower80 && <p className="text-xs text-gray-400">Sample for 80% power: {d.sampleSizeForPower80.toLocaleString()}</p>}
               </div>
             );
           }
@@ -614,7 +614,7 @@ export default function HypothesisLensPage() {
                     Evidence: {d.evidenceStrength}
                   </span>
                 )}
-                {d.posterior?.distribution && <p className="text-xs text-gray-500">Distribution: {d.posterior.distribution}</p>}
+                {d.posterior?.distribution && <p className="text-xs text-gray-400">Distribution: {d.posterior.distribution}</p>}
               </div>
             );
           }

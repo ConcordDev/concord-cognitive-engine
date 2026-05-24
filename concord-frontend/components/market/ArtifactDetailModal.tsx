@@ -67,7 +67,7 @@ function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModalProps) 
                   mode="full"
                 />
               ) : (
-                <div className="h-64 bg-zinc-900 rounded-lg flex items-center justify-center text-zinc-500">
+                <div className="h-64 bg-zinc-900 rounded-lg flex items-center justify-center text-zinc-400">
                   No preview available
                 </div>
               )}

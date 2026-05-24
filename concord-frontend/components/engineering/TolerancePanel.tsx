@@ -115,7 +115,7 @@ export function TolerancePanel() {
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-gray-500 border-b border-white/10">
+              <tr className="text-gray-400 border-b border-white/10">
                 <th className="text-left py-1 px-2">Dimension</th>
                 <th className="text-center py-1 px-2">Dir</th>
                 <th className="text-right py-1 px-2">Nominal</th>
@@ -315,7 +315,7 @@ export function TolerancePanel() {
               </div>
             </div>
           )}
-          <p className="text-xs text-gray-500">{result.method}</p>
+          <p className="text-xs text-gray-400">{result.method}</p>
         </>
       )}
     </div>

@@ -123,7 +123,7 @@ function RegionalLeaderboard({
                   'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors',
                   isActive
                     ? `${cfg.color} bg-lattice-deep border border-current/30`
-                    : 'text-gray-500 hover:text-gray-300'
+                    : 'text-gray-400 hover:text-gray-300'
                 )}
                 title={cfg.label}
               >
@@ -138,11 +138,11 @@ function RegionalLeaderboard({
       {/* Body */}
       <div className="p-4">
         {isLoading ? (
-          <div className="text-center py-6 text-sm text-gray-500">Loading…</div>
+          <div className="text-center py-6 text-sm text-gray-400">Loading…</div>
         ) : error ? (
           <div className="text-center py-6 text-sm text-red-400">Failed to load leaderboard</div>
         ) : needsLocation ? (
-          <div className="text-center py-6 text-sm text-gray-500">
+          <div className="text-center py-6 text-sm text-gray-400">
             <p className="mb-2">
               You haven&apos;t declared your {scope === 'regional' ? 'region' : 'country'} yet.
             </p>
@@ -151,7 +151,7 @@ function RegionalLeaderboard({
             </Link>
           </div>
         ) : top.length === 0 ? (
-          <div className="text-center py-6 text-sm text-gray-500">
+          <div className="text-center py-6 text-sm text-gray-400">
             Nothing ranked yet in this scope.
           </div>
         ) : (
@@ -171,14 +171,14 @@ function RegionalLeaderboard({
                           ? 'bg-gray-300/10 text-gray-300 border border-gray-400/30'
                           : idx === 2
                             ? 'bg-amber-600/20 text-amber-500 border border-amber-600/30'
-                            : 'bg-lattice-border/30 text-gray-500'
+                            : 'bg-lattice-border/30 text-gray-400'
                     )}
                   >
                     {idx === 0 ? <Trophy className="w-3.5 h-3.5" /> : idx + 1}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-white truncate">{entry.title}</div>
-                    <div className="flex items-center gap-3 text-[10px] text-gray-500 mt-0.5">
+                    <div className="flex items-center gap-3 text-[10px] text-gray-400 mt-0.5">
                       <span className="inline-flex items-center gap-1">
                         <Quote className="w-3 h-3" />
                         {entry.citations}
@@ -196,7 +196,7 @@ function RegionalLeaderboard({
                       {!compact && <span className="uppercase tracking-wide">{entry.domain}</span>}
                     </div>
                   </div>
-                  <span className="text-[10px] text-gray-600 font-mono flex-shrink-0">
+                  <span className="text-[10px] text-gray-400 font-mono flex-shrink-0">
                     {entry.score.toLocaleString()}
                   </span>
                 </Link>
@@ -207,7 +207,7 @@ function RegionalLeaderboard({
 
         {/* Viewer's own rank footer */}
         {viewerRank && (
-          <div className="mt-3 pt-3 border-t border-lattice-border text-xs text-gray-500 flex items-center justify-between">
+          <div className="mt-3 pt-3 border-t border-lattice-border text-xs text-gray-400 flex items-center justify-between">
             <span>Your best entry</span>
             <span>
               #{viewerRank.position} &middot; {viewerRank.title}

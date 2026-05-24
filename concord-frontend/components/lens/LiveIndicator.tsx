@@ -31,11 +31,11 @@ export function LiveIndicator({ isLive, lastUpdated, compact }: LiveIndicatorPro
           isLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
         }`}
       />
-      <span className={isLive ? 'text-green-400' : 'text-zinc-500'}>
+      <span className={isLive ? 'text-green-400' : 'text-zinc-400'}>
         {isLive ? 'LIVE' : 'Disconnected'}
       </span>
       {timeAgo && (
-        <span className="text-zinc-500">
+        <span className="text-zinc-400">
           {timeAgo}
         </span>
       )}

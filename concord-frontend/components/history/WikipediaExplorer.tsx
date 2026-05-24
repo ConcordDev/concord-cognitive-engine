@@ -87,7 +87,7 @@ export function WikipediaExplorer() {
               type="button"
               onClick={() => setMode(m)}
               className={`rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                mode === m ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
+                mode === m ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               {m === 'search' ? 'Articles' : 'On This Day'}
@@ -148,7 +148,7 @@ function ArticleSearch() {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
         <input
           type="text"
           value={queryInput}
@@ -168,7 +168,7 @@ function ArticleSearch() {
                 className="block w-full border-b border-zinc-800 px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-cyan-500/10"
               >
                 <div className="text-sm font-medium text-white">{h.title}</div>
-                {h.description && <div className="line-clamp-1 text-[11px] text-zinc-500">{h.description}</div>}
+                {h.description && <div className="line-clamp-1 text-[11px] text-zinc-400">{h.description}</div>}
               </button>
             ))}
           </div>
@@ -176,13 +176,13 @@ function ArticleSearch() {
       </div>
 
       {lookupMutation.isPending && (
-        <div className="flex items-center justify-center py-6 text-xs text-zinc-500">
+        <div className="flex items-center justify-center py-6 text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading article…
         </div>
       )}
 
       {!article && !lookupMutation.isPending && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           Start typing — Wikipedia opensearch fires after 2 characters with 200ms debounce.
         </div>
       )}
@@ -253,18 +253,18 @@ function ArticleReader({ article }: { article: ArticleSummary }) {
           </div>
           <dl className="space-y-1.5 text-xs">
             <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">Title</dt>
+              <dt className="text-zinc-400">Title</dt>
               <dd className="truncate font-mono text-zinc-200">{article.title}</dd>
             </div>
             {article.lang && (
               <div className="flex justify-between gap-2">
-                <dt className="text-zinc-500">Language</dt>
+                <dt className="text-zinc-400">Language</dt>
                 <dd className="font-mono text-zinc-200">{article.lang}</dd>
               </div>
             )}
             {article.revisionTimestamp && (
               <div className="flex justify-between gap-2">
-                <dt className="text-zinc-500">Last revision</dt>
+                <dt className="text-zinc-400">Last revision</dt>
                 <dd className="font-mono text-zinc-200">{article.revisionTimestamp.slice(0, 10)}</dd>
               </div>
             )}
@@ -382,13 +382,13 @@ function OnThisDay() {
       </div>
 
       {lookupMutation.isPending && (
-        <div className="flex items-center justify-center py-8 text-xs text-zinc-500">
+        <div className="flex items-center justify-center py-8 text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading {kind}…
         </div>
       )}
 
       {!lookupMutation.isPending && entries.length === 0 && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           No {kind} indexed for this date.
         </div>
       )}
@@ -432,7 +432,7 @@ function OnThisDayCard({ entry, kind, month, day }: { entry: OnThisDayEntry; kin
           <span className="text-sm text-zinc-200">{entry.text}</span>
         </div>
         {primary?.extract && (
-          <p className="mt-1 line-clamp-2 text-[11px] text-zinc-500">{primary.extract}</p>
+          <p className="mt-1 line-clamp-2 text-[11px] text-zinc-400">{primary.extract}</p>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -457,7 +457,7 @@ function OnThisDayCard({ entry, kind, month, day }: { entry: OnThisDayEntry; kin
             href={primary.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
             aria-label="Open on Wikipedia"
             title="Open on Wikipedia"
           >

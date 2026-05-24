@@ -43,7 +43,7 @@ export function FitnessStravaSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-orange-600/15 to-transparent">
         <Activity className="w-5 h-5 text-orange-400" />
         <h2 className="text-sm font-bold text-zinc-100">Training Hub</h2>
-        <span className="text-[11px] text-zinc-500">Strava + Garmin Connect shape</span>
+        <span className="text-[11px] text-zinc-400">Strava + Garmin Connect shape</span>
       </header>
 
       <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">

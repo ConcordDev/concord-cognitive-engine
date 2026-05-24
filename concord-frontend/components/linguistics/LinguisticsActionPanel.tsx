@@ -178,7 +178,7 @@ export function LinguisticsActionPanel() {
           </div>
         </div>
         <div className="md:col-span-2">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Text corpus (for stats + sentiment)</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Text corpus (for stats + sentiment)</label>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white mt-1" />
         </div>
       </div>
@@ -193,7 +193,7 @@ export function LinguisticsActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -210,19 +210,19 @@ export function LinguisticsActionPanel() {
               <div key={mi} className="mt-1.5">
                 <div className="text-[10px] italic text-cyan-200">{m.partOfSpeech}</div>
                 {m.definitions.slice(0, 2).map((d, di) => (
-                  <div key={di} className="text-[11px] text-zinc-200 mt-0.5"><span className="text-zinc-500">{di + 1}.</span> {d.definition}{d.example && <div className="text-[10px] text-zinc-500 italic mt-0.5">&ldquo;{d.example}&rdquo;</div>}</div>
+                  <div key={di} className="text-[11px] text-zinc-200 mt-0.5"><span className="text-zinc-400">{di + 1}.</span> {d.definition}{d.example && <div className="text-[10px] text-zinc-400 italic mt-0.5">&ldquo;{d.example}&rdquo;</div>}</div>
                 ))}
                 {(m.synonyms ?? []).length > 0 && <div className="text-[10px] text-emerald-300 mt-1">syn: {(m.synonyms ?? []).slice(0, 6).join(', ')}</div>}
               </div>
             ))}
-            {dictResult.entries[0].origin && <div className="text-[10px] text-zinc-500 italic mt-2">orig: {dictResult.entries[0].origin}</div>}
+            {dictResult.entries[0].origin && <div className="text-[10px] text-zinc-400 italic mt-2">orig: {dictResult.entries[0].origin}</div>}
           </div>
         )}
         {datamuseWords.length > 0 && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-72 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{datamuseMode} for {word} ({datamuseWords.length})</div>
             <div className="flex flex-wrap gap-1 mt-1.5">
-              {datamuseWords.slice(0, 30).map((w, i) => <button key={i} type="button" onClick={() => setWord(w.word)} className="text-[11px] text-purple-200 bg-purple-500/10 hover:bg-purple-500/30 px-1.5 py-0.5 rounded font-mono">{w.word}{w.score ? <span className="text-zinc-500 ml-1">{w.score}</span> : ''}</button>)}
+              {datamuseWords.slice(0, 30).map((w, i) => <button key={i} type="button" onClick={() => setWord(w.word)} className="text-[11px] text-purple-200 bg-purple-500/10 hover:bg-purple-500/30 px-1.5 py-0.5 rounded font-mono">{w.word}{w.score ? <span className="text-zinc-400 ml-1">{w.score}</span> : ''}</button>)}
             </div>
           </div>
         )}
@@ -243,7 +243,7 @@ export function LinguisticsActionPanel() {
           <div className={cn('rounded-md border p-2.5', sentimentResult.sentiment === 'positive' ? 'border-emerald-500/30 bg-emerald-500/5' : sentimentResult.sentiment === 'negative' ? 'border-red-500/30 bg-red-500/5' : 'border-zinc-500/30 bg-zinc-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Sentiment</div>
             <div className="text-2xl font-bold capitalize" style={{ color: sentimentResult.sentiment === 'positive' ? '#34d399' : sentimentResult.sentiment === 'negative' ? '#f87171' : '#a1a1aa' }}>{sentimentResult.sentiment} <span className="text-sm text-zinc-400">{sentimentResult.score}</span></div>
-            <div className="text-[10px] text-zinc-500">+{sentimentResult.positiveWords} · -{sentimentResult.negativeWords} · {sentimentResult.confidence} confidence</div>
+            <div className="text-[10px] text-zinc-400">+{sentimentResult.positiveWords} · -{sentimentResult.negativeWords} · {sentimentResult.confidence} confidence</div>
           </div>
         )}
       </div>

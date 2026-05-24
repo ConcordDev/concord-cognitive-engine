@@ -33,7 +33,7 @@ function CitationCardInner({ citation, compact = false, onCopy }: CitationCardPr
         <LicenseBadge licenseType={citation.license} size="sm" />
         <button
           onClick={handleCopy}
-          className="text-gray-500 hover:text-white transition-colors"
+          className="text-gray-400 hover:text-white transition-colors"
           title="Copy citation"
         >
           <Copy className="w-3.5 h-3.5" />
@@ -54,7 +54,7 @@ function CitationCardInner({ citation, compact = false, onCopy }: CitationCardPr
       </div>
 
       {/* Author + Date */}
-      <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+      <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
         <span>by {citation.author}</span>
         <span>{new Date(citation.created_at).toLocaleDateString()}</span>
       </div>
@@ -67,7 +67,7 @@ function CitationCardInner({ citation, compact = false, onCopy }: CitationCardPr
       </div>
 
       {/* Content Hash */}
-      <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
+      <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
         <ShieldCheck className="w-3 h-3" />
         <span className="font-mono truncate">{citation.content_hash}</span>
       </div>

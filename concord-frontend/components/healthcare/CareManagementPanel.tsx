@@ -51,7 +51,7 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+    return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
   }
 
   return (
@@ -61,7 +61,7 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <HeartPulse className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Health maintenance</span>
-          <span className="text-[10px] text-gray-500">{gaps.length} gap(s)</span>
+          <span className="text-[10px] text-gray-400">{gaps.length} gap(s)</span>
         </header>
         {gapsClear ? (
           <div className="px-3 py-8 text-center text-xs text-emerald-300 inline-flex items-center justify-center gap-1.5 w-full">
@@ -81,7 +81,7 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
                     </span>
                   </div>
                   <div className="text-[11px] text-gray-400">{g.reason}</div>
-                  {g.lastDone && <div className="text-[10px] text-gray-600">Last done: {String(g.lastDone).slice(0, 10)}</div>}
+                  {g.lastDone && <div className="text-[10px] text-gray-400">Last done: {String(g.lastDone).slice(0, 10)}</div>}
                 </div>
               </li>
             ))}
@@ -94,7 +94,7 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <UserPlus className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Care team</span>
-          <span className="text-[10px] text-gray-500">{team.length}</span>
+          <span className="text-[10px] text-gray-400">{team.length}</span>
         </header>
         <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-white/10">
           <input value={form.providerName} onChange={(e) => setForm({ ...form, providerName: e.target.value })}
@@ -111,7 +111,7 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
           </button>
         </div>
         {team.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">No care team members assigned.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No care team members assigned.</div>
         ) : (
           <div className="divide-y divide-white/5">
             {team.map((m) => (
@@ -121,9 +121,9 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white font-medium truncate">{m.providerName}</div>
-                  <div className="text-[10px] text-gray-500 capitalize">{m.role.replace('-', ' ')}{m.specialty ? ` · ${m.specialty}` : ''}</div>
+                  <div className="text-[10px] text-gray-400 capitalize">{m.role.replace('-', ' ')}{m.specialty ? ` · ${m.specialty}` : ''}</div>
                 </div>
-                <button type="button" onClick={() => remove(m.id)} className="text-gray-500 hover:text-rose-300">
+                <button type="button" onClick={() => remove(m.id)} className="text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

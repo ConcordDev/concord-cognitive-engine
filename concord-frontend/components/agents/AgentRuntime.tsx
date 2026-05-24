@@ -121,7 +121,7 @@ export function AgentRuntime({ agents }: { agents: AgentLite[] }) {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors ${
-              tab === t.id ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+              tab === t.id ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
           >
             <t.icon className="h-3.5 w-3.5" /> {t.label}
@@ -241,9 +241,9 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
 
         {/* Run history */}
         <div className="space-y-1 pt-1">
-          <p className="text-[10px] uppercase tracking-wider text-zinc-500">Recent runs</p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-400">Recent runs</p>
           <div className="max-h-48 space-y-1 overflow-y-auto">
-            {runs.length === 0 && <p className="text-[11px] text-zinc-600">No runs yet.</p>}
+            {runs.length === 0 && <p className="text-[11px] text-zinc-400">No runs yet.</p>}
             {runs.map((r) => (
               <button
                 key={r.id} onClick={() => inspect(r.id)}
@@ -267,7 +267,7 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
           <ListTree className="h-3.5 w-3.5 text-cyan-400" /> Tool-call inspector
         </h3>
         {!selectedRun ? (
-          <p className="py-8 text-center text-[11px] text-zinc-600">Run an agent or pick a run to inspect each step.</p>
+          <p className="py-8 text-center text-[11px] text-zinc-400">Run an agent or pick a run to inspect each step.</p>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-2">
@@ -287,9 +287,9 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
                 <div key={st.index} className="rounded border border-zinc-800 bg-zinc-900 p-2">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-mono text-cyan-300">{st.index}. {st.tool}</span>
-                    <span className="text-zinc-500">{st.latencyMs}ms · {st.tokens} tok</span>
+                    <span className="text-zinc-400">{st.latencyMs}ms · {st.tokens} tok</span>
                   </div>
-                  <p className="mt-1 text-[10px] text-zinc-500">in: {st.input}</p>
+                  <p className="mt-1 text-[10px] text-zinc-400">in: {st.input}</p>
                   <pre className="mt-0.5 overflow-x-auto rounded bg-zinc-950 p-1.5 font-mono text-[10px] text-zinc-300">
                     {JSON.stringify(st.output, null, 1)}
                   </pre>
@@ -376,7 +376,7 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
           placeholder="Graph name"
           className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
         />
-        <p className="text-[10px] text-zinc-500">First picked = orchestrator, rest = workers it delegates to.</p>
+        <p className="text-[10px] text-zinc-400">First picked = orchestrator, rest = workers it delegates to.</p>
         <div className="flex flex-wrap gap-1">
           {agents.map((a) => {
             const idx = picked.indexOf(a.id);
@@ -393,7 +393,7 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
               </button>
             );
           })}
-          {agents.length === 0 && <p className="text-[11px] text-zinc-600">Create agents first.</p>}
+          {agents.length === 0 && <p className="text-[11px] text-zinc-400">Create agents first.</p>}
         </div>
         <button
           onClick={save} disabled={busy}
@@ -408,7 +408,7 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
             <div key={g.id} className={`rounded border p-2 ${selected?.id === g.id ? 'border-cyan-500/40 bg-cyan-500/5' : 'border-zinc-800 bg-zinc-900'}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-xs text-white">{g.name}</span>
-                <span className="font-mono text-[10px] text-zinc-500">{g.nodes.length}n / {g.edges.length}e</span>
+                <span className="font-mono text-[10px] text-zinc-400">{g.nodes.length}n / {g.edges.length}e</span>
               </div>
               <div className="mt-1 flex gap-1">
                 <button onClick={() => run(g)} className="inline-flex items-center gap-1 rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">
@@ -433,7 +433,7 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
           className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
         />
         {!selected ? (
-          <p className="py-8 text-center text-[11px] text-zinc-600">Run a graph to see the delegation tree.</p>
+          <p className="py-8 text-center text-[11px] text-zinc-400">Run a graph to see the delegation tree.</p>
         ) : (
           <>
             <TreeDiagram root={graphTree(selected)} />
@@ -447,7 +447,7 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
                   <div key={d.node} className="rounded border border-zinc-800 bg-zinc-900 p-2">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-medium text-emerald-300">{d.agentLabel}</span>
-                      <span className="font-mono text-zinc-500">{d.steps.length} steps · {d.tokens} tok</span>
+                      <span className="font-mono text-zinc-400">{d.steps.length} steps · {d.tokens} tok</span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {d.steps.map((s: any) => (
@@ -553,17 +553,17 @@ function SchedulesPanel({ agents, onChange }: { agents: AgentLite[]; onChange: (
 
       <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
         <h3 className="text-xs font-semibold text-white">Active triggers</h3>
-        {schedules.length === 0 && <p className="text-[11px] text-zinc-600">No triggers configured.</p>}
+        {schedules.length === 0 && <p className="text-[11px] text-zinc-400">No triggers configured.</p>}
         <div className="max-h-72 space-y-1 overflow-y-auto">
           {schedules.map((sc) => (
             <div key={sc.id} className="rounded border border-zinc-800 bg-zinc-900 p-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-xs text-white">{sc.agentName}</span>
-                <span className={`rounded px-1 font-mono text-[9px] ${sc.enabled ? 'bg-emerald-500/10 text-emerald-300' : 'bg-zinc-800 text-zinc-500'}`}>
+                <span className={`rounded px-1 font-mono text-[9px] ${sc.enabled ? 'bg-emerald-500/10 text-emerald-300' : 'bg-zinc-800 text-zinc-400'}`}>
                   {sc.kind}
                 </span>
               </div>
-              <p className="mt-0.5 font-mono text-[10px] text-zinc-500">{sc.spec} · fired {sc.fireCount}×</p>
+              <p className="mt-0.5 font-mono text-[10px] text-zinc-400">{sc.spec} · fired {sc.fireCount}×</p>
               <div className="mt-1 flex gap-1">
                 <button onClick={() => fire(sc.id)} disabled={!sc.enabled} className="inline-flex items-center gap-1 rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40">
                   <Play className="h-3 w-3" /> fire
@@ -633,14 +633,14 @@ function ThreadsPanel({ agents }: { agents: AgentLite[] }) {
         </button>
       </div>
       <div className="h-72 space-y-2 overflow-y-auto rounded border border-zinc-800 bg-zinc-900 p-2">
-        {!thread?.messages.length && <p className="py-12 text-center text-[11px] text-zinc-600">No messages. Start a conversation with this agent.</p>}
+        {!thread?.messages.length && <p className="py-12 text-center text-[11px] text-zinc-400">No messages. Start a conversation with this agent.</p>}
         {thread?.messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-xs ${
               m.role === 'user' ? 'bg-cyan-500/15 text-cyan-100' : 'bg-zinc-800 text-zinc-200'
             }`}>
               <p>{m.text}</p>
-              <p className="mt-0.5 text-[9px] text-zinc-500">{new Date(m.ts).toLocaleTimeString()}</p>
+              <p className="mt-0.5 text-[9px] text-zinc-400">{new Date(m.ts).toLocaleTimeString()}</p>
             </div>
           </div>
         ))}
@@ -751,7 +751,7 @@ function BudgetsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () 
       <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
         <h3 className="text-xs font-semibold text-white">Budget status</h3>
         {!view?.budget ? (
-          <p className="py-8 text-center text-[11px] text-zinc-600">No budget set for this agent.</p>
+          <p className="py-8 text-center text-[11px] text-zinc-400">No budget set for this agent.</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">
@@ -831,7 +831,7 @@ function TemplatesPanel() {
                 <span key={tool} className="rounded bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[9px] text-cyan-300">{tool}</span>
               ))}
             </div>
-            <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-500">
+            <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-400">
               <span>by {t.author} · {t.installs} installs</span>
               <span className="font-mono">{t.model.split('-').slice(0, 2).join('-')}</span>
             </div>
@@ -843,7 +843,7 @@ function TemplatesPanel() {
             </button>
           </div>
         ))}
-        {templates.length === 0 && <p className="text-[11px] text-zinc-600">Loading templates…</p>}
+        {templates.length === 0 && <p className="text-[11px] text-zinc-400">Loading templates…</p>}
       </div>
       {imported && (
         <p className="rounded border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-300">
@@ -865,7 +865,7 @@ function Stat({ label, value, tone = 'default' }: { label: string; value: string
   const c = tone === 'good' ? 'text-emerald-300' : tone === 'warn' ? 'text-amber-300' : tone === 'bad' ? 'text-rose-300' : 'text-cyan-300';
   return (
     <div className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1.5">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-sm ${c}`}>{value}</div>
     </div>
   );

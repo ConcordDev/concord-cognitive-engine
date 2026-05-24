@@ -116,7 +116,7 @@ export function ClassroomWorkspace({ cohortId }: { cohortId: number | null }) {
           </button>
         ))}
         {cohortId != null && (
-          <span className="ml-auto text-[10px] font-mono text-zinc-500">cohort #{cohortId}</span>
+          <span className="ml-auto text-[10px] font-mono text-zinc-400">cohort #{cohortId}</span>
         )}
       </div>
 
@@ -192,14 +192,14 @@ function StreamTab({ cohortId, flash }: TabProps) {
         </div>
       )}
       {stream.length === 0 ? (
-        <p className="text-zinc-500 italic text-xs">No stream activity yet.</p>
+        <p className="text-zinc-400 italic text-xs">No stream activity yet.</p>
       ) : (
         <ul className="space-y-1">
           {stream.map((e) => (
             <li key={e.id} className="bg-zinc-900/60 border border-zinc-800 rounded p-2 text-xs">
               <div className="flex justify-between gap-2">
                 <span className="text-zinc-200">{e.text}</span>
-                <span className="text-[10px] text-zinc-500 whitespace-nowrap">
+                <span className="text-[10px] text-zinc-400 whitespace-nowrap">
                   {new Date(e.createdAt).toLocaleString()}
                 </span>
               </div>
@@ -314,14 +314,14 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
       </div>
 
       {assignments.length === 0 ? (
-        <p className="text-zinc-500 italic text-xs">No assignments yet.</p>
+        <p className="text-zinc-400 italic text-xs">No assignments yet.</p>
       ) : assignments.map((a) => (
         <div key={a.id} className={cardCls}>
           <div className="flex justify-between gap-2 items-start">
             <div>
               <div className="text-sm font-semibold text-zinc-100">{a.title}</div>
               {a.instructions && <div className="text-xs text-zinc-400 mt-0.5">{a.instructions}</div>}
-              <div className="text-[10px] text-zinc-500 mt-1 flex gap-3 flex-wrap">
+              <div className="text-[10px] text-zinc-400 mt-1 flex gap-3 flex-wrap">
                 <span>{a.points} pts</span>
                 {a.dueAt && <span>due {new Date(a.dueAt).toLocaleString()}</span>}
                 {a.topic && <span className="text-cyan-500/80">#{a.topic}</span>}
@@ -357,11 +357,11 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
               </div>
 
               {submissions.length === 0 ? (
-                <p className="text-zinc-500 italic text-[11px]">No submissions.</p>
+                <p className="text-zinc-400 italic text-[11px]">No submissions.</p>
               ) : submissions.map((s) => (
                 <div key={s.id} className="bg-zinc-950/60 rounded p-2 text-xs">
                   <div className="flex justify-between gap-2">
-                    <span className="font-mono text-[10px] text-zinc-500">{s.studentId}</span>
+                    <span className="font-mono text-[10px] text-zinc-400">{s.studentId}</span>
                     <span className={`text-[10px] px-1.5 rounded ${
                       s.status === 'returned' ? 'bg-emerald-900/50 text-emerald-300'
                         : s.status === 'graded' ? 'bg-amber-900/50 text-amber-300'
@@ -422,17 +422,17 @@ function GradebookTab({ cohortId, flash }: TabProps) {
     [data],
   );
 
-  if (!data) return <p className="text-zinc-500 italic text-xs">Loading gradebook…</p>;
+  if (!data) return <p className="text-zinc-400 italic text-xs">Loading gradebook…</p>;
   if (data.rows.length === 0) {
-    return <p className="text-zinc-500 italic text-xs">No graded submissions yet.</p>;
+    return <p className="text-zinc-400 italic text-xs">No graded submissions yet.</p>;
   }
 
   return (
     <div className="space-y-3">
       <div className={`${cardCls} flex gap-6 text-xs`}>
-        <div><span className="text-zinc-500">Students</span> <span className="text-zinc-100 font-bold">{data.studentCount}</span></div>
-        <div><span className="text-zinc-500">Class average</span> <span className="text-cyan-300 font-bold">{data.classAverage ?? '—'}%</span></div>
-        <div><span className="text-zinc-500">Assignments</span> <span className="text-zinc-100 font-bold">{data.assignments.length}</span></div>
+        <div><span className="text-zinc-400">Students</span> <span className="text-zinc-100 font-bold">{data.studentCount}</span></div>
+        <div><span className="text-zinc-400">Class average</span> <span className="text-cyan-300 font-bold">{data.classAverage ?? '—'}%</span></div>
+        <div><span className="text-zinc-400">Assignments</span> <span className="text-zinc-100 font-bold">{data.assignments.length}</span></div>
       </div>
       {chartData.length > 0 && (
         <div className={cardCls}>
@@ -444,7 +444,7 @@ function GradebookTab({ cohortId, flash }: TabProps) {
       <div className={`${cardCls} overflow-x-auto`}>
         <table className="text-xs w-full">
           <thead>
-            <tr className="text-zinc-500 text-[10px] uppercase">
+            <tr className="text-zinc-400 text-[10px] uppercase">
               <th className="text-left py-1 pr-3">Student</th>
               {data.assignments.map((a) => (
                 <th key={a.id} className="text-center px-2">{a.title}</th>
@@ -542,7 +542,7 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
       </div>
 
       {topics.length === 0 ? (
-        <p className="text-zinc-500 italic text-xs">No materials yet.</p>
+        <p className="text-zinc-400 italic text-xs">No materials yet.</p>
       ) : topics.map((t) => (
         <div key={t} className={cardCls}>
           <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">{t}</h4>
@@ -554,7 +554,7 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
                   {m.url ? (
                     <a href={m.url} target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline">{m.title}</a>
                   ) : <span className="text-zinc-200">{m.title}</span>}
-                  {m.notes && <div className="text-[10px] text-zinc-500 mt-0.5">{m.notes}</div>}
+                  {m.notes && <div className="text-[10px] text-zinc-400 mt-0.5">{m.notes}</div>}
                 </div>
                 <button onClick={() => remove(m.id)}
                   className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
@@ -599,7 +599,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
           {items.map((i) => (
             <li key={i.assignmentId} className="bg-zinc-950/60 rounded p-2 text-xs flex justify-between gap-2">
               <span className="text-zinc-200">{i.title}</span>
-              <span className="text-[10px] text-zinc-500 whitespace-nowrap">
+              <span className="text-[10px] text-zinc-400 whitespace-nowrap">
                 {i.score != null ? `${i.score} pts`
                   : i.dueAt ? `due ${new Date(i.dueAt).toLocaleDateString()}` : `${i.points} pts`}
               </span>
@@ -623,7 +623,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
           {section('Upcoming', data.upcoming, 'text-amber-400')}
           {section('Done', data.done, 'text-emerald-400')}
         </>
-      ) : <p className="text-zinc-500 italic text-xs">Loading…</p>}
+      ) : <p className="text-zinc-400 italic text-xs">Loading…</p>}
     </div>
   );
 }
@@ -748,13 +748,13 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
       </div>
 
       {quizzes.length === 0 ? (
-        <p className="text-zinc-500 italic text-xs">No quizzes yet.</p>
+        <p className="text-zinc-400 italic text-xs">No quizzes yet.</p>
       ) : quizzes.map((q) => (
         <div key={q.id} className={cardCls}>
           <div className="flex justify-between gap-2 items-start">
             <div>
               <div className="text-sm font-semibold text-zinc-100">{q.title}</div>
-              <div className="text-[10px] text-zinc-500 mt-0.5">
+              <div className="text-[10px] text-zinc-400 mt-0.5">
                 {q.questionCount ?? q.questions.length} questions · {q.totalPoints} pts · {q.attemptCount ?? 0} attempts
               </div>
             </div>
@@ -769,7 +769,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
           <div className="space-y-2">
             {taking.questions.map((q, i) => (
               <div key={q.id} className="bg-zinc-950/60 rounded p-2">
-                <div className="text-xs text-zinc-200 mb-1">{i + 1}. {q.prompt} <span className="text-zinc-500">({q.points} pt)</span></div>
+                <div className="text-xs text-zinc-200 mb-1">{i + 1}. {q.prompt} <span className="text-zinc-400">({q.points} pt)</span></div>
                 {q.kind === 'short_answer' ? (
                   <input className={inputCls} placeholder="Your answer"
                     value={answers[q.id] ?? ''}
@@ -800,7 +800,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                 Auto-graded: {result.score}/{result.totalPoints} ({result.percent}%)
               </div>
               {attempts && (
-                <div className="text-[10px] text-zinc-500">
+                <div className="text-[10px] text-zinc-400">
                   {attempts.count} attempts · class average {attempts.averagePercent ?? '—'}%
                 </div>
               )}

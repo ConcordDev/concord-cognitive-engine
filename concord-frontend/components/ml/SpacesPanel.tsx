@@ -54,7 +54,7 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
       {loading ? (
         <div className="py-10 text-center text-gray-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
       ) : spaces.length === 0 ? (
-        <div className="panel p-12 text-center text-gray-500">
+        <div className="panel p-12 text-center text-gray-400">
           <Sparkles className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p>No demo spaces yet</p>
           <p className="text-sm mt-1">Create a shareable demo app for a model</p>
@@ -70,7 +70,7 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
                   {sp.visibility}
                 </span>
               </div>
-              {sp.description && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{sp.description}</p>}
+              {sp.description && <p className="text-xs text-gray-400 mb-2 line-clamp-2">{sp.description}</p>}
               <p className="text-xs text-neon-cyan font-mono mb-2 truncate">{sp.modelId}</p>
               <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
                 <span className="bg-lattice-surface px-1.5 py-0.5 rounded">{sp.sdk}</span>

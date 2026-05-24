@@ -141,11 +141,11 @@ export function CommandPalette() {
           onKeyDown={onKey}
           placeholder="Type to find — bloodline, schemes, jobs…"
           aria-label="Search panels"
-          className="bg-transparent text-zinc-100 px-4 py-3 border-b border-zinc-800 outline-none placeholder:text-zinc-500"
+          className="bg-transparent text-zinc-100 px-4 py-3 border-b border-zinc-800 outline-none placeholder:text-zinc-400"
         />
         <ul className="flex-1 overflow-auto py-1" role="listbox" aria-label="Command results">
           {ranked.length === 0 ? (
-            <li className="px-4 py-2 text-xs text-zinc-500 italic">No matches.</li>
+            <li className="px-4 py-2 text-xs text-zinc-400 italic">No matches.</li>
           ) : ranked.map((c, idx) => (
             <li
               key={c.id}
@@ -158,11 +158,11 @@ export function CommandPalette() {
             >
               <span className="flex-1">{c.label}</span>
               {c.shortcut && <kbd className="font-mono text-[10px] px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400">{c.shortcut}</kbd>}
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{c.group}</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider">{c.group}</span>
             </li>
           ))}
         </ul>
-        <div className="px-4 py-1.5 border-t border-zinc-800 text-[10px] text-zinc-500 flex gap-3">
+        <div className="px-4 py-1.5 border-t border-zinc-800 text-[10px] text-zinc-400 flex gap-3">
           <span>↑↓ navigate</span><span>↩ open</span><span>Esc close</span>
         </div>
       </div>

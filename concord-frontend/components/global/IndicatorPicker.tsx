@@ -60,7 +60,7 @@ export function IndicatorPicker({
 
   return (
     <div className="space-y-1">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       <div className="flex gap-2">
         <select
           value={known ? value : '__custom__'}
@@ -96,7 +96,7 @@ export function IndicatorPicker({
             />
           </div>
           {loading && (
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-zinc-500">
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-zinc-400">
               <Loader2 className="h-3 w-3 animate-spin" /> Searching catalog…
             </div>
           )}

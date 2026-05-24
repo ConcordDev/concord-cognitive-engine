@@ -38,7 +38,7 @@ export function AVMEstimator() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calculator className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Home value estimator (AVM)</span>
-        <span className="ml-auto text-[10px] text-gray-500">Zestimate-shape</span>
+        <span className="ml-auto text-[10px] text-gray-400">Zestimate-shape</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2 text-xs">
@@ -61,20 +61,20 @@ export function AVMEstimator() {
       {result && (
         <div className="p-4 space-y-3">
           <div className="text-center">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500">Estimated value</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400">Estimated value</div>
             <div className="text-4xl font-mono font-semibold text-cyan-300 tabular-nums">${result.estimate.toLocaleString()}</div>
             <div className="text-[11px] text-gray-400 mt-1">
               Range: <span className="text-gray-200">${result.lowEstimate.toLocaleString()}</span> – <span className="text-gray-200">${result.highEstimate.toLocaleString()}</span>
-              <span className="text-gray-500"> · ±{Math.round(result.confidenceErrorPct * 100)}%</span>
+              <span className="text-gray-400"> · ±{Math.round(result.confidenceErrorPct * 100)}%</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500">$/sqft</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">$/sqft</div>
               <div className="text-lg font-mono tabular-nums text-white">${result.pricePerSqft}</div>
             </div>
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500">Rent estimate</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Rent estimate</div>
               <div className="text-lg font-mono tabular-nums text-white">${result.rentEstimate.toLocaleString()}/mo</div>
             </div>
           </div>
@@ -91,7 +91,7 @@ export function AVMEstimator() {
 }
 
 function FactorRow({ label, value }: { label: string; value: string }) {
-  return <div className="flex items-center justify-between"><span className="text-gray-500">{label}</span><span className={cn('font-mono tabular-nums text-cyan-300')}>{value}</span></div>;
+  return <div className="flex items-center justify-between"><span className="text-gray-400">{label}</span><span className={cn('font-mono tabular-nums text-cyan-300')}>{value}</span></div>;
 }
 
 export default AVMEstimator;

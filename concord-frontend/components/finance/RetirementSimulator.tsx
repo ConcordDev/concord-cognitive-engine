@@ -55,7 +55,7 @@ export function RetirementSimulator() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Target className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Retirement simulator</span>
-        <span className="ml-auto text-[10px] text-gray-500">{paths.toLocaleString()}-path Monte Carlo</span>
+        <span className="ml-auto text-[10px] text-gray-400">{paths.toLocaleString()}-path Monte Carlo</span>
       </header>
 
       <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -72,15 +72,15 @@ export function RetirementSimulator() {
 
         <div>
           {loading ? (
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" /> Running…
             </div>
           ) : !result ? (
-            <div className="text-xs text-gray-500">Edit inputs to run the simulation.</div>
+            <div className="text-xs text-gray-400">Edit inputs to run the simulation.</div>
           ) : (
             <div className="space-y-3">
               <div className="p-3 rounded bg-white/[0.02] text-center">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500">Success probability</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">Success probability</div>
                 <div className={cn('text-4xl font-bold tabular-nums',
                   result.successProbability >= 0.85 ? 'text-green-300' :
                   result.successProbability >= 0.6 ? 'text-cyan-300' :
@@ -143,7 +143,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <div className="p-2 bg-white/[0.02] rounded text-center">
       <div className={cn('text-sm font-bold tabular-nums', accent || 'text-white')}>{value}</div>
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
     </div>
   );
 }
@@ -161,7 +161,7 @@ function FanChart({ trajectories, years }: { trajectories: number[][]; years: nu
   });
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Sampled paths (first 30 of {trajectories.length})</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Sampled paths (first 30 of {trajectories.length})</div>
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32 bg-[#0a0e17] border border-white/10 rounded">
         {paths}
       </svg>

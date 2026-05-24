@@ -103,7 +103,7 @@ function FieldControl({
             onChange={(e) => onChange([Number(e.target.value), hi])}
             className="w-16 rounded-md border border-slate-700 bg-slate-900 px-1.5 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
-          <span className="text-xs text-slate-500">to</span>
+          <span className="text-xs text-slate-400">to</span>
           <input
             type="number" min={desc.min} max={desc.max} value={hi}
             onChange={(e) => onChange([lo, Number(e.target.value)])}
@@ -159,7 +159,7 @@ export function ConfigPanel({ system, config, onChange }: ConfigPanelProps) {
           </div>
         )}
         {fields.length === 0 && (
-          <p className="text-xs text-slate-500">This system has no configuration.</p>
+          <p className="text-xs text-slate-400">This system has no configuration.</p>
         )}
         {fields.map(([field, desc]) => (
           <div key={field}>

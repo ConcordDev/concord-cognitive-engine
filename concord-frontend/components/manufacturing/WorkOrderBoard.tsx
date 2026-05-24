@@ -45,15 +45,15 @@ export function WorkOrderBoard() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ClipboardList className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Work orders</span>
-        <span className="ml-auto text-[10px] text-gray-500">{orders.length} active</span>
+        <span className="ml-auto text-[10px] text-gray-400">{orders.length} active</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 p-3">
           {(['queued', 'in_progress', 'on_hold', 'complete'] as const).map(s => (
             <div key={s} className="space-y-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 px-1">{s.replace(/_/g, ' ')} <span className="text-cyan-300">{byStatus[s].length}</span></div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 px-1">{s.replace(/_/g, ' ')} <span className="text-cyan-300">{byStatus[s].length}</span></div>
               {byStatus[s].map(o => {
                 const pct = o.quantity > 0 ? (o.quantityProduced / o.quantity) * 100 : 0;
                 const days = Math.ceil((new Date(o.dueDate).getTime() - Date.now()) / 86400000);
@@ -69,13 +69,13 @@ export function WorkOrderBoard() {
                       )}>{o.priority}</span>
                     </div>
                     <div className="text-white mt-0.5 truncate">{o.product}</div>
-                    <div className="text-[10px] text-gray-500 mt-1">
+                    <div className="text-[10px] text-gray-400 mt-1">
                       {o.quantityProduced}/{o.quantity} {o.machine ? `· ${o.machine}` : ''}
                     </div>
                     <div className="h-1 bg-white/10 rounded-full mt-1 overflow-hidden">
                       <div className="h-full bg-cyan-500" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="flex items-center gap-2 text-[9px] text-gray-500 mt-1">
+                    <div className="flex items-center gap-2 text-[9px] text-gray-400 mt-1">
                       <Clock className="w-3 h-3" /> {days < 0 ? <span className="text-red-300">overdue {-days}d</span> : `${days}d`}
                       {o.assignedTo && <span className="inline-flex items-center gap-0.5 ml-auto"><User className="w-3 h-3" /> {o.assignedTo}</span>}
                     </div>

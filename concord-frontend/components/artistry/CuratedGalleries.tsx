@@ -103,7 +103,7 @@ export function CuratedGalleries() {
           {gallery.description && <p className="text-sm text-gray-400 mt-1">{gallery.description}</p>}
         </div>
         {items.length === 0 ? (
-          <div className="text-center py-10 text-gray-500 text-sm">This gallery has no published projects yet.</div>
+          <div className="text-center py-10 text-gray-400 text-sm">This gallery has no published projects yet.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((p) => (
@@ -115,8 +115,8 @@ export function CuratedGalleries() {
                 </div>
                 <div className="p-3">
                   <h3 className="font-medium text-sm truncate">{p.title}</h3>
-                  <div className="text-[11px] text-gray-500">by {p.userId} · {p.discipline}</div>
-                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500">
+                  <div className="text-[11px] text-gray-400">by {p.userId} · {p.discipline}</div>
+                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.appreciations}</span>
                   </div>
@@ -142,7 +142,7 @@ export function CuratedGalleries() {
       </div>
 
       {galleries.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-sm">No curated galleries yet. Build a themed showcase.</div>
+        <div className="text-center py-12 text-gray-400 text-sm">No curated galleries yet. Build a themed showcase.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {galleries.map((g) => (
@@ -152,8 +152,8 @@ export function CuratedGalleries() {
                 <h3 className="font-medium text-sm truncate flex-1">{g.title}</h3>
               </div>
               <div className="text-[11px] text-neon-pink mt-1">{g.theme}</div>
-              {g.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{g.description}</p>}
-              <div className="text-[11px] text-gray-500 mt-2">{g.projectCount} project{g.projectCount === 1 ? '' : 's'}</div>
+              {g.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{g.description}</p>}
+              <div className="text-[11px] text-gray-400 mt-2">{g.projectCount} project{g.projectCount === 1 ? '' : 's'}</div>
             </button>
           ))}
         </div>

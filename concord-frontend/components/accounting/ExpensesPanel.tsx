@@ -53,7 +53,7 @@ export function ExpensesPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Receipt className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Expenses (out-of-pocket / card)</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <button onClick={() => setCreating(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-emerald-500 text-black font-semibold hover:bg-emerald-400 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New expense
         </button>
@@ -76,22 +76,22 @@ export function ExpensesPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No expenses logged.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No expenses logged.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(e => {
               const a = accountById.get(e.accountId);
               return (
                 <li key={e.id} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-3">
-                  <span className="font-mono text-[10px] text-gray-500 w-20">{e.date}</span>
+                  <span className="font-mono text-[10px] text-gray-400 w-20">{e.date}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-white flex items-center gap-2">
                       {e.vendor && <span>{e.vendor}</span>}
-                      <span className="text-[10px] text-gray-500">{a ? `${a.code} ${a.name}` : ''}</span>
+                      <span className="text-[10px] text-gray-400">{a ? `${a.code} ${a.name}` : ''}</span>
                     </div>
-                    {e.memo && <div className="text-[10px] text-gray-500 truncate">{e.memo}</div>}
+                    {e.memo && <div className="text-[10px] text-gray-400 truncate">{e.memo}</div>}
                   </div>
                   {e.receiptUrl && <a href={e.receiptUrl} target="_blank" rel="noreferrer" className="p-1 text-cyan-300 hover:text-cyan-200" title="Receipt"><Paperclip className="w-3 h-3" /></a>}
                   <span className="text-sm font-mono tabular-nums text-rose-300 w-20 text-right">−${e.amount.toFixed(2)}</span>

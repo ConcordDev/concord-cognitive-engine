@@ -173,7 +173,7 @@ export function InsuranceActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="md:col-span-2">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Book (JSON · policies + claims)</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Book (JSON · policies + claims)</label>
           <textarea value={bookText} onChange={(e) => setBookText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
         </div>
         <div className="space-y-2">
@@ -200,7 +200,7 @@ export function InsuranceActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -212,22 +212,22 @@ export function InsuranceActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Coverage gaps</div>
             <div className="text-2xl font-bold text-amber-300">{gapResult.gapCount}</div>
             <div className="text-[10px] text-zinc-400 line-clamp-2">missing: {(gapResult.gaps ?? []).join(', ') || 'none'}</div>
-            <div className="text-[10px] text-zinc-500 mt-1">expiring ≤30d: {gapResult.expiringSoon?.length ?? 0}</div>
+            <div className="text-[10px] text-zinc-400 mt-1">expiring ≤30d: {gapResult.expiringSoon?.length ?? 0}</div>
           </div>
         )}
         {lossResult && (
           <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">Loss ratio ({lossResult.assessment})</div>
             <div className="text-2xl font-bold text-red-300">{lossResult.lossRatio}%</div>
-            <div className="text-[10px] text-zinc-500">premiums ${lossResult.premiumsCollected?.toLocaleString()} · claims ${lossResult.claimsPaid?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">freq {lossResult.claimFrequency} · sev ${lossResult.averageSeverity?.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">premiums ${lossResult.premiumsCollected?.toLocaleString()} · claims ${lossResult.claimsPaid?.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">freq {lossResult.claimFrequency} · sev ${lossResult.averageSeverity?.toLocaleString()}</div>
           </div>
         )}
         {renewalResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Renewals</div>
             <div className="text-2xl font-bold text-blue-300">{renewalResult.urgentCount} <span className="text-xs text-zinc-400">urgent</span></div>
-            <div className="text-[10px] text-zinc-500">${renewalResult.premiumAtRisk?.toLocaleString()} at risk · {renewalResult.totalUpcomingRenewals} ≤90d</div>
+            <div className="text-[10px] text-zinc-400">${renewalResult.premiumAtRisk?.toLocaleString()} at risk · {renewalResult.totalUpcomingRenewals} ≤90d</div>
             {(renewalResult.within30Days ?? []).slice(0, 2).map((p, i) => <div key={i} className="text-[10px] text-blue-200 mt-0.5"><span className="font-mono">{p.policyNumber}</span> · {p.daysUntilRenewal}d</div>)}
           </div>
         )}
@@ -236,7 +236,7 @@ export function InsuranceActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Risk · {riskResult.level?.toUpperCase()}</div>
             <div className="text-2xl font-bold text-purple-300">{riskResult.normalizedScore}%</div>
             <div className="text-[10px] text-zinc-400 line-clamp-1">{riskResult.risk}</div>
-            <div className="text-[10px] text-zinc-500">P{riskResult.probability} × I{riskResult.impact} = {riskResult.rawScore} → {riskResult.mitigatedScore} mitigated</div>
+            <div className="text-[10px] text-zinc-400">P{riskResult.probability} × I{riskResult.impact} = {riskResult.rawScore} → {riskResult.mitigatedScore} mitigated</div>
           </div>
         )}
       </div>

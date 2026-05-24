@@ -61,12 +61,12 @@ export function CrisisPanel() {
         </div>
         <div className="flex gap-1 rounded-md border border-zinc-800 bg-zinc-950 p-0.5">
           {(['US', 'UK', 'CA', 'AU'] as const).map((c) => (
-            <button key={c} type="button" onClick={() => setCountry(c)} className={`rounded px-2.5 py-1 text-[11px] font-mono ${country === c ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500'}`}>{c}</button>
+            <button key={c} type="button" onClick={() => setCountry(c)} className={`rounded px-2.5 py-1 text-[11px] font-mono ${country === c ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400'}`}>{c}</button>
           ))}
         </div>
       </header>
 
-      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading hotlines…</div>}
+      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading hotlines…</div>}
 
       {set && !set.available && (
         <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">
@@ -80,7 +80,7 @@ export function CrisisPanel() {
             <div key={role} className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">{role}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">{role}</div>
                   <h3 className="text-sm font-semibold text-white">{h.name}</h3>
                 </div>
                 <SaveAsDtuButton
@@ -110,14 +110,14 @@ export function CrisisPanel() {
                   </a>
                 )}
               </div>
-              {h.availability && <p className="mt-1 text-[10px] text-zinc-500">{h.availability}</p>}
+              {h.availability && <p className="mt-1 text-[10px] text-zinc-400">{h.availability}</p>}
             </div>
           ))}
         </motion.div>
       )}
 
       {set?.disclaimer && (
-        <p className="text-[10px] italic text-zinc-500">{set.disclaimer}</p>
+        <p className="text-[10px] italic text-zinc-400">{set.disclaimer}</p>
       )}
     </div>
   );

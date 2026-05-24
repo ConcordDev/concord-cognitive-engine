@@ -71,15 +71,15 @@ export function NewsSourceTransparency() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-indigo-600/15 to-transparent">
         <ShieldCheck className="w-5 h-5 text-indigo-400" />
         <h2 className="text-sm font-bold text-zinc-100">Source Transparency</h2>
-        <span className="text-[11px] text-zinc-500">Bias · factuality · blindspots</span>
+        <span className="text-[11px] text-zinc-400">Bias · factuality · blindspots</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500">
+        <div className="flex items-center justify-center py-10 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : channels.length === 0 ? (
-        <div className="px-4 py-10 text-center text-zinc-500 text-sm italic">
+        <div className="px-4 py-10 text-center text-zinc-400 text-sm italic">
           No data yet — add articles so sources can be profiled.
         </div>
       ) : (
@@ -97,7 +97,7 @@ export function NewsSourceTransparency() {
                   )}
                 >
                   <span className="text-xs font-medium text-zinc-100 truncate">{c.source}</span>
-                  <span className="text-[10px] text-zinc-500 shrink-0">{c.articleCount} articles</span>
+                  <span className="text-[10px] text-zinc-400 shrink-0">{c.articleCount} articles</span>
                 </button>
               </li>
             ))}
@@ -106,18 +106,18 @@ export function NewsSourceTransparency() {
           {/* Profile panel */}
           <div className="p-4">
             {profileLoading ? (
-              <div className="flex items-center justify-center py-8 text-zinc-500">
+              <div className="flex items-center justify-center py-8 text-zinc-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
             ) : !profile ? (
-              <p className="text-[11px] text-zinc-600 italic text-center py-8">
+              <p className="text-[11px] text-zinc-400 italic text-center py-8">
                 Select a source to view its transparency profile.
               </p>
             ) : (
               <div className="space-y-3">
                 <div>
                   <p className="text-sm font-bold text-zinc-100">{profile.source}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {profile.articleCount} articles · {profile.contributors} contributor
                     {profile.contributors === 1 ? '' : 's'}
                   </p>
@@ -146,7 +146,7 @@ export function NewsSourceTransparency() {
                 {/* Topic spread */}
                 {profile.topicSpread.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Topic spread</p>
+                    <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Topic spread</p>
                     <div className="flex flex-wrap gap-1">
                       {profile.topicSpread.map((t) => (
                         <span

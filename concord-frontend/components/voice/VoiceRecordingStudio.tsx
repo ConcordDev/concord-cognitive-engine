@@ -192,21 +192,21 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
   }, [active, targetLang, loadTranslations]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   return (
     <div className="grid sm:grid-cols-[200px_1fr] gap-3">
       <ul className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Recordings</p>
-        {recordings.length === 0 && <li className="text-[11px] text-zinc-600 italic">No recordings yet.</li>}
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Recordings</p>
+        {recordings.length === 0 && <li className="text-[11px] text-zinc-400 italic">No recordings yet.</li>}
         {recordings.map(r => (
           <li key={r.id}>
             <button onClick={() => open(r.id)}
               className={cn('w-full text-left rounded-lg px-2.5 py-2 border',
                 active?.id === r.id ? 'bg-sky-600/15 border-sky-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
               <p className="text-xs font-semibold text-zinc-100 truncate">{r.title}</p>
-              <p className="text-[10px] text-zinc-500">{ts(r.durationSec)} · {r.segmentCount} seg</p>
+              <p className="text-[10px] text-zinc-400">{ts(r.durationSec)} · {r.segmentCount} seg</p>
             </button>
           </li>
         ))}
@@ -266,7 +266,7 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-zinc-600 italic">No summary yet — generate a quick or AI summary.</p>
+              <p className="text-xs text-zinc-400 italic">No summary yet — generate a quick or AI summary.</p>
             )}
           </div>
 
@@ -278,12 +278,12 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
                 {playing ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
               </button>
               <span className="text-[11px] font-mono text-zinc-400">{ts(playPos)} / {ts(active.durationSec)}</span>
-              <label className="text-[10px] text-zinc-500 ml-auto cursor-pointer hover:text-zinc-300">
+              <label className="text-[10px] text-zinc-400 ml-auto cursor-pointer hover:text-zinc-300">
                 attach audio
                 <input type="file" accept="audio/*" onChange={onAudioFile} className="hidden" />
               </label>
             </div>
-            <p className="text-[10px] text-zinc-600 mb-1.5">Click a line to jump the audio to that timestamp.</p>
+            <p className="text-[10px] text-zinc-400 mb-1.5">Click a line to jump the audio to that timestamp.</p>
             <div className="space-y-1 max-h-64 overflow-y-auto">
               {active.segments.map(g => {
                 const segComments = share?.comments.filter(c => c.segmentId === g.id) || [];
@@ -349,7 +349,7 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
                 ))}
               </ul>
             ) : (
-              <p className="text-[11px] text-zinc-600 italic">Not shared yet.</p>
+              <p className="text-[11px] text-zinc-400 italic">Not shared yet.</p>
             )}
           </div>
 
@@ -369,7 +369,7 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
               </button>
             </div>
             {translations.length > 0 && (
-              <p className="text-[10px] text-zinc-500 mb-1.5">
+              <p className="text-[10px] text-zinc-400 mb-1.5">
                 Saved translations: {translations.map(t => t.targetLang.toUpperCase()).join(', ')}
               </p>
             )}
@@ -384,12 +384,12 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-zinc-600 italic">No translation yet — pick a language and translate.</p>
+              <p className="text-[11px] text-zinc-400 italic">No translation yet — pick a language and translate.</p>
             )}
           </div>
         </div>
       ) : (
-        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[160px]">
+        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[160px]">
           Select a recording to summarize, play, share, comment, and translate.
         </div>
       )}

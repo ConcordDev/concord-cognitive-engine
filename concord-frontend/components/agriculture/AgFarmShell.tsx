@@ -90,10 +90,10 @@ export function AgFarmShell({
           <header className="px-3 py-2 bg-white/[0.03] border-b border-white/10 flex items-center gap-2">
             <Tractor className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Equipment fleet</span>
-            <span className="ml-auto text-[10px] text-gray-500">{equipment.length}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{equipment.length}</span>
           </header>
           {equipment.length === 0 ? (
-            <div className="p-6 text-center text-xs text-gray-500">No equipment.</div>
+            <div className="p-6 text-center text-xs text-gray-400">No equipment.</div>
           ) : (
             <ul className="divide-y divide-white/5 max-h-64 overflow-y-auto">
               {equipment.slice(0, 8).map(e => (
@@ -101,11 +101,11 @@ export function AgFarmShell({
                   <Tractor className="w-4 h-4 text-amber-300" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-white truncate">{e.name}</div>
-                    <div className="text-[10px] text-gray-500">{e.kind}</div>
+                    <div className="text-[10px] text-gray-400">{e.kind}</div>
                   </div>
                   {typeof e.fuelLevelPct === 'number' && (
                     <div className="flex items-center gap-1 text-[10px]">
-                      <Fuel className="w-2.5 h-2.5 text-gray-500" />
+                      <Fuel className="w-2.5 h-2.5 text-gray-400" />
                       <span className={cn('font-mono', e.fuelLevelPct < 25 ? 'text-rose-300' : 'text-gray-400')}>{e.fuelLevelPct}%</span>
                     </div>
                   )}
@@ -121,16 +121,16 @@ export function AgFarmShell({
           <header className="px-3 py-2 bg-white/[0.03] border-b border-white/10 flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Today's work</span>
-            <span className="ml-auto text-[10px] text-gray-500">{workOrders.length}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{workOrders.length}</span>
           </header>
           {workOrders.length === 0 ? (
-            <div className="p-6 text-center text-xs text-gray-500">No work orders.</div>
+            <div className="p-6 text-center text-xs text-gray-400">No work orders.</div>
           ) : (
             <ul className="divide-y divide-white/5 max-h-64 overflow-y-auto">
               {workOrders.slice(0, 8).map(w => (
                 <li key={w.id} className="px-3 py-2 hover:bg-white/[0.03]">
                   <div className="text-xs text-white truncate">{w.operation}</div>
-                  <div className="text-[10px] text-gray-500 flex items-center gap-1.5">
+                  <div className="text-[10px] text-gray-400 flex items-center gap-1.5">
                     <span className="text-cyan-300">{w.kind}</span>
                     {w.status === 'completed' ? <CheckCircle className="w-2.5 h-2.5 text-emerald-400" /> : w.status === 'scheduled' ? <Activity className="w-2.5 h-2.5 text-amber-400" /> : <AlertTriangle className="w-2.5 h-2.5 text-rose-400" />}
                     <span className="capitalize">{w.status}</span>
@@ -157,10 +157,10 @@ function Metric({ icon: Icon, label, value, caption, tone }: { icon: typeof Whea
     <div className={cn('rounded-lg border bg-white/[0.02] p-2.5', TILE_TONE[tone])}>
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className="w-3 h-3" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-lg font-mono font-bold tabular-nums text-white">{value}</div>
-      <div className="text-[10px] text-gray-500">{caption}</div>
+      <div className="text-[10px] text-gray-400">{caption}</div>
     </div>
   );
 }

@@ -94,7 +94,7 @@ const btnCls =
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[9px] uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="mb-1 block text-[9px] uppercase tracking-wider text-zinc-400">{label}</span>
       {children}
     </label>
   );
@@ -208,22 +208,22 @@ function AisTab() {
       {err && <ErrLine msg={err} />}
       {res && (
         <div className="space-y-1">
-          <p className="text-[11px] text-zinc-500">{res.count} vessels in box · source: AISHub</p>
+          <p className="text-[11px] text-zinc-400">{res.count} vessels in box · source: AISHub</p>
           <ul className="max-h-72 space-y-1 overflow-y-auto">
             {res.vessels.map((v) => (
               <li key={String(v.mmsi)} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
                 <Ship className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs text-zinc-100">{v.name}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {v.type} · {v.speed?.toFixed(1) ?? '—'} kn · {v.lat.toFixed(3)},{v.lon.toFixed(3)}
                     {v.destination ? ` → ${v.destination}` : ''}
                   </p>
                 </div>
-                <span className="font-mono text-[10px] text-zinc-600">MMSI {v.mmsi}</span>
+                <span className="font-mono text-[10px] text-zinc-400">MMSI {v.mmsi}</span>
               </li>
             ))}
-            {res.vessels.length === 0 && <li className="py-4 text-center text-[11px] italic text-zinc-500">No vessels reported in this box.</li>}
+            {res.vessels.length === 0 && <li className="py-4 text-center text-[11px] italic text-zinc-400">No vessels reported in this box.</li>}
           </ul>
         </div>
       )}
@@ -250,7 +250,7 @@ function BuoyTab() {
 
   const stat = (label: string, value: number | null, unit: string) => (
     <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-      <div className="text-[9px] uppercase text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase text-zinc-400">{label}</div>
       <div className="font-mono text-sm text-cyan-200">{value == null ? '—' : `${value}${unit}`}</div>
     </div>
   );
@@ -267,7 +267,7 @@ function BuoyTab() {
       {err && <ErrLine msg={err} />}
       {res && (
         <div className="space-y-2">
-          <p className="text-[11px] text-zinc-500">Buoy {res.buoyId} · observed {res.observedAt} · NOAA NDBC</p>
+          <p className="text-[11px] text-zinc-400">Buoy {res.buoyId} · observed {res.observedAt} · NOAA NDBC</p>
           <div className="grid grid-cols-3 gap-2">
             {stat('Wave height', res.waveHeightM, ' m')}
             {stat('Dom. period', res.dominantWavePeriodS, ' s')}
@@ -337,7 +337,7 @@ function SurfTab({ spots }: { spots: Spot[] }) {
         </div>
       )}
       {mode === 'spot' && geoSpots.length === 0 && (
-        <p className="text-[10px] italic text-zinc-500">No geolocated spots yet — add lat/lon to a spot, or use coordinates.</p>
+        <p className="text-[10px] italic text-zinc-400">No geolocated spots yet — add lat/lon to a spot, or use coordinates.</p>
       )}
       <button className={btnCls} onClick={run} disabled={busy}>
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />}
@@ -349,14 +349,14 @@ function SurfTab({ spots }: { spots: Spot[] }) {
           <div className="flex items-baseline gap-3">
             <span className="font-mono text-3xl text-cyan-200">{res.score}</span>
             <span className={cn('text-lg font-bold capitalize', ratingColor(res.rating))}>{res.rating}</span>
-            {res.spotName && <span className="text-[11px] text-zinc-500">{res.spotName}</span>}
+            {res.spotName && <span className="text-[11px] text-zinc-400">{res.spotName}</span>}
           </div>
           <p className="mt-1 text-[11px] text-zinc-400">{res.summary}</p>
           <div className="mt-2 grid grid-cols-4 gap-2 text-[10px]">
-            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-500">Swell</div><div className="font-mono text-cyan-200">{res.components.swellHeightM} m</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-500">Period</div><div className="font-mono text-cyan-200">{res.components.swellPeriodS} s</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-500">Wind wave</div><div className="font-mono text-amber-200">{res.components.windWaveHeightM} m</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-500">Wind</div><div className="font-mono text-amber-200">{res.components.windSpeedKmh} km/h</div></div>
+            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-400">Swell</div><div className="font-mono text-cyan-200">{res.components.swellHeightM} m</div></div>
+            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-400">Period</div><div className="font-mono text-cyan-200">{res.components.swellPeriodS} s</div></div>
+            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-400">Wind wave</div><div className="font-mono text-amber-200">{res.components.windWaveHeightM} m</div></div>
+            <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-zinc-400">Wind</div><div className="font-mono text-amber-200">{res.components.windSpeedKmh} km/h</div></div>
           </div>
         </div>
       )}
@@ -496,7 +496,7 @@ function AlertsTab() {
           {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           Check next tides
         </button>
-        <span className="text-[10px] text-zinc-500">{checks.length} alert{checks.length === 1 ? '' : 's'} tracked</span>
+        <span className="text-[10px] text-zinc-400">{checks.length} alert{checks.length === 1 ? '' : 's'} tracked</span>
       </div>
 
       <ul className="space-y-1">
@@ -511,7 +511,7 @@ function AlertsTab() {
                   {c.error ? (
                     <p className="text-[10px] text-rose-300">{c.error}</p>
                   ) : c.nextTide ? (
-                    <p className="text-[10px] text-zinc-500">
+                    <p className="text-[10px] text-zinc-400">
                       Next {c.nextTide.type} {c.nextTide.height?.toFixed(2)}m @ {c.nextTide.time} ·
                       {c.due ? ' due now' : ` notify in ${c.minutesUntilNotify} min`}
                     </p>
@@ -522,7 +522,7 @@ function AlertsTab() {
             </li>
           );
         })}
-        {checks.length === 0 && <li className="py-4 text-center text-[11px] italic text-zinc-500">No tide alerts. Add one above.</li>}
+        {checks.length === 0 && <li className="py-4 text-center text-[11px] italic text-zinc-400">No tide alerts. Add one above.</li>}
       </ul>
     </div>
   );
@@ -561,7 +561,7 @@ function ExportTab({ spots }: { spots: Spot[] }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">Download your logged surf/dive/fishing sessions as a GPX track or CSV spreadsheet.</p>
+      <p className="text-[11px] text-zinc-400">Download your logged surf/dive/fishing sessions as a GPX track or CSV spreadsheet.</p>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Format">
           <select className={inputCls} value={format} onChange={(e) => setFormat(e.target.value as 'csv' | 'gpx')}>
@@ -603,7 +603,7 @@ export function LiveMarinePanel() {
       <div className="mb-3 flex items-center gap-2">
         <MapPin className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Live Marine Data</h3>
-        <span className="ml-auto text-[10px] text-zinc-600">Open-Meteo · NOAA NDBC · AISHub</span>
+        <span className="ml-auto text-[10px] text-zinc-400">Open-Meteo · NOAA NDBC · AISHub</span>
       </div>
 
       <div className="mb-3 flex flex-wrap gap-1 rounded-lg bg-zinc-900 p-1">
@@ -613,7 +613,7 @@ export function LiveMarinePanel() {
             onClick={() => setTab(key)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300',
+              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
             )}
           >
             <Icon className="h-3.5 w-3.5" /> {label}

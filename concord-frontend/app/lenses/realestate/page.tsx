@@ -891,7 +891,7 @@ export default function RealEstateLensPage() {
             ? 'bg-neon-green/20 text-neon-green border-neon-green/50'
             : isActive
               ? 'bg-neon-blue/20 text-neon-blue border-neon-blue/50'
-              : 'bg-lattice-surface text-gray-500 border-lattice-border';
+              : 'bg-lattice-surface text-gray-400 border-lattice-border';
           return (
             <div key={stage} className="flex items-center gap-1">
               <div
@@ -1098,19 +1098,19 @@ export default function RealEstateLensPage() {
                         >
                           {String(actionResult.capRate)}%
                         </p>
-                        <p className="text-[10px] text-gray-500">Cap Rate</p>
+                        <p className="text-[10px] text-gray-400">Cap Rate</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan">
                           ${Number(actionResult.noi).toLocaleString()}
                         </p>
-                        <p className="text-[10px] text-gray-500">NOI</p>
+                        <p className="text-[10px] text-gray-400">NOI</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan capitalize">
                           {String(actionResult.rating)}
                         </p>
-                        <p className="text-[10px] text-gray-500">Rating</p>
+                        <p className="text-[10px] text-gray-400">Rating</p>
                       </div>
                     </div>
                   </div>
@@ -1129,7 +1129,7 @@ export default function RealEstateLensPage() {
                           ).toLocaleString()}
                           /mo
                         </p>
-                        <p className="text-[10px] text-gray-500">Monthly Cash Flow</p>
+                        <p className="text-[10px] text-gray-400">Monthly Cash Flow</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p
@@ -1141,7 +1141,7 @@ export default function RealEstateLensPage() {
                           ).toLocaleString()}
                           /yr
                         </p>
-                        <p className="text-[10px] text-gray-500">Annual Cash Flow</p>
+                        <p className="text-[10px] text-gray-400">Annual Cash Flow</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -1152,7 +1152,7 @@ export default function RealEstateLensPage() {
                             (actionResult.monthly as { grossRent: number }).grossRent
                           ).toLocaleString()}
                         </p>
-                        <p className="text-[10px] text-gray-500">Gross Rent</p>
+                        <p className="text-[10px] text-gray-400">Gross Rent</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-amber-400">
@@ -1161,7 +1161,7 @@ export default function RealEstateLensPage() {
                             (actionResult.monthly as { expenses: number }).expenses
                           ).toLocaleString()}
                         </p>
-                        <p className="text-[10px] text-gray-500">Expenses</p>
+                        <p className="text-[10px] text-gray-400">Expenses</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-amber-400">
@@ -1170,7 +1170,7 @@ export default function RealEstateLensPage() {
                             (actionResult.monthly as { mortgage: number }).mortgage
                           ).toLocaleString()}
                         </p>
-                        <p className="text-[10px] text-gray-500">Mortgage</p>
+                        <p className="text-[10px] text-gray-400">Mortgage</p>
                       </div>
                     </div>
                   </div>
@@ -1192,7 +1192,7 @@ export default function RealEstateLensPage() {
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${m.status === 'completed' ? 'bg-green-400' : 'bg-gray-500'}`}
                         />
                         <span className="text-gray-300 flex-1">{m.milestone}</span>
-                        <span className="text-gray-500">{m.date}</span>
+                        <span className="text-gray-400">{m.date}</span>
                       </div>
                     ))}
                   </div>
@@ -1207,19 +1207,19 @@ export default function RealEstateLensPage() {
                         >
                           {String(actionResult.vacancyRate)}%
                         </p>
-                        <p className="text-[10px] text-gray-500">Vacancy</p>
+                        <p className="text-[10px] text-gray-400">Vacancy</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-green-400">
                           {String(actionResult.occupied)}
                         </p>
-                        <p className="text-[10px] text-gray-500">Occupied</p>
+                        <p className="text-[10px] text-gray-400">Occupied</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan">
                           ${Number(actionResult.monthlyRentCollected).toLocaleString()}
                         </p>
-                        <p className="text-[10px] text-gray-500">Monthly Rent</p>
+                        <p className="text-[10px] text-gray-400">Monthly Rent</p>
                       </div>
                     </div>
                   </div>
@@ -1412,7 +1412,7 @@ export default function RealEstateLensPage() {
                 <span className={ds.textMuted}>Active Listings</span>
               </div>
               <p className="text-3xl font-bold text-white">{stats.activeListings}</p>
-              <p className="text-xs text-gray-500 mt-1">{stats.pendingSales} pending</p>
+              <p className="text-xs text-gray-400 mt-1">{stats.pendingSales} pending</p>
             </div>
             <div className={ds.panel}>
               <div className="flex items-center gap-2 mb-2">
@@ -1420,7 +1420,7 @@ export default function RealEstateLensPage() {
                 <span className={ds.textMuted}>Listing Volume</span>
               </div>
               <p className="text-3xl font-bold text-white">{fmt(stats.totalListVal)}</p>
-              <p className="text-xs text-gray-500 mt-1">{fmt(stats.closedVol)} closed</p>
+              <p className="text-xs text-gray-400 mt-1">{fmt(stats.closedVol)} closed</p>
             </div>
             <div className={ds.panel}>
               <div className="flex items-center gap-2 mb-2">
@@ -1428,7 +1428,7 @@ export default function RealEstateLensPage() {
                 <span className={ds.textMuted}>Pending Deals</span>
               </div>
               <p className="text-3xl font-bold text-white">{stats.pendingTxns}</p>
-              <p className="text-xs text-gray-500 mt-1">{stats.closedCount} closed this period</p>
+              <p className="text-xs text-gray-400 mt-1">{stats.closedCount} closed this period</p>
             </div>
             <div className={ds.panel}>
               <div className="flex items-center gap-2 mb-2">
@@ -1447,7 +1447,7 @@ export default function RealEstateLensPage() {
               >
                 {pct(stats.vacancyRate)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 {stats.vacantCount} of {stats.totalRentals} units
               </p>
             </div>
@@ -1505,7 +1505,7 @@ export default function RealEstateLensPage() {
                       }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{item.title}</p>
-                        <p className="text-xs text-gray-500 truncate">{d.address}</p>
+                        <p className="text-xs text-gray-400 truncate">{d.address}</p>
                       </div>
                       <div className="flex items-center gap-2 ml-2">
                         {d.price != null && (
@@ -1550,7 +1550,7 @@ export default function RealEstateLensPage() {
                       }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{item.title}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           {d.closingDate ? `Closing: ${d.closingDate}` : 'No closing date'}
                         </p>
                       </div>
@@ -1640,17 +1640,17 @@ export default function RealEstateLensPage() {
                         <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                       </div>
                       {d.address && (
-                        <p className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                        <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
                           <MapPin className="w-3 h-3" /> {d.address}
                         </p>
                       )}
                       {d.mlsNumber && (
-                        <p className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                        <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
                           <Hash className="w-3 h-3" /> MLS: {d.mlsNumber}
                         </p>
                       )}
                       <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                      <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                         {d.price != null && (
                           <span className="font-semibold text-white flex items-center gap-1">
                             <DollarSign className="w-3 h-3" /> {fmt(d.price)}
@@ -1672,7 +1672,7 @@ export default function RealEstateLensPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap mt-2">
+                      <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap mt-2">
                         {d.lotSize != null && (
                           <span className="flex items-center gap-1">
                             <LandPlot className="w-3 h-3" /> {d.lotSize} acres
@@ -1696,7 +1696,7 @@ export default function RealEstateLensPage() {
                       </div>
                       {d.priceHistory && d.priceHistory.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-lattice-border">
-                          <p className="text-xs text-gray-500 mb-1">Price History:</p>
+                          <p className="text-xs text-gray-400 mb-1">Price History:</p>
                           {d.priceHistory.slice(0, 2).map((ph, idx) => (
                             <p key={idx} className="text-xs text-gray-400">
                               {ph.date}: {fmt(ph.price)} - {ph.reason}
@@ -1777,7 +1777,7 @@ export default function RealEstateLensPage() {
                             <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                           </div>
                           {d.address && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <p className="text-xs text-gray-400 flex items-center gap-1">
                               <MapPin className="w-3 h-3" /> {d.address}
                             </p>
                           )}
@@ -1805,7 +1805,7 @@ export default function RealEstateLensPage() {
                               <p className={ds.label}>Closing Date</p>
                               <p className="text-sm text-white">
                                 {d.closingDate || (
-                                  <span className="text-gray-500 text-xs">Not scheduled</span>
+                                  <span className="text-gray-400 text-xs">Not scheduled</span>
                                 )}
                               </p>
                             </div>
@@ -1922,14 +1922,14 @@ export default function RealEstateLensPage() {
                                       <span
                                         className={cn(
                                           'text-white',
-                                          doc.completed && 'line-through text-gray-500'
+                                          doc.completed && 'line-through text-gray-400'
                                         )}
                                       >
                                         {doc.name}
                                       </span>
                                     </div>
                                     {doc.dueDate && (
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-gray-400">
                                         Due: {doc.dueDate}
                                       </span>
                                     )}
@@ -2025,7 +2025,7 @@ export default function RealEstateLensPage() {
                             </div>
                           )}
                           {d.pricePerSqft != null && (
-                            <p className="text-xs text-gray-500">${d.pricePerSqft}/sqft</p>
+                            <p className="text-xs text-gray-400">${d.pricePerSqft}/sqft</p>
                           )}
                         </div>
                       </div>
@@ -2110,7 +2110,7 @@ export default function RealEstateLensPage() {
                           </table>
                         </div>
                       ) : (
-                        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+                        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                           <p>No comparable properties yet. Add comps to see market analysis.</p>
                         </div>
                       )}
@@ -2226,7 +2226,7 @@ export default function RealEstateLensPage() {
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
                           {d.address && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <p className="text-xs text-gray-400 flex items-center gap-1">
                               <MapPin className="w-3 h-3" /> {d.address}
                             </p>
                           )}
@@ -2241,7 +2241,7 @@ export default function RealEstateLensPage() {
                             <span className="text-sm text-white font-medium">{d.tenantName}</span>
                           </div>
                           {d.tenantPhone && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1 ml-5">
+                            <p className="text-xs text-gray-400 flex items-center gap-1 ml-5">
                               <Phone className="w-3 h-3" /> {d.tenantPhone}
                             </p>
                           )}
@@ -2389,7 +2389,7 @@ export default function RealEstateLensPage() {
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
                           {d.address && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <p className="text-xs text-gray-400 flex items-center gap-1">
                               <MapPin className="w-3 h-3" /> {d.address}
                             </p>
                           )}
@@ -2426,7 +2426,7 @@ export default function RealEstateLensPage() {
                       <div className="mt-3 pt-3 border-t border-lattice-border">
                         <div className={ds.grid4}>
                           <div className="text-center">
-                            <p className="text-xs text-gray-500">Cap Rate</p>
+                            <p className="text-xs text-gray-400">Cap Rate</p>
                             <p
                               className={cn(
                                 'text-sm font-bold',
@@ -2437,7 +2437,7 @@ export default function RealEstateLensPage() {
                             </p>
                           </div>
                           <div className="text-center">
-                            <p className="text-xs text-gray-500">Cash/Cash</p>
+                            <p className="text-xs text-gray-400">Cash/Cash</p>
                             <p
                               className={cn(
                                 'text-sm font-bold',
@@ -2452,13 +2452,13 @@ export default function RealEstateLensPage() {
                             </p>
                           </div>
                           <div className="text-center">
-                            <p className="text-xs text-gray-500">GRM</p>
+                            <p className="text-xs text-gray-400">GRM</p>
                             <p className="text-sm font-bold text-white">
                               {d.grm ? d.grm.toFixed(1) : 'N/A'}
                             </p>
                           </div>
                           <div className="text-center">
-                            <p className="text-xs text-gray-500">NOI</p>
+                            <p className="text-xs text-gray-400">NOI</p>
                             <p
                               className={cn(
                                 'text-sm font-bold',
@@ -2568,7 +2568,7 @@ export default function RealEstateLensPage() {
                         <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                       </div>
                       {d.address && (
-                        <p className="text-xs text-gray-500 flex items-center gap-1 mb-2">
+                        <p className="text-xs text-gray-400 flex items-center gap-1 mb-2">
                           <MapPin className="w-3 h-3" /> {d.address}
                         </p>
                       )}
@@ -2580,7 +2580,7 @@ export default function RealEstateLensPage() {
                             {d.showingDate ? (
                               `${d.showingDate}${d.showingTime ? ` at ${d.showingTime}` : ''}`
                             ) : (
-                              <span className="text-gray-500 text-xs">Not scheduled</span>
+                              <span className="text-gray-400 text-xs">Not scheduled</span>
                             )}
                           </p>
                         </div>
@@ -2597,7 +2597,7 @@ export default function RealEstateLensPage() {
                             <User className="w-3 h-3" /> {d.client}
                           </p>
                           {d.clientPhone && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1 ml-4">
+                            <p className="text-xs text-gray-400 flex items-center gap-1 ml-4">
                               <Phone className="w-3 h-3" /> {d.clientPhone}
                             </p>
                           )}
@@ -3471,7 +3471,7 @@ function RealtorWorkbenchSection() {
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
               active === t.id
                 ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
-                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent'
+                : 'text-gray-400 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent'
             )}
           >
             <t.icon className="w-3.5 h-3.5" />
@@ -3481,7 +3481,7 @@ function RealtorWorkbenchSection() {
         ))}
       </nav>
       {(active === 'photos' || active === 'priced' || active === 'detail' || active === 'notes' || active === 'contact') && (
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-400">
           {selected
             ? <>Working with <span className="text-cyan-300">{selected.address || selected.id}</span>.</>
             : 'Pick a listing in Browse or Map search to load this panel.'}

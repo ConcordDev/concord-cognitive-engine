@@ -59,9 +59,9 @@ export function FeedDTUCard({
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-900/30 text-cyan-300 border border-cyan-800/30">
               via {sourceName}
             </span>
-            <span className="text-[10px] text-gray-500 capitalize">{domain}</span>
+            <span className="text-[10px] text-gray-400 capitalize">{domain}</span>
             {publishedAt && (
-              <span className="text-[10px] text-gray-500">{formatTime(publishedAt)}</span>
+              <span className="text-[10px] text-gray-400">{formatTime(publishedAt)}</span>
             )}
             {sourceUrl && (
               <a

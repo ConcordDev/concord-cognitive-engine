@@ -211,7 +211,7 @@ function SearchBar({
 }) {
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
       <input
         type="text"
         value={value}
@@ -234,7 +234,7 @@ function LoadingSpinner({ message }: { message: string }) {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="text-center py-10 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+    <div className="text-center py-10 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
       {message}
     </div>
   );
@@ -293,7 +293,7 @@ function OverviewTab() {
               className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
             >
               <span className="text-sm text-gray-300 font-mono truncate max-w-[70%]">{f.path}</span>
-              <span className="text-xs text-gray-500 font-mono">{f.lines.toLocaleString()} lines</span>
+              <span className="text-xs text-gray-400 font-mono">{f.lines.toLocaleString()} lines</span>
             </motion.div>
           ))}
           {(!data.largestFiles || data.largestFiles.length === 0) && (
@@ -361,7 +361,7 @@ function ComponentsTab() {
     <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-4">
       <SearchBar value={search} onChange={setSearch} placeholder="Search components..." />
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         {filtered.length} component{filtered.length !== 1 ? 's' : ''} shown
         {search && ` (of ${data?.length ?? 0})`}
       </p>
@@ -378,15 +378,15 @@ function ComponentsTab() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {expanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                   )}
                   <span className="text-sm font-medium truncate">{comp.name}</span>
-                  <span className="text-xs text-gray-500 truncate hidden md:inline">{comp.directory}</span>
+                  <span className="text-xs text-gray-400 truncate hidden md:inline">{comp.directory}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-gray-500 font-mono">{comp.lineCount} lines</span>
+                  <span className="text-xs text-gray-400 font-mono">{comp.lineCount} lines</span>
                   <WiredBadge wired={comp.wired} />
                 </div>
               </button>
@@ -401,12 +401,12 @@ function ComponentsTab() {
                   >
                     <div className="p-4 ml-7 border-l border-white/5 space-y-3">
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Directory</p>
+                        <p className="text-xs text-gray-400 mb-1">Directory</p>
                         <p className="text-sm text-gray-300 font-mono">{comp.directory}</p>
                       </div>
                       {comp.exports.length > 0 && (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Exports</p>
+                          <p className="text-xs text-gray-400 mb-1">Exports</p>
                           <div className="flex flex-wrap gap-1">
                             {comp.exports.map((e) => (
                               <span
@@ -421,7 +421,7 @@ function ComponentsTab() {
                       )}
                       {comp.importedBy.length > 0 && (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Imported by</p>
+                          <p className="text-xs text-gray-400 mb-1">Imported by</p>
                           <div className="flex flex-wrap gap-1">
                             {comp.importedBy.map((l) => (
                               <span
@@ -466,7 +466,7 @@ function LensesTab() {
 
   return (
     <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-4">
-      <p className="text-xs text-gray-500">{data?.length ?? 0} lenses</p>
+      <p className="text-xs text-gray-400">{data?.length ?? 0} lenses</p>
 
       <div className="space-y-1 max-h-[70vh] overflow-y-auto pr-1">
         {(data ?? []).map((lens, i) => {
@@ -479,14 +479,14 @@ function LensesTab() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {expanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                   )}
                   <span className="text-sm font-medium truncate">{lens.name}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-gray-500 font-mono">{lens.lineCount} lines</span>
+                  <span className="text-xs text-gray-400 font-mono">{lens.lineCount} lines</span>
                   <span className="text-xs px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan font-mono">
                     {lens.importCount} imports
                   </span>
@@ -503,12 +503,12 @@ function LensesTab() {
                   >
                     <div className="p-4 ml-7 border-l border-white/5 space-y-3">
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Path</p>
+                        <p className="text-xs text-gray-400 mb-1">Path</p>
                         <p className="text-sm text-gray-300 font-mono">{lens.path}</p>
                       </div>
                       {lens.imports.length > 0 && (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Imported Components</p>
+                          <p className="text-xs text-gray-400 mb-1">Imported Components</p>
                           <div className="flex flex-wrap gap-1">
                             {lens.imports.map((c) => (
                               <span
@@ -523,7 +523,7 @@ function LensesTab() {
                       )}
                       {lens.routes.length > 0 && (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">Server Routes</p>
+                          <p className="text-xs text-gray-400 mb-1">Server Routes</p>
                           <div className="flex flex-wrap gap-1">
                             {lens.routes.map((r) => (
                               <span
@@ -616,7 +616,7 @@ function OrphansTab() {
           <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
             <FolderTree className="w-4 h-4 text-neon-cyan" />
             {dir}
-            <span className="text-xs text-gray-500 font-normal">({grouped[dir].length})</span>
+            <span className="text-xs text-gray-400 font-normal">({grouped[dir].length})</span>
           </h3>
           <div className="space-y-2">
             {grouped[dir].map((entry, i) => (
@@ -630,7 +630,7 @@ function OrphansTab() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{entry.name}</p>
-                  <p className="text-xs text-gray-500 font-mono truncate">{entry.path}</p>
+                  <p className="text-xs text-gray-400 font-mono truncate">{entry.path}</p>
                   {entry.exports.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {entry.exports.map((e) => (
@@ -643,7 +643,7 @@ function OrphansTab() {
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">{entry.lineCount} lines</p>
+                  <p className="text-xs text-gray-400 mt-1">{entry.lineCount} lines</p>
                 </div>
                 <button
                   onClick={() => handleWire(entry)}
@@ -687,7 +687,7 @@ function WiringTab() {
 
   return (
     <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-3">
-      <p className="text-xs text-gray-500">{data?.length ?? 0} lens wiring entries</p>
+      <p className="text-xs text-gray-400">{data?.length ?? 0} lens wiring entries</p>
 
       <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
         {(data ?? []).map((entry, i) => {
@@ -706,7 +706,7 @@ function WiringTab() {
                   {entry.lens}
                 </span>
                 <ArrowRight className="w-3 h-3 text-gray-600" />
-                <span className="text-xs text-gray-500">{entry.domain}</span>
+                <span className="text-xs text-gray-400">{entry.domain}</span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {entry.components.map((c) => (
@@ -718,7 +718,7 @@ function WiringTab() {
                   </span>
                 ))}
                 {entry.components.length === 0 && (
-                  <span className="text-xs text-gray-600 italic">No component imports</span>
+                  <span className="text-xs text-gray-400 italic">No component imports</span>
                 )}
               </div>
             </motion.div>
@@ -784,7 +784,7 @@ function SearchTab() {
   return (
     <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-4">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text"
           value={query}
@@ -793,12 +793,12 @@ function SearchTab() {
           className="input-lattice w-full pl-10 pr-10"
         />
         {isFetching && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 animate-spin" />
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
         )}
       </div>
 
       {debouncedQuery.length < 2 && (
-        <p className="text-xs text-gray-500 text-center py-8">
+        <p className="text-xs text-gray-400 text-center py-8">
           Type at least 2 characters to search.
         </p>
       )}
@@ -809,7 +809,7 @@ function SearchTab() {
 
       {data && data.length > 0 && (
         <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
-          <p className="text-xs text-gray-500">{data.length} result{data.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-gray-400">{data.length} result{data.length !== 1 ? 's' : ''}</p>
           {data.map((result, i) => (
             <motion.div
               key={`${result.type}-${result.path}`}
@@ -821,7 +821,7 @@ function SearchTab() {
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{result.name}</p>
-                <p className="text-xs text-gray-500 font-mono truncate">{result.path}</p>
+                <p className="text-xs text-gray-400 font-mono truncate">{result.path}</p>
                 {result.matchContext && (
                   <p className="text-xs text-gray-400 mt-1 truncate">{result.matchContext}</p>
                 )}
@@ -921,7 +921,7 @@ function LensInfrastructureTab() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white">{m.label}</p>
-                  <p className="text-xs text-gray-500 font-mono">{m.domain} &middot; {m.category}</p>
+                  <p className="text-xs text-gray-400 font-mono">{m.domain} &middot; {m.category}</p>
                 </div>
                 <div className="flex gap-2 items-center">
                   <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{m.artifacts.length} artifacts</span>
@@ -969,7 +969,7 @@ function LensInfrastructureTab() {
                   <span className={cn('inline-block px-2 py-0.5 rounded-full text-xs border', STATUS_COLORS[entry.status] || '')}>{entry.status}</span>
                   <span className="text-sm text-gray-300 font-mono">{entry.id}</span>
                 </div>
-                <div className="text-xs text-gray-500 truncate max-w-[40%] text-right">
+                <div className="text-xs text-gray-400 truncate max-w-[40%] text-right">
                   {entry.mergeTarget ? `-> ${entry.mergeTarget} (${entry.postMergeRole})` : 'standalone'}
                 </div>
               </motion.div>
@@ -997,7 +997,7 @@ function LensInfrastructureTab() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-neon-green">{group.targetId}</span>
-                  <span className="text-xs text-gray-500">{group.sources.length} sources merging in</span>
+                  <span className="text-xs text-gray-400">{group.sources.length} sources merging in</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {group.sources.map((src) => (
@@ -1050,7 +1050,7 @@ function LensInfrastructureTab() {
                     'bg-gray-500/20 text-gray-400'
                   )}>{phase.status}</span>
                 </div>
-                <p className="text-xs text-gray-500 mb-2">{phase.rationale}</p>
+                <p className="text-xs text-gray-400 mb-2">{phase.rationale}</p>
                 <div className="flex gap-3 text-xs text-gray-400">
                   <span>{phase.pipelines.length} pipelines</span>
                   <span>{phase.engines.length} engines</span>
@@ -1085,7 +1085,7 @@ function LensInfrastructureTab() {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <span className="text-sm font-semibold text-white">{profile.label}</span>
-                      <span className="text-xs text-gray-500 ml-2">({cat})</span>
+                      <span className="text-xs text-gray-400 ml-2">({cat})</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">Integration:</span>
@@ -1097,7 +1097,7 @@ function LensInfrastructureTab() {
                       )}>{score}%</span>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mb-2">{profile.description}</p>
+                  <p className="text-xs text-gray-400 mb-2">{profile.description}</p>
                   <div className="flex flex-wrap gap-3 text-xs text-gray-400">
                     <span>{profile.enabledHooks.length}/30 hooks</span>
                     <span>Layout: {profile.defaultLayout}</span>

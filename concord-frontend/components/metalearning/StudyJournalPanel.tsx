@@ -75,7 +75,7 @@ export function StudyJournalPanel() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <NotebookPen className="w-4 h-4 text-neon-cyan" /> Study Journal
-          <span className="text-xs text-gray-500 font-normal">
+          <span className="text-xs text-gray-400 font-normal">
             {entries.length} entries · {totalMinutes}min
           </span>
         </h3>
@@ -86,7 +86,7 @@ export function StudyJournalPanel() {
       </div>
 
       {err && <p className="text-xs text-red-400">{err}</p>}
-      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-500" />}
+      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
 
       {showForm && (
         <div className="bg-lattice-deep rounded-lg p-3 space-y-2 border border-white/5">
@@ -123,7 +123,7 @@ export function StudyJournalPanel() {
             {techStats.map((t) => (
               <div key={t.technique} className="flex items-center justify-between text-xs">
                 <span className="text-gray-300">{t.technique}</span>
-                <span className="flex items-center gap-1 text-gray-500">
+                <span className="flex items-center gap-1 text-gray-400">
                   {t.sessions} session{t.sessions !== 1 ? 's' : ''}
                   <span className="text-yellow-400 ml-1">{t.avgEffectiveness}★</span>
                 </span>
@@ -134,7 +134,7 @@ export function StudyJournalPanel() {
       )}
 
       {entries.length === 0 && !loading && (
-        <p className="text-center py-6 text-gray-500 text-sm">No journal entries yet.</p>
+        <p className="text-center py-6 text-gray-400 text-sm">No journal entries yet.</p>
       )}
 
       <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -144,13 +144,13 @@ export function StudyJournalPanel() {
               <span className="text-xs font-medium text-gray-200">
                 {e.topic}{e.technique && ` · ${e.technique}`}
               </span>
-              <span className="text-[10px] text-gray-500 flex items-center gap-1">
+              <span className="text-[10px] text-gray-400 flex items-center gap-1">
                 {e.minutesStudied}min
                 <span className="text-yellow-400">{'★'.repeat(e.effectiveness)}</span>
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-1">{e.reflection}</p>
-            <p className="text-[10px] text-gray-600 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               {new Date(e.createdAt).toLocaleDateString()}
             </p>
           </div>

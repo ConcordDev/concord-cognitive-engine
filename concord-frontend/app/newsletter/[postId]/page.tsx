@@ -83,7 +83,7 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center max-w-md px-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Newsletter not found</h1>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-400 text-sm">
             This newsletter post may have been removed or is no longer public.
           </p>
         </div>
@@ -110,7 +110,7 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
             {post.title}
           </h1>
-          <div className="flex items-center justify-center gap-3 mt-4 text-sm text-gray-500">
+          <div className="flex items-center justify-center gap-3 mt-4 text-sm text-gray-400">
             {post.authorName && <span>By {post.authorName}</span>}
             {publishDate && (
               <>

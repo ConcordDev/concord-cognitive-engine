@@ -53,7 +53,7 @@ export function FeedbackWidget({ targetType, targetId }: FeedbackWidgetProps) {
 
   if (submitted) {
     return (
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 text-xs text-zinc-400">
         <span>Feedback recorded</span>
         <button onClick={() => setSubmitted(null)} className="underline">More</button>
       </div>
@@ -66,7 +66,7 @@ export function FeedbackWidget({ targetType, targetId }: FeedbackWidgetProps) {
         <button
           onClick={() => handleQuick("like")}
           disabled={submitting}
-          className="p-1.5 rounded hover:bg-zinc-800 text-zinc-500 hover:text-emerald-400 transition-colors text-sm"
+          className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-emerald-400 transition-colors text-sm"
           title="Like"
         >
           +1
@@ -74,14 +74,14 @@ export function FeedbackWidget({ targetType, targetId }: FeedbackWidgetProps) {
         <button
           onClick={() => handleQuick("dislike")}
           disabled={submitting}
-          className="p-1.5 rounded hover:bg-zinc-800 text-zinc-500 hover:text-red-400 transition-colors text-sm"
+          className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-400 transition-colors text-sm"
           title="Needs work"
         >
           -1
         </button>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="p-1.5 rounded hover:bg-zinc-800 text-zinc-500 hover:text-blue-400 transition-colors text-sm"
+          className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors text-sm"
           title="Detailed feedback"
         >
           ...
@@ -106,7 +106,7 @@ export function FeedbackWidget({ targetType, targetId }: FeedbackWidgetProps) {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What would make this better?"
             rows={3}
-            className="w-full px-2 py-1.5 text-xs rounded bg-zinc-800 border border-zinc-600 text-zinc-200 placeholder:text-zinc-600 resize-none"
+            className="w-full px-2 py-1.5 text-xs rounded bg-zinc-800 border border-zinc-600 text-zinc-200 placeholder:text-zinc-400 resize-none"
           />
           <button
             onClick={handleDetailed}

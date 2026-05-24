@@ -16,7 +16,7 @@ interface Character {
 const ROLES = ['protagonist', 'antagonist', 'supporting', 'minor'];
 const ROLE_COLOR: Record<string, string> = {
   protagonist: 'text-emerald-400', antagonist: 'text-rose-400',
-  supporting: 'text-sky-400', minor: 'text-zinc-500',
+  supporting: 'text-sky-400', minor: 'text-zinc-400',
 };
 
 export function CwCharactersPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
@@ -69,7 +69,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -99,7 +99,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
       </section>
 
       {characters.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No characters yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No characters yet.</p>
       ) : (
         <ul className="space-y-2">
           {characters.map((c) => (
@@ -118,7 +118,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
               {c.description && <p className="text-[11px] text-zinc-400 mt-1">{c.description}</p>}
               {expanded === c.id && c.arc && (
                 <div className="mt-2 pt-2 border-t border-zinc-800">
-                  <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-0.5">Arc</p>
+                  <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-0.5">Arc</p>
                   <p className="text-[11px] text-zinc-300">{c.arc}</p>
                 </div>
               )}

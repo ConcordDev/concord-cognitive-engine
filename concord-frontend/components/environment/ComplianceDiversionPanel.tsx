@@ -53,8 +53,8 @@ export function ComplianceDiversionPanel() {
         }),
         render: (
           <div className="space-y-2">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">Parameters (water/air/soil sampling)</div>
-            <div className="grid grid-cols-[1fr_80px_70px_70px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">Parameters (water/air/soil sampling)</div>
+            <div className="grid grid-cols-[1fr_80px_70px_70px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
               <span>Name</span><span>Value</span><span>Unit</span><span>Min</span><span>Max</span><span></span>
             </div>
             {params.map((p, i) => (
@@ -64,7 +64,7 @@ export function ComplianceDiversionPanel() {
                 <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={p.unit} onChange={(e) => updateParam(i, 'unit', e.target.value)} />
                 <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={p.min} onChange={(e) => updateParam(i, 'min', e.target.value)} />
                 <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={p.max} onChange={(e) => updateParam(i, 'max', e.target.value)} />
-                <button type="button" onClick={() => removeParam(i)} className="rounded border border-zinc-800 text-xs text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
+                <button type="button" onClick={() => removeParam(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
               </div>
             ))}
             <button type="button" onClick={addParam} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-emerald-500/40 hover:text-emerald-200"><Plus className="h-3 w-3" />Add parameter</button>
@@ -80,14 +80,14 @@ export function ComplianceDiversionPanel() {
         },
         render: (
           <div className="space-y-2">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">Waste streams (diverted volume)</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">Waste streams (diverted volume)</div>
             <div className="flex items-center gap-2">
               <label className="block flex-1">
-                <span className="block text-[9px] uppercase tracking-wider text-zinc-500">Total waste</span>
+                <span className="block text-[9px] uppercase tracking-wider text-zinc-400">Total waste</span>
                 <input type="number" min={0} value={totalWaste} onChange={(e) => setTotalWaste(Math.max(0, Number(e.target.value) || 0))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
               </label>
               <label className="block w-20">
-                <span className="block text-[9px] uppercase tracking-wider text-zinc-500">Target %</span>
+                <span className="block text-[9px] uppercase tracking-wider text-zinc-400">Target %</span>
                 <input type="number" min={0} max={100} value={target} onChange={(e) => setTarget(Math.max(0, Math.min(100, Number(e.target.value) || 50)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
               </label>
             </div>
@@ -95,7 +95,7 @@ export function ComplianceDiversionPanel() {
               <div key={i} className="grid grid-cols-[1fr_100px_30px] gap-1.5">
                 <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Stream name" value={s.name} onChange={(e) => updateStream(i, 'name', e.target.value)} />
                 <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" placeholder="Volume" value={s.volume} onChange={(e) => updateStream(i, 'volume', e.target.value)} />
-                <button type="button" onClick={() => removeStream(i)} className="rounded border border-zinc-800 text-xs text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
+                <button type="button" onClick={() => removeStream(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
               </div>
             ))}
             <button type="button" onClick={addStream} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-emerald-500/40 hover:text-emerald-200"><Plus className="h-3 w-3" />Add stream</button>
@@ -105,11 +105,11 @@ export function ComplianceDiversionPanel() {
       renderResults={(compliance, diversion) => (
         <>
           <div className={`rounded-lg border p-3 ${compliance?.overallCompliant ? 'border-emerald-500/30 bg-emerald-500/5' : compliance ? 'border-rose-500/30 bg-rose-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
-            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">
+            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
               {compliance?.overallCompliant ? <ShieldCheck className="h-3 w-3 text-emerald-300" /> : <ShieldAlert className="h-3 w-3 text-rose-300" />}
               Compliance
             </div>
-            {!compliance && <div className="text-[11px] text-zinc-500">Run to check.</div>}
+            {!compliance && <div className="text-[11px] text-zinc-400">Run to check.</div>}
             {compliance && (
               <div className="space-y-1 text-[11px]">
                 <div className={compliance.overallCompliant ? 'text-emerald-200' : 'text-rose-200'}>{compliance.overallCompliant ? 'All parameters within range.' : `${compliance.violations} violation${compliance.violations === 1 ? '' : 's'}`}</div>
@@ -123,18 +123,18 @@ export function ComplianceDiversionPanel() {
             )}
           </div>
           <div className={`rounded-lg border p-3 ${diversion?.meetsTarget ? 'border-emerald-500/30 bg-emerald-500/5' : diversion ? 'border-amber-500/30 bg-amber-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
-            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Recycle className="h-3 w-3" />Diversion rate</div>
-            {!diversion && <div className="text-[11px] text-zinc-500">Run to compute.</div>}
+            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Recycle className="h-3 w-3" />Diversion rate</div>
+            {!diversion && <div className="text-[11px] text-zinc-400">Run to compute.</div>}
             {diversion && (
               <div className="space-y-1.5 text-[11px]">
                 <div className="flex items-baseline gap-2">
                   <span className={`font-mono text-2xl ${diversion.meetsTarget ? 'text-emerald-200' : 'text-amber-200'}`}>{diversion.diversionRate}%</span>
-                  <span className="text-zinc-500">target {diversion.target}%</span>
+                  <span className="text-zinc-400">target {diversion.target}%</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
-                  <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Total</div><div className="font-mono text-zinc-200">{diversion.totalWaste}</div></div>
-                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Diverted</div><div className="font-mono text-emerald-200">{diversion.diverted}</div></div>
-                  <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Landfill</div><div className="font-mono text-amber-200">{diversion.landfilled}</div></div>
+                  <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Total</div><div className="font-mono text-zinc-200">{diversion.totalWaste}</div></div>
+                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Diverted</div><div className="font-mono text-emerald-200">{diversion.diverted}</div></div>
+                  <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Landfill</div><div className="font-mono text-amber-200">{diversion.landfilled}</div></div>
                 </div>
               </div>
             )}

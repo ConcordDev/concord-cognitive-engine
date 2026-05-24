@@ -41,7 +41,7 @@ const DEVICE_META: Record<string, { label: string; emoji: string; tone: string }
   'desktop':      { label: 'Desktop',      emoji: '🖥️',  tone: 'text-gray-300' },
   'mobile':       { label: 'Mobile',       emoji: '📱',  tone: 'text-cyan-300' },
   'tablet':       { label: 'Tablet',       emoji: '📔',  tone: 'text-violet-300' },
-  'unknown':      { label: 'Unknown',      emoji: '·',   tone: 'text-gray-500' },
+  'unknown':      { label: 'Unknown',      emoji: '·',   tone: 'text-gray-400' },
 };
 
 export default function ConsoleStatsPage() {
@@ -86,7 +86,7 @@ export default function ConsoleStatsPage() {
         </header>
 
         {loading && !stats ? (
-          <div className="text-sm text-gray-500 italic">Reading the signal…</div>
+          <div className="text-sm text-gray-400 italic">Reading the signal…</div>
         ) : !stats ? (
           <div className="text-sm text-rose-300">Stats unavailable. Try again shortly.</div>
         ) : (
@@ -132,7 +132,7 @@ export default function ConsoleStatsPage() {
                     <div className={cn('text-2xl font-mono tabular-nums', meta.tone)}>
                       {last24.toLocaleString()}
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-1">
+                    <div className="text-[10px] text-gray-400 mt-1">
                       24h · {last7.toLocaleString()} this week
                     </div>
                   </article>
@@ -144,12 +144,12 @@ export default function ConsoleStatsPage() {
             <section className="rounded-lg border border-white/10 bg-black/40 p-4 mb-6">
               <div className="flex items-baseline justify-between mb-3">
                 <h2 className="text-sm font-semibold text-white">Last 24 hours, hourly</h2>
-                <span className="text-[10px] text-gray-500 font-mono">stacked counts</span>
+                <span className="text-[10px] text-gray-400 font-mono">stacked counts</span>
               </div>
               <SeriesBars series={stats.series} />
             </section>
 
-            <footer className="text-xs text-gray-500 max-w-2xl">
+            <footer className="text-xs text-gray-400 max-w-2xl">
               <p className="mb-2">
                 <strong className="text-gray-300">Why this is public:</strong> when N thousand
                 console players choose Concord without their platform&rsquo;s help, that&rsquo;s a
@@ -208,7 +208,7 @@ function SeriesBars({ series }: SeriesBarsProps) {
                 title={`${otherCount} other`}
               />
             </div>
-            <span className="text-[8px] text-gray-600 font-mono">{label}</span>
+            <span className="text-[8px] text-gray-400 font-mono">{label}</span>
           </div>
         );
       })}

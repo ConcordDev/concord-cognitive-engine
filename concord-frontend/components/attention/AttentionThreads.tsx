@@ -89,7 +89,7 @@ export function AttentionThreads() {
                 )}
               </div>
             ))}
-            {tlist.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">No active threads.</div>}
+            {tlist.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No active threads.</div>}
           </div>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
@@ -101,11 +101,11 @@ export function AttentionThreads() {
                 {t.priority != null && <span className="text-[10px] text-amber-300">p{t.priority}</span>}
               </div>
             ))}
-            {qlist.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">Queue empty.</div>}
+            {qlist.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">Queue empty.</div>}
           </div>
         </div>
       </div>
-      {(status.isPending || threads.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
+      {(status.isPending || threads.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
     </div>
   );
 }
@@ -113,7 +113,7 @@ export function AttentionThreads() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-lg text-cyan-300">{value}</div>
     </div>
   );

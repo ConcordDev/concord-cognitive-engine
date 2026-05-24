@@ -101,14 +101,14 @@ export function EventMap({
       </div>
 
       {points.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No mapped events yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No mapped events yet.</p>
       ) : (
         <ul className="space-y-1">
           {points.map((p) => (
             <li key={p.id} className="flex items-center gap-2 text-[11px] text-zinc-300 bg-zinc-900/40 rounded px-2 py-1">
               <span className="font-mono text-amber-400">{p.dateLabel}</span>
               <span className="flex-1 truncate">{p.title}</span>
-              <span className="text-zinc-500 truncate max-w-[120px]">{p.place || `${p.lat.toFixed(2)}, ${p.lng.toFixed(2)}`}</span>
+              <span className="text-zinc-400 truncate max-w-[120px]">{p.place || `${p.lat.toFixed(2)}, ${p.lng.toFixed(2)}`}</span>
               <button onClick={() => clearLocation(p.id)} title="Remove location"
                 className="text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>
             </li>

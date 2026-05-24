@@ -75,7 +75,7 @@ export function BulkOpsPanel({
       </div>
 
       {selectedIds.length === 0 ? (
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-gray-400">
           Tick DTUs in the list to multi-select, then apply a bulk operation here.
         </p>
       ) : (
@@ -152,7 +152,7 @@ export function BulkOpsPanel({
                     className="flex items-center justify-between rounded bg-lattice-surface px-2 py-1 text-[11px]"
                   >
                     <span className="truncate text-gray-300">{c.dtuId}</span>
-                    <span className="text-gray-500">
+                    <span className="text-gray-400">
                       {c.action} {c.field} → {c.value}
                     </span>
                   </div>
@@ -165,7 +165,7 @@ export function BulkOpsPanel({
 
       <button
         onClick={onClear}
-        className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-white"
+        className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-white"
       >
         <X className="h-3 w-3" /> Clear selection
       </button>

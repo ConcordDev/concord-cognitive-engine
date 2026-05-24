@@ -99,13 +99,13 @@ export function WearableImportPanel() {
         <Watch className="h-4 w-4 text-teal-400" />
         <h3 className="text-sm font-semibold text-white">Wearable data import</h3>
         {history?.lastSyncAt && (
-          <span className="ml-auto text-[10px] text-zinc-500">last sync {new Date(history.lastSyncAt).toLocaleDateString()}</span>
+          <span className="ml-auto text-[10px] text-zinc-400">last sync {new Date(history.lastSyncAt).toLocaleDateString()}</span>
         )}
       </header>
 
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
         <div className="flex items-center gap-2">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Source</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Source</label>
           <select value={source} onChange={e => setSource(e.target.value)}
             className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
             {SOURCES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
@@ -119,7 +119,7 @@ export function WearableImportPanel() {
           placeholder='Paste exported readings — JSON array of { "type", "value", "date" } or CSV with a type,value,date header.'
           className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono resize-none" />
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-400">
             {parsed.length > 0 ? `${parsed.length} reading${parsed.length > 1 ? 's' : ''} parsed` : 'no readings parsed yet'}
           </span>
           <button type="button" onClick={importNow} disabled={busy || parsed.length === 0}
@@ -151,14 +151,14 @@ export function WearableImportPanel() {
 
       {history && history.syncs.length > 0 && (
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">Sync history</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Sync history</div>
           <ul className="space-y-1">
             {history.syncs.slice(0, 6).map(s => (
               <li key={s.id} className="flex items-center gap-2 text-[11px]">
                 <span className="text-zinc-300 flex-1 truncate">{s.source.replace(/_/g, ' ')}</span>
                 <span className="text-emerald-300 font-mono">+{s.imported}</span>
-                {s.skipped > 0 && <span className="text-zinc-500 font-mono">−{s.skipped}</span>}
-                <span className="text-[10px] text-zinc-500 font-mono">{new Date(s.at).toLocaleDateString()}</span>
+                {s.skipped > 0 && <span className="text-zinc-400 font-mono">−{s.skipped}</span>}
+                <span className="text-[10px] text-zinc-400 font-mono">{new Date(s.at).toLocaleDateString()}</span>
               </li>
             ))}
           </ul>

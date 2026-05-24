@@ -87,12 +87,12 @@ export function InspectionChecklists() {
       <div className="p-4 space-y-3">
         {/* create from template */}
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-rose-500/15 bg-zinc-950/40 p-3">
-          <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Template</span>
+          <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Template</span>
             <select value={newTpl} onChange={(e) => setNewTpl(e.target.value)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
               {templates.map((t) => <option key={t.key} value={t.key}>{t.label} ({t.itemCount} items)</option>)}
             </select>
           </label>
-          <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Job name (optional)</span>
+          <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Job name (optional)</span>
             <input value={jobName} onChange={(e) => setJobName(e.target.value)} placeholder="e.g. 123 Oak St — Rough-In" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
           </label>
           <button type="button" onClick={() => createChecklist.mutate()} disabled={createChecklist.isPending} className="rounded bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50">
@@ -110,7 +110,7 @@ export function InspectionChecklists() {
           </div>
         )}
 
-        {checklists.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No checklists yet. Pick a template above to instantiate one.</div>}
+        {checklists.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No checklists yet. Pick a template above to instantiate one.</div>}
 
         {active && (
           <div className="space-y-2">
@@ -128,7 +128,7 @@ export function InspectionChecklists() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-[11px] text-zinc-100">{it.name}</div>
-                    <div className="font-mono text-[9px] text-zinc-500">NEC {it.necCode}</div>
+                    <div className="font-mono text-[9px] text-zinc-400">NEC {it.necCode}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <button type="button" onClick={() => setItem.mutate({ itemId: it.id, passed: true })} className={`rounded px-1.5 py-0.5 text-[10px] ${it.passed === true ? 'bg-emerald-500 text-black' : 'border border-zinc-700 text-zinc-400 hover:text-emerald-300'}`}>Pass</button>
@@ -142,7 +142,7 @@ export function InspectionChecklists() {
               </div>
             ))}
 
-            <button type="button" onClick={() => deleteChecklist.mutate(active.id)} className="text-[10px] text-zinc-600 hover:text-rose-400">Delete this checklist</button>
+            <button type="button" onClick={() => deleteChecklist.mutate(active.id)} className="text-[10px] text-zinc-400 hover:text-rose-400">Delete this checklist</button>
           </div>
         )}
       </div>

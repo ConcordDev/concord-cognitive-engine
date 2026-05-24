@@ -86,11 +86,11 @@ export function CreatorStudioSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-red-600/15 to-transparent">
         <Megaphone className="w-5 h-5 text-red-400" />
         <h2 className="text-sm font-bold text-zinc-100">Creator Studio</h2>
-        <span className="text-[11px] text-zinc-500">YouTube Studio + Buffer + Patreon shape</span>
+        <span className="text-[11px] text-zinc-400">YouTube Studio + Buffer + Patreon shape</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : (
         <>
           {dash && (
@@ -124,7 +124,7 @@ export function CreatorStudioSection() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-zinc-500">Set a goal:</span>
+                <span className="text-[11px] text-zinc-400">Set a goal:</span>
                 <select value={goalForm.metric} onChange={(e) => setGoalForm({ ...goalForm, metric: e.target.value })}
                   className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
                   {GOAL_METRICS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -175,7 +175,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="text-center">
       <p className="text-base font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

@@ -96,7 +96,7 @@ export function DawShell({
       <div className="flex" style={{ height: 340 }}>
         {/* Track header rail */}
         <aside className="w-44 border-r border-white/10 flex flex-col">
-          <div className="px-2 py-1.5 border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-500">Tracks</div>
+          <div className="px-2 py-1.5 border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-400">Tracks</div>
           <ul className="flex-1 overflow-y-auto">
             {tracks.map(t => {
               const Icon = TRACK_KIND_ICON[t.kind] || Music;
@@ -108,9 +108,9 @@ export function DawShell({
                     <span className="flex-1 text-xs text-white truncate">{t.name}</span>
                   </div>
                   <div className="mt-1 flex items-center gap-0.5">
-                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.muted ? 'bg-amber-500 text-black' : 'bg-white/5 text-gray-500')}>M</button>
-                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.solo ? 'bg-yellow-500 text-black' : 'bg-white/5 text-gray-500')}>S</button>
-                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.armed ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-gray-500')}>R</button>
+                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.muted ? 'bg-amber-500 text-black' : 'bg-white/5 text-gray-400')}>M</button>
+                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.solo ? 'bg-yellow-500 text-black' : 'bg-white/5 text-gray-400')}>S</button>
+                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.armed ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-gray-400')}>R</button>
                   </div>
                 </li>
               );
@@ -123,7 +123,7 @@ export function DawShell({
           {/* Ruler */}
           <div className="sticky top-0 z-10 bg-[#0a0c10] border-b border-white/10 flex" style={{ width: BEATS_VISIBLE * PX_PER_BEAT, height: 22 }}>
             {Array.from({ length: BEATS_VISIBLE / timeSignatureNum }).map((_, i) => (
-              <div key={i} className="border-r border-white/10 text-[9px] text-gray-500 px-1 font-mono" style={{ width: timeSignatureNum * PX_PER_BEAT }}>
+              <div key={i} className="border-r border-white/10 text-[9px] text-gray-400 px-1 font-mono" style={{ width: timeSignatureNum * PX_PER_BEAT }}>
                 {i + 1}
               </div>
             ))}
@@ -167,7 +167,7 @@ export function DawShell({
         {/* Scenes column (Ableton) */}
         {scenes.length > 0 && (
           <aside className="w-32 border-l border-white/10 flex flex-col">
-            <div className="px-2 py-1.5 border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-500">Scenes</div>
+            <div className="px-2 py-1.5 border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-400">Scenes</div>
             <ul className="flex-1 overflow-y-auto">
               {scenes.map(sc => (
                 <li key={sc.id} className="px-2 py-1 border-b border-white/5">

@@ -40,7 +40,7 @@ export function JobDetailDrawer({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-white">{job.name}</h2>
-            <p className="font-mono text-[11px] text-zinc-500">{job.id}</p>
+            <p className="font-mono text-[11px] text-zinc-400">{job.id}</p>
           </div>
           <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-white/10">
             <X className="h-5 w-5" />
@@ -59,7 +59,7 @@ export function JobDetailDrawer({
             ['Run at', new Date(job.runAt).toLocaleString()],
           ].map(([k, v]) => (
             <div key={k} className="rounded border border-zinc-800 bg-black/30 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">{k}</div>
               <div className="mt-0.5 truncate text-zinc-200">{v}</div>
             </div>
           ))}
@@ -73,7 +73,7 @@ export function JobDetailDrawer({
         )}
 
         <div className="mt-3">
-          <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Payload</div>
+          <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Payload</div>
           <pre className="max-h-40 overflow-auto rounded border border-zinc-800 bg-black/40 p-2 text-[11px] text-zinc-300">
             {JSON.stringify(job.payload, null, 2)}
           </pre>
@@ -81,7 +81,7 @@ export function JobDetailDrawer({
 
         {job.result != null && (
           <div className="mt-3">
-            <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Result</div>
+            <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Result</div>
             <pre className="max-h-32 overflow-auto rounded border border-zinc-800 bg-black/40 p-2 text-[11px] text-emerald-300">
               {JSON.stringify(job.result, null, 2)}
             </pre>
@@ -89,12 +89,12 @@ export function JobDetailDrawer({
         )}
 
         <div className="mt-3">
-          <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
+          <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">
             Attempt / event history
           </div>
           <div className="space-y-1">
             {history.length === 0 ? (
-              <p className="text-xs text-zinc-600">No events recorded.</p>
+              <p className="text-xs text-zinc-400">No events recorded.</p>
             ) : (
               history
                 .slice()

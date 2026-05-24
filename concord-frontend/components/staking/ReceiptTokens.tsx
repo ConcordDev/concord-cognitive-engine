@@ -69,12 +69,12 @@ export function ReceiptTokens({
   };
 
   if (!data) {
-    return <div className="text-xs text-zinc-500 py-3">Loading receipt tokens…</div>;
+    return <div className="text-xs text-zinc-400 py-3">Loading receipt tokens…</div>;
   }
 
   if (data.count === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 px-3 py-4 text-center text-xs italic text-zinc-500">
+      <div className="rounded-lg border border-zinc-800 px-3 py-4 text-center text-xs italic text-zinc-400">
         No liquid-staking receipts. Tick &quot;mint liquid receipt&quot; when opening a stake.
       </div>
     );
@@ -122,7 +122,7 @@ export function ReceiptTokens({
                 </button>
               )}
             </div>
-            <p className="mt-1 font-mono text-[10px] text-zinc-500">
+            <p className="mt-1 font-mono text-[10px] text-zinc-400">
               backs {r.stakeId} · unlocks{' '}
               {new Date(r.unlocksAt * 1000).toLocaleDateString()}
             </p>

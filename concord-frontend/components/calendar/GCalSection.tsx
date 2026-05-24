@@ -242,7 +242,7 @@ export function GCalSection() {
         {/* My calendars */}
         <div className="px-3 pb-2">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold flex-1">My calendars</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex-1">My calendars</span>
             <button onClick={addCalendar} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
           </div>
           <ul className="space-y-0.5">
@@ -250,7 +250,7 @@ export function GCalSection() {
               <li key={c.id}>
                 <button onClick={() => toggleCalendar(c)} className="w-full flex items-center gap-2 px-1 py-1 text-xs hover:bg-white/[0.04] rounded">
                   <span className={cn('w-3 h-3 rounded-sm border', c.visible ? '' : 'opacity-30')} style={{ background: c.visible ? c.color : 'transparent', borderColor: c.color }} />
-                  <span className={cn('truncate flex-1 text-left', c.visible ? 'text-gray-200' : 'text-gray-500')}>{c.name}</span>
+                  <span className={cn('truncate flex-1 text-left', c.visible ? 'text-gray-200' : 'text-gray-400')}>{c.name}</span>
                 </button>
               </li>
             ))}
@@ -260,8 +260,8 @@ export function GCalSection() {
         <div className="px-3 pb-2 flex-1 overflow-hidden flex flex-col border-t border-white/5 pt-2">
           <div className="flex items-center gap-2 mb-1">
             <ListTodo className="w-3 h-3 text-gray-400" />
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold flex-1">Tasks</span>
-            <button onClick={() => setShowTasks(v => !v)} className="text-gray-500 text-[10px]">{showTasks ? 'hide' : 'show'}</button>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex-1">Tasks</span>
+            <button onClick={() => setShowTasks(v => !v)} className="text-gray-400 text-[10px]">{showTasks ? 'hide' : 'show'}</button>
             <button onClick={addTask} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
           </div>
           {showTasks && (
@@ -271,11 +271,11 @@ export function GCalSection() {
               </button>
               <ul className="flex-1 overflow-y-auto space-y-0.5">
                 {tasks.filter(t => t.status === 'todo').length === 0 && (
-                  <li className="text-[10px] text-gray-600 italic py-1">No open tasks.</li>
+                  <li className="text-[10px] text-gray-400 italic py-1">No open tasks.</li>
                 )}
                 {tasks.filter(t => t.status === 'todo').map(t => (
                   <li key={t.id} className="group flex items-center gap-1.5 text-[11px] py-0.5">
-                    <button onClick={() => toggleTask(t)}><Square className="w-3 h-3 text-gray-500 hover:text-blue-300" /></button>
+                    <button onClick={() => toggleTask(t)}><Square className="w-3 h-3 text-gray-400 hover:text-blue-300" /></button>
                     <span className="truncate flex-1 text-gray-300">{t.title}</span>
                     <span className={cn('text-[9px]', PRIORITY_COLOUR[t.priority])}>{t.estimateMin}m</span>
                     {t.blockedEventId && <Clock className="w-2.5 h-2.5 text-blue-400" />}
@@ -302,7 +302,7 @@ export function GCalSection() {
           <button onClick={() => shiftCursor(-1)} className="p-1 text-gray-400 hover:text-white"><ChevronLeft className="w-4 h-4" /></button>
           <button onClick={() => shiftCursor(1)} className="p-1 text-gray-400 hover:text-white"><ChevronRight className="w-4 h-4" /></button>
           <span className="text-sm font-semibold text-gray-200">{headerLabel}</span>
-          {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
+          {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
           <div className="ml-auto flex items-center gap-1">
             {(['month', 'week', 'day'] as View[]).map(v => (
               <button key={v} onClick={() => setView(v)} className={cn('px-2.5 py-1 text-xs rounded', view === v ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'text-gray-400 border border-transparent hover:text-white')}>
@@ -320,7 +320,7 @@ export function GCalSection() {
             onChange={e => setQuickAdd(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && quickAddSubmit()}
             placeholder='Quick add — e.g. "Team standup every Monday at 9am for 30 min"'
-            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-500 outline-none"
+            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-400 outline-none"
           />
           <button onClick={quickAddSubmit} disabled={quickBusy || !quickAdd.trim()} className="px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40">
             {quickBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add'}
@@ -341,7 +341,7 @@ export function GCalSection() {
           </div>
         )}
         {proposals && proposals.length === 0 && (
-          <div className="px-4 py-1.5 bg-white/[0.02] border-b border-white/10 text-[11px] text-gray-500">AI auto-schedule: no open unblocked tasks to place.</div>
+          <div className="px-4 py-1.5 bg-white/[0.02] border-b border-white/10 text-[11px] text-gray-400">AI auto-schedule: no open unblocked tasks to place.</div>
         )}
 
         {/* Grid */}
@@ -364,10 +364,10 @@ export function GCalSection() {
             <div className="p-4 space-y-2">
               <input value={editEvent.title || ''} onChange={e => setEditEvent({ ...editEvent, title: e.target.value })} placeholder="Title *" className="w-full px-2 py-1.5 text-sm bg-lattice-deep border border-lattice-border rounded text-white" />
               <div className="grid grid-cols-2 gap-2">
-                <label className="text-[10px] text-gray-500">Start
+                <label className="text-[10px] text-gray-400">Start
                   <input type="datetime-local" value={editEvent.start || ''} onChange={e => setEditEvent({ ...editEvent, start: e.target.value })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                 </label>
-                <label className="text-[10px] text-gray-500">End
+                <label className="text-[10px] text-gray-400">End
                   <input type="datetime-local" value={editEvent.end || ''} onChange={e => setEditEvent({ ...editEvent, end: e.target.value })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                 </label>
               </div>
@@ -403,7 +403,7 @@ function MonthGrid({ grid, cursor, today, eventsForDay, calById, onDayClick, onE
   return (
     <div className="grid grid-cols-7 grid-rows-6 h-full min-h-[560px]">
       {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-        <div key={d} className="col-span-1 row-span-0 text-[10px] uppercase text-gray-500 font-semibold px-2 py-1 border-b border-white/5">{d}</div>
+        <div key={d} className="col-span-1 row-span-0 text-[10px] uppercase text-gray-400 font-semibold px-2 py-1 border-b border-white/5">{d}</div>
       ))}
       {grid.map((d, i) => {
         const inMonth = d.getMonth() === cursor.getMonth();
@@ -421,7 +421,7 @@ function MonthGrid({ grid, cursor, today, eventsForDay, calById, onDayClick, onE
                   </button>
                 );
               })}
-              {dayEvents.length > 4 && <div className="text-[9px] text-gray-500 px-1">+{dayEvents.length - 4} more</div>}
+              {dayEvents.length > 4 && <div className="text-[9px] text-gray-400 px-1">+{dayEvents.length - 4} more</div>}
             </div>
           </div>
         );
@@ -445,11 +445,11 @@ function DayColumns({ days, today, eventsForDay, calById, onEventClick, onDayCli
         return (
           <div key={i} className="border-r border-white/5 flex flex-col">
             <div onClick={() => onDayClick(d)} className={cn('px-2 py-1.5 border-b border-white/5 cursor-pointer hover:bg-white/[0.03]', isToday && 'bg-blue-500/[0.06]')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-              <div className="text-[10px] uppercase text-gray-500">{d.toLocaleDateString(undefined, { weekday: 'short' })}</div>
+              <div className="text-[10px] uppercase text-gray-400">{d.toLocaleDateString(undefined, { weekday: 'short' })}</div>
               <div className={cn('text-sm font-mono', isToday ? 'text-blue-300' : 'text-gray-300')}>{d.getDate()}</div>
             </div>
             <div className="flex-1 overflow-y-auto p-1 space-y-1">
-              {dayEvents.length === 0 && <div className="text-[10px] text-gray-600 italic px-1 py-2">No events</div>}
+              {dayEvents.length === 0 && <div className="text-[10px] text-gray-400 italic px-1 py-2">No events</div>}
               {dayEvents.map(e => {
                 const cal = calById.get(e.calendarId);
                 return (
@@ -458,7 +458,7 @@ function DayColumns({ days, today, eventsForDay, calById, onEventClick, onDayCli
                     <div className="text-[10px] text-gray-400">
                       {new Date(e.occurrenceStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–{new Date(e.occurrenceEnd).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </div>
-                    {e.location && <div className="text-[9px] text-gray-500 truncate">📍 {e.location}</div>}
+                    {e.location && <div className="text-[9px] text-gray-400 truncate">📍 {e.location}</div>}
                   </button>
                 );
               })}

@@ -95,7 +95,7 @@ export function ReplantingPanel() {
       <div className="flex items-center gap-2 mb-3">
         <Sprout className="w-4 h-4 text-lime-400" />
         <h3 className="text-sm font-bold text-zinc-100">Replanting &amp; Silviculture</h3>
-        <span className="ml-auto text-[10px] text-zinc-500">
+        <span className="ml-auto text-[10px] text-zinc-400">
           {projects.length} project{projects.length === 1 ? '' : 's'} · {totals.acres.toLocaleString()} ac · {totals.seedlings.toLocaleString()} seedlings
         </span>
       </div>
@@ -135,8 +135,8 @@ export function ReplantingPanel() {
           <div key={p.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2.5 py-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-zinc-100">{p.name}</span>
-              <span className="text-[10px] text-zinc-500">{p.species.replace(/_/g, ' ')}</span>
-              <span className="text-[10px] text-zinc-500">{p.acres} ac · {p.seedlingsOrdered.toLocaleString()} seedlings</span>
+              <span className="text-[10px] text-zinc-400">{p.species.replace(/_/g, ' ')}</span>
+              <span className="text-[10px] text-zinc-400">{p.acres} ac · {p.seedlingsOrdered.toLocaleString()} seedlings</span>
               {p.latestSurvival != null && (
                 <span className={`text-[10px] font-semibold ${p.latestSurvival < 60 ? 'text-rose-400' : p.latestSurvival < 80 ? 'text-yellow-400' : 'text-emerald-400'}`}>
                   {p.latestSurvival}% survival
@@ -148,7 +148,7 @@ export function ReplantingPanel() {
               </select>
             </div>
             {p.surveys.length > 0 && (
-              <p className="text-[10px] text-zinc-500 mt-1">
+              <p className="text-[10px] text-zinc-400 mt-1">
                 Latest survey: {p.surveys[p.surveys.length - 1].recommendation}
               </p>
             )}
@@ -164,7 +164,7 @@ export function ReplantingPanel() {
             </div>
           </div>
         ))}
-        {projects.length === 0 && <p className="text-xs text-zinc-500 italic">No replanting projects yet.</p>}
+        {projects.length === 0 && <p className="text-xs text-zinc-400 italic">No replanting projects yet.</p>}
       </div>
     </div>
   );

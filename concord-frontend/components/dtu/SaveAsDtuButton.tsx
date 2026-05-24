@@ -281,7 +281,7 @@ function SaveModal(props: ModalProps) {
             <button
               type="button"
               onClick={props.onCancel}
-              className="rounded-md p-1 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -290,7 +290,7 @@ function SaveModal(props: ModalProps) {
 
           <div className="space-y-3 p-4">
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-400">
                 Title
               </label>
               <input
@@ -303,7 +303,7 @@ function SaveModal(props: ModalProps) {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-400">
                 Tags <span className="font-normal normal-case text-zinc-600">(comma-separated)</span>
               </label>
               <input
@@ -312,13 +312,13 @@ function SaveModal(props: ModalProps) {
                 onChange={(e) => props.setEditTags(e.target.value)}
                 className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
               />
-              <p className="mt-1 text-[11px] text-zinc-600">
+              <p className="mt-1 text-[11px] text-zinc-400">
                 Auto-tagged: <code className="text-cyan-400">real-data</code>, <code className="text-cyan-400">{props.apiSource}</code>
               </p>
             </div>
 
             <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
-              <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-zinc-400">
                 Preview
               </div>
               <div className="line-clamp-4 whitespace-pre-wrap text-xs text-zinc-300">
@@ -346,7 +346,7 @@ function SaveModal(props: ModalProps) {
                 href={props.apiUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 truncate text-[11px] text-zinc-500 hover:text-cyan-400"
+                className="flex items-center gap-1 truncate text-[11px] text-zinc-400 hover:text-cyan-400"
               >
                 <ExternalLink className="h-3 w-3 shrink-0" />
                 <span className="truncate">{props.apiUrl}</span>

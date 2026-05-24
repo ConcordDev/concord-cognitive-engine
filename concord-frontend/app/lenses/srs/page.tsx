@@ -480,7 +480,7 @@ export default function SRSLensPage() {
             {/* Review Card */}
             <div className="max-w-2xl mx-auto">
               {isLoading ? (
-                <div className="panel p-12 text-center text-gray-500">Loading review items...</div>
+                <div className="panel p-12 text-center text-gray-400">Loading review items...</div>
               ) : !current ? (
                 <div className="panel p-12 text-center">
                   <Award className="w-20 h-20 mx-auto mb-4 text-neon-green opacity-50" />
@@ -491,7 +491,7 @@ export default function SRSLensPage() {
                       : 'No cards due for review right now.'
                     }
                   </p>
-                  <p className="text-xs text-gray-500 mb-6">
+                  <p className="text-xs text-gray-400 mb-6">
                     Next review: {forecast[1] > 0 ? `${forecast[1]} cards tomorrow` : 'Check back later'}
                   </p>
                   <div className="flex gap-3 justify-center">
@@ -529,7 +529,7 @@ export default function SRSLensPage() {
                         />
                         <span className="text-xs text-gray-400">{decks.find(d => d.id === current.deck)?.name || current.deck}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
                         {current.tags?.map(tag => (
                           <span key={tag} className="flex items-center gap-1">
                             <Tag className="w-3 h-3" />{tag}
@@ -593,7 +593,7 @@ export default function SRSLensPage() {
                   </div>
 
                   {/* Keyboard shortcuts hint */}
-                  <div className="text-center text-xs text-gray-600">
+                  <div className="text-center text-xs text-gray-400">
                     Space: flip &middot; 1-4: rate &middot; S: skip
                   </div>
                 </motion.div>
@@ -642,7 +642,7 @@ export default function SRSLensPage() {
             {/* Deck grid */}
             {decks.length === 0 && (
               <div className="panel p-12 text-center">
-                <FolderOpen className="w-12 h-12 mx-auto mb-3 text-gray-500 opacity-40" />
+                <FolderOpen className="w-12 h-12 mx-auto mb-3 text-gray-400 opacity-40" />
                 <p className="text-lg font-semibold text-white mb-1">No decks yet</p>
                 <p className="text-sm text-gray-400 mb-4">Create your first deck to start organizing your cards.</p>
                 <button onClick={() => setShowCreateDeck(true)} className="btn-neon purple text-sm">
@@ -665,24 +665,24 @@ export default function SRSLensPage() {
                         <h3 className="font-bold text-white group-hover:text-neon-cyan transition-colors">{deck.name}</h3>
                         <p className="text-xs text-gray-400 mt-0.5">{deck.description}</p>
                       </div>
-                      <FolderOpen className="w-5 h-5 text-gray-500" />
+                      <FolderOpen className="w-5 h-5 text-gray-400" />
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-4">
                       <div className="text-center p-2 bg-blue-500/10 rounded">
                         <p className="text-sm font-bold text-blue-400">{deck.newCount}</p>
-                        <p className="text-[10px] text-gray-500">New</p>
+                        <p className="text-[10px] text-gray-400">New</p>
                       </div>
                       <div className="text-center p-2 bg-red-500/10 rounded">
                         <p className="text-sm font-bold text-red-400">{deck.learnCount}</p>
-                        <p className="text-[10px] text-gray-500">Learning</p>
+                        <p className="text-[10px] text-gray-400">Learning</p>
                       </div>
                       <div className="text-center p-2 bg-green-500/10 rounded">
                         <p className="text-sm font-bold text-green-400">{deck.dueCount}</p>
-                        <p className="text-[10px] text-gray-500">Review</p>
+                        <p className="text-[10px] text-gray-400">Review</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-lattice-border">
-                      <span className="text-xs text-gray-500">{deck.cardCount} cards total</span>
+                      <span className="text-xs text-gray-400">{deck.cardCount} cards total</span>
                       <button
                         onClick={(e) => { e.stopPropagation(); setSelectedDeck(deck.id); setCurrentIndex(0); setView('study'); }}
                         className="text-xs text-neon-cyan font-medium flex items-center gap-1 hover:underline"
@@ -703,7 +703,7 @@ export default function SRSLensPage() {
             {/* Filters */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   ref={searchInputRef}
               type="text"
@@ -758,7 +758,7 @@ export default function SRSLensPage() {
                         {card.tags && card.tags.length > 0 && (
                           <div className="flex gap-1 mt-1">
                             {card.tags.map(t => (
-                              <span key={t} className="text-[10px] px-1.5 py-0.5 bg-lattice-bg rounded text-gray-500">{t}</span>
+                              <span key={t} className="text-[10px] px-1.5 py-0.5 bg-lattice-bg rounded text-gray-400">{t}</span>
                             ))}
                           </div>
                         )}
@@ -786,7 +786,7 @@ export default function SRSLensPage() {
                 </tbody>
               </table>
               {filteredCards.length === 0 && (
-                <div className="p-12 text-center text-gray-500">
+                <div className="p-12 text-center text-gray-400">
                   <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p>No cards match your filters</p>
                 </div>
@@ -883,7 +883,7 @@ export default function SRSLensPage() {
                       title={`Day ${i}: ${count} cards`}
                     />
                     {i % 5 === 0 && (
-                      <span className="text-[9px] text-gray-600">{i}d</span>
+                      <span className="text-[9px] text-gray-400">{i}d</span>
                     )}
                   </div>
                 ))}
@@ -926,7 +926,7 @@ export default function SRSLensPage() {
                     </div>
                   );
                 })}
-                <div className="flex items-center gap-6 mt-3 pt-3 border-t border-lattice-border text-xs text-gray-500">
+                <div className="flex items-center gap-6 mt-3 pt-3 border-t border-lattice-border text-xs text-gray-400">
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-green-500" /> Mature (&ge;21d)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-orange-400" /> Young</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-400" /> New</span>
@@ -1142,27 +1142,27 @@ export default function SRSLensPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 bg-lattice-bg rounded-lg">
-                    <p className="text-xs text-gray-500">Interval</p>
+                    <p className="text-xs text-gray-400">Interval</p>
                     <p className="text-sm font-mono text-white">{editingCard.interval || 0} days</p>
                   </div>
                   <div className="p-3 bg-lattice-bg rounded-lg">
-                    <p className="text-xs text-gray-500">Ease Factor</p>
+                    <p className="text-xs text-gray-400">Ease Factor</p>
                     <p className="text-sm font-mono text-white">{(editingCard.easiness || 2.5).toFixed(2)}</p>
                   </div>
                   <div className="p-3 bg-lattice-bg rounded-lg">
-                    <p className="text-xs text-gray-500">Repetitions</p>
+                    <p className="text-xs text-gray-400">Repetitions</p>
                     <p className="text-sm font-mono text-white">{editingCard.repetitions || 0}</p>
                   </div>
                   <div className="p-3 bg-lattice-bg rounded-lg">
-                    <p className="text-xs text-gray-500">Lapses</p>
+                    <p className="text-xs text-gray-400">Lapses</p>
                     <p className="text-sm font-mono text-white">{editingCard.lapses || 0}</p>
                   </div>
                   <div className="p-3 bg-lattice-bg rounded-lg">
-                    <p className="text-xs text-gray-500">Streak</p>
+                    <p className="text-xs text-gray-400">Streak</p>
                     <p className="text-sm font-mono text-white">{editingCard.streak || 0}</p>
                   </div>
                   <div className="p-3 bg-lattice-bg rounded-lg">
-                    <p className="text-xs text-gray-500">Next Review</p>
+                    <p className="text-xs text-gray-400">Next Review</p>
                     <p className="text-sm font-mono text-white">
                       {editingCard.nextReview ? new Date(editingCard.nextReview).toLocaleDateString() : 'New'}
                     </p>

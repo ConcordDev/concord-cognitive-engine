@@ -71,7 +71,7 @@ export function CrtRevenueChartPanel() {
   }, [data]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const hasData = !!data && data.series.length > 0;
@@ -108,7 +108,7 @@ export function CrtRevenueChartPanel() {
       </div>
 
       {!hasData ? (
-        <p className="text-[11px] text-zinc-500 italic py-8 text-center">
+        <p className="text-[11px] text-zinc-400 italic py-8 text-center">
           No revenue logged yet. Log earnings in the Revenue tab to see them charted here.
         </p>
       ) : (
@@ -146,7 +146,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       <p className="text-xl font-bold text-emerald-300">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase">{label}</p>
     </div>
   );
 }

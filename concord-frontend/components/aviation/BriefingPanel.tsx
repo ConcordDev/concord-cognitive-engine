@@ -37,7 +37,7 @@ export function BriefingPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <CloudRain className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Graphical weather briefing</span>
-        <span className="ml-auto text-[10px] text-gray-500">aviationweather.gov NWS</span>
+        <span className="ml-auto text-[10px] text-gray-400">aviationweather.gov NWS</span>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); fetchBriefing(); }} className="p-3 border-b border-white/10 flex items-center gap-2">
         <input value={icaos} onChange={e => setIcaos(e.target.value.toUpperCase())} placeholder="ICAO codes, comma-separated (KSJC,KSFO)" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -48,7 +48,7 @@ export function BriefingPanel() {
       <div className="max-h-96 overflow-y-auto p-3 space-y-3">
         {error && <div className="px-3 py-3 text-center text-xs text-rose-300">{error}</div>}
         {!loading && !data && !error && (
-          <div className="px-3 py-8 text-center text-xs text-gray-500"><CloudRain className="w-6 h-6 mx-auto mb-2 opacity-30" />Enter ICAO codes above to pull a live brief.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400"><CloudRain className="w-6 h-6 mx-auto mb-2 opacity-30" />Enter ICAO codes above to pull a live brief.</div>
         )}
         {data && (
           <>
@@ -72,7 +72,7 @@ export function BriefingPanel() {
                 <div key={i} className="px-2 py-1 text-[11px] text-rose-200 rounded bg-white/[0.03]">{String((a as { hazard?: string; severity?: string }).hazard || 'hazard')} · {String((a as { severity?: string }).severity || '')}</div>
               ))}
             </Section>
-            <div className="text-[10px] text-gray-500 text-right">Fetched {new Date(data.fetchedAt).toLocaleTimeString()} · {data.source}</div>
+            <div className="text-[10px] text-gray-400 text-right">Fetched {new Date(data.fetchedAt).toLocaleTimeString()} · {data.source}</div>
           </>
         )}
       </div>
@@ -83,7 +83,7 @@ export function BriefingPanel() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className={cn('text-[10px] uppercase tracking-wider text-gray-500 mb-1')}>{title}</div>
+      <div className={cn('text-[10px] uppercase tracking-wider text-gray-400 mb-1')}>{title}</div>
       <div className="space-y-1">{children}</div>
     </div>
   );

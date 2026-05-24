@@ -379,7 +379,7 @@ export default function CreativeWritingPage() {
                   <div className="rounded-lg bg-black/30 border border-amber-500/20 p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-amber-300 font-medium capitalize">{actionResult.action}</span>
-                      <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300" aria-label="Xcircle">
+                      <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-gray-300" aria-label="Xcircle">
                         <XCircle className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -396,22 +396,22 @@ export default function CreativeWritingPage() {
                           ].map(stat => (
                             <div key={stat.label} className="bg-white/5 rounded p-2">
                               <p className={`font-bold ${stat.color}`}>{stat.value}</p>
-                              <p className="text-gray-500">{stat.label}</p>
+                              <p className="text-gray-400">{stat.label}</p>
                             </div>
                           ))}
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
                           <div className="bg-white/5 rounded p-2">
                             <p className="font-bold text-amber-300">{r.avgWordsPerSentence as number}</p>
-                            <p className="text-gray-500">Avg Words/Sentence</p>
+                            <p className="text-gray-400">Avg Words/Sentence</p>
                           </div>
                           <div className="bg-white/5 rounded p-2">
                             <p className="font-bold text-amber-300">{r.vocabularyRichness as number}%</p>
-                            <p className="text-gray-500">Vocabulary Richness</p>
+                            <p className="text-gray-400">Vocabulary Richness</p>
                           </div>
                           <div className="bg-white/5 rounded p-2">
                             <p className="font-bold text-amber-300">{r.dialoguePercent as number}%</p>
-                            <p className="text-gray-500">Dialogue</p>
+                            <p className="text-gray-400">Dialogue</p>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -425,7 +425,7 @@ export default function CreativeWritingPage() {
                           ))}
                         </div>
                         <div>
-                          <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                          <div className="flex justify-between text-[10px] text-gray-400 mb-1">
                             <span>Vocabulary richness</span><span>{r.vocabularyRichness as number}%</span>
                           </div>
                           <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -441,11 +441,11 @@ export default function CreativeWritingPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="text-sm font-semibold text-amber-300">{r.name as string}</p>
-                            <p className="text-[11px] text-gray-500 capitalize">{r.role as string}</p>
+                            <p className="text-[11px] text-gray-400 capitalize">{r.role as string}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-bold text-amber-400">{r.complexityScore as number}</p>
-                            <p className="text-[10px] text-gray-500">Complexity</p>
+                            <p className="text-[10px] text-gray-400">Complexity</p>
                           </div>
                         </div>
                         <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
@@ -467,7 +467,7 @@ export default function CreativeWritingPage() {
                           if (!list || list.length === 0) return null;
                           return (
                             <div key={idx}>
-                              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">{labels[idx]}</p>
+                              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">{labels[idx]}</p>
                               <div className="flex flex-wrap gap-1">
                                 {list.map((item, i) => (
                                   <span key={i} className="text-[10px] px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-gray-300">{item}</span>
@@ -511,7 +511,7 @@ export default function CreativeWritingPage() {
                         </div>
                         {(r.missingBeats as string[]).length > 0 && (
                           <div>
-                            <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Missing Beats</p>
+                            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Missing Beats</p>
                             <div className="flex flex-wrap gap-1">
                               {(r.missingBeats as string[]).map((b, i) => (
                                 <span key={i} className="text-[10px] px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">{b}</span>
@@ -528,15 +528,15 @@ export default function CreativeWritingPage() {
                         <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
                           <div className="bg-white/5 rounded p-2">
                             <p className="font-bold text-amber-300">{r.totalLines as number}</p>
-                            <p className="text-gray-500">Lines</p>
+                            <p className="text-gray-400">Lines</p>
                           </div>
                           <div className="bg-white/5 rounded p-2">
                             <p className="font-bold text-amber-300">{r.speakerCount as number}</p>
-                            <p className="text-gray-500">Speakers</p>
+                            <p className="text-gray-400">Speakers</p>
                           </div>
                           <div className="bg-white/5 rounded p-2">
                             <p className="font-bold text-amber-300">{r.avgLineLength as number}</p>
-                            <p className="text-gray-500">Avg Length</p>
+                            <p className="text-gray-400">Avg Length</p>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -551,12 +551,12 @@ export default function CreativeWritingPage() {
                         </div>
                         {(r.speakers as { name: string; lines: number; percent: number }[]).length > 0 && (
                           <div className="space-y-1.5">
-                            <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Speaker Breakdown</p>
+                            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Speaker Breakdown</p>
                             {(r.speakers as { name: string; lines: number; percent: number }[]).map((sp, i) => (
                               <div key={i} className="space-y-0.5">
                                 <div className="flex justify-between text-[10px]">
                                   <span className="text-gray-300">{sp.name}</span>
-                                  <span className="text-gray-500">{sp.lines} lines ({sp.percent}%)</span>
+                                  <span className="text-gray-400">{sp.lines} lines ({sp.percent}%)</span>
                                 </div>
                                 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                                   <div className="h-full bg-amber-500/50 rounded-full" style={{ width: `${sp.percent}%` }} />
@@ -602,7 +602,7 @@ export default function CreativeWritingPage() {
           <div className="space-y-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search works..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-amber-500/50" />
               </div>
@@ -612,7 +612,7 @@ export default function CreativeWritingPage() {
               </select>
             </div>
             {filteredWorks.length === 0 ? (
-              <div className="text-center py-16 text-gray-500">
+              <div className="text-center py-16 text-gray-400">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No works yet. Start writing!</p>
                 <button onClick={startNewWork} className="mt-3 px-4 py-2 text-xs bg-amber-500/20 rounded-lg hover:bg-amber-500/30">New Work</button>
@@ -634,7 +634,7 @@ export default function CreativeWritingPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="font-medium text-sm">{work.title}</h3>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                             <span>{work.genre || 'unset'}</span>
                             <span>{wc} words</span>
                             <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" /> {readingTime(wc)}</span>
@@ -649,7 +649,7 @@ export default function CreativeWritingPage() {
                           <button onClick={e => { e.stopPropagation(); removeWork(work.id).then(() => { refetch(); useUIStore.getState().addToast({ type: 'success', message: 'Work deleted' }); }).catch(() => useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete' })); }} className="p-1 hover:bg-white/10 rounded text-red-400" aria-label="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
-                      {work.content && <p className="text-xs text-gray-600 mt-2 line-clamp-2">{work.content.slice(0, 200)}</p>}
+                      {work.content && <p className="text-xs text-gray-400 mt-2 line-clamp-2">{work.content.slice(0, 200)}</p>}
                       {/* Word count progress bar */}
                       <div className="mt-3 h-1 rounded-full bg-white/5 overflow-hidden">
                         <div
@@ -690,7 +690,7 @@ export default function CreativeWritingPage() {
                     </motion.span>
                   )}
                 </AnimatePresence>
-                <span className="text-xs text-gray-500">{wordCount} words</span>
+                <span className="text-xs text-gray-400">{wordCount} words</span>
                 {/* Focus mode toggle */}
                 <button
                   onClick={() => setFocusMode(f => !f)}
@@ -712,20 +712,20 @@ export default function CreativeWritingPage() {
             {/* Stats bar — hidden in focus mode */}
             {!focusMode && (
               <div className="flex items-center gap-4 px-4 py-2 bg-white/5 border border-white/10 rounded-lg">
-                <span className="text-xs text-gray-500">{charCount} chars</span>
-                <span className="text-xs text-gray-500">{paragraphCount} {paragraphCount === 1 ? 'para' : 'paras'}</span>
-                <span className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {estReadingTime}</span>
-                <span className="text-xs text-gray-500 flex items-center gap-1"><Zap className="w-3 h-3" /> Session: {sessionLabel}</span>
+                <span className="text-xs text-gray-400">{charCount} chars</span>
+                <span className="text-xs text-gray-400">{paragraphCount} {paragraphCount === 1 ? 'para' : 'paras'}</span>
+                <span className="text-xs text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" /> {estReadingTime}</span>
+                <span className="text-xs text-gray-400 flex items-center gap-1"><Zap className="w-3 h-3" /> Session: {sessionLabel}</span>
                 {/* Goal progress bar */}
                 <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-xs text-gray-500">{wordCount}/{WORD_COUNT_GOAL} goal</span>
+                  <span className="text-xs text-gray-400">{wordCount}/{WORD_COUNT_GOAL} goal</span>
                   <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div
                       className={cn('h-full rounded-full transition-all', goalProgress >= 100 ? 'bg-green-500' : 'bg-amber-500/60')}
                       style={{ width: `${goalProgress}%` }}
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{goalProgress}%</span>
+                  <span className="text-xs text-gray-400">{goalProgress}%</span>
                 </div>
               </div>
             )}
@@ -809,7 +809,7 @@ export default function CreativeWritingPage() {
                   <stat.icon className="w-5 h-5 text-amber-400 opacity-70" />
                   <div>
                     <p className="text-lg font-semibold">{stat.value}</p>
-                    <p className="text-xs text-gray-500">{stat.label}</p>
+                    <p className="text-xs text-gray-400">{stat.label}</p>
                   </div>
                 </motion.div>
               ))}
@@ -819,7 +819,7 @@ export default function CreativeWritingPage() {
             <div className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium mb-1">Share for Peer Review</p>
-                <p className="text-xs text-gray-500">Get feedback from the community on your latest work.</p>
+                <p className="text-xs text-gray-400">Get feedback from the community on your latest work.</p>
               </div>
               <button
                 onClick={() => { window.dispatchEvent(new CustomEvent('creative-writing:share-for-review')); }}
@@ -843,7 +843,7 @@ export default function CreativeWritingPage() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-500"
+                    className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-400"
                   >
                     <item.icon className="w-3.5 h-3.5 text-amber-400/50 shrink-0" />
                     {item.text}
@@ -852,7 +852,7 @@ export default function CreativeWritingPage() {
               </div>
             </div>
 
-            <div className="text-xs text-gray-600 text-center">DTUs in workshop: {contextDTUs.length}</div>
+            <div className="text-xs text-gray-400 text-center">DTUs in workshop: {contextDTUs.length}</div>
           </div>
         )}
       </div>

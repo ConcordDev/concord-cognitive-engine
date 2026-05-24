@@ -30,7 +30,7 @@ interface TaskDetail {
 }
 
 const PRIORITY_COLOR: Record<number, string> = {
-  1: 'text-rose-400', 2: 'text-amber-400', 3: 'text-sky-400', 4: 'text-zinc-500',
+  1: 'text-rose-400', 2: 'text-amber-400', 3: 'text-sky-400', 4: 'text-zinc-400',
 };
 
 export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; onChange: () => void }) {
@@ -96,10 +96,10 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
   if (!task) {
-    return <div className="text-xs text-zinc-500 italic py-4">Task not found.</div>;
+    return <div className="text-xs text-zinc-400 italic py-4">Task not found.</div>;
   }
 
   const doneCount = task.subtasks.filter((s) => s.done).length;
@@ -110,7 +110,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
 
       <div>
         <p className="text-sm font-semibold text-zinc-100">{task.content}</p>
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           <span className={PRIORITY_COLOR[task.priority]}>P{task.priority}</span>
           {task.dueDate && <span className="ml-2">{task.dueDate}</span>}
         </p>
@@ -118,7 +118,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
 
       {/* Assignee */}
       <div className="flex gap-2 items-center">
-        <UserPlus className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+        <UserPlus className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
         <input placeholder="Assignee user id" value={assignee} onChange={(e) => setAssignee(e.target.value)}
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={assign}
@@ -129,7 +129,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
 
       {/* Subtasks */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">
           Subtasks {task.subtasks.length > 0 && `(${doneCount}/${task.subtasks.length})`}
         </p>
         {task.subtasks.map((sub) => (
@@ -174,13 +174,13 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
 
       {/* Comments */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 flex items-center gap-1">
           <MessageSquare className="w-3 h-3" /> Comments ({comments.length})
         </p>
         {comments.map((c) => (
           <div key={c.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
             <p className="text-xs text-zinc-200">{c.body}</p>
-            <p className="text-[10px] text-zinc-600">{c.authorId} · {c.createdAt.slice(0, 16).replace('T', ' ')}</p>
+            <p className="text-[10px] text-zinc-400">{c.authorId} · {c.createdAt.slice(0, 16).replace('T', ' ')}</p>
           </div>
         ))}
         <div className="flex gap-2">

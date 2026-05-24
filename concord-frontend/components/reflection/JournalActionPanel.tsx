@@ -252,7 +252,7 @@ export function JournalActionPanel() {
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           day one
         </span>
-        <span className="ml-auto text-[10px] text-zinc-500 font-mono">{new Date().toLocaleString([], { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+        <span className="ml-auto text-[10px] text-zinc-400 font-mono">{new Date().toLocaleString([], { weekday: 'long', month: 'short', day: 'numeric' })}</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -300,7 +300,7 @@ export function JournalActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}

@@ -576,7 +576,7 @@ export default function AnswersLensPage() {
             label="Root Equation"
             size="lg"
           />
-          <div className="text-xs text-gray-500 max-w-sm leading-relaxed">
+          <div className="text-xs text-gray-400 max-w-sm leading-relaxed">
             The single self-referential fixed point from which every answer below is derived.
             Everything else is a decoration of this.
           </div>
@@ -599,7 +599,7 @@ export default function AnswersLensPage() {
             placeholder="Search every answer · / to focus · Esc to clear"
             className="w-full pl-9 pr-9 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50"
           />
-          <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           {query && (
             <button
               onClick={() => setQuery('')}
@@ -616,10 +616,10 @@ export default function AnswersLensPage() {
         <div className="rounded-lg border border-neon-cyan/20 bg-lattice-surface/40 overflow-hidden">
           <div className="px-4 py-2 text-xs text-neon-cyan border-b border-lattice-border bg-lattice-deep flex items-center justify-between">
             <span>Search results — {searchHits.length} of {allAnswers.length} answer{allAnswers.length === 1 ? '' : 's'}</span>
-            <span className="text-[10px] text-gray-500">across all 8 sections</span>
+            <span className="text-[10px] text-gray-400">across all 8 sections</span>
           </div>
           {searchHits.length === 0 ? (
-            <div className="p-6 text-center text-sm text-gray-500">No answers match &quot;{query}&quot;</div>
+            <div className="p-6 text-center text-sm text-gray-400">No answers match &quot;{query}&quot;</div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 p-3">
               {searchHits.map((entry) => {
@@ -631,7 +631,7 @@ export default function AnswersLensPage() {
                     onClick={() => { setActiveSection(entry.section); setQuery(''); }}
                     className="text-left rounded border border-lattice-border bg-lattice-deep hover:border-neon-cyan/40 transition-colors p-3"
                   >
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400 mb-1">
                       <Icon className={cn('w-3 h-3', `text-${meta.accent}`)} />
                       <span className={`text-${meta.accent}`}>{meta.label}</span>
                     </div>
@@ -678,13 +678,13 @@ export default function AnswersLensPage() {
           <activeMeta.icon className={cn('h-5 w-5', `text-${activeMeta.accent}`)} />
           {activeMeta.label}
         </h2>
-        <p className="text-xs text-gray-500 mt-1">{activeMeta.blurb}</p>
+        <p className="text-xs text-gray-400 mt-1">{activeMeta.blurb}</p>
       </div>
 
       {/* ── Answer cards ───────────────────────────────────────────── */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {activeEntries.length === 0 ? (
-          <p className="col-span-full text-sm text-gray-500 py-12 text-center">
+          <p className="col-span-full text-sm text-gray-400 py-12 text-center">
             No answers in this section yet.
           </p>
         ) : (

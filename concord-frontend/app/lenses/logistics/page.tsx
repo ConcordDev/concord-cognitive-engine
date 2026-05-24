@@ -706,22 +706,22 @@ export default function LogisticsLensPage() {
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-500">Mileage</span>
+                  <span className="text-gray-400">Mileage</span>
                   <p className="font-medium">{formatNumber(Number(d.mileage))} mi</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Cost/Mile</span>
+                  <span className="text-gray-400">Cost/Mile</span>
                   <p className="font-medium">{formatCurrency(Number(d.costPerMile))}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Location</span>
+                  <span className="text-gray-400">Location</span>
                   <p className="font-medium flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {String(d.currentLocation)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Avg MPG</span>
+                  <span className="text-gray-400">Avg MPG</span>
                   <p className="font-medium">{String(d.avgMpg)}</p>
                 </div>
               </div>
@@ -939,7 +939,7 @@ export default function LogisticsLensPage() {
               {/* Performance Metrics */}
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-500">On-Time</span>
+                  <span className="text-gray-400">On-Time</span>
                   <p
                     className={cn(
                       'font-medium',
@@ -954,11 +954,11 @@ export default function LogisticsLensPage() {
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Fuel Eff.</span>
+                  <span className="text-gray-400">Fuel Eff.</span>
                   <p className="font-medium">{String(d.fuelEfficiency)} mpg</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Safety</span>
+                  <span className="text-gray-400">Safety</span>
                   <div className="flex items-center gap-1">
                     <p
                       className={cn(
@@ -994,7 +994,7 @@ export default function LogisticsLensPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-lattice-border">
+              <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-lattice-border">
                 <span>{formatNumber(Number(d.totalMiles))} lifetime miles</span>
                 <span>{Number(d.violations)} violations</span>
                 <div className="flex items-center gap-1">
@@ -1144,7 +1144,7 @@ export default function LogisticsLensPage() {
                             <ArrowRight className="w-3 h-3 shrink-0" />
                             <span className="truncate">{String(d.destination)}</span>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center justify-between text-xs text-gray-400">
                             <span>{formatNumber(Number(d.weight))} lbs</span>
                             <span>{String(d.pieces)} pcs</span>
                             <span>{String(d.carrier)}</span>
@@ -1200,7 +1200,7 @@ export default function LogisticsLensPage() {
                   </div>
                   <div className="text-right text-xs shrink-0">
                     <p className="font-medium">{formatCurrency(Number(d.rate))}</p>
-                    <p className="text-gray-500">ETA: {String(d.eta)}</p>
+                    <p className="text-gray-400">ETA: {String(d.eta)}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {status !== 'delivered' && status !== 'exception' && (
@@ -1387,27 +1387,27 @@ export default function LogisticsLensPage() {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-gray-500">Item Type</span>
+                      <span className="text-gray-400">Item Type</span>
                       <p>{String(d.itemType)}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Temperature</span>
+                      <span className="text-gray-400">Temperature</span>
                       <p className="flex items-center gap-1">
                         <ThermometerSun className="w-3 h-3" />
                         {String(d.temperature)}
                       </p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Pick Rate</span>
+                      <span className="text-gray-400">Pick Rate</span>
                       <p>{String(d.pickRate)}/hr</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Recv Dock</span>
+                      <span className="text-gray-400">Recv Dock</span>
                       <p>{String(d.receivingDock)}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-lattice-border text-xs text-gray-500">
+                  <div className="flex items-center justify-between pt-2 border-t border-lattice-border text-xs text-gray-400">
                     <span>Last count: {String(d.lastCount)}</span>
                     <div className="flex items-center gap-1">
                       <button
@@ -1605,25 +1605,25 @@ export default function LogisticsLensPage() {
             {/* Route Summary Bar */}
             <div className="grid grid-cols-5 gap-3 text-sm">
               <div>
-                <span className="text-gray-500 text-xs">Stops</span>
+                <span className="text-gray-400 text-xs">Stops</span>
                 <p className="font-medium">
                   {completedStops}/{stops.length}
                 </p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Distance</span>
+                <span className="text-gray-400 text-xs">Distance</span>
                 <p className="font-medium">{formatNumber(Number(d.distance))} mi</p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Est. Time</span>
+                <span className="text-gray-400 text-xs">Est. Time</span>
                 <p className="font-medium">{String(d.estimatedTime)}</p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Fuel Cost</span>
+                <span className="text-gray-400 text-xs">Fuel Cost</span>
                 <p className="font-medium">{formatCurrency(Number(d.fuelCost))}</p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Tolls</span>
+                <span className="text-gray-400 text-xs">Tolls</span>
                 <p className="font-medium">{formatCurrency(Number(d.tollCost))}</p>
               </div>
             </div>
@@ -1647,7 +1647,7 @@ export default function LogisticsLensPage() {
                       : stop.status === 'arrived'
                         ? 'text-neon-cyan'
                         : stop.status === 'skipped'
-                          ? 'text-gray-500'
+                          ? 'text-gray-400'
                           : 'text-gray-400';
                   const StopIcon =
                     stop.status === 'completed'
@@ -1677,7 +1677,7 @@ export default function LogisticsLensPage() {
                             {stop.status}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           Time window: {stop.timeWindow}
                         </span>
                       </div>
@@ -1844,14 +1844,14 @@ export default function LogisticsLensPage() {
                         {String(d.violations)} violation(s)
                       </span>
                     )}
-                    <span className="text-xs text-gray-500">Next: {String(d.nextDue)}</span>
+                    <span className="text-xs text-gray-400">Next: {String(d.nextDue)}</span>
                   </div>
                 );
               })}
             </div>
           </div>
         ) : (
-          <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+          <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
             <p>No inspections recorded yet. Add inspection records to track quality.</p>
           </div>
         )}
@@ -2034,7 +2034,7 @@ export default function LogisticsLensPage() {
                 .slice(0, 4)
                 .map(([k, v]) => (
                   <p key={k} className={ds.textMuted}>
-                    <span className="text-gray-500">{k}:</span> {String(v)}
+                    <span className="text-gray-400">{k}:</span> {String(v)}
                   </p>
                 ))}
             </div>
@@ -2268,7 +2268,7 @@ export default function LogisticsLensPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -2277,7 +2277,7 @@ export default function LogisticsLensPage() {
           />
         </div>
         <div className="relative">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -2335,19 +2335,19 @@ export default function LogisticsLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.stopCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Stops</p>
+                    <p className="text-[10px] text-gray-400">Stops</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.totalDistanceMiles)} mi
                     </p>
-                    <p className="text-[10px] text-gray-500">Distance</p>
+                    <p className="text-[10px] text-gray-400">Distance</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.estimatedTotalMinutes)} min
                     </p>
-                    <p className="text-[10px] text-gray-500">Est. Time</p>
+                    <p className="text-[10px] text-gray-400">Est. Time</p>
                   </div>
                 </div>
                 {Array.isArray(actionResult.optimizedRoute) &&
@@ -2368,7 +2368,7 @@ export default function LogisticsLensPage() {
                           {stop.sequence}
                         </span>
                         <span className="text-gray-300 flex-1">{stop.name}</span>
-                        <span className="text-gray-500">{stop.distanceFromPrevious} mi</span>
+                        <span className="text-gray-400">{stop.distanceFromPrevious} mi</span>
                       </div>
                     ))}
               </div>
@@ -2381,7 +2381,7 @@ export default function LogisticsLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.driversChecked)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Drivers</p>
+                    <p className="text-[10px] text-gray-400">Drivers</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2389,7 +2389,7 @@ export default function LogisticsLensPage() {
                     >
                       {String(actionResult.violationCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Violations</p>
+                    <p className="text-[10px] text-gray-400">Violations</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2397,7 +2397,7 @@ export default function LogisticsLensPage() {
                     >
                       {String(actionResult.warningCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Warnings</p>
+                    <p className="text-[10px] text-gray-400">Warnings</p>
                   </div>
                 </div>
               </div>
@@ -2409,19 +2409,19 @@ export default function LogisticsLensPage() {
                   <p className="text-sm font-bold text-red-400">
                     {String(actionResult.overdueCount)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Overdue</p>
+                  <p className="text-[10px] text-gray-400">Overdue</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-amber-400">
                     {String(actionResult.upcomingCount)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Upcoming</p>
+                  <p className="text-[10px] text-gray-400">Upcoming</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">
                     {String(actionResult.totalVehicles)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Total</p>
+                  <p className="text-[10px] text-gray-400">Total</p>
                 </div>
               </div>
             )}
@@ -2433,7 +2433,7 @@ export default function LogisticsLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.accuracyRate)}%
                     </p>
-                    <p className="text-[10px] text-gray-500">Accuracy</p>
+                    <p className="text-[10px] text-gray-400">Accuracy</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2441,7 +2441,7 @@ export default function LogisticsLensPage() {
                     >
                       {String(actionResult.discrepancyCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Discrepancies</p>
+                    <p className="text-[10px] text-gray-400">Discrepancies</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2449,7 +2449,7 @@ export default function LogisticsLensPage() {
                     >
                       ${Number(actionResult.totalValueDiscrepancy).toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Value Delta</p>
+                    <p className="text-[10px] text-gray-400">Value Delta</p>
                   </div>
                 </div>
               </div>
@@ -2534,9 +2534,9 @@ export default function LogisticsLensPage() {
                           d.stops as Array<{ address: string; timeWindow: string; status: string }>
                         ).map((stop, idx) => (
                           <div key={idx} className="flex items-center gap-2 py-1 text-sm">
-                            <Hash className="w-3 h-3 text-gray-500" />
+                            <Hash className="w-3 h-3 text-gray-400" />
                             <span className="font-medium">{stop.address}</span>
-                            <span className="text-gray-500">{stop.timeWindow}</span>
+                            <span className="text-gray-400">{stop.timeWindow}</span>
                             <span className={ds.badge(STATUS_COLORS[stop.status] || 'gray-400')}>
                               {stop.status}
                             </span>
@@ -2556,7 +2556,7 @@ export default function LogisticsLensPage() {
                         ))}
                       </div>
                     )}
-                    <div className="text-xs text-gray-500 pt-3 border-t border-lattice-border">
+                    <div className="text-xs text-gray-400 pt-3 border-t border-lattice-border">
                       <span>Created: {new Date(item.createdAt).toLocaleString()}</span>
                       <span className="mx-2">|</span>
                       <span>Updated: {new Date(item.updatedAt).toLocaleString()}</span>
@@ -2741,7 +2741,7 @@ function TmsWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
-                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
             }
           >
             {t.label}

@@ -239,7 +239,7 @@ export function UniversalImport({
         {doneCount > 0 && (
           <button
             onClick={clearCompleted}
-            className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
           >
             Clear completed
           </button>
@@ -275,13 +275,13 @@ export function UniversalImport({
             <Upload className={cn(
               'mx-auto',
               compact ? 'w-6 h-6' : 'w-8 h-8',
-              isDragOver ? 'text-neon-cyan' : 'text-gray-500'
+              isDragOver ? 'text-neon-cyan' : 'text-gray-400'
             )} />
             <div>
               <p className={cn('text-white font-medium', compact ? 'text-sm' : '')}>
                 {isDragOver ? 'Drop to import' : 'Drop any file here'}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 Music, images, documents, code, data — anything goes
               </p>
             </div>
@@ -322,7 +322,7 @@ export function UniversalImport({
                     <span className={cn('text-[10px] uppercase tracking-wider', color)}>
                       {f.category || detectCategory(f.file)}
                     </span>
-                    <span className="text-[10px] text-gray-600">{formatBytes(f.file.size)}</span>
+                    <span className="text-[10px] text-gray-400">{formatBytes(f.file.size)}</span>
                     {f.status === 'error' && (
                       <span className="text-[10px] text-red-400 truncate">{f.error}</span>
                     )}
@@ -333,7 +333,7 @@ export function UniversalImport({
                 {f.status !== 'importing' && (
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
-                    className="flex-shrink-0 p-1 text-gray-500 hover:text-gray-300 transition-colors"
+                    className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-300 transition-colors"
                   aria-label="Close">
                     <X className="w-3 h-3" />
                   </button>
@@ -345,7 +345,7 @@ export function UniversalImport({
 
         {/* Summary bar */}
         {files.length > 0 && (
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+          <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
             <span>
               {doneCount} imported
               {activeCount > 0 && `, ${activeCount} processing`}

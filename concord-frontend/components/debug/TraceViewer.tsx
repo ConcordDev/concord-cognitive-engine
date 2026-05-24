@@ -168,11 +168,11 @@ export function TraceViewer() {
         {/* Trace list */}
         <div className="lg:col-span-1 space-y-2">
           {loading ? (
-            <div className="text-center py-6 text-gray-500 text-sm flex items-center justify-center gap-2">
+            <div className="text-center py-6 text-gray-400 text-sm flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading...
             </div>
           ) : traces.length === 0 ? (
-            <div className="text-center py-6 text-gray-500 text-sm">
+            <div className="text-center py-6 text-gray-400 text-sm">
               <Activity className="w-7 h-7 mx-auto mb-2 opacity-40" />
               No traces — capture one
             </div>
@@ -189,7 +189,7 @@ export function TraceViewer() {
                   }`}
                 >
                   <p className="text-xs font-mono text-gray-200 truncate">{t.name}</p>
-                  <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
+                  <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
                     <span className="text-yellow-400">{t.totalDurationMs}ms</span>
                     <span>{t.spanCount} spans</span>
                     {t.errorCount > 0 && (
@@ -250,7 +250,7 @@ export function TraceViewer() {
               {/* Service rollup */}
               {rollup.length > 0 && (
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                     Service Breakdown
                   </p>
                   <div className="space-y-1">
@@ -264,7 +264,7 @@ export function TraceViewer() {
                           style={{ backgroundColor: colorFor(s.service) }}
                         />
                         <span className="text-gray-300 font-mono flex-1">{s.service}</span>
-                        <span className="text-gray-500">{s.spans} spans</span>
+                        <span className="text-gray-400">{s.spans} spans</span>
                         <span className="text-yellow-400 w-16 text-right">{s.totalMs}ms</span>
                         {s.errors > 0 && <span className="text-red-400">{s.errors} err</span>}
                       </div>

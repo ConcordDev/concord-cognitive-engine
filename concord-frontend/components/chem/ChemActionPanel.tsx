@@ -222,7 +222,7 @@ export function ChemActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -242,16 +242,16 @@ export function ChemActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Molarity</div>
             <div className="text-2xl font-bold text-blue-300">{molarityResult.molarity} <span className="text-xs text-zinc-400">M</span></div>
-            <div className="text-[10px] text-zinc-500">{molarityResult.moles} mol / {molarityResult.liters} L</div>
-            <div className="text-[10px] text-zinc-500 font-mono">{molarityResult.formula}</div>
+            <div className="text-[10px] text-zinc-400">{molarityResult.moles} mol / {molarityResult.liters} L</div>
+            <div className="text-[10px] text-zinc-400 font-mono">{molarityResult.formula}</div>
           </div>
         )}
         {phResult && (
           <div className={cn('rounded-md border p-2.5', phResult.classification === 'acidic' ? 'border-red-500/30 bg-red-500/5' : phResult.classification === 'basic' ? 'border-purple-500/30 bg-purple-500/5' : 'border-zinc-500/30 bg-zinc-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">pH · {phResult.classification}</div>
             <div className="text-2xl font-bold" style={{ color: phResult.classification === 'acidic' ? '#f87171' : phResult.classification === 'basic' ? '#c084fc' : '#a1a1aa' }}>{phResult.pH}</div>
-            <div className="text-[10px] text-zinc-500">pOH {phResult.pOH}</div>
-            <div className="text-[10px] text-zinc-500">[H+]={phResult.hPlus.toExponential(2)}</div>
+            <div className="text-[10px] text-zinc-400">pOH {phResult.pOH}</div>
+            <div className="text-[10px] text-zinc-400">[H+]={phResult.hPlus.toExponential(2)}</div>
           </div>
         )}
         {dilutionResult && (

@@ -89,12 +89,12 @@ export function ConnectorCatalog() {
             {connections.map((conn) => (
               <div key={conn.id} className="flex items-center gap-2 bg-lattice-surface rounded px-2 py-1 text-xs">
                 <span className="text-neon-green">{conn.connectorName}</span>
-                <span className="text-gray-500">· {conn.account}</span>
+                <span className="text-gray-400">· {conn.account}</span>
                 <button
                   onClick={() => disconnect(conn)}
                   disabled={busy === conn.id}
                   aria-label={`Disconnect ${conn.connectorName}`}
-                  className="text-gray-500 hover:text-red-400 disabled:opacity-40"
+                  className="text-gray-400 hover:text-red-400 disabled:opacity-40"
                 >
                   {busy === conn.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
                 </button>
@@ -107,7 +107,7 @@ export function ConnectorCatalog() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 bg-lattice-surface border border-lattice-border rounded px-2">
-          <Search className="w-3.5 h-3.5 text-gray-500" />
+          <Search className="w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             value={search}
@@ -154,7 +154,7 @@ export function ConnectorCatalog() {
                     <Plug className="w-5 h-5 text-neon-cyan" />
                     <div>
                       <h3 className="font-semibold text-sm">{c.name}</h3>
-                      <span className="text-[10px] uppercase tracking-wide text-gray-500">{c.category} · {c.authType}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-gray-400">{c.category} · {c.authType}</span>
                     </div>
                   </div>
                   {conn ? (
@@ -174,24 +174,24 @@ export function ConnectorCatalog() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div>
-                    <div className="text-gray-500 flex items-center gap-1 mb-0.5"><Zap className="w-3 h-3" /> Triggers</div>
+                    <div className="text-gray-400 flex items-center gap-1 mb-0.5"><Zap className="w-3 h-3" /> Triggers</div>
                     {c.triggers.map((t) => <div key={t.id} className="text-gray-300 truncate">· {t.label}</div>)}
                   </div>
                   <div>
-                    <div className="text-gray-500 flex items-center gap-1 mb-0.5"><Send className="w-3 h-3" /> Actions</div>
+                    <div className="text-gray-400 flex items-center gap-1 mb-0.5"><Send className="w-3 h-3" /> Actions</div>
                     {c.actions.map((a) => <div key={a.id} className="text-gray-300 truncate">· {a.label}</div>)}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1 pt-1">
                   {c.scopes.map((sc) => (
-                    <span key={sc} className="text-[9px] bg-lattice-surface px-1.5 py-0.5 rounded font-mono text-gray-500">{sc}</span>
+                    <span key={sc} className="text-[9px] bg-lattice-surface px-1.5 py-0.5 rounded font-mono text-gray-400">{sc}</span>
                   ))}
                 </div>
               </motion.div>
             );
           })}
           {connectors.length === 0 && (
-            <div className="col-span-full panel p-6 text-center text-sm text-gray-500">
+            <div className="col-span-full panel p-6 text-center text-sm text-gray-400">
               No connectors match your filters.
             </div>
           )}

@@ -126,7 +126,7 @@ function PlasmidTab() {
         <button type="button" className={btn()} disabled={busy || !seq.trim()} onClick={run}>
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Dna className="w-3 h-3" />} Build map
         </button>
-        <span className="text-[10px] text-gray-500">Auto-annotates ORFs + restriction sites if no features supplied.</span>
+        <span className="text-[10px] text-gray-400">Auto-annotates ORFs + restriction sites if no features supplied.</span>
       </div>
       <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} placeholder="Paste construct DNA (ACGTN)…" className={ta} />
       {err && <Err msg={err} />}
@@ -141,7 +141,7 @@ function PlasmidTab() {
             </div>
             <div className="border border-white/10 rounded max-h-56 overflow-y-auto">
               <table className="w-full text-[11px]">
-                <thead className="bg-black/40 text-gray-500 uppercase text-[9px] sticky top-0">
+                <thead className="bg-black/40 text-gray-400 uppercase text-[9px] sticky top-0">
                   <tr><th className="text-left px-2 py-1">Feature</th><th className="text-left px-2 py-1">Type</th><th className="text-right px-2 py-1">Span</th></tr>
                 </thead>
                 <tbody>
@@ -151,7 +151,7 @@ function PlasmidTab() {
                         <span className="w-2 h-2 rounded-full" style={{ background: FEATURE_COLOR[f.type] || '#a78bfa' }} />
                         {f.name}
                       </td>
-                      <td className="px-2 py-1 text-gray-500">{f.type}</td>
+                      <td className="px-2 py-1 text-gray-400">{f.type}</td>
                       <td className="px-2 py-1 text-right font-mono text-gray-300">{f.start}–{f.end}{f.strand}</td>
                     </tr>
                   ))}
@@ -278,7 +278,7 @@ function MsaTab() {
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-gray-500">Center sequence: <span className="font-mono text-gray-300">{res.centerSequence}</span></p>
+          <p className="text-[10px] text-gray-400">Center sequence: <span className="font-mono text-gray-300">{res.centerSequence}</span></p>
         </div>
       )}
     </div>
@@ -356,7 +356,7 @@ function CloningTab() {
             <Stat label="Status" value={res.success ? 'clean' : `${res.issues.length} issue(s)`} />
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Junctions</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Junctions</p>
             {res.junctions.map((j, i) => (
               <p key={i} className="text-[11px] font-mono">
                 <span className={j.verified ? 'text-emerald-300' : 'text-rose-300'}>{j.verified ? '✓' : '✗'}</span>{' '}
@@ -442,13 +442,13 @@ function OrfTab() {
                         c.isStart && 'bg-emerald-500/30',
                         c.isStop && 'bg-rose-500/30',
                         inOrf && !c.isStart && !c.isStop && 'bg-emerald-500/10')}>
-                      <span className="text-gray-500">{c.codon}</span>
+                      <span className="text-gray-400">{c.codon}</span>
                       <span className={cn(c.isStop ? 'text-rose-300' : c.isStart ? 'text-emerald-300' : 'text-gray-200')}>{c.aa}</span>
                     </span>
                   );
                 })}
               </div>
-              <p className="text-[10px] text-gray-500 mt-2">
+              <p className="text-[10px] text-gray-400 mt-2">
                 Peptide ({frame.protein.length} aa): <span className="font-mono text-gray-300 break-all">{frame.protein}</span>
               </p>
             </div>
@@ -505,18 +505,18 @@ function BlastTab() {
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />} Search homology
       </button>
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-gray-500">Query (≥8 residues)</label>
+        <label className="text-[10px] uppercase tracking-wider text-gray-400">Query (≥8 residues)</label>
         <textarea value={query} onChange={(e) => setQuery(e.target.value)} rows={2} className={cn(ta, 'mt-1')} />
       </div>
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-gray-500">Database FASTA (optional — falls back to your saved sequences)</label>
+        <label className="text-[10px] uppercase tracking-wider text-gray-400">Database FASTA (optional — falls back to your saved sequences)</label>
         <textarea value={dbRaw} onChange={(e) => setDbRaw(e.target.value)} rows={4}
           placeholder={'>subject1\nATGC…\n>subject2\nGGCC…'} className={cn(ta, 'mt-1')} />
       </div>
       {err && <Err msg={err} />}
       {res && (
         <div className="space-y-2">
-          {res.message && <p className="text-[11px] text-gray-500">{res.message}</p>}
+          {res.message && <p className="text-[11px] text-gray-400">{res.message}</p>}
           <div className="grid grid-cols-3 gap-2 text-xs">
             <Stat label="Query len" value={`${res.queryLength}`} />
             <Stat label="DB size" value={`${res.databaseSize}`} />
@@ -525,7 +525,7 @@ function BlastTab() {
           {res.hits.length > 0 && (
             <div className="border border-white/10 rounded overflow-x-auto">
               <table className="w-full text-[11px]">
-                <thead className="bg-black/40 text-gray-500 uppercase text-[9px]">
+                <thead className="bg-black/40 text-gray-400 uppercase text-[9px]">
                   <tr>
                     <th className="text-left px-2 py-1">Subject</th>
                     <th className="text-right px-2 py-1">Bit</th>
@@ -593,7 +593,7 @@ function CrisprTab() {
       {err && <Err msg={err} />}
       {res && (
         <div className="space-y-2">
-          {res.message && <p className="text-[11px] text-gray-500">{res.message}</p>}
+          {res.message && <p className="text-[11px] text-gray-400">{res.message}</p>}
           <div className="grid grid-cols-3 gap-2 text-xs">
             <Stat label="PAM" value={res.pam} />
             <Stat label="Target" value={`${res.targetLength} bp`} />
@@ -602,7 +602,7 @@ function CrisprTab() {
           {res.guides.length > 0 && (
             <div className="border border-white/10 rounded overflow-x-auto">
               <table className="w-full text-[11px]">
-                <thead className="bg-black/40 text-gray-500 uppercase text-[9px]">
+                <thead className="bg-black/40 text-gray-400 uppercase text-[9px]">
                   <tr>
                     <th className="text-left px-2 py-1">Protospacer (20 nt)</th>
                     <th className="text-left px-2 py-1">PAM</th>
@@ -721,7 +721,7 @@ function NotebookTab() {
         <button type="button" className={btn()} onClick={() => { resetDraft(); setShowForm((v) => !v); }}>
           <NotebookPen className="w-3 h-3" /> {showForm && !editing ? 'Close' : 'New entry'}
         </button>
-        <span className="text-[10px] text-gray-500">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
+        <span className="text-[10px] text-gray-400">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
       </div>
       {err && <Err msg={err} />}
 
@@ -746,7 +746,7 @@ function NotebookTab() {
           </div>
           {seqs.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Link saved sequences</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Link saved sequences</p>
               <div className="flex flex-wrap gap-1.5">
                 {seqs.map((s) => {
                   const on = draft.linkedSequenceIds.includes(s.id);
@@ -775,11 +775,11 @@ function NotebookTab() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : entries.length === 0 ? (
-        <p className="text-center text-xs text-gray-500 py-8">No notebook entries yet.</p>
+        <p className="text-center text-xs text-gray-400 py-8">No notebook entries yet.</p>
       ) : (
         <div className="space-y-2">
           {entries.map((e) => (
@@ -800,7 +800,7 @@ function NotebookTab() {
                     )}
                     {e.linkedProtocol && <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300">protocol: {e.linkedProtocol}</span>}
                   </div>
-                  <p className="text-[9px] text-gray-600 mt-1">Updated {new Date(e.updatedAt).toLocaleString()}</p>
+                  <p className="text-[9px] text-gray-400 mt-1">Updated {new Date(e.updatedAt).toLocaleString()}</p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                   <button type="button" onClick={() => startEdit(e)} className="p-1 text-gray-600 hover:text-cyan-300" aria-label="Edit"><NotebookPen className="w-3 h-3" /></button>
@@ -820,7 +820,7 @@ function NotebookTab() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-white/10 bg-black/30 px-2 py-1.5">
-      <p className="text-[9px] uppercase tracking-wider text-gray-500">{label}</p>
+      <p className="text-[9px] uppercase tracking-wider text-gray-400">{label}</p>
       <p className="text-sm font-mono text-gray-100 flex items-center gap-1">
         {value}
         {value === 'clean' && <Check className="w-3 h-3 text-emerald-400" />}

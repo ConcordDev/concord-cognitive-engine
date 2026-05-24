@@ -162,7 +162,7 @@ export function ScienceProtocolRuns() {
           <div className="h-full bg-teal-400 transition-all"
             style={{ width: `${run.steps.length ? (done / run.steps.length) * 100 : 0}%` }} />
         </div>
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-400">
           {done}/{run.steps.length} steps · operator {run.operator}
         </p>
 
@@ -175,7 +175,7 @@ export function ScienceProtocolRuns() {
                   step.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300'
                     : step.status === 'skipped' ? 'bg-gray-500/20 text-gray-400'
                     : step.status === 'in_progress' ? 'bg-amber-500/20 text-amber-300'
-                    : 'bg-white/5 text-gray-500',
+                    : 'bg-white/5 text-gray-400',
                 )}>
                   {step.index + 1}
                 </span>
@@ -209,7 +209,7 @@ export function ScienceProtocolRuns() {
                   </button>
                 </div>
               )}
-              {step.note && <p className="text-[10px] text-gray-500 pl-7 mt-1">{step.note}</p>}
+              {step.note && <p className="text-[10px] text-gray-400 pl-7 mt-1">{step.note}</p>}
             </li>
           ))}
         </ol>
@@ -221,7 +221,7 @@ export function ScienceProtocolRuns() {
           <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs">
             <p className="text-emerald-300">Run completed</p>
             {run.outcome && <p className="text-gray-300 mt-1">{run.outcome}</p>}
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               {run.deviationCount ?? 0} deviation(s) recorded
             </p>
           </div>
@@ -242,9 +242,9 @@ export function ScienceProtocolRuns() {
         </RunButton>
       </div>
       {loading ? (
-        <p className="text-xs text-gray-500">Loading…</p>
+        <p className="text-xs text-gray-400">Loading…</p>
       ) : runs.length === 0 ? (
-        <p className="text-xs text-gray-500">No protocol runs yet.</p>
+        <p className="text-xs text-gray-400">No protocol runs yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {runs.map((run) => {
@@ -254,12 +254,12 @@ export function ScienceProtocolRuns() {
                 className="flex items-center justify-between rounded border border-white/10 bg-black/30 px-3 py-2">
                 <button type="button" onClick={() => setActive(run)} className="text-left flex-1 min-w-0">
                   <span className="block text-xs text-gray-100 truncate">{run.protocolName}</span>
-                  <span className="block text-[10px] text-gray-500">
+                  <span className="block text-[10px] text-gray-400">
                     {done}/{run.steps.length} steps · {run.status.replace('_', ' ')}
                   </span>
                 </button>
                 <button type="button" onClick={() => del(run.id)}
-                  className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400"
+                  className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400"
                   aria-label="Delete run">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

@@ -76,7 +76,7 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -127,7 +127,7 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
         )}
 
         {leads.length === 0 ? (
-          <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+          <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
             No leads. Add prospects to build your pipeline.
           </div>
         ) : (
@@ -142,7 +142,7 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
                         <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-orange-300">score {l.score}</span>
                       )}
                     </p>
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-zinc-400">
                       {l.source}{l.value > 0 ? ` · $${l.value}` : ''}
                     </p>
                   </div>

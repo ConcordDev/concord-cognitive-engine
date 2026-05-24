@@ -218,7 +218,7 @@ export default function TimelineLensPage() {
               </div>
 
               {isLoading ? (
-                <div className="bg-[#242526] rounded-lg p-8 text-center text-sm text-gray-500">
+                <div className="bg-[#242526] rounded-lg p-8 text-center text-sm text-gray-400">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /> Loading your timeline…
                 </div>
               ) : isError ? (
@@ -237,7 +237,7 @@ export default function TimelineLensPage() {
                     <TimelineView events={timelineEvents} height={360} />
                   </div>
                 ) : (
-                  <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-500">
+                  <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-400">
                     <GitBranch className="w-10 h-10 mx-auto mb-3 opacity-40" />
                     <p className="text-sm">No posts yet — create one above to populate the timeline.</p>
                   </div>
@@ -251,13 +251,13 @@ export default function TimelineLensPage() {
                       placeholder="Search feed by author or content…"
                       className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
                     />
-                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
                       {search ? `${visiblePosts.length} match` : `${posts.length} loaded`}
                     </span>
                   </div>
 
                   {visiblePosts.length === 0 ? (
-                    <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-500">
+                    <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-400">
                       <LayoutList className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <p className="text-sm">
                         {search ? 'No posts match your search.' : 'Your feed is empty. Share your first post above.'}

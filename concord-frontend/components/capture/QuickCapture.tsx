@@ -302,7 +302,7 @@ export function QuickCapture({ isOpen, onClose, onCapture }: QuickCaptureProps) 
                     'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all',
                     content.trim()
                       ? 'bg-neon-cyan text-black hover:bg-neon-cyan/90'
-                      : 'bg-lattice-surface text-gray-500 cursor-not-allowed'
+                      : 'bg-lattice-surface text-gray-400 cursor-not-allowed'
                   )}
                 >
                   {isSubmitting ? (

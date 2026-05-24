@@ -165,7 +165,7 @@ export default function CognitiveReplayPage() {
               <button
                 key={d}
                 onClick={() => setSinceDays(d)}
-                className={`rounded px-2 py-0.5 font-mono uppercase ${sinceDays === d ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`rounded px-2 py-0.5 font-mono uppercase ${sinceDays === d ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}
               >
                 {d}d
               </button>
@@ -202,7 +202,7 @@ export default function CognitiveReplayPage() {
               className="w-full"
               aria-label="Scrub timeline"
             />
-            <div className="mt-1 flex justify-between text-[10px] text-zinc-500 font-mono">
+            <div className="mt-1 flex justify-between text-[10px] text-zinc-400 font-mono">
               <span>{events[0]?.ts ? new Date(events[0].ts).toLocaleString() : '—'}</span>
               <span>turn {scrubIdx + 1} / {events.length}</span>
               <span>{events[events.length - 1]?.ts ? new Date(events[events.length - 1].ts!).toLocaleString() : '—'}</span>
@@ -213,7 +213,7 @@ export default function CognitiveReplayPage() {
             <div className="bg-zinc-900/80 border border-zinc-700/50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-widest text-zinc-400 font-bold">{cursor.role}</span>
-                <span className="text-[10px] text-zinc-500 font-mono">
+                <span className="text-[10px] text-zinc-400 font-mono">
                   {cursor.ts ? new Date(cursor.ts).toLocaleString() : '—'}
                 </span>
               </div>
@@ -245,7 +245,7 @@ export default function CognitiveReplayPage() {
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`-mb-px border-b-2 px-3 py-1.5 text-xs font-medium ${tab === t ? 'border-cyan-400 text-cyan-200' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+                className={`-mb-px border-b-2 px-3 py-1.5 text-xs font-medium ${tab === t ? 'border-cyan-400 text-cyan-200' : 'border-transparent text-zinc-400 hover:text-zinc-300'}`}
               >
                 {t}
               </button>

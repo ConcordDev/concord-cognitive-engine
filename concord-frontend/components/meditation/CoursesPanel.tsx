@@ -67,7 +67,7 @@ export function CoursesPanel() {
   }, [loadCourses]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   return (
@@ -75,7 +75,7 @@ export function CoursesPanel() {
       <div className="flex items-center gap-2 mb-3">
         <GraduationCap className="w-4 h-4 text-amber-300" />
         <h3 className="text-sm font-bold text-zinc-100">Courses &amp; Programs</h3>
-        <span className="text-[11px] text-zinc-500">structured day-by-day paths</span>
+        <span className="text-[11px] text-zinc-400">structured day-by-day paths</span>
       </div>
 
       <div className="space-y-2">
@@ -95,20 +95,20 @@ export function CoursesPanel() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-zinc-500 truncate">{c.subtitle}</p>
+                  <p className="text-[11px] text-zinc-400 truncate">{c.subtitle}</p>
                   {c.enrolled && (
                     <div className="mt-1.5 h-1 rounded-full bg-zinc-800 overflow-hidden">
                       <div className="h-full bg-amber-500" style={{ width: `${pct}%` }} />
                     </div>
                   )}
                 </div>
-                <ChevronRight className={cn('w-4 h-4 text-zinc-500 transition-transform', open && 'rotate-90')} />
+                <ChevronRight className={cn('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-90')} />
               </button>
 
               {open && (
                 <div className="border-t border-zinc-800 p-3">
                   {!detail ? (
-                    <div className="flex items-center justify-center py-3 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+                    <div className="flex items-center justify-center py-3 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
                   ) : (
                     <>
                       {!detail.enrolled ? (
@@ -129,9 +129,9 @@ export function CoursesPanel() {
                                   : <CircleDot className={cn('w-3.5 h-3.5 flex-shrink-0', isNext ? 'text-amber-400' : 'text-zinc-600')} />}
                                 <div className="flex-1 min-w-0">
                                   <p className="text-[12px] text-zinc-200">
-                                    <span className="text-zinc-500">Day {d.day} ·</span> {d.title}
+                                    <span className="text-zinc-400">Day {d.day} ·</span> {d.title}
                                   </p>
-                                  <p className="text-[10px] text-zinc-500 truncate">{d.note}</p>
+                                  <p className="text-[10px] text-zinc-400 truncate">{d.note}</p>
                                 </div>
                                 {!d.completed && (
                                   <button type="button" onClick={() => completeDay(c.id, d.day)} disabled={busy}

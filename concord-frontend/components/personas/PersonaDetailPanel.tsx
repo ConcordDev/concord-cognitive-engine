@@ -114,7 +114,7 @@ export function PersonaDetailPanel({
     reader.readAsDataURL(file);
   };
 
-  if (loading) return <div className="text-zinc-500 py-8 text-center">Loading persona…</div>;
+  if (loading) return <div className="text-zinc-400 py-8 text-center">Loading persona…</div>;
   if (!persona) return <div className="text-red-300 py-8 text-center">Persona not found or not visible.</div>;
 
   return (
@@ -133,7 +133,7 @@ export function PersonaDetailPanel({
               : <span className="text-[10px] text-zinc-400 bg-zinc-800 rounded px-1.5 py-0.5">draft</span>}
           </div>
           {persona.tagline && <p className="text-sm text-zinc-400">{persona.tagline}</p>}
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-400">
             ★ {persona.rating || '—'} ({persona.ratingCount}) · {persona.installCount} installs · {persona.chatCount} chats
           </p>
           <div className="mt-1 flex flex-wrap gap-1">
@@ -144,7 +144,7 @@ export function PersonaDetailPanel({
         </div>
         <button
           type="button" onClick={onClose}
-          className="text-zinc-500 hover:text-zinc-300 text-sm"
+          className="text-zinc-400 hover:text-zinc-300 text-sm"
         >✕</button>
       </div>
 
@@ -199,7 +199,7 @@ export function PersonaDetailPanel({
             className={`px-3 py-1.5 text-xs capitalize ${
               tab === t
                 ? 'border-b-2 border-purple-500 text-purple-200'
-                : 'text-zinc-500 hover:text-zinc-300'
+                : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >{t}</button>
         ))}
@@ -225,7 +225,7 @@ export function PersonaDetailPanel({
               height={180}
             />
           ) : (
-            <p className="text-xs text-zinc-500 italic">No ratings yet.</p>
+            <p className="text-xs text-zinc-400 italic">No ratings yet.</p>
           )}
         </div>
       )}
@@ -236,10 +236,10 @@ export function PersonaDetailPanel({
             <li key={v.version + v.contentHash} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs">
               <div className="flex justify-between">
                 <span className="font-semibold text-zinc-200">v{v.version}</span>
-                <span className="text-zinc-500">{new Date(v.at * 1000).toLocaleDateString()}</span>
+                <span className="text-zinc-400">{new Date(v.at * 1000).toLocaleDateString()}</span>
               </div>
               <div className="text-zinc-400">{v.changelog}</div>
-              <div className="text-[10px] text-zinc-600 font-mono break-all">sha {v.contentHash.slice(0, 16)}…</div>
+              <div className="text-[10px] text-zinc-400 font-mono break-all">sha {v.contentHash.slice(0, 16)}…</div>
             </li>
           ))}
         </ul>
@@ -269,7 +269,7 @@ export function PersonaDetailPanel({
             </div>
           )}
           {reviews.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic">No reviews yet.</p>
+            <p className="text-xs text-zinc-400 italic">No reviews yet.</p>
           ) : (
             <ul className="space-y-1.5">
               {reviews.map((r, i) => (
@@ -293,7 +293,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-center">
       <div className="text-lg font-bold text-zinc-100">{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
     </div>
   );
 }

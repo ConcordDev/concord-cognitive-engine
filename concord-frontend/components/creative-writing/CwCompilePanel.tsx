@@ -72,7 +72,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
           <Settings2 className="w-3.5 h-3.5 text-amber-400" /> Compile settings
         </h3>
         <div>
-          <p className="text-[10px] text-zinc-500 uppercase mb-1">Format</p>
+          <p className="text-[10px] text-zinc-400 uppercase mb-1">Format</p>
           <div className="flex flex-wrap gap-1.5">
             {FORMATS.map((f) => (
               <button key={f.id} type="button" onClick={() => setFormat(f.id)}
@@ -84,7 +84,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
           </div>
         </div>
         <div>
-          <p className="text-[10px] text-zinc-500 uppercase mb-1">Preset</p>
+          <p className="text-[10px] text-zinc-400 uppercase mb-1">Preset</p>
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map((p) => (
               <button key={p.id} type="button" onClick={() => setPreset(p.id)} title={p.hint}
@@ -94,7 +94,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-zinc-600 mt-1">{PRESETS.find((p) => p.id === preset)?.hint}</p>
+          <p className="text-[10px] text-zinc-400 mt-1">{PRESETS.find((p) => p.id === preset)?.hint}</p>
         </div>
         <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-1.5 text-[11px] text-zinc-300">
@@ -119,7 +119,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-zinc-200">{result.fileName}</p>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 {result.wordCount.toLocaleString()} words · {result.sceneCount} scenes · {result.chapters.length} chapters · {result.format}
               </p>
             </div>

@@ -99,7 +99,7 @@ export function CookMode({ recipeTitle, servings, steps, open, onClose }: CookMo
         <ChefHat className="w-5 h-5 text-cyan-400" />
         <div className="flex-1 min-w-0">
           <div className="text-lg font-bold text-white truncate">{recipeTitle}</div>
-          <div className="text-xs text-gray-500">Serves {servings} · Step {idx + 1} of {steps.length}</div>
+          <div className="text-xs text-gray-400">Serves {servings} · Step {idx + 1} of {steps.length}</div>
         </div>
         <button onClick={() => setVoiceOn(v => !v)} title="Toggle voice" className={cn('p-2 rounded', voiceOn ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white')}>
           {voiceOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
@@ -112,7 +112,7 @@ export function CookMode({ recipeTitle, servings, steps, open, onClose }: CookMo
       <div className="flex-1 flex">
         {step?.ingredients && step.ingredients.length > 0 && (
           <aside className="w-72 border-r border-white/10 p-6">
-            <h3 className="text-xs uppercase tracking-wider text-gray-500 mb-3">For this step</h3>
+            <h3 className="text-xs uppercase tracking-wider text-gray-400 mb-3">For this step</h3>
             <ul className="space-y-2 text-sm text-gray-200">
               {step.ingredients.map((ing, i) => (
                 <li key={i} className="flex items-start gap-2">

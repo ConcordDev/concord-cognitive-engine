@@ -43,9 +43,9 @@ export function RunwayForecast() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !data ? (
-        <div className="p-10 text-center text-xs text-gray-500">No data.</div>
+        <div className="p-10 text-center text-xs text-gray-400">No data.</div>
       ) : (
         <div className="p-4 space-y-3">
           <div className="grid grid-cols-4 gap-2">
@@ -94,7 +94,7 @@ function Tile({ label, value, tone, bold }: { label: string; value: string; tone
   const colour = tone === 'positive' ? 'text-emerald-300' : tone === 'negative' ? 'text-rose-300' : 'text-white';
   return (
     <div className={`rounded border border-white/10 bg-black/40 p-2.5 ${bold ? 'ring-1 ring-emerald-500/30' : ''}`}>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={`text-base font-mono tabular-nums ${colour} ${bold ? 'text-lg font-bold' : ''}`}>{value}</div>
     </div>
   );

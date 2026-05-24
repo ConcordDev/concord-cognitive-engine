@@ -91,15 +91,15 @@ export function InventoryPanel() {
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500">Low stock</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">Low stock</p>
           <p className="font-mono text-lg text-yellow-300">{lowStock}</p>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500">Expiring soon</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">Expiring soon</p>
           <p className="font-mono text-lg text-orange-300">{expiringSoon}</p>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500">Total value</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">Total value</p>
           <p className="font-mono text-lg text-emerald-300">${totalValue.toFixed(2)}</p>
         </div>
       </div>
@@ -184,11 +184,11 @@ export function InventoryPanel() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading inventory…
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <Boxes className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No inventory items.
         </div>
@@ -219,7 +219,7 @@ export function InventoryPanel() {
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-zinc-400">
                     {it.category}
                     {it.sku && ` · ${it.sku}`} · ${it.unitCost.toFixed(2)}/{it.unit}
                     {it.expiryDate && ` · exp ${it.expiryDate}`}
@@ -246,7 +246,7 @@ export function InventoryPanel() {
                   <button
                     onClick={() => del(it.id)}
                     aria-label="Delete item"
-                    className="ml-1 rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+                    className="ml-1 rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

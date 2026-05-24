@@ -391,7 +391,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   };
 
   if (loading || !anim) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const frame = anim.frames[frameIdx];
@@ -499,7 +499,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         </div>
         {customBrushes.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] text-zinc-500 self-center">Custom:</span>
+            <span className="text-[10px] text-zinc-400 self-center">Custom:</span>
             {customBrushes.map((b) => (
               <button key={b.id} type="button"
                 onClick={() => {
@@ -585,14 +585,14 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
             className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
         </div>
         {(anim.audio || []).length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No audio tracks. Add up to 6 to score the timeline.</p>
+          <p className="text-[11px] text-zinc-400 italic">No audio tracks. Add up to 6 to score the timeline.</p>
         ) : (
           <ul className="space-y-1">
             {(anim.audio || []).map((t) => (
               <li key={t.id} className="flex items-center gap-2 text-[11px] text-zinc-300 bg-zinc-900 rounded px-2 py-1">
-                <Music className="w-3 h-3 text-zinc-500" />
+                <Music className="w-3 h-3 text-zinc-400" />
                 <span className="flex-1">{t.name}</span>
-                <span className="text-zinc-500">@ {t.startSec}s</span>
+                <span className="text-zinc-400">@ {t.startSec}s</span>
                 {t.url && <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-cyan-400">open</a>}
                 <button type="button"
                   onClick={() => lensRun('animation', 'audio-track-remove', { animId: anim.id, id: t.id }).then(reloadAnim)}

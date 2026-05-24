@@ -65,7 +65,7 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -90,7 +90,7 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
           <CalendarDays className="w-3.5 h-3.5 text-fuchsia-400" /> Stripboard
         </h3>
         {days.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No shoot days yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No shoot days yet.</p>
         ) : (
           <ul className="space-y-2">
             {days.map((d) => (
@@ -98,11 +98,11 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-semibold text-zinc-100">
                     Day {d.dayNumber}
-                    {d.date && <span className="text-zinc-500 font-normal"> · {d.date}</span>}
-                    {d.location && <span className="text-zinc-500 font-normal"> · {d.location}</span>}
+                    {d.date && <span className="text-zinc-400 font-normal"> · {d.date}</span>}
+                    {d.location && <span className="text-zinc-400 font-normal"> · {d.location}</span>}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-zinc-500">{d.sceneCount} sc · {(d.pageEighths / 8).toFixed(1)} pg</span>
+                    <span className="text-[10px] text-zinc-400">{d.sceneCount} sc · {(d.pageEighths / 8).toFixed(1)} pg</span>
                     <button type="button" onClick={() => genCallSheet(d.id)}
                       className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
                       <FileText className="w-3 h-3" /> Call sheet
@@ -117,12 +117,12 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
                         <span className="text-[10px] font-mono text-fuchsia-400">{sc.number}</span>
                         <span className="text-[11px] text-zinc-200 flex-1 truncate">{sc.slugline}</span>
                         <button type="button" onClick={() => assign(sc.id, '')}
-                          className="text-[10px] text-zinc-500 hover:text-zinc-300">unassign</button>
+                          className="text-[10px] text-zinc-400 hover:text-zinc-300">unassign</button>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-[10px] text-zinc-600 italic">No scenes assigned.</p>
+                  <p className="text-[10px] text-zinc-400 italic">No scenes assigned.</p>
                 )}
               </li>
             ))}
@@ -137,7 +137,7 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
           <ul className="space-y-1">
             {unscheduled.map((sc) => (
               <li key={sc.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2 py-1.5">
-                <span className="text-[10px] font-mono text-zinc-500">{sc.number}</span>
+                <span className="text-[10px] font-mono text-zinc-400">{sc.number}</span>
                 <span className="text-[11px] text-zinc-200 flex-1 truncate">{sc.slugline}</span>
                 <select defaultValue="" onChange={(e) => assign(sc.id, e.target.value)}
                   className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100">
@@ -163,8 +163,8 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Cast</p>
-              {callSheet.cast.length === 0 ? <p className="text-[10px] text-zinc-600">—</p> : (
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1">Cast</p>
+              {callSheet.cast.length === 0 ? <p className="text-[10px] text-zinc-400">—</p> : (
                 <ul className="space-y-0.5">
                   {callSheet.cast.map((c, i) => (
                     <li key={i} className="text-[11px] text-zinc-300">{c.name}{c.characterName && ` — ${c.characterName}`}</li>
@@ -173,8 +173,8 @@ export function FsSchedulePanel({ projectId, onChange }: { projectId: string; on
               )}
             </div>
             <div>
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Crew</p>
-              {callSheet.crew.length === 0 ? <p className="text-[10px] text-zinc-600">—</p> : (
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1">Crew</p>
+              {callSheet.crew.length === 0 ? <p className="text-[10px] text-zinc-400">—</p> : (
                 <ul className="space-y-0.5">
                   {callSheet.crew.map((c, i) => (
                     <li key={i} className="text-[11px] text-zinc-300">{c.name}{c.position && ` — ${c.position}`}</li>

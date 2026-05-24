@@ -138,7 +138,7 @@ function SectionCard({
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">{title}</h3>
-            <p className="text-xs text-gray-500">{subtitle}</p>
+            <p className="text-xs text-gray-400">{subtitle}</p>
           </div>
         </div>
         {action}
@@ -195,7 +195,7 @@ function DsarSection() {
       action={
         list ? (
           <div className="text-right text-xs">
-            <span className="text-gray-500">{list.openCount} open</span>
+            <span className="text-gray-400">{list.openCount} open</span>
             {list.overdueCount > 0 && (
               <span className="ml-2 text-rose-400">{list.overdueCount} overdue</span>
             )}
@@ -218,7 +218,7 @@ function DsarSection() {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Optional note for the request…"
-          className="flex-1 min-w-[180px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-600"
+          className="flex-1 min-w-[180px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400"
         />
         <button
           onClick={submit}
@@ -232,7 +232,7 @@ function DsarSection() {
       {error && <p className="text-xs text-rose-400">{error}</p>}
       <div className="space-y-1.5">
         {list?.requests.length === 0 && (
-          <p className="text-xs text-gray-600">No requests yet.</p>
+          <p className="text-xs text-gray-400">No requests yet.</p>
         )}
         {list?.requests.map((r) => (
           <div
@@ -248,7 +248,7 @@ function DsarSection() {
                   {r.status.replace('_', ' ')}
                 </span>
               </div>
-              <p className="text-[10px] text-gray-500 truncate">
+              <p className="text-[10px] text-gray-400 truncate">
                 Filed {fmt(r.submittedAt)} · due {fmt(r.dueAt)}
                 {r.note ? ` · ${r.note}` : ''}
               </p>
@@ -314,7 +314,7 @@ function LensSharingSection() {
       subtitle="Granular control of which lenses may read your data and share it onward."
       action={
         data ? (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             {data.readEnabled} read · {data.shareEnabled} share
           </p>
         ) : null
@@ -404,7 +404,7 @@ function AccessLogSection() {
     >
       {error && <p className="text-xs text-rose-400">{error}</p>}
       {data && data.totalEvents === 0 ? (
-        <p className="text-xs text-gray-600">No data accesses recorded yet.</p>
+        <p className="text-xs text-gray-400">No data accesses recorded yet.</p>
       ) : (
         <>
           <TimelineView events={events} height={110} />
@@ -483,7 +483,7 @@ function DataExportSection() {
             ))}
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-gray-400">
               {result.totalRecords} records · ~
               {(result.estimatedBytes / 1024).toFixed(1)} KB
             </p>
@@ -540,7 +540,7 @@ function CookieConfigSection() {
         title="Cookie & Tracker Consent Banner"
         subtitle="Configure the consent surface shown to visitors."
       >
-        <p className="text-xs text-gray-600">{error || 'Loading…'}</p>
+        <p className="text-xs text-gray-400">{error || 'Loading…'}</p>
       </SectionCard>
     );
   }
@@ -623,7 +623,7 @@ function CookieConfigSection() {
         })}
       </div>
       {cfg.consentString && (
-        <p className="text-[10px] text-gray-500 font-mono">
+        <p className="text-[10px] text-gray-400 font-mono">
           consent string: {cfg.consentString}
         </p>
       )}
@@ -675,7 +675,7 @@ function RetentionSection() {
             <span className="text-xs text-white">
               {p.category.replace(/_/g, ' ')}
               {p.isDefault && (
-                <span className="ml-1.5 text-[9px] text-gray-600">(default)</span>
+                <span className="ml-1.5 text-[9px] text-gray-400">(default)</span>
               )}
             </span>
             <div className="flex items-center gap-2">
@@ -689,7 +689,7 @@ function RetentionSection() {
                 }
                 className="w-16 bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs text-white"
               />
-              <span className="text-[10px] text-gray-500">days</span>
+              <span className="text-[10px] text-gray-400">days</span>
               <select
                 value={p.action}
                 onChange={(e) => update(p.category, { action: e.target.value })}
@@ -703,7 +703,7 @@ function RetentionSection() {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-gray-600">0 days = keep forever.</p>
+      <p className="text-[10px] text-gray-400">0 days = keep forever.</p>
     </SectionCard>
   );
 }
@@ -772,7 +772,7 @@ function FlowMapSection() {
       subtitle="Visualize where your data leaves the platform via federation."
       action={
         data ? (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             {data.outboundCount} out · {data.inboundCount} in
           </p>
         ) : null
@@ -784,7 +784,7 @@ function FlowMapSection() {
           value={destination}
           onChange={(e) => setDestination(e.target.value)}
           placeholder="Federation peer / destination…"
-          className="flex-1 min-w-[160px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-600"
+          className="flex-1 min-w-[160px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400"
         />
         <select
           value={direction}
@@ -802,7 +802,7 @@ function FlowMapSection() {
         </button>
       </div>
       {data && data.flows.length === 0 ? (
-        <p className="text-xs text-gray-600">No data flows registered yet.</p>
+        <p className="text-xs text-gray-400">No data flows registered yet.</p>
       ) : (
         <>
           <TreeDiagram root={tree} />
@@ -839,7 +839,7 @@ export function DataControlsPanel() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-base font-semibold text-white">Data Controls</h2>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-400">
           OneTrust / Apple Privacy parity — the controls you actually exercise.
         </span>
       </div>

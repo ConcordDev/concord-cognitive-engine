@@ -220,7 +220,7 @@ export function MlActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -233,13 +233,13 @@ export function MlActionPanel() {
             {evalResult.type === 'classification' ? (
               <>
                 <div className="text-2xl font-bold text-emerald-300">{evalResult.accuracy}%</div>
-                <div className="text-[10px] text-zinc-500">avg F1 {evalResult.avgF1}</div>
+                <div className="text-[10px] text-zinc-400">avg F1 {evalResult.avgF1}</div>
                 {(evalResult.perClass ?? []).slice(0, 3).map((p, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5">{String(p.class)}: P {p.precision} R {p.recall} F1 {p.f1} (n={p.support})</div>)}
               </>
             ) : (
               <>
                 <div className="text-2xl font-bold text-emerald-300">R² {evalResult.r2}</div>
-                <div className="text-[10px] text-zinc-500">MSE {evalResult.mse} · RMSE {evalResult.rmse} · MAE {evalResult.mae}</div>
+                <div className="text-[10px] text-zinc-400">MSE {evalResult.mse} · RMSE {evalResult.rmse} · MAE {evalResult.mae}</div>
               </>
             )}
           </div>
@@ -253,8 +253,8 @@ export function MlActionPanel() {
         {profileResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">EDA · quality {profileResult.qualityScore}%</div>
-            <div className="text-[10px] text-zinc-500">{profileResult.rows} × {profileResult.columns}</div>
-            {(profileResult.profile ?? []).slice(0, 6).map((p, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><span className="font-mono text-purple-200">{p.field}</span> <span className="text-zinc-500">[{p.type}]</span> null {p.nullRate}% · k={p.cardinality}{p.stats && <span className="text-zinc-500"> · μ={p.stats.mean}</span>}</div>)}
+            <div className="text-[10px] text-zinc-400">{profileResult.rows} × {profileResult.columns}</div>
+            {(profileResult.profile ?? []).slice(0, 6).map((p, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><span className="font-mono text-purple-200">{p.field}</span> <span className="text-zinc-400">[{p.type}]</span> null {p.nullRate}% · k={p.cardinality}{p.stats && <span className="text-zinc-400"> · μ={p.stats.mean}</span>}</div>)}
           </div>
         )}
         {hyperResult && (

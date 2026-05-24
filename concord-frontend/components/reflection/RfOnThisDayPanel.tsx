@@ -28,7 +28,7 @@ export function RfOnThisDayPanel() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -37,7 +37,7 @@ export function RfOnThisDayPanel() {
         <CalendarClock className="w-3.5 h-3.5 text-indigo-400" /> On this day in past years
       </h3>
       {entries.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-8 text-center">
+        <p className="text-[11px] text-zinc-400 italic py-8 text-center">
           No past entries on this date yet. Keep journaling — next year this will be a memory.
         </p>
       ) : (
@@ -48,11 +48,11 @@ export function RfOnThisDayPanel() {
                 <span className="text-[11px] font-semibold text-indigo-300">
                   {e.yearsAgo} year{e.yearsAgo > 1 ? 's' : ''} ago
                 </span>
-                <span className="text-[10px] text-zinc-500">{e.date}</span>
+                <span className="text-[10px] text-zinc-400">{e.date}</span>
               </div>
               {e.title && <p className="text-sm font-semibold text-zinc-100 mt-1">{e.title}</p>}
               <p className="text-xs text-zinc-300 mt-1 whitespace-pre-wrap line-clamp-5">{e.text}</p>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-zinc-500">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-zinc-400">
                 <span>{e.wordCount} words</span>
                 {e.mood && <span className="uppercase">{e.mood}</span>}
                 {e.tags.map((t) => <span key={t} className="text-indigo-400">#{t}</span>)}

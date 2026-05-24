@@ -58,7 +58,7 @@ function MetabolismPanel({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">DTU Metabolism</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {data?.lastRun
                 ? `Last cycle: ${new Date(data.lastRun).toLocaleString()}`
                 : 'Living substrate processes'
@@ -102,7 +102,7 @@ function MetabolismPanel({ className }: { className?: string }) {
                 <process.icon className={cn('w-4 h-4', process.color.split(' ')[0])} />
               </div>
               <span className="text-lg font-bold text-white">{process.value}</span>
-              <span className="text-xs text-gray-500">{process.label}</span>
+              <span className="text-xs text-gray-400">{process.label}</span>
               {i < 3 && (
                 <div className="absolute hidden" /> // Visual connector handled by flex layout
               )}
@@ -149,7 +149,7 @@ function MetabolismPanel({ className }: { className?: string }) {
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-purple-400">{Math.round(c.overlap * 100)}% overlap</span>
                         {c.sharedTags.slice(0, 3).map(t => (
-                          <span key={t} className="text-xs text-gray-500">#{t}</span>
+                          <span key={t} className="text-xs text-gray-400">#{t}</span>
                         ))}
                       </div>
                     </div>

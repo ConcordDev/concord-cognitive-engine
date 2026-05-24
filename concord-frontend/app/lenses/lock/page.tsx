@@ -314,7 +314,7 @@ export default function LockLensPage() {
           </div>
           <div className="absolute top-0 bottom-0 w-0.5 bg-white" style={{ left: '70%' }} />
         </div>
-        <div className="flex justify-between text-xs text-gray-500 mt-2">
+        <div className="flex justify-between text-xs text-gray-400 mt-2">
           <span>0%</span>
           <span className="text-sovereignty-locked">70% Threshold</span>
           <span>100%</span>
@@ -381,9 +381,9 @@ export default function LockLensPage() {
               />
               <div className="flex-1">
                 <p className="font-mono text-sm">{inv.name}</p>
-                <p className="text-xs text-gray-500">{inv.description}</p>
+                <p className="text-xs text-gray-400">{inv.description}</p>
               </div>
-              <Lock className="w-4 h-4 text-gray-500" />
+              <Lock className="w-4 h-4 text-gray-400" />
             </motion.div>
           ))}
         </div>
@@ -434,11 +434,11 @@ export default function LockLensPage() {
                 )}
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 rounded-full bg-lattice-surface flex items-center justify-center z-10">
-                    <Eye className="w-3 h-3 text-gray-500" />
+                    <Eye className="w-3 h-3 text-gray-400" />
                   </div>
                   <div>
                     <p className="text-sm">{entry.event}</p>
-                    <p className="text-xs text-gray-500">{entry.date}</p>
+                    <p className="text-xs text-gray-400">{entry.date}</p>
                   </div>
                 </div>
                 <span className="text-sovereignty-locked font-mono">{entry.level}%</span>
@@ -496,7 +496,7 @@ export default function LockLensPage() {
               </span>
             </div>
           </div>
-          <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
             <span>0%</span>
             <span className="text-neon-cyan">70% min</span>
             <span>100%</span>
@@ -508,14 +508,14 @@ export default function LockLensPage() {
           <div className="flex items-center gap-2 mb-3">
             <Ban className="w-4 h-4 text-neon-cyan" />
             <h3 className="text-sm font-semibold">Invariant Enforcement</h3>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               {invariantSummary.enforced}/{invariants.length} enforced
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
             {invariants.map((rule) => (
               <div key={rule.id} className="flex items-center gap-2">
-                <Lock className="w-3 h-3 text-gray-500" />
+                <Lock className="w-3 h-3 text-gray-400" />
                 <span className="text-xs font-mono flex-1 truncate">{rule.name}</span>
                 <span
                   className={`w-2 h-2 rounded-full ${
@@ -716,7 +716,7 @@ export default function LockLensPage() {
                   Array.isArray(actionResult.suggestions) &&
                   actionResult.suggestions.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
                         Suggestions
                       </p>
                       {(

@@ -49,7 +49,7 @@ export function WorkoutPlanner() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">AI workout planner</span>
-        <span className="ml-auto text-[10px] text-gray-500">Conscious brain</span>
+        <span className="ml-auto text-[10px] text-gray-400">Conscious brain</span>
       </header>
       <div className="p-4 grid grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
         <Field label="Goal">
@@ -93,7 +93,7 @@ export function WorkoutPlanner() {
         <div className="px-4 pb-4 space-y-4 border-t border-white/10 pt-4">
           <div className="flex items-center gap-3 text-xs">
             <span className="text-cyan-300 font-bold">{plan.goal}</span>
-            <span className="text-gray-500">·</span>
+            <span className="text-gray-400">·</span>
             <span className="text-gray-300">{plan.weeks} weeks × {plan.daysPerWeek} days</span>
           </div>
           <div className="space-y-3">
@@ -102,17 +102,17 @@ export function WorkoutPlanner() {
                 <div className="flex items-center gap-2 mb-2">
                   <Calendar className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="text-sm font-bold text-white">{d.day}</span>
-                  <span className="text-[10px] text-gray-500">·</span>
+                  <span className="text-[10px] text-gray-400">·</span>
                   <span className="text-[10px] text-gray-400">{d.focus}</span>
-                  <span className="ml-auto text-[10px] text-gray-500">{d.duration} min</span>
+                  <span className="ml-auto text-[10px] text-gray-400">{d.duration} min</span>
                 </div>
                 <ul className="space-y-1 text-xs">
                   {d.exercises.map((ex, i) => (
                     <li key={i} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/[0.03]">
-                      <Dumbbell className="w-3 h-3 text-gray-500" />
+                      <Dumbbell className="w-3 h-3 text-gray-400" />
                       <span className="text-white flex-1">{ex.name}</span>
                       <span className="text-cyan-300 font-mono tabular-nums">{ex.sets} × {ex.reps}</span>
-                      <span className="text-gray-500 text-[10px]">{ex.restSec}s rest</span>
+                      <span className="text-gray-400 text-[10px]">{ex.restSec}s rest</span>
                     </li>
                   ))}
                 </ul>
@@ -138,7 +138,7 @@ export function WorkoutPlanner() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label>
-      <span className="block text-[10px] uppercase text-gray-500 mb-0.5">{label}</span>
+      <span className="block text-[10px] uppercase text-gray-400 mb-0.5">{label}</span>
       {children}
     </label>
   );

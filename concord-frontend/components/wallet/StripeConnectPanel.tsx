@@ -288,7 +288,7 @@ function StripeConnectPanel({ className }: StripeConnectPanelProps) {
       <div>
         <label className={ds.label}>Withdrawal Amount (CC)</label>
         <div className="relative">
-          <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             inputMode="numeric"
@@ -356,7 +356,7 @@ function StripeConnectPanel({ className }: StripeConnectPanelProps) {
           'w-full px-6 py-3',
           isValidAmount
             ? 'bg-neon-green/20 text-neon-green border border-neon-green/50 hover:bg-neon-green/30 focus:ring-neon-green'
-            : 'bg-lattice-elevated text-gray-500 cursor-not-allowed'
+            : 'bg-lattice-elevated text-gray-400 cursor-not-allowed'
         )}
       >
         {withdrawing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Coins className="w-5 h-5" />}
@@ -368,7 +368,7 @@ function StripeConnectPanel({ className }: StripeConnectPanelProps) {
       </button>
 
       {/* Estimated Arrival */}
-      <div className="flex items-start gap-2 text-xs text-gray-500">
+      <div className="flex items-start gap-2 text-xs text-gray-400">
         <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
         <span>
           Estimated arrival: 2-3 business days after approval. Funds will be deposited into your

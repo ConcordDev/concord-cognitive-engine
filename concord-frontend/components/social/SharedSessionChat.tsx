@@ -255,7 +255,7 @@ export function SharedSessionChat({ sessionId, currentUserId, onEnd }: SharedSes
               <span className="text-sm text-zinc-200 truncate">
                 {p.userId === currentUserId ? `${p.name} (you)` : p.name}
               </span>
-              <span className="text-[10px] text-zinc-600 ml-auto">
+              <span className="text-[10px] text-zinc-400 ml-auto">
                 {p.sharingLevel === 'full' ? 'Full' : p.sharingLevel === 'query' ? 'AI' : 'Chat'}
               </span>
             </div>
@@ -294,7 +294,7 @@ export function SharedSessionChat({ sessionId, currentUserId, onEnd }: SharedSes
                 <div className="bg-zinc-800/50 rounded-lg p-3 ml-4">
                   <p className="text-sm text-zinc-200 whitespace-pre-wrap">{msg.content}</p>
                   {msg.contextSources && msg.contextSources.length > 0 && (
-                    <p className="text-[10px] text-zinc-600 mt-2 flex items-center gap-1">
+                    <p className="text-[10px] text-zinc-400 mt-2 flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
                       Drawing from: {msg.contextSources.join(', ')}
                     </p>
@@ -307,7 +307,7 @@ export function SharedSessionChat({ sessionId, currentUserId, onEnd }: SharedSes
                   rounded-lg p-3 ml-4 flex items-center justify-between">
                   <div>
                     <p className="text-sm text-zinc-200">{msg.title}</p>
-                    <p className="text-xs text-zinc-500">{msg.domain}</p>
+                    <p className="text-xs text-zinc-400">{msg.domain}</p>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -333,14 +333,14 @@ export function SharedSessionChat({ sessionId, currentUserId, onEnd }: SharedSes
               )}
 
               {msg.type === 'dtu_shared' && (
-                <div className="flex items-center gap-2 text-xs text-zinc-500 ml-4">
+                <div className="flex items-center gap-2 text-xs text-zinc-400 ml-4">
                   <Share2 className="w-3 h-3" />
                   {msg.userName} shared &ldquo;{msg.dtuTitle}&rdquo; from {msg.dtuDomain}
                 </div>
               )}
 
               {msg.type === 'system' && (
-                <div className="text-center text-xs text-zinc-600 py-1">
+                <div className="text-center text-xs text-zinc-400 py-1">
                   {msg.content}
                 </div>
               )}
@@ -348,7 +348,7 @@ export function SharedSessionChat({ sessionId, currentUserId, onEnd }: SharedSes
           ))}
 
           {isSending && (
-            <div className="flex items-center gap-2 text-xs text-zinc-500 ml-4">
+            <div className="flex items-center gap-2 text-xs text-zinc-400 ml-4">
               <Loader className="w-3 h-3 animate-spin" />
               Thinking across substrates...
             </div>

@@ -172,11 +172,11 @@ function SignalClassificationLegend({ isOpen, onToggle }: { isOpen: boolean; onT
                       {meta.label}
                     </span>
                   </div>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">{meta.description}</p>
+                  <p className="text-[11px] text-gray-400 leading-relaxed">{meta.description}</p>
                 </div>
               ))}
               <div className="pt-2 border-t border-white/5">
-                <p className="text-[10px] text-gray-600 italic">
+                <p className="text-[10px] text-gray-400 italic">
                   Resonance measures structural alignment between DTUs across different domains through shared invariants.
                   High invariant overlap + low semantic overlap = genuine constraint geometry correspondence.
                 </p>
@@ -267,12 +267,12 @@ function ThresholdConfigPanel({
                 </div>
               ))}
               <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                <p className="text-[10px] text-gray-600">
+                <p className="text-[10px] text-gray-400">
                   Thresholds determine signal classification boundaries for pair analysis.
                 </p>
                 <button
                   onClick={handleReset}
-                  className="text-[10px] text-gray-500 hover:text-white px-2 py-1 rounded border border-white/5 hover:border-white/10 transition-colors"
+                  className="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded border border-white/5 hover:border-white/10 transition-colors"
                 >
                   Reset Defaults
                 </button>
@@ -714,7 +714,7 @@ function SignalMeter({ value, label }: { value: number; label: string }) {
           transition={{ duration: 0.8, ease: 'easeOut' }}
         />
       </div>
-      <span className="text-[10px] text-gray-500 font-mono">{label}</span>
+      <span className="text-[10px] text-gray-400 font-mono">{label}</span>
       <span className="text-xs font-mono" style={{ color }}>{pct.toFixed(0)}%</span>
     </div>
   );
@@ -761,7 +761,7 @@ function PairCard({ pair, rank, thresholds }: { pair: ResonancePair; rank: numbe
           <p className="text-lg font-mono font-bold" style={{ color: meta.color }}>
             {(pair.resonance * 100).toFixed(1)}
           </p>
-          <p className="text-[10px] text-gray-600">resonance</p>
+          <p className="text-[10px] text-gray-400">resonance</p>
         </div>
       </div>
 
@@ -775,16 +775,16 @@ function PairCard({ pair, rank, thresholds }: { pair: ResonancePair; rank: numbe
           >
             <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
               <div className="flex gap-4 text-[11px]">
-                <span className="text-gray-500">
+                <span className="text-gray-400">
                   Invariant overlap: <span className="text-white font-mono">{(pair.invOverlap * 100).toFixed(1)}%</span>
                 </span>
-                <span className="text-gray-500">
+                <span className="text-gray-400">
                   Semantic distance: <span className="text-white font-mono">{((1 - pair.tokOverlap) * 100).toFixed(1)}%</span>
                 </span>
               </div>
               {pair.sharedInvariants.length > 0 && (
                 <div>
-                  <p className="text-[10px] text-gray-600 mb-1">Shared invariants:</p>
+                  <p className="text-[10px] text-gray-400 mb-1">Shared invariants:</p>
                   {pair.sharedInvariants.map((inv, i) => (
                     <p key={i} className="text-[11px] text-gray-400 font-mono pl-2 border-l border-white/10">
                       {inv}
@@ -792,7 +792,7 @@ function PairCard({ pair, rank, thresholds }: { pair: ResonancePair; rank: numbe
                   ))}
                 </div>
               )}
-              <p className="text-[10px] text-gray-600 italic">
+              <p className="text-[10px] text-gray-400 italic">
                 High invariant overlap + low semantic overlap = alignment from constraint geometry, not content.
               </p>
             </div>
@@ -1042,7 +1042,7 @@ export default function ResonanceBoundaryPage() {
             <h1 className="text-lg font-bold tracking-tight" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               Resonance Interface
             </h1>
-            <p className="text-[11px] text-gray-600">
+            <p className="text-[11px] text-gray-400">
               x&sup2; &minus; x = 0 &middot; boundary detection &middot; constraint alignment
             </p>
           </div>
@@ -1088,7 +1088,7 @@ export default function ResonanceBoundaryPage() {
           <div className="relative">
             <button
               onClick={() => setExportMenuOpen(!exportMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-gray-300 border border-white/5 hover:border-white/10 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-gray-300 border border-white/5 hover:border-white/10 transition-all"
               title="Export resonance data"
             >
               <Download className="w-3.5 h-3.5" />
@@ -1174,7 +1174,7 @@ export default function ResonanceBoundaryPage() {
                     {meta.label}
                   </span>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-mono text-gray-500">
+                <div className="flex items-center gap-4 text-xs font-mono text-gray-400">
                   <span>Signal: <span className="text-white">{(signal * 100).toFixed(1)}%</span></span>
                   <span>Gradient: <span className="text-white">{((scan?.gradient ?? 0) * 100).toFixed(1)}%</span></span>
                   <span>Pairs: <span className="text-white">{scan?.crossDomainAlignment?.pairsFound ?? 0}</span></span>
@@ -1193,7 +1193,7 @@ export default function ResonanceBoundaryPage() {
                   pairsFound={scan?.crossDomainAlignment?.pairsFound ?? 0}
                   scanning={isScanning}
                 />
-                <div className="absolute top-2 left-3 text-[9px] font-mono text-gray-600 uppercase tracking-widest pointer-events-none">
+                <div className="absolute top-2 left-3 text-[9px] font-mono text-gray-400 uppercase tracking-widest pointer-events-none">
                   Resonance Frequency Spectrum
                 </div>
               </div>
@@ -1213,13 +1213,13 @@ export default function ResonanceBoundaryPage() {
                   <div className="text-5xl font-mono font-bold tracking-tighter" style={{ color: meta.color }}>
                     {(signal * 100).toFixed(1)}
                   </div>
-                  <div className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
+                  <div className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">
                     Boundary Signal Strength
                   </div>
                 </div>
 
                 {/* Frontier stats overlay */}
-                <div className="absolute bottom-4 left-4 text-[11px] font-mono text-gray-600 space-y-1">
+                <div className="absolute bottom-4 left-4 text-[11px] font-mono text-gray-400 space-y-1">
                   <p>Frontier DTUs: {scan?.frontier?.size ?? '\u2014'} / Interior: {scan?.interior?.size ?? '\u2014'}</p>
                   <p>Frontier crispness: {((scan?.frontier?.avgCrispness ?? 0) * 100).toFixed(1)}%</p>
                   <p>Interior crispness: {((scan?.interior?.avgCrispness ?? 0) * 100).toFixed(1)}%</p>
@@ -1229,14 +1229,14 @@ export default function ResonanceBoundaryPage() {
                 {/* Top pair preview */}
                 {scan?.crossDomainAlignment?.topPairs?.[0] && (
                   <div className="absolute bottom-4 right-4 max-w-xs">
-                    <p className="text-[10px] text-gray-600 mb-1">Strongest cross-domain alignment:</p>
+                    <p className="text-[10px] text-gray-400 mb-1">Strongest cross-domain alignment:</p>
                     <div className="text-[11px] font-mono p-2 rounded border border-white/5"
                       style={{ background: 'rgba(5,5,16,0.9)' }}>
                       <p style={{ color: meta.color }}>
                         {scan.crossDomainAlignment.topPairs[0].a.domain} &harr; {scan.crossDomainAlignment.topPairs[0].b.domain}
                       </p>
-                      <p className="text-gray-500 truncate">{scan.crossDomainAlignment.topPairs[0].a.title}</p>
-                      <p className="text-gray-500 truncate">{scan.crossDomainAlignment.topPairs[0].b.title}</p>
+                      <p className="text-gray-400 truncate">{scan.crossDomainAlignment.topPairs[0].a.title}</p>
+                      <p className="text-gray-400 truncate">{scan.crossDomainAlignment.topPairs[0].b.title}</p>
                     </div>
                   </div>
                 )}
@@ -1256,7 +1256,7 @@ export default function ResonanceBoundaryPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-sm font-bold">Cross-Domain Alignments</h2>
-                  <p className="text-[11px] text-gray-600">
+                  <p className="text-[11px] text-gray-400">
                     DTU pairs from different domains sharing invariant structure without semantic overlap
                   </p>
                 </div>
@@ -1277,7 +1277,7 @@ export default function ResonanceBoundaryPage() {
                       {pairsByClass.weak} weak
                     </span>
                   )}
-                  <span className="text-xs font-mono text-gray-600">
+                  <span className="text-xs font-mono text-gray-400">
                     {scan?.crossDomainAlignment?.pairsFound ?? 0} pairs across {scan?.crossDomainAlignment?.domainsScanned ?? 0} domains
                   </span>
                 </div>
@@ -1369,7 +1369,7 @@ export default function ResonanceBoundaryPage() {
                   <div key={m.label} className="p-3 rounded-lg border border-white/5"
                     style={{ background: 'rgba(10,10,20,0.8)' }}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] text-gray-500">{m.label}</span>
+                      <span className="text-[11px] text-gray-400">{m.label}</span>
                       <m.icon className="w-3.5 h-3.5 text-gray-700" />
                     </div>
                     <p className="text-2xl font-mono font-bold text-white">

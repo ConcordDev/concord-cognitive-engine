@@ -49,16 +49,16 @@ export function RegionalForecast({ worldId }: { worldId: string }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) return <p className="text-xs text-zinc-500">Reading district signals…</p>;
+  if (loading) return <p className="text-xs text-zinc-400">Reading district signals…</p>;
   if (!regions || regions.length === 0) {
-    return <p className="py-8 text-center text-xs italic text-zinc-500">No data yet.</p>;
+    return <p className="py-8 text-center text-xs italic text-zinc-400">No data yet.</p>;
   }
 
   const withData = regions.filter((r) => r.hasData);
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         {withData.length} of {regions.length} districts have measured embodied signals.
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -73,24 +73,24 @@ export function RegionalForecast({ worldId }: { worldId: string }) {
           >
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="text-sm font-semibold text-zinc-100">{reg.name}</h3>
-              <span className="font-mono text-[10px] text-zinc-600">
+              <span className="font-mono text-[10px] text-zinc-400">
                 ({reg.anchor.x}, {reg.anchor.z})
               </span>
             </div>
             {reg.hasData && reg.weather ? (
               <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-                <div className="flex justify-between"><dt className="text-zinc-500">Sky</dt><dd className="text-zinc-200">{reg.weather.kind}</dd></div>
-                <div className="flex justify-between"><dt className="text-zinc-500">Temp</dt><dd className="font-mono text-cyan-300">{reg.weather.temperature_c !== null ? `${reg.weather.temperature_c}°C` : '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-zinc-500">Humidity</dt><dd className="font-mono text-zinc-200">{reg.weather.humidity_pct !== null ? `${reg.weather.humidity_pct}%` : '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-zinc-500">Air</dt><dd className="font-mono text-zinc-200">{reg.weather.air_quality !== null ? reg.weather.air_quality.toFixed(2) : '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-zinc-500">Light</dt><dd className="font-mono text-zinc-200">{reg.weather.light !== null ? reg.weather.light.toFixed(0) : '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-zinc-500">Noise</dt><dd className="font-mono text-zinc-200">{reg.weather.noise !== null ? `${reg.weather.noise.toFixed(0)}dB` : '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Sky</dt><dd className="text-zinc-200">{reg.weather.kind}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Temp</dt><dd className="font-mono text-cyan-300">{reg.weather.temperature_c !== null ? `${reg.weather.temperature_c}°C` : '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Humidity</dt><dd className="font-mono text-zinc-200">{reg.weather.humidity_pct !== null ? `${reg.weather.humidity_pct}%` : '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Air</dt><dd className="font-mono text-zinc-200">{reg.weather.air_quality !== null ? reg.weather.air_quality.toFixed(2) : '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Light</dt><dd className="font-mono text-zinc-200">{reg.weather.light !== null ? reg.weather.light.toFixed(0) : '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Noise</dt><dd className="font-mono text-zinc-200">{reg.weather.noise !== null ? `${reg.weather.noise.toFixed(0)}dB` : '—'}</dd></div>
                 {reg.weather.structural_stress !== null && reg.weather.structural_stress > 0 && (
                   <div className="col-span-2 flex justify-between"><dt className="text-rose-400">Stress</dt><dd className="font-mono text-rose-300">{reg.weather.structural_stress.toFixed(2)}</dd></div>
                 )}
               </dl>
             ) : (
-              <p className="mt-2 text-[11px] italic text-zinc-600">No measured signals at this district yet.</p>
+              <p className="mt-2 text-[11px] italic text-zinc-400">No measured signals at this district yet.</p>
             )}
           </div>
         ))}

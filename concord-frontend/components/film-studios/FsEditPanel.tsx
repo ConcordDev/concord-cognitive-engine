@@ -108,7 +108,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -128,7 +128,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
       </section>
 
       {sequences.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">Create a sequence to start cutting.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">Create a sequence to start cutting.</p>
       ) : (
         <>
           <select value={activeSeq} onChange={(e) => setActiveSeq(e.target.value)}
@@ -162,25 +162,25 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
             <section>
               <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
                 <Scissors className="w-3.5 h-3.5 text-fuchsia-400" /> Timeline
-                <span className="text-zinc-500 font-normal">· runtime {cut.totalRuntime}</span>
+                <span className="text-zinc-400 font-normal">· runtime {cut.totalRuntime}</span>
               </h3>
               {Object.keys(cut.tracks).length === 0 ? (
-                <p className="text-[11px] text-zinc-500 italic py-4 text-center">No clips on the timeline yet.</p>
+                <p className="text-[11px] text-zinc-400 italic py-4 text-center">No clips on the timeline yet.</p>
               ) : (
                 <div className="space-y-2">
                   {Object.entries(cut.tracks).map(([track, clips]) => (
                     <div key={track}>
-                      <p className="text-[10px] font-mono text-zinc-500 mb-1">{track}</p>
+                      <p className="text-[10px] font-mono text-zinc-400 mb-1">{track}</p>
                       <ul className="space-y-1">
                         {clips.map((c, idx) => (
                           <li key={c.id}
                             className={cn('bg-zinc-900/70 border-l-4 rounded px-2.5 py-1.5 space-y-1.5', TRACK_COLOR[track] || 'border-zinc-600',
                               editingClip === c.id && 'ring-1 ring-fuchsia-600/50')}>
                             <div className="flex items-center gap-2">
-                              <Film className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                              <Film className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                               <button type="button" onClick={() => setEditingClip(editingClip === c.id ? null : c.id)}
                                 className="text-xs text-zinc-100 flex-1 truncate text-left hover:text-fuchsia-300">{c.name}</button>
-                              <span className="text-[10px] text-zinc-500">{c.transition.replace(/_/g, ' ')}</span>
+                              <span className="text-[10px] text-zinc-400">{c.transition.replace(/_/g, ' ')}</span>
                               <span className="text-[10px] font-mono text-fuchsia-300">{c.startTimecode}–{c.endTimecode}</span>
                               <button type="button" onClick={() => moveClip(track, clips, idx, -1)} disabled={idx === 0}
                                 className="text-zinc-600 hover:text-zinc-300 disabled:opacity-20" title="Move up">
@@ -201,19 +201,19 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                             {editingClip === c.id && (
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1 border-t border-zinc-800">
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-500 uppercase">In frame</span>
+                                  <span className="text-[9px] text-zinc-400 uppercase">In frame</span>
                                   <input inputMode="numeric" defaultValue="0"
                                     onBlur={(e) => updateClip(c.id, { inFrame: Number(e.target.value) || 0, outFrame: Number(e.target.value) + c.durationFrames })}
                                     className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
                                 </label>
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-500 uppercase">Out frame</span>
+                                  <span className="text-[9px] text-zinc-400 uppercase">Out frame</span>
                                   <input inputMode="numeric" defaultValue={String(c.durationFrames)}
                                     onBlur={(e) => updateClip(c.id, { inFrame: 0, outFrame: Number(e.target.value) || c.durationFrames })}
                                     className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
                                 </label>
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-500 uppercase">Transition</span>
+                                  <span className="text-[9px] text-zinc-400 uppercase">Transition</span>
                                   <select defaultValue={c.transition}
                                     onChange={(e) => updateClip(c.id, { transition: e.target.value })}
                                     className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
@@ -221,7 +221,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                                   </select>
                                 </label>
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-500 uppercase">Track</span>
+                                  <span className="text-[9px] text-zinc-400 uppercase">Track</span>
                                   <select defaultValue={track}
                                     onChange={(e) => updateClip(c.id, { track: e.target.value })}
                                     className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
@@ -255,7 +255,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                     {markers.map((mk) => (
                       <li key={mk.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
                         <span className="w-2 h-2 rounded-full bg-amber-400" />
-                        <span className="font-mono text-zinc-500">f{mk.frame}</span>
+                        <span className="font-mono text-zinc-400">f{mk.frame}</span>
                         <span className="flex-1">{mk.label}</span>
                         <button type="button"
                           onClick={() => lensRun('film-studios', 'marker-delete', { id: mk.id }).then(loadCut)}

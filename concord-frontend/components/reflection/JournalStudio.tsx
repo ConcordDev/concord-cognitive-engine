@@ -232,7 +232,7 @@ function ComposeTab({
           Your entries ({entries.length})
         </div>
         {entries.length === 0 ? (
-          <p className="text-[11px] text-zinc-600">No entries yet — save one above.</p>
+          <p className="text-[11px] text-zinc-400">No entries yet — save one above.</p>
         ) : (
           <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
             {entries.slice(0, 30).map((e) => (
@@ -242,7 +242,7 @@ function ComposeTab({
                   selectedId === e.id ? 'bg-amber-500/15 text-amber-200' : 'text-zinc-300 hover:bg-zinc-800/60'
                 }`}
               >
-                <span className="font-mono text-zinc-500">{e.date}</span>
+                <span className="font-mono text-zinc-400">{e.date}</span>
                 {e.encrypted && <Lock className="h-3 w-3 text-rose-400" />}
                 {e.kind === 'voice' && <Mic className="h-3 w-3 text-indigo-400" />}
                 {(e.media?.some((m) => m.type === 'image') || e.photoCount > 0) && <ImageIcon className="h-3 w-3 text-emerald-400" />}
@@ -384,7 +384,7 @@ function EntryEnrichPanel({
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={m.dataUrl} alt={m.caption || 'attachment'} className="h-16 w-full object-cover" />
                 ) : (
-                  <div className="flex h-16 items-center justify-center text-[10px] text-zinc-500">
+                  <div className="flex h-16 items-center justify-center text-[10px] text-zinc-400">
                     {m.type === 'audio' ? <Mic className="h-4 w-4" /> : m.type}
                   </div>
                 )}
@@ -462,7 +462,7 @@ function EntryEnrichPanel({
             </button>
           )}
         </div>
-        <p className="text-[10px] text-zinc-600">
+        <p className="text-[10px] text-zinc-400">
           The passphrase is never stored — losing it means losing the entry.
         </p>
       </section>
@@ -600,7 +600,7 @@ function BrowseTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
     [mapData],
   );
 
-  if (loading) return <p className="py-6 text-center text-[12px] text-zinc-500">Loading timeline…</p>;
+  if (loading) return <p className="py-6 text-center text-[12px] text-zinc-400">Loading timeline…</p>;
 
   return (
     <div className="space-y-3">
@@ -616,7 +616,7 @@ function BrowseTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
         </div>
         {tlEvents.length > 0
           ? <TimelineView events={tlEvents} height={140} />
-          : <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-[11px] text-zinc-600">No entries yet.</p>}
+          : <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-[11px] text-zinc-400">No entries yet.</p>}
       </section>
 
       {(timeline?.monthBuckets?.length ?? 0) > 0 && (
@@ -628,7 +628,7 @@ function BrowseTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
               return (
                 <div key={b.month} className="flex flex-1 flex-col items-center gap-0.5" title={`${b.month}: ${b.count}`}>
                   <div className="w-full rounded-t bg-amber-500/50" style={{ height: `${8 + (b.count / max) * 48}px` }} />
-                  <span className="text-[8px] text-zinc-600">{b.month.slice(5)}</span>
+                  <span className="text-[8px] text-zinc-400">{b.month.slice(5)}</span>
                 </div>
               );
             })}
@@ -642,14 +642,14 @@ function BrowseTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
         </div>
         {markers.length > 0
           ? <MapView markers={markers} height={260} />
-          : <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-[11px] text-zinc-600">
+          : <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-[11px] text-zinc-400">
               No geotagged entries — pin a location in the Compose tab.
             </p>}
         {(mapData?.places?.length ?? 0) > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {mapData!.places.map((p) => (
               <span key={p.name} className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300">
-                {p.name} <span className="text-zinc-500">×{p.count}</span>
+                {p.name} <span className="text-zinc-400">×{p.count}</span>
               </span>
             ))}
           </div>
@@ -722,7 +722,7 @@ function RemindersTab({ ok, err }: { ok: (t: string) => void; err: (t: string) =
           {DOW.map((d, i) => (
             <button key={d} type="button" onClick={() => toggleDay(i)}
               className={`flex-1 rounded py-1.5 text-[11px] font-medium ${
-                days.includes(i) ? 'bg-amber-500/20 text-amber-300' : 'bg-zinc-800 text-zinc-500'
+                days.includes(i) ? 'bg-amber-500/20 text-amber-300' : 'bg-zinc-800 text-zinc-400'
               }`}>
               {d}
             </button>
@@ -808,7 +808,7 @@ function SyncTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => voi
             </span>
           </div>
           {status.devices.length === 0 ? (
-            <p className="text-[11px] text-zinc-600">No devices yet.</p>
+            <p className="text-[11px] text-zinc-400">No devices yet.</p>
           ) : (
             <div className="space-y-1">
               {status.devices.map((d) => (
@@ -885,7 +885,7 @@ function ReviewTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
       </div>
 
       {review && (review.entryCount === 0 ? (
-        <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-[12px] text-zinc-600">
+        <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-[12px] text-zinc-400">
           {review.message || 'No entries this year.'}
         </p>
       ) : (
@@ -902,7 +902,7 @@ function ReviewTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
               { k: 'Busiest month', v: review.busiestMonth ?? '—' },
             ].map((s) => (
               <div key={s.k} className="rounded bg-zinc-900/60 px-2 py-1.5">
-                <div className="text-[9px] uppercase tracking-wider text-zinc-500">{s.k}</div>
+                <div className="text-[9px] uppercase tracking-wider text-zinc-400">{s.k}</div>
                 <div className="text-sm font-bold text-amber-300">{s.v}</div>
               </div>
             ))}
@@ -914,7 +914,7 @@ function ReviewTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
                 return (
                   <div key={m.month} className="flex flex-1 flex-col items-center gap-0.5" title={`${m.month}: ${m.count}`}>
                     <div className="w-full rounded-t bg-amber-500/50" style={{ height: `${6 + (m.count / max) * 44}px` }} />
-                    <span className="text-[8px] text-zinc-600">{m.month.slice(0, 3)}</span>
+                    <span className="text-[8px] text-zinc-400">{m.month.slice(0, 3)}</span>
                   </div>
                 );
               })}
@@ -924,7 +924,7 @@ function ReviewTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
             <div className="flex flex-wrap gap-1">
               {review.topTags!.map((t) => (
                 <span key={t.tag} className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">
-                  #{t.tag} <span className="text-zinc-500">{t.count}</span>
+                  #{t.tag} <span className="text-zinc-400">{t.count}</span>
                 </span>
               ))}
             </div>
@@ -946,7 +946,7 @@ function ReviewTab({ ok, err }: { ok: (t: string) => void; err: (t: string) => v
         {history.length > 0 && (
           <div className="space-y-1 pt-1">
             {history.slice(0, 6).map((h) => (
-              <div key={h.id} className="flex items-center gap-2 text-[10px] text-zinc-500">
+              <div key={h.id} className="flex items-center gap-2 text-[10px] text-zinc-400">
                 <Trash2 className="h-3 w-3 opacity-0" />
                 <span className="text-zinc-300">{h.format}</span>
                 <span>{h.entryCount} entries</span>

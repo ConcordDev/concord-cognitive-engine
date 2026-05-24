@@ -137,8 +137,8 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
     } catch (e) { console.error('[Chart] lab', e); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading chart…</div>;
-  if (!data) return <div className="p-10 text-center text-xs text-gray-500">Patient not found.</div>;
+  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading chart…</div>;
+  if (!data) return <div className="p-10 text-center text-xs text-gray-400">Patient not found.</div>;
 
   const p = data.patient;
   const activeProblems = data.problems.filter(x => x.status === 'active');
@@ -157,13 +157,13 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
             )}>{p.firstName.slice(0, 1)}{p.lastName.slice(0, 1)}</div>
             <div>
               <div className="text-base font-semibold text-white">{p.lastName}, {p.firstName}</div>
-              <div className="text-[10px] text-gray-500 font-mono">{p.mrn}</div>
+              <div className="text-[10px] text-gray-400 font-mono">{p.mrn}</div>
             </div>
           </div>
-          <div className="col-span-2"><div className="text-[10px] text-gray-500">DOB / Age</div><div className="text-xs text-white">{p.dob || '—'}</div></div>
-          <div className="col-span-1"><div className="text-[10px] text-gray-500">Sex</div><div className="text-xs text-white">{p.sex}</div></div>
-          <div className="col-span-3"><div className="text-[10px] text-gray-500">Phone / Email</div><div className="text-xs text-white truncate">{p.phone || '—'} {p.email && `· ${p.email}`}</div></div>
-          <div className="col-span-3"><div className="text-[10px] text-gray-500">Insurance</div><div className="text-xs text-white truncate">{p.insurancePlan || '—'}</div></div>
+          <div className="col-span-2"><div className="text-[10px] text-gray-400">DOB / Age</div><div className="text-xs text-white">{p.dob || '—'}</div></div>
+          <div className="col-span-1"><div className="text-[10px] text-gray-400">Sex</div><div className="text-xs text-white">{p.sex}</div></div>
+          <div className="col-span-3"><div className="text-[10px] text-gray-400">Phone / Email</div><div className="text-xs text-white truncate">{p.phone || '—'} {p.email && `· ${p.email}`}</div></div>
+          <div className="col-span-3"><div className="text-[10px] text-gray-400">Insurance</div><div className="text-xs text-white truncate">{p.insurancePlan || '—'}</div></div>
         </div>
         {/* Critical alerts row */}
         {(lifeThreatAllergies.length > 0 || criticalLabs.length > 0) && (
@@ -202,7 +202,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
               )}>
                 <Icon className="w-3 h-3" />
                 {t.label}
-                <span className="text-[10px] text-gray-500 font-mono">({t.count})</span>
+                <span className="text-[10px] text-gray-400 font-mono">({t.count})</span>
               </button>
             );
           })}
@@ -213,7 +213,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           {tab === 'problems' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Active problems · {activeProblems.length}</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Active problems · {activeProblems.length}</div>
                 <button onClick={() => setShowProblemForm(v => !v)} className="px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
                   <Plus className="w-3 h-3" />Add problem
                 </button>
@@ -222,7 +222,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                 <div className="border border-white/10 rounded p-3 space-y-2 bg-black/30">
                   <input value={problemDraft.name} onChange={e => setProblemDraft({ ...problemDraft, name: e.target.value })} placeholder="Problem (e.g. Hypertension) *" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <div className="flex items-center gap-2">
-                    <Search className="w-3.5 h-3.5 text-gray-500" />
+                    <Search className="w-3.5 h-3.5 text-gray-400" />
                     <input value={icdQuery} onChange={e => lookupICD(e.target.value)} placeholder="Search ICD-10 (live NLM lookup)" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                     {problemDraft.icd10 && <span className="text-[10px] font-mono text-emerald-300">{problemDraft.icd10}</span>}
                   </div>
@@ -241,7 +241,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                 </div>
               )}
               {data.problems.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">No problems documented.</div>
+                <div className="py-6 text-center text-xs text-gray-400">No problems documented.</div>
               ) : (
                 <ul className="divide-y divide-white/5">
                   {data.problems.map(pr => (
@@ -249,7 +249,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                       <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', pr.status === 'active' ? 'bg-amber-500/20 text-amber-300' : 'bg-gray-500/20 text-gray-400')}>{pr.status}</span>
                       <span className="text-xs font-mono text-cyan-300 w-16">{pr.icd10 || '—'}</span>
                       <span className="flex-1 text-sm text-white truncate">{pr.name}</span>
-                      <span className="text-[10px] text-gray-500">{pr.onsetDate}</span>
+                      <span className="text-[10px] text-gray-400">{pr.onsetDate}</span>
                       {pr.status === 'active' && <button onClick={() => resolveProblem(pr.id)} className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30">Resolve</button>}
                     </li>
                   ))}
@@ -262,7 +262,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           {tab === 'allergies' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Allergies · {data.allergies.length}</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Allergies · {data.allergies.length}</div>
                 <button onClick={() => setShowAllergyForm(v => !v)} className="px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
                   <Plus className="w-3 h-3" />Add allergy
                 </button>
@@ -288,7 +288,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                     <li key={a.id} className="py-2 flex items-center gap-3 group">
                       <AlertTriangle className={cn('w-3.5 h-3.5', a.severity === 'life_threatening' || a.severity === 'severe' ? 'text-rose-400' : 'text-amber-400')} />
                       <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', SEV_COLOUR[a.severity])}>{a.severity.replace('_', ' ')}</span>
-                      <span className="text-[10px] text-gray-500 uppercase">{a.kind}</span>
+                      <span className="text-[10px] text-gray-400 uppercase">{a.kind}</span>
                       <span className="flex-1 text-sm text-white">{a.allergen}</span>
                       <span className="text-[10px] text-gray-400 truncate max-w-[200px]">{a.reaction || '—'}</span>
                       <button onClick={() => deleteAllergy(a.id)} className="opacity-0 group-hover:opacity-100 text-rose-300 text-[10px]">remove</button>
@@ -303,7 +303,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           {tab === 'vitals' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Vitals · {data.vitals.length}</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Vitals · {data.vitals.length}</div>
                 <button onClick={() => setShowVitalsForm(v => !v)} className="px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
                   <Plus className="w-3 h-3" />Record vitals
                 </button>
@@ -312,7 +312,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                 <div className="border border-white/10 rounded p-3 grid grid-cols-8 gap-2 bg-black/30">
                   {(['systolic','diastolic','heartRate','tempF','spo2','weightLb','heightIn','painScore'] as const).map(k => (
                     <div key={k}>
-                      <div className="text-[10px] text-gray-500 mb-0.5 uppercase">{k.replace(/([A-Z])/g, ' $1').replace('Lb', '(lb)').replace('In', '(in)').replace('F', '(°F)')}</div>
+                      <div className="text-[10px] text-gray-400 mb-0.5 uppercase">{k.replace(/([A-Z])/g, ' $1').replace('Lb', '(lb)').replace('In', '(in)').replace('F', '(°F)')}</div>
                       <input type="number" step="0.1" value={vitalsDraft[k]} onChange={e => setVitalsDraft({ ...vitalsDraft, [k]: e.target.value })} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                     </div>
                   ))}
@@ -320,16 +320,16 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                 </div>
               )}
               {data.vitals.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">No vitals recorded.</div>
+                <div className="py-6 text-center text-xs text-gray-400">No vitals recorded.</div>
               ) : (
                 <table className="w-full text-xs">
-                  <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+                  <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
                     <tr><th className="text-left py-1.5">Time</th><th>BP</th><th>HR</th><th>Temp</th><th>SpO2</th><th>BMI</th><th>Pain</th><th className="text-right">Flags</th></tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {data.vitals.slice(0, 12).map(v => (
                       <tr key={v.id} className="hover:bg-white/[0.03]">
-                        <td className="py-1.5 text-[10px] text-gray-500 font-mono">{v.recordedAt.slice(0, 16).replace('T', ' ')}</td>
+                        <td className="py-1.5 text-[10px] text-gray-400 font-mono">{v.recordedAt.slice(0, 16).replace('T', ' ')}</td>
                         <td className="font-mono text-white">{v.systolic !== null ? `${v.systolic}/${v.diastolic}` : '—'}</td>
                         <td className="font-mono text-white">{v.heartRate ?? '—'}</td>
                         <td className="font-mono text-white">{v.tempF ?? '—'}</td>
@@ -355,7 +355,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           {tab === 'labs' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Lab results · {data.labs.length}</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Lab results · {data.labs.length}</div>
                 <button onClick={() => setShowLabForm(v => !v)} className="px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
                   <Plus className="w-3 h-3" />Record lab
                 </button>
@@ -370,10 +370,10 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                 </div>
               )}
               {data.labs.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">No lab results.</div>
+                <div className="py-6 text-center text-xs text-gray-400">No lab results.</div>
               ) : (
                 <table className="w-full text-xs">
-                  <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+                  <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
                     <tr><th className="text-left py-1.5">Test</th><th className="text-right">Value</th><th className="text-right">Reference</th><th className="text-right">Flag</th><th className="text-right">Date</th></tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -381,9 +381,9 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                       <tr key={l.id} className="hover:bg-white/[0.03]">
                         <td className="py-1.5 text-white">{l.test}</td>
                         <td className="text-right font-mono text-white">{l.value} {l.unit}</td>
-                        <td className="text-right font-mono text-[10px] text-gray-500">{l.refLow !== null && l.refHigh !== null ? `${l.refLow}–${l.refHigh}` : '—'}</td>
+                        <td className="text-right font-mono text-[10px] text-gray-400">{l.refLow !== null && l.refHigh !== null ? `${l.refLow}–${l.refHigh}` : '—'}</td>
                         <td className="text-right"><span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', FLAG_COLOUR[l.flag] || FLAG_COLOUR.unflagged)}>{l.flag.replace('_', ' ')}</span></td>
-                        <td className="text-right text-[10px] text-gray-500 font-mono">{l.collectedAt.slice(0, 10)}</td>
+                        <td className="text-right text-[10px] text-gray-400 font-mono">{l.collectedAt.slice(0, 10)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -395,17 +395,17 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           {/* IMMUNIZATIONS */}
           {tab === 'immunizations' && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Immunizations · {data.immunizations.length}</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Immunizations · {data.immunizations.length}</div>
               {data.immunizations.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">No immunizations on file.</div>
+                <div className="py-6 text-center text-xs text-gray-400">No immunizations on file.</div>
               ) : (
                 <ul className="divide-y divide-white/5">
                   {data.immunizations.map(i => (
                     <li key={i.id} className="py-2 flex items-center gap-3">
                       <Syringe className="w-3.5 h-3.5 text-emerald-400" />
                       <span className="text-sm text-white">{i.vaccine}</span>
-                      <span className="text-[10px] text-gray-500">{i.manufacturer || '—'} · lot {i.lotNumber || '—'}</span>
-                      <span className="ml-auto text-[10px] text-gray-500 font-mono">{i.administeredAt}</span>
+                      <span className="text-[10px] text-gray-400">{i.manufacturer || '—'} · lot {i.lotNumber || '—'}</span>
+                      <span className="ml-auto text-[10px] text-gray-400 font-mono">{i.administeredAt}</span>
                     </li>
                   ))}
                 </ul>
@@ -416,17 +416,17 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           {/* ENCOUNTERS */}
           {tab === 'encounters' && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Encounters · {data.encounters.length}</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Encounters · {data.encounters.length}</div>
               {data.encounters.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">No encounters yet. Start one from the Encounters tab.</div>
+                <div className="py-6 text-center text-xs text-gray-400">No encounters yet. Start one from the Encounters tab.</div>
               ) : (
                 <ul className="divide-y divide-white/5">
                   {data.encounters.map(e => (
                     <li key={e.id} className="py-2 flex items-center gap-3">
                       <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', e.status === 'signed' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300')}>{e.status}</span>
-                      <span className="font-mono text-[10px] text-gray-500">{e.number}</span>
+                      <span className="font-mono text-[10px] text-gray-400">{e.number}</span>
                       <span className="text-xs text-white truncate flex-1">{e.encounterType.replace('_', ' ')}: {e.chiefComplaint || '(no CC)'}</span>
-                      <span className="text-[10px] text-gray-500 font-mono">{e.encounteredAt.slice(0, 10)}</span>
+                      <span className="text-[10px] text-gray-400 font-mono">{e.encounteredAt.slice(0, 10)}</span>
                     </li>
                   ))}
                 </ul>

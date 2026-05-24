@@ -234,10 +234,10 @@ export function LensVerticalHero({
         <div className="flex items-center gap-2 mb-2">
           <Zap className="w-3.5 h-3.5 text-amber-300" />
           <h3 className="text-xs uppercase tracking-wider text-zinc-400 font-mono">Featured actions</h3>
-          {actionsLoading && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />}
+          {actionsLoading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         </div>
         {featured.length === 0 && !actionsLoading && (
-          <div className="text-xs text-zinc-500 italic px-2 py-3">
+          <div className="text-xs text-zinc-400 italic px-2 py-3">
             No actions registered for this lens yet.
           </div>
         )}
@@ -264,7 +264,7 @@ export function LensVerticalHero({
                       <span className="font-medium text-zinc-100">{prettyLabel(a.action)}</span>
                     </span>
                     {a.desc && (
-                      <span className="text-[10px] text-zinc-500 line-clamp-1">{a.desc}</span>
+                      <span className="text-[10px] text-zinc-400 line-clamp-1">{a.desc}</span>
                     )}
                   </button>
                   <button
@@ -292,13 +292,13 @@ export function LensVerticalHero({
       {paramOpen && (
         <div className="px-3 pb-3">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">
               Input JSON for {prettyLabel(paramOpen)}
             </span>
             <button
               type="button"
               onClick={() => { setParamOpen(null); setParamText(''); }}
-              className="ml-auto text-[10px] text-zinc-500 hover:text-zinc-200"
+              className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200"
             >
               close
             </button>
@@ -334,7 +334,7 @@ export function LensVerticalHero({
             <button
               type="button"
               onClick={() => { setResult(null); setError(null); setActiveAction(null); }}
-              className="ml-auto text-[10px] text-zinc-500 hover:text-zinc-200"
+              className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200"
             >
               clear
             </button>
@@ -358,7 +358,7 @@ function Tile({ icon: Icon, label, value, tint }: { icon: typeof Zap; label: str
     <div className="px-3 py-2">
       <div className="flex items-center gap-1.5">
         <Icon className={cn('w-3 h-3', tint)} />
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">{label}</span>
       </div>
       <div className={cn('text-lg font-bold tabular-nums mt-0.5', tint)}>{value}</div>
     </div>

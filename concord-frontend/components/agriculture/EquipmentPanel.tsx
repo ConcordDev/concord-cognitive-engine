@@ -65,7 +65,7 @@ export function EquipmentPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Tractor className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Equipment fleet</span>
-        <span className="ml-auto text-[10px] text-gray-500">{equipment.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{equipment.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name (8R 410)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -79,9 +79,9 @@ export function EquipmentPanel() {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : equipment.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Tractor className="w-6 h-6 mx-auto mb-2 opacity-30" />No equipment yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Tractor className="w-6 h-6 mx-auto mb-2 opacity-30" />No equipment yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {equipment.map(e => (
@@ -89,11 +89,11 @@ export function EquipmentPanel() {
                 <Tractor className="w-4 h-4 text-amber-300 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{e.name}</div>
-                  <div className="text-[10px] text-gray-500">{e.year} {e.make} {e.model} · {e.kind}</div>
+                  <div className="text-[10px] text-gray-400">{e.year} {e.make} {e.model} · {e.kind}</div>
                 </div>
                 <div className="text-right text-[10px]">
                   <div className="inline-flex items-center gap-1 text-gray-400"><Fuel className="w-2.5 h-2.5" />{e.fuelLevelPct}%</div>
-                  <div className="text-gray-500">{e.hoursEngine}h</div>
+                  <div className="text-gray-400">{e.hoursEngine}h</div>
                 </div>
                 <select value={e.status} onChange={ev => setStatus(e.id, ev.target.value as Equipment['status'])} className={cn('text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0', STATUS_COLOUR[e.status])}>
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}

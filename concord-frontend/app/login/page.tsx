@@ -176,7 +176,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <p className="text-center text-gray-500 text-xs mt-6">
+        <p className="text-center text-gray-400 text-xs mt-6">
           Sovereign by design. Your data never leaves your control.
         </p>
       </div>

@@ -206,7 +206,7 @@ function ProposePairForm({ onCreated }: { onCreated: () => void }) {
     set: (v: ReturnType<typeof emptySide>) => void,
   ) => (
     <div className="space-y-2 rounded-lg border border-white/5 bg-black/30 p-3">
-      <p className="text-[11px] font-mono uppercase tracking-wider text-gray-500">{label}</p>
+      <p className="text-[11px] font-mono uppercase tracking-wider text-gray-400">{label}</p>
       <input
         value={s.domain}
         onChange={(e) => set({ ...s, domain: e.target.value })}
@@ -258,7 +258,7 @@ function ProposePairForm({ onCreated }: { onCreated: () => void }) {
           <X className="h-4 w-4" />
         </button>
       </div>
-      <p className="text-[11px] text-gray-600">
+      <p className="text-[11px] text-gray-400">
         Resonance is high invariant alignment with low semantic overlap — a genuine analogy, not the
         same idea restated. List the structural invariants of each side; matching tokens drive the
         score.
@@ -410,7 +410,7 @@ function DrilldownModal({
                   <p className="font-mono text-base font-bold text-white">
                     {m.raw != null ? m.raw : `${((m.v ?? 0) * 100).toFixed(0)}%`}
                   </p>
-                  <p className="text-[10px] text-gray-600">{m.label}</p>
+                  <p className="text-[10px] text-gray-400">{m.label}</p>
                 </div>
               ))}
             </div>
@@ -420,7 +420,7 @@ function DrilldownModal({
             </p>
 
             <div>
-              <p className="mb-2 text-[11px] font-mono uppercase tracking-wider text-gray-500">
+              <p className="mb-2 text-[11px] font-mono uppercase tracking-wider text-gray-400">
                 Invariant Correspondences
               </p>
               <div className="space-y-1.5">
@@ -465,12 +465,12 @@ function DrilldownModal({
             {trendChart && (
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <p className="text-[11px] font-mono uppercase tracking-wider text-gray-500">
+                  <p className="text-[11px] font-mono uppercase tracking-wider text-gray-400">
                     Resonance Trend ({trend?.samples} samples · {trend?.direction})
                   </p>
                   <button
                     onClick={sampleTrend}
-                    className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-gray-500 hover:text-white"
+                    className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white"
                   >
                     Sample again
                   </button>
@@ -566,7 +566,7 @@ function GraphView({ graph }: { graph: ResonanceGraph }) {
         ].map((m) => (
           <div key={m.label} className="rounded-lg border border-white/5 bg-black/30 p-2 text-center">
             <p className="font-mono text-base font-bold text-white">{m.v}</p>
-            <p className="text-[10px] text-gray-600">{m.label}</p>
+            <p className="text-[10px] text-gray-400">{m.label}</p>
           </div>
         ))}
       </div>
@@ -633,7 +633,7 @@ function GraphView({ graph }: { graph: ResonanceGraph }) {
       </div>
 
       <div className="space-y-1">
-        <p className="text-[11px] font-mono uppercase tracking-wider text-gray-500">Edges</p>
+        <p className="text-[11px] font-mono uppercase tracking-wider text-gray-400">Edges</p>
         {graph.edges.map((e, i) => (
           <div
             key={i}
@@ -792,7 +792,7 @@ export function CrossDomainWorkbench() {
               <p className="font-mono text-lg font-bold" style={{ color: m.color }}>
                 {m.v}
               </p>
-              <p className="text-[10px] text-gray-600">{m.label}</p>
+              <p className="text-[10px] text-gray-400">{m.label}</p>
             </div>
           ))}
         </div>
@@ -868,7 +868,7 @@ export function CrossDomainWorkbench() {
                     </div>
                     <p className="mt-1 truncate text-xs text-gray-400">{p.a.title}</p>
                     <p className="truncate text-xs text-gray-400">{p.b.title}</p>
-                    <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-600">
+                    <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-400">
                       <span>{cmeta(p.classification).label}</span>
                       <span>inv {(p.invOverlap * 100).toFixed(0)}%</span>
                       <span>sem-dist {((1 - p.tokOverlap) * 100).toFixed(0)}%</span>
@@ -887,12 +887,12 @@ export function CrossDomainWorkbench() {
             <div className="space-y-2">
               {alerts.length > 0 && (
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] text-gray-600">
+                  <p className="text-[11px] text-gray-400">
                     {unackCount} unacknowledged of {alerts.length}
                   </p>
                   <button
                     onClick={clearAcked}
-                    className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[10px] text-gray-500 hover:text-white"
+                    className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[10px] text-gray-400 hover:text-white"
                   >
                     <Trash2 className="h-3 w-3" /> Clear acknowledged
                   </button>
@@ -929,11 +929,11 @@ export function CrossDomainWorkbench() {
                     </div>
                     <p className="mt-1 text-xs text-gray-400">{a.message}</p>
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[10px] text-gray-600">
+                      <span className="text-[10px] text-gray-400">
                         {new Date(a.raisedAt).toLocaleString()}
                       </span>
                       {a.acknowledged ? (
-                        <span className="ml-auto flex items-center gap-1 text-[10px] text-gray-600">
+                        <span className="ml-auto flex items-center gap-1 text-[10px] text-gray-400">
                           <Check className="h-3 w-3" /> acknowledged
                         </span>
                       ) : (
@@ -985,14 +985,14 @@ export function CrossDomainWorkbench() {
                         {ins.layers.core.claims.map((c, i) => (
                           <p
                             key={i}
-                            className="border-l border-white/10 pl-2 font-mono text-[10px] text-gray-500"
+                            className="border-l border-white/10 pl-2 font-mono text-[10px] text-gray-400"
                           >
                             {c}
                           </p>
                         ))}
                       </div>
                     )}
-                    <p className="mt-2 text-[10px] text-gray-600">
+                    <p className="mt-2 text-[10px] text-gray-400">
                       {new Date(ins.createdAt).toLocaleString()} · {ins.kind}
                     </p>
                   </div>

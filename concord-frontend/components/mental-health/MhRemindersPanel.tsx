@@ -55,7 +55,7 @@ export function MhRemindersPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -69,7 +69,7 @@ export function MhRemindersPanel() {
             <Bell className="w-3.5 h-3.5 text-sky-400" /> Today
           </h3>
           {due.total === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">No reminders set. Add one below.</p>
+            <p className="text-[11px] text-zinc-400 italic">No reminders set. Add one below.</p>
           ) : due.due.length === 0 ? (
             <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-900/50 rounded-lg px-3 py-2">
               <Check className="w-4 h-4 text-emerald-400" />
@@ -81,7 +81,7 @@ export function MhRemindersPanel() {
                 <li key={d.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                   <span className="text-xs text-zinc-200 capitalize flex-1">{d.kind} check-in</span>
-                  <span className="text-[11px] font-mono text-zinc-500">{d.time}</span>
+                  <span className="text-[11px] font-mono text-zinc-400">{d.time}</span>
                 </li>
               ))}
             </ul>
@@ -118,9 +118,9 @@ export function MhRemindersPanel() {
                   aria-label={r.enabled ? 'Disable reminder' : 'Enable reminder'}>
                   <span className={cn('block w-4 h-4 rounded-full bg-white transition-transform', r.enabled && 'translate-x-4')} />
                 </button>
-                <span className={cn('text-xs capitalize flex-1', r.enabled ? 'text-zinc-200' : 'text-zinc-500')}>{r.kind}</span>
-                <span className="text-[11px] font-mono text-zinc-500">{r.time}</span>
-                <button type="button" onClick={() => del(r.id)} className="text-zinc-500 hover:text-rose-400" aria-label="Delete reminder">
+                <span className={cn('text-xs capitalize flex-1', r.enabled ? 'text-zinc-200' : 'text-zinc-400')}>{r.kind}</span>
+                <span className="text-[11px] font-mono text-zinc-400">{r.time}</span>
+                <button type="button" onClick={() => del(r.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete reminder">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>

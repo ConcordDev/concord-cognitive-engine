@@ -75,7 +75,7 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const verdictFor = (id: string) => analysis?.loops.find((a) => a.id === id);
@@ -111,7 +111,7 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
       )}
 
       {loops.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No core loops modelled yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No core loops modelled yet.</p>
       ) : (
         <ul className="space-y-2">
           {loops.map((loop) => {
@@ -144,8 +144,8 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
                       <li key={s.id} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-1 text-[11px]">
                         <span className="text-zinc-600 w-4">{i + 1}</span>
                         <span className="flex-1 text-zinc-200">{s.label}</span>
-                        {s.resource && <span className="text-zinc-500">{s.resource}</span>}
-                        <span className={cn('font-mono', s.delta > 0 ? 'text-emerald-400' : s.delta < 0 ? 'text-rose-400' : 'text-zinc-500')}>
+                        {s.resource && <span className="text-zinc-400">{s.resource}</span>}
+                        <span className={cn('font-mono', s.delta > 0 ? 'text-emerald-400' : s.delta < 0 ? 'text-rose-400' : 'text-zinc-400')}>
                           {s.delta > 0 ? '+' : ''}{s.delta}
                         </span>
                         <button type="button" onClick={() => delStep(loop.id, s.id)} className="text-zinc-600 hover:text-rose-400">

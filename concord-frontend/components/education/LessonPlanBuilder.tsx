@@ -104,7 +104,7 @@ ${plan.assessment}
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BookOpen className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Lesson plan builder</span>
-        <span className="ml-auto text-[10px] text-gray-500">Save teachers 5+ hrs/week</span>
+        <span className="ml-auto text-[10px] text-gray-400">Save teachers 5+ hrs/week</span>
       </header>
 
       <div className="p-4 space-y-3">
@@ -152,7 +152,7 @@ ${plan.assessment}
                 <Download className="w-3 h-3" /> .md
               </button>
             </div>
-            <div className="text-[10px] text-gray-500">{plan.subject} · Grade {plan.grade} · {plan.duration}</div>
+            <div className="text-[10px] text-gray-400">{plan.subject} · Grade {plan.grade} · {plan.duration}</div>
 
             <Section title="Objectives" items={plan.objectives} accent="text-green-300" />
             <Section title="Materials" items={plan.materials} accent="text-cyan-300" />
@@ -164,14 +164,14 @@ ${plan.assessment}
               <div className="space-y-1">
                 <h4 className="text-xs font-bold text-yellow-300">Differentiation</h4>
                 <ul className="text-xs space-y-1 ml-4">
-                  <li><span className="text-gray-500">Struggling:</span> <span className="text-gray-200">{plan.differentiation.struggling}</span></li>
-                  <li><span className="text-gray-500">On grade:</span> <span className="text-gray-200">{plan.differentiation.grade_level}</span></li>
-                  <li><span className="text-gray-500">Advanced:</span> <span className="text-gray-200">{plan.differentiation.advanced}</span></li>
+                  <li><span className="text-gray-400">Struggling:</span> <span className="text-gray-200">{plan.differentiation.struggling}</span></li>
+                  <li><span className="text-gray-400">On grade:</span> <span className="text-gray-200">{plan.differentiation.grade_level}</span></li>
+                  <li><span className="text-gray-400">Advanced:</span> <span className="text-gray-200">{plan.differentiation.advanced}</span></li>
                 </ul>
               </div>
             )}
             <Block title="Assessment" body={plan.assessment} />
-            <p className="text-[10px] text-gray-500 inline-flex items-center gap-1">
+            <p className="text-[10px] text-gray-400 inline-flex items-center gap-1">
               <FileText className="w-3 h-3" /> Saved as DTU — sellable on the marketplace, royalties on every fork
             </p>
           </div>
@@ -184,7 +184,7 @@ ${plan.assessment}
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-gray-500 block mb-0.5">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-gray-400 block mb-0.5">{label}</span>
       {children}
     </label>
   );

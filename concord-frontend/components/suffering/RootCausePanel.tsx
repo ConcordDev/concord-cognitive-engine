@@ -154,13 +154,13 @@ export function RootCausePanel({ pains }: { pains: Pain[] }) {
       {result && (
         <div className="space-y-4 mt-3 pt-3 border-t border-white/10">
           <div>
-            <p className="text-xs text-gray-500 mb-1.5">
+            <p className="text-xs text-gray-400 mb-1.5">
               5-whys tree — {result.causeCount} cause{result.causeCount !== 1 ? 's' : ''} for &ldquo;{result.painTitle}&rdquo;
             </p>
             <TreeDiagram root={result.tree} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+            <p className="text-xs text-gray-400 mb-1.5 flex items-center gap-1">
               <Fish className="w-3.5 h-3.5" /> Fishbone (Ishikawa categories)
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -181,7 +181,7 @@ export function RootCausePanel({ pains }: { pains: Pain[] }) {
           </div>
           {result.rootCauses.length > 0 && (
             <div>
-              <p className="text-xs text-gray-500 mb-1.5">
+              <p className="text-xs text-gray-400 mb-1.5">
                 Likely root causes (highest-probability leaves)
               </p>
               <ul className="space-y-1">

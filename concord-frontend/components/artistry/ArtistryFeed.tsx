@@ -85,7 +85,7 @@ export function ArtistryFeed({
               onClick={() => onFeedModeChange('chronological')}
               className={cn(
                 'flex items-center gap-1 px-3 py-1.5 rounded text-xs transition-colors',
-                feedMode === 'chronological' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white',
+                feedMode === 'chronological' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white',
               )}
             >
               <Clock className="w-3 h-3" /> New
@@ -94,7 +94,7 @@ export function ArtistryFeed({
               onClick={() => onFeedModeChange('discovery')}
               className={cn(
                 'flex items-center gap-1 px-3 py-1.5 rounded text-xs transition-colors',
-                feedMode === 'discovery' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-500 hover:text-white',
+                feedMode === 'discovery' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white',
               )}
             >
               <Sparkles className="w-3 h-3" /> Discover
@@ -106,7 +106,7 @@ export function ArtistryFeed({
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
               'flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition-colors',
-              showFilters || activeFilterCount > 0 ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-500 hover:text-white',
+              showFilters || activeFilterCount > 0 ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-400 hover:text-white',
             )}
           >
             <SlidersHorizontal className="w-3 h-3" />
@@ -120,7 +120,7 @@ export function ArtistryFeed({
           {activeFilterCount > 0 && (
             <button
               onClick={() => onFilterChange({ contentTypes: [], lenses: [], tags: [], timeRange: 'all' })}
-              className="text-[10px] text-gray-500 hover:text-white"
+              className="text-[10px] text-gray-400 hover:text-white"
             >
               Clear all
             </button>
@@ -128,7 +128,7 @@ export function ArtistryFeed({
         </div>
 
         {/* No-citation badge — architectural commitment */}
-        <div className="flex items-center gap-1 px-2 py-1 rounded bg-white/[0.03] text-[9px] text-gray-500">
+        <div className="flex items-center gap-1 px-2 py-1 rounded bg-white/[0.03] text-[9px] text-gray-400">
           <span className="w-1.5 h-1.5 rounded-full bg-neon-green/50" />
           Free discovery · No citations · No downloads
         </div>
@@ -139,7 +139,7 @@ export function ArtistryFeed({
         <div className="bg-white/[0.03] rounded-xl border border-white/5 p-4 space-y-3">
           {/* Content type filters */}
           <div>
-            <h4 className="text-[10px] text-gray-500 uppercase mb-2">Content Type</h4>
+            <h4 className="text-[10px] text-gray-400 uppercase mb-2">Content Type</h4>
             <div className="flex flex-wrap gap-1.5">
               {CONTENT_TYPE_FILTERS.map(({ type, label, icon: Icon }) => (
                 <button
@@ -149,7 +149,7 @@ export function ArtistryFeed({
                     'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-colors border',
                     filters.contentTypes.includes(type)
                       ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/20'
-                      : 'text-gray-500 hover:text-white border-white/5 hover:border-white/10',
+                      : 'text-gray-400 hover:text-white border-white/5 hover:border-white/10',
                   )}
                 >
                   <Icon className="w-3 h-3" /> {label}
@@ -160,7 +160,7 @@ export function ArtistryFeed({
 
           {/* Lens filters */}
           <div>
-            <h4 className="text-[10px] text-gray-500 uppercase mb-2">Source Lens</h4>
+            <h4 className="text-[10px] text-gray-400 uppercase mb-2">Source Lens</h4>
             <div className="flex flex-wrap gap-1.5">
               {LENS_FILTERS.map(lens => (
                 <button
@@ -170,7 +170,7 @@ export function ArtistryFeed({
                     'px-2.5 py-1 rounded-full text-xs capitalize transition-colors border',
                     filters.lenses.includes(lens)
                       ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
-                      : 'text-gray-500 hover:text-white border-white/5 hover:border-white/10',
+                      : 'text-gray-400 hover:text-white border-white/5 hover:border-white/10',
                   )}
                 >
                   {lens}
@@ -181,7 +181,7 @@ export function ArtistryFeed({
 
           {/* Time range */}
           <div>
-            <h4 className="text-[10px] text-gray-500 uppercase mb-2">Time Range</h4>
+            <h4 className="text-[10px] text-gray-400 uppercase mb-2">Time Range</h4>
             <div className="flex gap-1.5">
               {Object.entries(TIME_RANGE_LABELS).map(([key, label]) => (
                 <button
@@ -191,7 +191,7 @@ export function ArtistryFeed({
                     'px-2.5 py-1 rounded-full text-xs transition-colors border',
                     filters.timeRange === key
                       ? 'bg-white/10 text-white border-white/20'
-                      : 'text-gray-500 hover:text-white border-white/5',
+                      : 'text-gray-400 hover:text-white border-white/5',
                   )}
                 >
                   {label}
@@ -214,7 +214,7 @@ export function ArtistryFeed({
       {/* Load more / empty state */}
       {loading && (
         <div className="flex justify-center py-8">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-gray-400">
             <div className="w-4 h-4 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
             Loading...
           </div>
@@ -233,7 +233,7 @@ export function ArtistryFeed({
       )}
 
       {!loading && posts.length === 0 && (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-400">
           <Sparkles className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No creative works found</p>
           <p className="text-xs mt-1">Try adjusting your filters or check back later</p>

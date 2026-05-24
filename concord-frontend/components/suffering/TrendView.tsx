@@ -99,14 +99,14 @@ export function TrendView({ refreshKey, onChanged }: { refreshKey: number; onCha
         <div className={`flex items-center gap-2 mb-3 text-sm ${dirTone}`}>
           <DirIcon className="w-4 h-4" />
           <span className="capitalize font-medium">{data.direction}</span>
-          <span className="text-gray-500">
+          <span className="text-gray-400">
             (Δ impact {data.deltaImpact > 0 ? '+' : ''}{data.deltaImpact} across {data.count} snapshots)
           </span>
         </div>
       )}
 
       {!data || data.count === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-6">
+        <p className="text-gray-400 text-sm text-center py-6">
           No snapshots yet. Record one to start tracking pain metrics over time.
         </p>
       ) : (
@@ -123,7 +123,7 @@ export function TrendView({ refreshKey, onChanged }: { refreshKey: number; onCha
             height={220}
           />
           <div>
-            <p className="text-xs text-gray-500 mb-1">Snapshot timeline</p>
+            <p className="text-xs text-gray-400 mb-1">Snapshot timeline</p>
             <TimelineView events={timelineEvents} height={110} />
           </div>
           {data.latest && (
@@ -144,7 +144,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg bg-white/[0.03] border border-white/10 p-2">
       <p className="text-lg font-bold">{value}</p>
-      <p className="text-gray-500">{label}</p>
+      <p className="text-gray-400">{label}</p>
     </div>
   );
 }

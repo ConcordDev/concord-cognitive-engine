@@ -86,7 +86,7 @@ export function LorePanel({ worldId = 'concordia-hub', onClose }: LorePanelProps
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-6 py-5">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-500">
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
               <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
               <p className="text-sm">The Oracle is consulting ancient records…</p>
             </div>
@@ -98,13 +98,13 @@ export function LorePanel({ worldId = 'concordia-hub', onClose }: LorePanelProps
                 <p key={i} className="text-gray-300 leading-relaxed text-sm">{para}</p>
               ))}
               {lore?.generatedAt && (
-                <p className="text-xs text-gray-600 pt-2 border-t border-gray-800">
+                <p className="text-xs text-gray-400 pt-2 border-t border-gray-800">
                   Chronicle updated {new Date(lore.generatedAt).toLocaleString()}
                 </p>
               )}
             </div>
           ) : (
-            <div className="text-center py-16 text-gray-500 text-sm">
+            <div className="text-center py-16 text-gray-400 text-sm">
               No chronicle entries yet. The Oracle watches in silence.
             </div>
           )}

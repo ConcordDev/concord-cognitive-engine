@@ -45,7 +45,7 @@ export function TaxLossHarvester() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Scissors className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Tax-loss harvester</span>
-        <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] text-gray-500">
+        <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] text-gray-400">
           Min loss $
           <input type="number" value={minLoss} onChange={e => setMinLoss(e.target.value)} className="w-16 px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
         </span>
@@ -67,12 +67,12 @@ export function TaxLossHarvester() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : !result || result.candidates.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Scissors className="w-6 h-6 mx-auto mb-2 opacity-30" />No harvestable losses. (Add losing positions in Holdings or lower min loss.)</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Scissors className="w-6 h-6 mx-auto mb-2 opacity-30" />No harvestable losses. (Add losing positions in Holdings or lower min loss.)</div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+            <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
               <tr><th className="text-left px-3 py-1.5">Symbol</th><th className="text-right">Shares</th><th className="text-right">Cost</th><th className="text-right">Price</th><th className="text-right">Loss</th><th className="pr-3">Status</th></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -96,7 +96,7 @@ export function TaxLossHarvester() {
         )}
       </div>
 
-      <footer className="px-3 py-2 border-t border-white/10 text-[10px] text-gray-500">
+      <footer className="px-3 py-2 border-t border-white/10 text-[10px] text-gray-400">
         Wash-sale rule: re-buying within 30 days disallows the loss claim. Long-term losses offset LTCG first.
       </footer>
     </div>

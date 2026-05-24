@@ -76,7 +76,7 @@ export function SuppliersPortal() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Building2 className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Supplier portal · Scope 3</span>
-        <span className="ml-auto text-[10px] text-gray-500">{responseRate}% response · {suppliers.length} suppliers</span>
+        <span className="ml-auto text-[10px] text-gray-400">{responseRate}% response · {suppliers.length} suppliers</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Supplier name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -88,9 +88,9 @@ export function SuppliersPortal() {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : suppliers.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Building2 className="w-6 h-6 mx-auto mb-2 opacity-30" />No suppliers yet. Add your top 20 by spend to start engaging.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Building2 className="w-6 h-6 mx-auto mb-2 opacity-30" />No suppliers yet. Add your top 20 by spend to start engaging.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {suppliers.map(s => (
@@ -98,7 +98,7 @@ export function SuppliersPortal() {
                 <div className="flex items-center gap-2 mb-1">
                   <Building2 className="w-3.5 h-3.5 text-violet-300" />
                   <span className="text-sm text-white">{s.name}</span>
-                  <span className="text-[10px] text-gray-500">{s.email}</span>
+                  <span className="text-[10px] text-gray-400">{s.email}</span>
                   <span className="ml-auto text-[10px] text-gray-400 font-mono">${s.spendUsd.toLocaleString()}/yr</span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', STATUS_COLOUR[s.invitationStatus])}>{s.invitationStatus.replace('_', ' ')}</span>
                 </div>

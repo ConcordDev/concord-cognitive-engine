@@ -166,7 +166,7 @@ export function ActionWheel({ variant, holdKey, spokes }: ActionWheelProps) {
           );
         })}
         {/* Centre label */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] uppercase tracking-widest text-zinc-500 pointer-events-none">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] uppercase tracking-widest text-zinc-400 pointer-events-none">
           {variant.replace('_', ' ')}
         </div>
       </div>

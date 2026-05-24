@@ -69,21 +69,21 @@ export function SpecimenCollection() {
     await refresh();
   }, [refresh]);
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Gem className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Specimen Collection</h3>
-        <span className="text-[11px] text-zinc-500">life-list</span>
+        <span className="text-[11px] text-zinc-400">life-list</span>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-3">
         {([['Unique', stats.unique], ['Specimens', stats.total], ['Identified', stats.identified]] as const).map(([l, v]) => (
           <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
             <p className="text-sm font-bold text-zinc-100">{v}</p>
-            <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+            <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
           </div>
         ))}
       </div>
@@ -119,7 +119,7 @@ export function SpecimenCollection() {
       {error && <p className="text-xs text-rose-400 mb-2">{error}</p>}
 
       {rows.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No specimens collected yet.</p>
+        <p className="text-xs text-zinc-400 italic">No specimens collected yet.</p>
       ) : (
         <ul className="space-y-1 max-h-72 overflow-y-auto">
           {rows.map((c) => (
@@ -131,7 +131,7 @@ export function SpecimenCollection() {
               <span className={cn('text-[9px] px-1.5 py-0.5 rounded capitalize', KIND_COLOR[c.kind] || KIND_COLOR.mineral)}>{c.kind}</span>
               <span className="text-xs font-semibold text-zinc-100 flex-1 truncate">{c.name}</span>
               {c.count > 1 && <span className="text-[10px] text-zinc-400">×{c.count}</span>}
-              {c.locality && <span className="text-[10px] text-zinc-500 truncate max-w-[8rem]">{c.locality}</span>}
+              {c.locality && <span className="text-[10px] text-zinc-400 truncate max-w-[8rem]">{c.locality}</span>}
               <button onClick={() => remove(c.id)} aria-label="Remove specimen"
                 className="opacity-0 group-hover:opacity-100 text-rose-400">
                 <Trash2 className="w-3 h-3" />

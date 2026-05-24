@@ -152,7 +152,7 @@ export default function GlobalPage() {
       onRetry={() => refetch()}
       filters={
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500" />
+          <Filter className="w-4 h-4 text-gray-400" />
           <select
             value={visibilityFilter}
             onChange={(e) => setVisibilityFilter(e.target.value)}
@@ -239,10 +239,10 @@ export default function GlobalPage() {
                     </span>
                   )}
                   {!!item.tier && (
-                    <span className="text-xs text-gray-500">{item.tier as string}</span>
+                    <span className="text-xs text-gray-400">{item.tier as string}</span>
                   )}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">
+                <div className="text-xs text-gray-400 mt-0.5">
                   {!!item.type && <span className="mr-3">Type: {item.type as string}</span>}
                   {!!item.created_at && <span>Created: {new Date(item.created_at as string).toLocaleDateString()}</span>}
                 </div>

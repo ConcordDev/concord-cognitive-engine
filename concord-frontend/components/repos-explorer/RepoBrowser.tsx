@@ -55,7 +55,7 @@ export function RepoBrowser() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); load.mutate(); }} className="flex items-center gap-2">
         <input type="text" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="owner" className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-white" />
-        <span className="text-zinc-500">/</span>
+        <span className="text-zinc-400">/</span>
         <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="repo" className="w-40 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-white" />
         <button type="submit" disabled={!owner || !repo || load.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
           {load.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Github className="h-3.5 w-3.5" />}
@@ -76,7 +76,7 @@ export function RepoBrowser() {
 
       {Object.keys(languages).length > 0 && (
         <div className="rounded-md border border-zinc-800 bg-zinc-950 p-2">
-          <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">
+          <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
             <Code2 className="h-3 w-3" /> Language mix
           </div>
           <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-800">
@@ -117,7 +117,7 @@ export function RepoBrowser() {
                   {i.isPullRequest && <span className="rounded bg-violet-500/20 px-1 text-[9px] text-violet-300">PR</span>}
                 </div>
                 <div className="line-clamp-1 text-zinc-200">{i.title}</div>
-                <div className="flex flex-wrap gap-1 text-[10px] text-zinc-500">
+                <div className="flex flex-wrap gap-1 text-[10px] text-zinc-400">
                   {i.labels?.map((l) => <span key={l} className="rounded bg-zinc-800 px-1">{l}</span>)}
                 </div>
               </a>

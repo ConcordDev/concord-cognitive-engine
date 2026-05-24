@@ -86,7 +86,7 @@ export function StrategyExperimentPanel() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <FlaskConical className="w-4 h-4 text-neon-pink" /> Strategy A/B Experiments
-          <span className="text-xs text-gray-500 font-normal">{experiments.length}</span>
+          <span className="text-xs text-gray-400 font-normal">{experiments.length}</span>
         </h3>
         <button onClick={() => setShowForm((s) => !s)}
           className="text-xs text-neon-pink hover:underline flex items-center gap-1">
@@ -95,7 +95,7 @@ export function StrategyExperimentPanel() {
       </div>
 
       {err && <p className="text-xs text-red-400">{err}</p>}
-      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-500" />}
+      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
 
       {showForm && (
         <div className="bg-lattice-deep rounded-lg p-3 space-y-2 border border-white/5">
@@ -118,7 +118,7 @@ export function StrategyExperimentPanel() {
       )}
 
       {experiments.length === 0 && !loading && (
-        <p className="text-center py-6 text-gray-500 text-sm">No experiments yet.</p>
+        <p className="text-center py-6 text-gray-400 text-sm">No experiments yet.</p>
       )}
 
       <div className="space-y-3">
@@ -128,7 +128,7 @@ export function StrategyExperimentPanel() {
           return (
             <div key={e.id} className="bg-lattice-surface rounded-lg p-3 border border-white/5">
               <p className="text-sm font-semibold">{e.title}</p>
-              {e.hypothesis && <p className="text-xs text-gray-500">{e.hypothesis}</p>}
+              {e.hypothesis && <p className="text-xs text-gray-400">{e.hypothesis}</p>}
               <div className="grid grid-cols-2 gap-2 mt-2">
                 {[s.armA, s.armB].map((arm, i) => (
                   <div key={i} className={`rounded p-2 border ${
@@ -137,13 +137,13 @@ export function StrategyExperimentPanel() {
                       : 'border-white/5 bg-lattice-deep'
                   }`}>
                     <p className="text-xs font-medium text-gray-200">{i === 0 ? 'A' : 'B'}: {arm.name}</p>
-                    <p className="text-[10px] text-gray-500">
+                    <p className="text-[10px] text-gray-400">
                       n={arm.n} · μ={arm.mean} · σ={arm.stdDev}
                     </p>
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-gray-500 mt-1.5">
+              <p className="text-[10px] text-gray-400 mt-1.5">
                 Winner: <span className="text-neon-cyan">{s.winner || '—'}</span>
                 {' · '}effect size {s.effectSize}
                 {' · '}<span className="text-neon-purple">{s.confidence}</span>

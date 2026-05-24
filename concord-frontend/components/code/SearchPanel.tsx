@@ -74,19 +74,19 @@ export function SearchPanel({
     finally { setLoading(false); }
   }
 
-  if (!projectId) return <div className="p-3 text-xs text-gray-500 italic">Open a project to search.</div>;
+  if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to search.</div>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center border-b border-white/10">
         <button type="button" onClick={() => setMode('text')}
           className={cn('px-3 py-1.5 text-[11px] font-semibold border-b-2',
-            mode === 'text' ? 'text-white border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300')}>
+            mode === 'text' ? 'text-white border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-300')}>
           Search
         </button>
         <button type="button" onClick={() => setMode('refs')}
           className={cn('px-3 py-1.5 text-[11px] font-semibold border-b-2',
-            mode === 'refs' ? 'text-white border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300')}>
+            mode === 'refs' ? 'text-white border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-300')}>
           References
         </button>
       </div>
@@ -94,7 +94,7 @@ export function SearchPanel({
       <div className="p-2 border-b border-white/10 space-y-1.5">
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => setShowReplace((v) => !v)}
-            title="Toggle replace" className="text-gray-500 hover:text-white">
+            title="Toggle replace" className="text-gray-400 hover:text-white">
             <Replace className="w-3.5 h-3.5" />
           </button>
           <input value={q} onChange={(e) => setQ(e.target.value)}
@@ -118,7 +118,7 @@ export function SearchPanel({
           <div className="flex items-center gap-1 pl-5">
             {([['caseSensitive', CaseSensitive], ['wholeWord', WholeWord], ['regex', Regex]] as const).map(([k, Icon]) => (
               <button key={k} type="button" onClick={() => setOpts({ ...opts, [k]: !opts[k] })}
-                className={cn('p-1 rounded border', opts[k] ? 'border-blue-500 bg-blue-500/15 text-blue-300' : 'border-white/10 text-gray-500 hover:text-white')}>
+                className={cn('p-1 rounded border', opts[k] ? 'border-blue-500 bg-blue-500/15 text-blue-300' : 'border-white/10 text-gray-400 hover:text-white')}>
                 <Icon className="w-3 h-3" />
               </button>
             ))}
@@ -134,10 +134,10 @@ export function SearchPanel({
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-3 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Working…</div>
+          <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Working…</div>
         ) : mode === 'text' ? (
           hits.length === 0 ? (
-            <div className="p-3 text-xs text-gray-500 italic">{q ? 'No matches.' : 'Type a query and press Enter.'}</div>
+            <div className="p-3 text-xs text-gray-400 italic">{q ? 'No matches.' : 'Type a query and press Enter.'}</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {hits.map((h, i) => (
@@ -150,7 +150,7 @@ export function SearchPanel({
           )
         ) : (
           refs.length === 0 ? (
-            <div className="p-3 text-xs text-gray-500 italic">{q ? 'No references.' : 'Type a symbol and press Enter.'}</div>
+            <div className="p-3 text-xs text-gray-400 italic">{q ? 'No references.' : 'Type a symbol and press Enter.'}</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {refs.map((r, i) => (

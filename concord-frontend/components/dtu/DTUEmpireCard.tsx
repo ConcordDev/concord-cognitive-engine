@@ -118,7 +118,7 @@ function DTUEmpireCardInner({
         <div className="flex items-center gap-2">
           <TierIcon className={`w-4 h-4 ${config.color}`} />
           <span className="flex-1 truncate text-sm">{dtu.summary}</span>
-          <span className="text-xs text-gray-500">{formattedTime}</span>
+          <span className="text-xs text-gray-400">{formattedTime}</span>
         </div>
       </button>
     );
@@ -162,13 +162,13 @@ function DTUEmpireCardInner({
             </span>
           ))}
           {dtu.tags.length > 3 && (
-            <span className="text-xs text-gray-500">+{dtu.tags.length - 3}</span>
+            <span className="text-xs text-gray-400">+{dtu.tags.length - 3}</span>
           )}
         </div>
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs text-gray-400">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />

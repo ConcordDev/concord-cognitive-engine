@@ -50,7 +50,7 @@ export function PickupsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Carrier pickups</span>
-        <span className="ml-auto text-[10px] text-gray-500">{pickups.filter(p => p.status === 'scheduled').length} scheduled</span>
+        <span className="ml-auto text-[10px] text-gray-400">{pickups.filter(p => p.status === 'scheduled').length} scheduled</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
@@ -69,9 +69,9 @@ export function PickupsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : pickups.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No pickups scheduled.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No pickups scheduled.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {pickups.map(p => (
@@ -82,8 +82,8 @@ export function PickupsPanel() {
                     <span className="text-[10px] font-mono text-cyan-300 inline-flex items-center gap-0.5"><Hash className="w-2.5 h-2.5" />{p.confirmationNumber}</span>
                     <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded ml-auto', p.status === 'scheduled' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{p.status}</span>
                   </div>
-                  <div className="text-[10px] text-gray-500 truncate">{p.address}</div>
-                  <div className="text-[10px] text-gray-500">{p.date} · {p.timeWindow} · {p.packageCount} pkg</div>
+                  <div className="text-[10px] text-gray-400 truncate">{p.address}</div>
+                  <div className="text-[10px] text-gray-400">{p.date} · {p.timeWindow} · {p.packageCount} pkg</div>
                 </div>
                 {p.status === 'scheduled' && <button onClick={() => cancel(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
               </li>

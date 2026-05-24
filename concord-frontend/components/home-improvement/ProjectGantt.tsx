@@ -133,9 +133,9 @@ export function ProjectGantt() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</div>
+        <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</div>
       ) : !selected ? (
-        <p className="text-xs text-gray-500">Create a project to build a phase timeline.</p>
+        <p className="text-xs text-gray-400">Create a project to build a phase timeline.</p>
       ) : (
         <>
           {gantt && (
@@ -172,7 +172,7 @@ export function ProjectGantt() {
                             </span>
                           )}
                           <span>{b.durationDays}d · {b.progress}%</span>
-                          <button onClick={() => deletePhase(b.id)} disabled={busy} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={() => deletePhase(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                         </span>
                       </div>
                       <div className="relative h-5 bg-lattice-deep rounded">
@@ -199,7 +199,7 @@ export function ProjectGantt() {
               </div>
             </>
           ) : (
-            <p className="text-xs text-gray-500">No phases yet. Add phases below to build the timeline.</p>
+            <p className="text-xs text-gray-400">No phases yet. Add phases below to build the timeline.</p>
           )}
 
           <div className="panel p-3 space-y-2">

@@ -88,7 +88,7 @@ export function BarcodeScanner({ onLogged }: { onLogged?: () => void }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ScanBarcode className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Barcode Scanner</span>
-        <span className="ml-auto text-[10px] text-gray-500">Open Food Facts</span>
+        <span className="ml-auto text-[10px] text-gray-400">Open Food Facts</span>
       </header>
 
       <div className="p-3 space-y-3">
@@ -125,7 +125,7 @@ export function BarcodeScanner({ onLogged }: { onLogged?: () => void }) {
               )}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{product.name}</div>
-                <div className="text-[10px] text-gray-500">
+                <div className="text-[10px] text-gray-400">
                   {product.brand || 'Unknown brand'}
                   {product.servingSize ? ` · serving ${product.servingSize}` : ''}
                 </div>
@@ -148,7 +148,7 @@ export function BarcodeScanner({ onLogged }: { onLogged?: () => void }) {
               ] as const).map(([label, value, tone]) => (
                 <div key={label} className="bg-black/30 rounded py-1.5">
                   <div className={cn('text-sm font-bold', tone)}>{value}</div>
-                  <div className="text-[9px] text-gray-500 uppercase">{label}</div>
+                  <div className="text-[9px] text-gray-400 uppercase">{label}</div>
                 </div>
               ))}
             </div>

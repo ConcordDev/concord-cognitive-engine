@@ -130,7 +130,7 @@ export function QuestBoard({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[180px] flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <input
             className="w-full rounded border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-2 text-xs text-white"
             placeholder={`Search ${kind === 'bounty' ? 'bounties' : 'quests'}…`}
@@ -188,11 +188,11 @@ export function QuestBoard({
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 py-8 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 py-8 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : quests.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-10 text-center text-xs text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-10 text-center text-xs text-zinc-400">
           No {kind === 'bounty' ? 'bounties' : 'quests'} match. Post one to get started.
         </div>
       ) : (
@@ -244,13 +244,13 @@ export function QuestBoard({
                         {busy === q.id ? '…' : 'Accept'}
                       </button>
                     ) : (
-                      <span className="flex items-center gap-1 text-[10px] text-zinc-600">
+                      <span className="flex items-center gap-1 text-[10px] text-zinc-400">
                         <Clock className="h-3 w-3" /> closed
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="mt-2 flex items-center justify-between border-t border-zinc-800/60 pt-2 text-[10px] text-zinc-600">
+                <div className="mt-2 flex items-center justify-between border-t border-zinc-800/60 pt-2 text-[10px] text-zinc-400">
                   <span>by {q.poster}</span>
                   <span className="flex items-center gap-2">
                     <span>{new Date(q.createdAt).toLocaleDateString()}</span>
@@ -284,12 +284,12 @@ export function QuestBoard({
                 className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-zinc-500">Reward (CC, escrowed)</label>
+                  <label className="text-[10px] text-zinc-400">Reward (CC, escrowed)</label>
                   <input type="number" value={pReward} onChange={(e) => setPReward(e.target.value)}
                     className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-500">Difficulty</label>
+                  <label className="text-[10px] text-zinc-400">Difficulty</label>
                   <select value={pDiff} onChange={(e) => setPDiff(e.target.value)}
                     className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white">
                     <option value="easy">Easy</option>
@@ -301,13 +301,13 @@ export function QuestBoard({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-zinc-500">Tags (comma-sep)</label>
+                  <label className="text-[10px] text-zinc-400">Tags (comma-sep)</label>
                   <input value={pTags} onChange={(e) => setPTags(e.target.value)}
                     placeholder="code, combat"
                     className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-500">Max claimants</label>
+                  <label className="text-[10px] text-zinc-400">Max claimants</label>
                   <input type="number" value={pMax} onChange={(e) => setPMax(e.target.value)}
                     className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
                 </div>

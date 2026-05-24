@@ -185,7 +185,7 @@ export default function SessionsLensPage() {
               <GitBranch className="w-7 h-7 text-indigo-300" />
               <div>
                 <h1 className="text-2xl font-bold">Sessions</h1>
-                <p className="text-xs text-zinc-500">Multi-step work across every lens — real, persistent, resumable.</p>
+                <p className="text-xs text-zinc-400">Multi-step work across every lens — real, persistent, resumable.</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -196,7 +196,7 @@ export default function SessionsLensPage() {
                   'inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded border transition-colors',
                   selectMode
                     ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-200'
-                    : 'border-zinc-800 text-zinc-500 hover:text-zinc-200',
+                    : 'border-zinc-800 text-zinc-400 hover:text-zinc-200',
                 )}
               >
                 <ListChecks className="w-3.5 h-3.5" /> Select
@@ -205,7 +205,7 @@ export default function SessionsLensPage() {
                 type="button"
                 onClick={refreshAll}
                 disabled={loading}
-                className="p-2 text-zinc-500 hover:text-zinc-200 transition-colors rounded border border-zinc-800"
+                className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors rounded border border-zinc-800"
                 aria-label="Refresh"
               >
                 <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
@@ -250,11 +250,11 @@ export default function SessionsLensPage() {
                   'text-xs px-2.5 py-1 rounded border transition-colors',
                   activeFilter === s
                     ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-200'
-                    : 'border-zinc-800 text-zinc-500 hover:text-zinc-200 hover:border-zinc-700',
+                    : 'border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700',
                 )}
               >
                 {s === 'all' ? 'All' : STATUS_META[s].label}
-                <span className="ml-1.5 text-[10px] font-mono text-zinc-500">{counts[s] || 0}</span>
+                <span className="ml-1.5 text-[10px] font-mono text-zinc-400">{counts[s] || 0}</span>
               </button>
             ))}
           </div>
@@ -307,7 +307,7 @@ export default function SessionsLensPage() {
                   ? 'No sessions match your search.'
                   : activeFilter === 'all' ? 'No sessions yet.' : `No ${activeFilter} sessions.`}
               </h2>
-              <p className="text-xs text-zinc-500 max-w-md mx-auto">
+              <p className="text-xs text-zinc-400 max-w-md mx-auto">
                 Sessions persist multi-step work across visits — open a war campaign in kingdoms, a research arc
                 in paper, a podcast season in podcast. Visit any session-aware lens to start one.
               </p>
@@ -363,7 +363,7 @@ export default function SessionsLensPage() {
                             {meta.label}
                           </span>
                         </div>
-                        <div className="text-[11px] text-zinc-500 mt-0.5 font-mono">
+                        <div className="text-[11px] text-zinc-400 mt-0.5 font-mono">
                           <Link href={`/lenses/${s.lensId}`} className="text-zinc-400 hover:text-indigo-300 underline-offset-2 hover:underline">
                             {s.lensId}
                           </Link>

@@ -104,7 +104,7 @@ export default function DxPlatformPage() {
               (JetBrains). Your browser opens; sign in to your Concord account
               and click <strong>Allow</strong>.
             </p>
-            <p className="text-zinc-500 text-sm mt-2">
+            <p className="text-zinc-400 text-sm mt-2">
               Token lands in your OS keychain (vscode.SecretStorage / JetBrains
               PasswordSafe). No file on disk; no plaintext settings; nothing
               synced to the cloud beyond the token grant itself.
@@ -118,7 +118,7 @@ export default function DxPlatformPage() {
               hotspots, secret leaks, citation-consent gaps, and more. Click
               a finding to see the repair-cortex preview.
             </p>
-            <p className="text-zinc-500 text-sm mt-2">
+            <p className="text-zinc-400 text-sm mt-2">
               The first pass per codebase runs the full grid (22 detectors). After
               that, only changed-file findings recompute on save — typically &lt;200ms.
             </p>
@@ -132,7 +132,7 @@ export default function DxPlatformPage() {
               <Link href="/lenses/dx-platform/billing" className="underline mx-1">billing dashboard</Link>
               live.
             </p>
-            <p className="text-zinc-500 text-sm mt-2">
+            <p className="text-zinc-400 text-sm mt-2">
               The platform pays for itself in proportion to how much you use it.
               Royalty cascade applies: every fix accepted writes a citation back
               to the substrate; if your fix-flow becomes a popular pattern, you
@@ -236,7 +236,7 @@ function ExtCard({ title, href, helper }: { title: string; href: string; helper:
       className="block rounded border border-zinc-800 p-3 hover:border-amber-500 transition"
     >
       <div className="font-medium text-stone-100">{title}</div>
-      <div className="text-xs text-zinc-500 mt-1">{helper}</div>
+      <div className="text-xs text-zinc-400 mt-1">{helper}</div>
     </a>
   );
 }
@@ -252,7 +252,7 @@ function Card({ title, href, children }: { title: string; href: string; children
       className="block rounded border border-zinc-800 p-4 hover:border-zinc-700"
     >
       <div className="font-medium">{title}</div>
-      <div className="text-sm text-zinc-500 mt-1">{children}</div>
+      <div className="text-sm text-zinc-400 mt-1">{children}</div>
     </Wrapper>
   );
 }

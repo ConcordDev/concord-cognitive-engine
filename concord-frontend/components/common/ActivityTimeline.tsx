@@ -74,7 +74,7 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
                     className={`px-2 py-1 text-xs rounded ${
                       filter === f
                         ? 'bg-neon-cyan/20 text-neon-cyan'
-                        : 'text-gray-500 hover:text-gray-400'
+                        : 'text-gray-400 hover:text-gray-400'
                     }`}
                   >
                     {f === 'all' ? 'All' : f === 'user' ? 'You' : 'System'}
@@ -87,7 +87,7 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
                 {isLoading ? (
                   <SkeletonTimeline count={3} />
                 ) : filtered.length === 0 ? (
-                  <p className="text-xs text-gray-500 text-center py-4">No activity yet</p>
+                  <p className="text-xs text-gray-400 text-center py-4">No activity yet</p>
                 ) : (
                   filtered.map((item, i) => {
                     const source = (item.source as string) || 'user';
@@ -108,7 +108,7 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
                           <p className="text-xs text-gray-300 truncate">
                             {(item.title as string) || 'Activity'}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             {item.updatedAt
                               ? new Date(item.updatedAt as string).toLocaleString()
                               : ''}

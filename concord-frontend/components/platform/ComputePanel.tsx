@@ -90,11 +90,11 @@ function ComputePanel() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
           )}
           {selectedModule && modules.find((m) => m.name === selectedModule)?.description && (
-            <p className="mt-1.5 text-xs text-gray-500">
+            <p className="mt-1.5 text-xs text-gray-400">
               {modules.find((m) => m.name === selectedModule)?.description}
             </p>
           )}
@@ -159,7 +159,7 @@ function ComputePanel() {
               Result
             </h3>
             {runMutation.data?.executionMs !== undefined && (
-              <span className="text-xs text-gray-500 font-mono">
+              <span className="text-xs text-gray-400 font-mono">
                 {runMutation.data.executionMs}ms
               </span>
             )}

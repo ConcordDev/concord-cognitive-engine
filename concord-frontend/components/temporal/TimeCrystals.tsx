@@ -73,7 +73,7 @@ function TimeCrystals({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Temporal Intelligence</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {crystals.length > 0 ? `${crystals.length} patterns discovered` : 'Recurring knowledge patterns'}
             </p>
           </div>
@@ -99,7 +99,7 @@ function TimeCrystals({ className }: { className?: string }) {
       {/* Time crystals */}
       <div className="p-4 space-y-2">
         {crystals.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">No patterns detected yet. Click Scan to analyze.</p>
+          <p className="text-sm text-gray-400 text-center py-4">No patterns detected yet. Click Scan to analyze.</p>
         ) : (
           crystals.slice(0, expanded ? 20 : 4).map(crystal => {
             const typeConf = TYPE_CONFIG[crystal.type] || TYPE_CONFIG.hourly;
@@ -109,7 +109,7 @@ function TimeCrystals({ className }: { className?: string }) {
                 <div className="flex items-center gap-2">
                   <Icon className={cn('w-4 h-4', typeConf.color)} />
                   <p className="text-sm text-white font-medium flex-1">{crystal.pattern}</p>
-                  <span className="text-[10px] text-gray-500">{Math.round(crystal.strength * 100)}% strength</span>
+                  <span className="text-[10px] text-gray-400">{Math.round(crystal.strength * 100)}% strength</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1 pl-6">{crystal.description}</p>
               </div>
@@ -136,15 +136,15 @@ function TimeCrystals({ className }: { className?: string }) {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="text-center">
                     <p className="text-lg font-bold text-neon-cyan">+{diffData.diff.newDTUs}</p>
-                    <p className="text-[10px] text-gray-500">New DTUs</p>
+                    <p className="text-[10px] text-gray-400">New DTUs</p>
                   </div>
                   <div className="text-center">
                     <p className="text-lg font-bold text-purple-400">{diffData.diff.newSwarms}</p>
-                    <p className="text-[10px] text-gray-500">New Swarms</p>
+                    <p className="text-[10px] text-gray-400">New Swarms</p>
                   </div>
                   <div className="text-center">
                     <p className="text-lg font-bold text-cyan-400">{diffData.diff.newCrystals}</p>
-                    <p className="text-[10px] text-gray-500">New Crystals</p>
+                    <p className="text-[10px] text-gray-400">New Crystals</p>
                   </div>
                 </div>
                 {diffData.diff.domainGrowth && Object.keys(diffData.diff.domainGrowth).length > 0 && (
@@ -173,7 +173,7 @@ function TimeCrystals({ className }: { className?: string }) {
                     .filter(([, dtus]) => (dtus as { id: string; title: string }[]).length > 0)
                     .map(([period, dtus]) => (
                       <div key={period}>
-                        <p className="text-[10px] text-gray-500 mb-1">{period}</p>
+                        <p className="text-[10px] text-gray-400 mb-1">{period}</p>
                         {(dtus as { id: string; title: string }[]).slice(0, 3).map((dtu: { id: string; title: string }) => (
                           <div key={dtu.id} className="pl-3 text-xs text-gray-400 truncate">
                             {dtu.title}
@@ -182,7 +182,7 @@ function TimeCrystals({ className }: { className?: string }) {
                       </div>
                     ))}
                   {Object.values(archData.memories).every((dtus) => (dtus as { id: string; title: string }[]).length === 0) && (
-                    <p className="text-xs text-gray-500">No memories found for these dates.</p>
+                    <p className="text-xs text-gray-400">No memories found for these dates.</p>
                   )}
                 </div>
               </div>

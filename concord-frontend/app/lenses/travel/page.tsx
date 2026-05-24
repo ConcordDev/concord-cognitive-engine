@@ -221,7 +221,7 @@ export default function TravelLensPage() {
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-neon-cyan">{daysUntilNext}</p>
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">days away</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">days away</p>
           </div>
         </motion.div>
       )}
@@ -290,7 +290,7 @@ export default function TravelLensPage() {
       {/* Search */}
       {tab === 'trips' && (
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search trips..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
         </div>
       )}
@@ -337,10 +337,10 @@ export default function TravelLensPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 ml-2">
-                      <button onClick={() => { const nextStatus = trip.status === 'planning' ? 'booked' : trip.status === 'booked' ? 'in-progress' : trip.status === 'in-progress' ? 'completed' : 'planning'; update(trip.id, { data: { ...trip, status: nextStatus } as unknown as Partial<TripData> }); }} className="text-gray-500 hover:text-neon-cyan p-1" title="Advance status">
+                      <button onClick={() => { const nextStatus = trip.status === 'planning' ? 'booked' : trip.status === 'booked' ? 'in-progress' : trip.status === 'in-progress' ? 'completed' : 'planning'; update(trip.id, { data: { ...trip, status: nextStatus } as unknown as Partial<TripData> }); }} className="text-gray-400 hover:text-neon-cyan p-1" title="Advance status">
                         <CheckSquare className="w-4 h-4" />
                       </button>
-                      <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1" aria-label="Delete">
+                      <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-400 hover:text-red-400 p-1" aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -348,7 +348,7 @@ export default function TravelLensPage() {
                   {/* Budget progress bar */}
                   {trip.budget > 0 && (
                     <div className="mt-3">
-                      <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
                         <span>${trip.spent?.toLocaleString() || 0} spent</span>
                         <span>${trip.budget.toLocaleString()} budget</span>
                       </div>
@@ -406,10 +406,10 @@ export default function TravelLensPage() {
               {packingItems.map((item, i) => (
                 <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors group">
                   <button onClick={() => setPackingItems(prev => prev.map((p, j) => j === i ? { ...p, checked: !p.checked } : p))}>
-                    {item.checked ? <CheckSquare className="w-4 h-4 text-neon-cyan" /> : <Square className="w-4 h-4 text-gray-500" />}
+                    {item.checked ? <CheckSquare className="w-4 h-4 text-neon-cyan" /> : <Square className="w-4 h-4 text-gray-400" />}
                   </button>
                   <span className={cn('flex-1 text-sm', item.checked && 'line-through text-gray-600')}>{item.text}</span>
-                  <button onClick={() => setPackingItems(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity" aria-label="Close">
+                  <button onClick={() => setPackingItems(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-opacity" aria-label="Close">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </motion.div>
@@ -420,7 +420,7 @@ export default function TravelLensPage() {
             <div className="panel p-8 text-center">
               <Luggage className="w-10 h-10 mx-auto mb-3 text-gray-600" />
               <p className="text-gray-400 text-sm">Your packing list is empty.</p>
-              <p className="text-xs text-gray-600 mt-1">Add items above to keep track of what to pack.</p>
+              <p className="text-xs text-gray-400 mt-1">Add items above to keep track of what to pack.</p>
             </div>
           )}
         </div>
@@ -444,7 +444,7 @@ export default function TravelLensPage() {
             <div className="panel p-8 text-center">
               <Map className="w-12 h-12 mx-auto mb-3 text-gray-600" />
               <p className="text-gray-400 text-sm">No trips with coordinates yet.</p>
-              <p className="text-xs text-gray-600 mt-1">Add latitude and longitude when creating trips to see them on the map.</p>
+              <p className="text-xs text-gray-400 mt-1">Add latitude and longitude when creating trips to see them on the map.</p>
             </div>
           )}
         </div>
@@ -520,15 +520,15 @@ export default function TravelLensPage() {
                   <div className="text-xs text-gray-400">Total Items: <span className="text-white font-medium">{String(r.totalItems ?? 0)}</span></div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <p className="text-gray-500 mb-1">Essentials</p>
+                      <p className="text-gray-400 mb-1">Essentials</p>
                       {essentials.slice(0, 4).map((i, idx) => <div key={idx} className="text-gray-300">• {i}</div>)}
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">Clothing</p>
+                      <p className="text-gray-400 mb-1">Clothing</p>
                       {clothing.slice(0, 4).map((i, idx) => <div key={idx} className="text-gray-300">• {i}</div>)}
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">Purpose</p>
+                      <p className="text-gray-400 mb-1">Purpose</p>
                       {purposeSpecific.slice(0, 4).map((i, idx) => <div key={idx} className="text-gray-300">• {i}</div>)}
                     </div>
                   </div>
@@ -568,7 +568,7 @@ export default function TravelLensPage() {
                     Type: <span className="text-white">{String(r.type ?? '-').replace(/-/g, ' ')}</span>
                     {!required && <span className="ml-3">Max stay: <span className="text-white">{String(r.maxVisaFreeStay ?? '-')}</span></span>}
                   </div>
-                  <div className="text-xs text-gray-500 italic">{String(r.disclaimer ?? '')}</div>
+                  <div className="text-xs text-gray-400 italic">{String(r.disclaimer ?? '')}</div>
                 </div>
               );
             })()}

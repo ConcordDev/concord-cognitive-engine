@@ -90,14 +90,14 @@ export function SprayWindowPanel({
 
   if (fieldsLoading) {
     return (
-      <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+      <div className="flex items-center justify-center py-10 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading fields…
       </div>
     );
   }
   if (fields.length === 0) {
     return (
-      <div className="py-10 text-center text-xs text-gray-500">
+      <div className="py-10 text-center text-xs text-gray-400">
         <Wind className="w-6 h-6 mx-auto mb-2 opacity-30" />
         No fields yet. Add a field (with coordinates) to check spray conditions.
       </div>
@@ -170,15 +170,15 @@ export function SprayWindowPanel({
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded bg-lattice-deep px-2 py-1.5">
               <div className="text-sm font-bold text-emerald-300">{result.idealHourCount}</div>
-              <div className="text-[10px] text-gray-500">Ideal hours</div>
+              <div className="text-[10px] text-gray-400">Ideal hours</div>
             </div>
             <div className="rounded bg-lattice-deep px-2 py-1.5">
               <div className="text-sm font-bold text-sky-300">{result.windows.length}</div>
-              <div className="text-[10px] text-gray-500">Open windows</div>
+              <div className="text-[10px] text-gray-400">Open windows</div>
             </div>
             <div className="rounded bg-lattice-deep px-2 py-1.5">
               <div className="text-sm font-bold text-gray-300">{result.horizonHours}h</div>
-              <div className="text-[10px] text-gray-500">Horizon</div>
+              <div className="text-[10px] text-gray-400">Horizon</div>
             </div>
           </div>
 
@@ -218,7 +218,7 @@ export function SprayWindowPanel({
                       {new Date(w.end).toLocaleString([], { weekday: 'short', hour: 'numeric' })}
                     </span>
                     <span className="text-gray-400">{w.hours}h</span>
-                    <span className="ml-auto text-gray-500">score {w.avgScore}</span>
+                    <span className="ml-auto text-gray-400">score {w.avgScore}</span>
                   </li>
                 ))}
               </ul>
@@ -227,7 +227,7 @@ export function SprayWindowPanel({
 
           <div className="max-h-64 overflow-y-auto rounded border border-white/10">
             <table className="w-full text-[11px]">
-              <thead className="text-gray-500 sticky top-0 bg-[#0b0f14]">
+              <thead className="text-gray-400 sticky top-0 bg-[#0b0f14]">
                 <tr>
                   <th className="text-left px-2 py-1 font-normal">Hour</th>
                   <th className="px-2 py-1 font-normal">°F</th>
@@ -267,7 +267,7 @@ export function SprayWindowPanel({
               </tbody>
             </table>
           </div>
-          <div className="text-[10px] text-gray-600">source: {result.source}</div>
+          <div className="text-[10px] text-gray-400">source: {result.source}</div>
         </div>
       )}
     </div>

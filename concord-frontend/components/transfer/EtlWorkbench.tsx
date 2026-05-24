@@ -231,7 +231,7 @@ export function EtlWorkbench() {
         <section className="panel p-4 space-y-3">
           <h3 className="font-semibold flex items-center gap-2 text-sm">
             <Database className="w-4 h-4 text-neon-cyan" /> Connectors
-            <span className="text-[10px] text-gray-500">read/write CSV · JSON sources</span>
+            <span className="text-[10px] text-gray-400">read/write CSV · JSON sources</span>
           </h3>
           <div className="grid grid-cols-2 gap-2">
             <input value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Connector name…" className="input-lattice text-xs col-span-2" />
@@ -254,7 +254,7 @@ export function EtlWorkbench() {
             <Plus className="w-3.5 h-3.5" /> {busy === 'connector' ? 'Probing…' : 'Register connector'}
           </button>
           <div className="space-y-1.5 max-h-56 overflow-y-auto">
-            {connectors.length === 0 && <p className="text-center py-3 text-gray-500 text-xs">No connectors yet.</p>}
+            {connectors.length === 0 && <p className="text-center py-3 text-gray-400 text-xs">No connectors yet.</p>}
             {connectors.map((c) => {
               const d = drift[c.id];
               return (
@@ -273,11 +273,11 @@ export function EtlWorkbench() {
                       </button>
                     </div>
                   </div>
-                  <p className="text-gray-500">
+                  <p className="text-gray-400">
                     {c.kind.toUpperCase()} · {c.rowCount ?? 0} rows · {(c.schema || []).length} fields
                   </p>
                   {(c.schema || []).length > 0 && (
-                    <p className="text-[10px] text-gray-600 truncate">
+                    <p className="text-[10px] text-gray-400 truncate">
                       {(c.schema || []).map((f) => `${f.name}:${f.type || '?'}`).join('  ')}
                     </p>
                   )}
@@ -321,7 +321,7 @@ export function EtlWorkbench() {
             </button>
           </div>
           <div className="space-y-1.5 max-h-56 overflow-y-auto">
-            {pipelines.length === 0 && <p className="text-center py-3 text-gray-500 text-xs">No pipelines yet.</p>}
+            {pipelines.length === 0 && <p className="text-center py-3 text-gray-400 text-xs">No pipelines yet.</p>}
             {pipelines.map((p) => (
               <div
                 key={p.id}
@@ -336,7 +336,7 @@ export function EtlWorkbench() {
                     </button>
                   </div>
                 </div>
-                <p className="text-gray-500">
+                <p className="text-gray-400">
                   {(p.mappings || []).length} mappings · {p.runCount ?? 0} runs
                   {p.lastRun && <span className={`ml-1 ${STATUS_TONE[p.lastRun.status]?.split(' ')[0] || ''}`}> · last {p.lastRun.status}</span>}
                 </p>
@@ -402,7 +402,7 @@ export function EtlWorkbench() {
           <History className="w-4 h-4 text-neon-blue" /> Transfer run log
         </h3>
         {runs.length === 0 ? (
-          <p className="text-center py-4 text-gray-500 text-xs">No sync runs yet — create a pipeline and run a sync.</p>
+          <p className="text-center py-4 text-gray-400 text-xs">No sync runs yet — create a pipeline and run a sync.</p>
         ) : (
           <>
             <ChartKit
@@ -422,13 +422,13 @@ export function EtlWorkbench() {
                 <div key={r.id} className="lens-card text-xs flex items-center justify-between">
                   <div>
                     <p className="font-medium">{r.pipelineName}</p>
-                    <p className="text-gray-500">
+                    <p className="text-gray-400">
                       {new Date(r.finishedAt).toLocaleString()} · {r.mode} · {r.rowsProcessed} processed
                     </p>
                   </div>
                   <div className="text-right">
                     <span className={`px-1.5 py-0.5 rounded text-[10px] border ${STATUS_TONE[r.status] || 'text-gray-400 border-gray-600'}`}>{r.status}</span>
-                    <p className="text-gray-500 mt-0.5">{r.rowsWritten} ✓ / {r.rowsQuarantined} ⚠</p>
+                    <p className="text-gray-400 mt-0.5">{r.rowsWritten} ✓ / {r.rowsQuarantined} ⚠</p>
                   </div>
                 </div>
               ))}
@@ -446,7 +446,7 @@ function Kpi({ icon: Icon, label, value, sub }: { icon: any; label: string; valu
       <Icon className="w-4 h-4 text-neon-cyan mb-1.5" />
       <p className="text-xl font-bold">{value.toLocaleString()}</p>
       <p className="text-[11px] text-gray-400">{label}</p>
-      <p className="text-[10px] text-gray-600">{sub}</p>
+      <p className="text-[10px] text-gray-400">{sub}</p>
     </div>
   );
 }
@@ -518,8 +518,8 @@ function MappingEditor({
       {/* drag-connect field grid */}
       <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-start">
         <div className="space-y-1">
-          <p className="text-[10px] uppercase text-gray-500">Source fields ({src?.name || '—'})</p>
-          {srcFields.length === 0 && <p className="text-xs text-gray-600">Source has no fields.</p>}
+          <p className="text-[10px] uppercase text-gray-400">Source fields ({src?.name || '—'})</p>
+          {srcFields.length === 0 && <p className="text-xs text-gray-400">Source has no fields.</p>}
           {srcFields.map((f) => (
             <div
               key={f.name}
@@ -533,7 +533,7 @@ function MappingEditor({
         </div>
         <div className="flex flex-col items-center pt-6 text-gray-600"><ArrowRight className="w-5 h-5" /></div>
         <div className="space-y-1">
-          <p className="text-[10px] uppercase text-gray-500">Target fields ({dst?.name || 'mirror source'})</p>
+          <p className="text-[10px] uppercase text-gray-400">Target fields ({dst?.name || 'mirror source'})</p>
           {tgtFields.map((f) => {
             const m = mappings.find((x) => x.target === f.name);
             return (
@@ -553,12 +553,12 @@ function MappingEditor({
 
       {/* mappings + transforms */}
       <div className="space-y-1.5">
-        <p className="text-[10px] uppercase text-gray-500">Field mappings &amp; transforms</p>
-        {mappings.length === 0 && <p className="text-xs text-gray-600">Drag a source field onto a target, or auto-suggest.</p>}
+        <p className="text-[10px] uppercase text-gray-400">Field mappings &amp; transforms</p>
+        {mappings.length === 0 && <p className="text-xs text-gray-400">Drag a source field onto a target, or auto-suggest.</p>}
         {mappings.map((m, i) => (
           <div key={i} className="lens-card text-xs flex flex-wrap items-center gap-2">
             <span className="text-neon-green">{m.source}</span>
-            <ArrowRight className="w-3 h-3 text-gray-500" />
+            <ArrowRight className="w-3 h-3 text-gray-400" />
             <span className="text-neon-purple">{m.target}</span>
             <select
               value=""
@@ -586,13 +586,13 @@ function MappingEditor({
       {/* derived columns */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase text-gray-500">Derived columns</p>
+          <p className="text-[10px] uppercase text-gray-400">Derived columns</p>
           <button onClick={() => setDerived((d) => [...d, { name: `derived_${d.length + 1}`, from: srcFields[0]?.name || '', transforms: [] }])} className="text-[10px] text-neon-cyan">+ add</button>
         </div>
         {derived.map((d, i) => (
           <div key={i} className="lens-card text-xs flex items-center gap-2">
             <input value={d.name} onChange={(e) => setDerived((dd) => dd.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className="input-lattice text-[10px] py-0.5 w-28" />
-            <span className="text-gray-500">from</span>
+            <span className="text-gray-400">from</span>
             <select value={d.from} onChange={(e) => setDerived((dd) => dd.map((x, j) => j === i ? { ...x, from: e.target.value } : x))} className="input-lattice text-[10px] py-0.5">
               {srcFields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
             </select>
@@ -604,7 +604,7 @@ function MappingEditor({
       {/* validation rules */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase text-gray-500">Validation rules (failures route to quarantine)</p>
+          <p className="text-[10px] uppercase text-gray-400">Validation rules (failures route to quarantine)</p>
           <button onClick={() => setRules((r) => [...r, { type: 'required', field: tgtFields[0]?.name || '' }])} className="text-[10px] text-neon-cyan">+ add</button>
         </div>
         {rules.map((r, i) => (
@@ -612,7 +612,7 @@ function MappingEditor({
             <select value={r.type} onChange={(e) => setRules((rr) => rr.map((x, j) => j === i ? { type: e.target.value, field: x.field } : x))} className="input-lattice text-[10px] py-0.5">
               {RULE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
-            <span className="text-gray-500">on</span>
+            <span className="text-gray-400">on</span>
             <input value={r.field} onChange={(e) => setRules((rr) => rr.map((x, j) => j === i ? { ...x, field: e.target.value } : x))} placeholder="field" className="input-lattice text-[10px] py-0.5 w-28" />
             {r.type === 'type' && (
               <input value={r.dataType || ''} onChange={(e) => setRules((rr) => rr.map((x, j) => j === i ? { ...x, dataType: e.target.value } : x))} placeholder="number|date|boolean" className="input-lattice text-[10px] py-0.5 w-32" />
@@ -636,7 +636,7 @@ function MappingEditor({
 
       {/* schedule */}
       <div className="space-y-1.5">
-        <p className="text-[10px] uppercase text-gray-500">Sync schedule</p>
+        <p className="text-[10px] uppercase text-gray-400">Sync schedule</p>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <select value={schedule.mode} onChange={(e) => setSchedule((s) => ({ ...s, mode: e.target.value as any }))} className="input-lattice text-[11px] py-0.5">
             <option value="manual">manual</option>
@@ -645,14 +645,14 @@ function MappingEditor({
           </select>
           {schedule.mode !== 'manual' && (
             <>
-              <span className="text-gray-500">every</span>
+              <span className="text-gray-400">every</span>
               <input type="number" value={schedule.intervalMinutes ?? 60} onChange={(e) => setSchedule((s) => ({ ...s, intervalMinutes: Number(e.target.value) }))} className="input-lattice text-[11px] py-0.5 w-20" />
-              <span className="text-gray-500">min</span>
+              <span className="text-gray-400">min</span>
             </>
           )}
           {schedule.mode === 'incremental' && (
             <>
-              <span className="text-gray-500">CDC cursor field</span>
+              <span className="text-gray-400">CDC cursor field</span>
               <select value={schedule.cdcKey || ''} onChange={(e) => setSchedule((s) => ({ ...s, cdcKey: e.target.value || null }))} className="input-lattice text-[11px] py-0.5">
                 <option value="">—</option>
                 {srcFields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}

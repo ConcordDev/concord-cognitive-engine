@@ -439,17 +439,17 @@ export default function PodcastLensPage() {
             <motion.div key="episodes" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {/* Search */}
               <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search episodes…  /"
-                  className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-400/50"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-400/50"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
+                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white" aria-label="Close">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -461,7 +461,7 @@ export default function PodcastLensPage() {
                   <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredEpisodes.length === 0 ? (
-                <div className="text-center py-20 text-gray-500">
+                <div className="text-center py-20 text-gray-400">
                   <Mic2 className="w-12 h-12 mx-auto mb-3 opacity-40" />
                   <p className="text-sm">No episodes yet. Create your first episode!</p>
                 </div>
@@ -512,11 +512,11 @@ export default function PodcastLensPage() {
                             </span>
                           </div>
                           <p className="text-sm font-medium truncate mt-0.5">{episode.title}</p>
-                          <p className="text-xs text-gray-500 truncate mt-0.5">{episode.description}</p>
+                          <p className="text-xs text-gray-400 truncate mt-0.5">{episode.description}</p>
                         </div>
 
                         {/* Meta */}
-                        <div className="flex items-center gap-4 text-xs text-gray-500 flex-shrink-0">
+                        <div className="flex items-center gap-4 text-xs text-gray-400 flex-shrink-0">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {formatDuration(episode.duration || 0)}
@@ -565,7 +565,7 @@ export default function PodcastLensPage() {
                     value={formTitle}
                     onChange={e => setFormTitle(e.target.value)}
                     placeholder="Episode title"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-400/50"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-400/50"
                   />
                 </div>
 
@@ -579,7 +579,7 @@ export default function PodcastLensPage() {
                     onValueChange={setFormDescription}
                     placeholder="Episode description..."
                     rows={4}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-400/50 resize-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-400/50 resize-none"
                   />
                 </div>
 
@@ -614,7 +614,7 @@ export default function PodcastLensPage() {
                     <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
                       <Check className="w-4 h-4 text-green-400" />
                       <span className="text-sm text-green-400">Audio uploaded (ID: {formMediaId.slice(0, 8)}...)</span>
-                      <button onClick={() => setFormMediaId(null)} className="ml-auto text-gray-500 hover:text-white" aria-label="Close">
+                      <button onClick={() => setFormMediaId(null)} className="ml-auto text-gray-400 hover:text-white" aria-label="Close">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -699,7 +699,7 @@ export default function PodcastLensPage() {
                           </button>
                           <button
                             onClick={handleDiscardRecording}
-                            className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm"
+                            className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm"
                             title="Discard recording"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -716,7 +716,7 @@ export default function PodcastLensPage() {
                           <CircleDot className="w-4 h-4" />
                           Start Recording
                         </button>
-                        <p className="text-[11px] text-gray-500 text-center">
+                        <p className="text-[11px] text-gray-400 text-center">
                           Record directly from your microphone
                         </p>
                       </>
@@ -732,7 +732,7 @@ export default function PodcastLensPage() {
                     value={formCoverArt || ''}
                     onChange={e => setFormCoverArt(e.target.value || null)}
                     placeholder="https://example.com/cover.jpg"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-400/50"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-purple-400/50"
                   />
                 </div>
 
@@ -761,7 +761,7 @@ export default function PodcastLensPage() {
                   <div key={stat.label} className="p-4 bg-white/5 rounded-xl border border-white/5">
                     <div className={cn('mb-2', stat.color)}>{stat.icon}</div>
                     <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
+                    <p className="text-xs text-gray-400 mt-1">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -774,10 +774,10 @@ export default function PodcastLensPage() {
                   .slice(0, 10)
                   .map((ep, i) => (
                     <div key={ep.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
-                      <span className="text-xs text-gray-600 w-5 text-right font-mono">{i + 1}</span>
+                      <span className="text-xs text-gray-400 w-5 text-right font-mono">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate">{ep.title}</p>
-                        <p className="text-xs text-gray-500">S{ep.seasonNumber || 1}E{ep.episodeNumber || 1}</p>
+                        <p className="text-xs text-gray-400">S{ep.seasonNumber || 1}E{ep.episodeNumber || 1}</p>
                       </div>
                       <span className="text-xs text-gray-400">{ep.playCount || 0} plays</span>
                     </div>
@@ -791,25 +791,25 @@ export default function PodcastLensPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {contextDTUs.length > 0 && (
                       <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                        <p className="text-xs text-gray-500">Context DTUs</p>
+                        <p className="text-xs text-gray-400">Context DTUs</p>
                         <p className="text-xl font-bold text-neon-cyan">{contextDTUs.length}</p>
                       </div>
                     )}
                     {regularDTUs.length > 0 && (
                       <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                        <p className="text-xs text-gray-500">Regular DTUs</p>
+                        <p className="text-xs text-gray-400">Regular DTUs</p>
                         <p className="text-xl font-bold text-purple-400">{regularDTUs.length}</p>
                       </div>
                     )}
                     {hyperDTUs.length > 0 && (
                       <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                        <p className="text-xs text-gray-500">Hyper DTUs</p>
+                        <p className="text-xs text-gray-400">Hyper DTUs</p>
                         <p className="text-xl font-bold text-neon-pink">{hyperDTUs.length}</p>
                       </div>
                     )}
                     {megaDTUs.length > 0 && (
                       <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                        <p className="text-xs text-gray-500">Mega DTUs</p>
+                        <p className="text-xs text-gray-400">Mega DTUs</p>
                         <p className="text-xl font-bold text-neon-green">{megaDTUs.length}</p>
                       </div>
                     )}
@@ -825,7 +825,7 @@ export default function PodcastLensPage() {
                 </div>
               )}
               {dtusLoading && (
-                <div className="mt-6 flex items-center gap-2 text-gray-500 text-sm">
+                <div className="mt-6 flex items-center gap-2 text-gray-400 text-sm">
                   <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
                   Loading DTUs...
                 </div>
@@ -887,7 +887,7 @@ export default function PodcastLensPage() {
                   )}
                   {'questionSuggestions' in actionResult && Array.isArray(actionResult.questionSuggestions) && (
                     <div className="space-y-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Questions</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">Questions</p>
                       {(actionResult.questionSuggestions as string[]).slice(0, 3).map((q, i) => (
                         <p key={i} className="text-xs text-gray-300">• {q}</p>
                       ))}

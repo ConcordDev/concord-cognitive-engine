@@ -56,7 +56,7 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -79,7 +79,7 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
       {burndown && (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h3 className="text-xs font-semibold text-zinc-300 mb-2">
-            Burndown · {burndown.sprint} <span className="text-zinc-500 font-normal">({burndown.donePoints}/{burndown.totalPoints} pts)</span>
+            Burndown · {burndown.sprint} <span className="text-zinc-400 font-normal">({burndown.donePoints}/{burndown.totalPoints} pts)</span>
           </h3>
           <ResponsiveContainer width="100%" height={170}>
             <LineChart data={burndown.series}>
@@ -96,7 +96,7 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
       )}
 
       {sprints.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No sprints yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No sprints yet.</p>
       ) : (
         <ul className="space-y-2">
           {sprints.map((sp) => (
@@ -105,7 +105,7 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
                 <Repeat className="w-4 h-4 text-indigo-400 shrink-0" />
                 <button type="button" onClick={() => showBurndown(sp.id)} className="flex-1 text-left">
                   <span className="text-sm font-semibold text-zinc-100">{sp.name}</span>
-                  <span className="text-[10px] text-zinc-500 ml-2">{sp.startDate} → {sp.endDate}</span>
+                  <span className="text-[10px] text-zinc-400 ml-2">{sp.startDate} → {sp.endDate}</span>
                 </button>
                 <span className="text-[11px] text-zinc-400">{sp.donePoints}/{sp.totalPoints} pts</span>
                 {sp.status === 'active' ? (

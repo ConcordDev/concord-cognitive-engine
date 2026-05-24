@@ -89,7 +89,7 @@ function PanelLoadCalc() {
 
       <div className="p-4">
         <div className="space-y-1.5">
-          <div className="grid grid-cols-[1fr_90px_90px_30px] gap-2 text-[9px] uppercase tracking-wider text-zinc-500">
+          <div className="grid grid-cols-[1fr_90px_90px_30px] gap-2 text-[9px] uppercase tracking-wider text-zinc-400">
             <span>Circuit</span><span>Watts</span><span>Voltage</span><span></span>
           </div>
           {circuits.map((c, i) => (
@@ -99,7 +99,7 @@ function PanelLoadCalc() {
               <select className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={c.voltage} onChange={(e) => setCircuits((cs) => cs.map((x, idx) => idx === i ? { ...x, voltage: e.target.value } : x))}>
                 <option value="120">120V</option><option value="240">240V</option>
               </select>
-              <button type="button" onClick={() => setCircuits((cs) => cs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => setCircuits((cs) => cs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -113,15 +113,15 @@ function PanelLoadCalc() {
         {result && result.totalAmps != null && (
           <div className="mt-3 space-y-2">
             <div className="grid grid-cols-4 gap-2 text-[11px]">
-              <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Total amps</div><div className="font-mono text-lg text-yellow-200">{result.totalAmps}A</div></div>
+              <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Total amps</div><div className="font-mono text-lg text-yellow-200">{result.totalAmps}A</div></div>
               <div className="rounded border border-yellow-500/30 bg-yellow-500/10 px-2 py-1.5"><div className="text-[9px] text-yellow-300">Panel size</div><div className="font-mono text-lg text-yellow-100">{result.panelSizeRecommended}</div></div>
-              <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Total W</div><div className="font-mono text-lg text-zinc-200">{result.totalWatts}</div></div>
+              <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Total W</div><div className="font-mono text-lg text-zinc-200">{result.totalWatts}</div></div>
               <div className={`rounded border px-2 py-1.5 ${result.nec80PercentRule === 'PASS' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-rose-500/40 bg-rose-500/10'}`}><div className={`text-[9px] ${result.nec80PercentRule === 'PASS' ? 'text-emerald-300' : 'text-rose-300'}`}>NEC 80%</div><div className={`font-mono text-lg ${result.nec80PercentRule === 'PASS' ? 'text-emerald-100' : 'text-rose-100'}`}>{result.nec80PercentRule}</div></div>
             </div>
             {/* Utilization meter */}
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-zinc-500">Utilization</span>
+                <span className="text-zinc-400">Utilization</span>
                 <span className={`font-mono ${result.utilization && result.utilization > 80 ? 'text-rose-300' : result.utilization && result.utilization > 60 ? 'text-amber-300' : 'text-emerald-300'}`}>{result.utilization}%</span>
               </div>
               <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-800">
@@ -135,7 +135,7 @@ function PanelLoadCalc() {
             </div>
             {result.circuits && (
               <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Per-circuit breakdown</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Per-circuit breakdown</div>
                 {result.circuits.map((c, i) => (
                   <div key={i} className="grid grid-cols-[1fr_70px_70px_90px] gap-2 rounded border border-yellow-500/10 bg-zinc-950/40 px-2 py-1 text-[10px]">
                     <span className="text-zinc-100 truncate">{c.name}</span>
@@ -201,21 +201,21 @@ function VoltageDropChart() {
       <div className="grid gap-3 p-4 md:grid-cols-[200px_1fr]">
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Amps</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Amps</span>
             <input type="number" min={0} value={amps || ''} onChange={(e) => setAmps(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 15" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Distance (one-way ft)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Distance (one-way ft)</span>
             <input type="number" min={0} value={distance || ''} onChange={(e) => setDistance(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 100" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Wire (AWG)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Wire (AWG)</span>
             <select value={wireGauge} onChange={(e) => setWireGauge(Number(e.target.value))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono">
               {AWG_OPTIONS.map((g) => <option key={g} value={g}>{g} AWG</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Source voltage</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Source voltage</span>
             <select value={voltage} onChange={(e) => setVoltage(Number(e.target.value))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono">
               <option value={120}>120V</option><option value={240}>240V</option><option value={208}>208V</option><option value={480}>480V</option>
             </select>
@@ -230,7 +230,7 @@ function VoltageDropChart() {
           {curvePoints.length > 0 && (
             <div className="rounded-lg border border-red-500/15 bg-zinc-950/60 p-3">
               <div className="mb-1 flex items-center justify-between text-[10px]">
-                <span className="uppercase tracking-wider text-zinc-500">Drop % vs distance</span>
+                <span className="uppercase tracking-wider text-zinc-400">Drop % vs distance</span>
                 <span className="text-rose-400">3% NEC limit</span>
               </div>
               <svg viewBox="0 0 300 100" className="w-full" preserveAspectRatio="none">
@@ -263,24 +263,24 @@ function VoltageDropChart() {
                   </>);
                 })()}
               </svg>
-              <div className="mt-1 flex justify-between font-mono text-[9px] text-zinc-500">
+              <div className="mt-1 flex justify-between font-mono text-[9px] text-zinc-400">
                 <span>0 ft</span><span>{Math.round(curvePoints[curvePoints.length - 1].d)} ft</span>
               </div>
             </div>
           )}
 
-          {!result && amps <= 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter amps + distance.</div>}
+          {!result && amps <= 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter amps + distance.</div>}
           {result && (
             <div className="space-y-1.5">
               <div className="grid grid-cols-3 gap-2 text-[11px]">
-                <div className="rounded border border-red-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">V-drop</div><div className="font-mono text-red-200">{result.voltageDrop}</div></div>
+                <div className="rounded border border-red-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">V-drop</div><div className="font-mono text-red-200">{result.voltageDrop}</div></div>
                 <div className={`rounded border px-2 py-1.5 ${result.acceptable ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-rose-500/30 bg-rose-500/10'}`}><div className={`text-[9px] ${result.acceptable ? 'text-emerald-300' : 'text-rose-300'}`}>% drop</div><div className={`font-mono ${result.acceptable ? 'text-emerald-100' : 'text-rose-100'}`}>{result.dropPercent}</div></div>
-                <div className="rounded border border-red-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Wire</div><div className="font-mono text-red-200">{result.wireGauge}</div></div>
+                <div className="rounded border border-red-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Wire</div><div className="font-mono text-red-200">{result.wireGauge}</div></div>
               </div>
               {result.recommendation && (
                 <div className={`rounded border px-2 py-1 text-[10px] ${result.acceptable ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>{result.recommendation}</div>
               )}
-              <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[10px] text-zinc-500">{result.necLimit}</div>
+              <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[10px] text-zinc-400">{result.necLimit}</div>
             </div>
           )}
         </div>
@@ -342,7 +342,7 @@ function CircuitMap() {
               <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Kitchen" value={r.room} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, room: e.target.value } : x))} />
               <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="receptacles, lights" value={r.devices} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, devices: e.target.value } : x))} />
               <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" placeholder="ft" value={r.wireRunFeet} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, wireRunFeet: e.target.value } : x))} />
-              <button type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -360,13 +360,13 @@ function CircuitMap() {
               <div key={panelName} className="rounded-lg border border-purple-500/15 bg-zinc-950/40 p-2">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="font-mono text-[11px] font-semibold text-purple-200">{panelName} panel</span>
-                  <span className="text-[10px] text-zinc-500">{panelCircuits.length} circuit{panelCircuits.length === 1 ? '' : 's'}</span>
+                  <span className="text-[10px] text-zinc-400">{panelCircuits.length} circuit{panelCircuits.length === 1 ? '' : 's'}</span>
                 </div>
                 {panelCircuits.map((c, i) => (
                   <div key={i} className="grid grid-cols-[60px_1fr_1fr] gap-1 border-t border-zinc-800 py-1 text-[10px]">
                     <span className="font-mono text-amber-300">{c.breaker}</span>
                     <span className="text-zinc-100 truncate">{c.name}</span>
-                    <span className="text-zinc-500 truncate">{c.room || '—'}</span>
+                    <span className="text-zinc-400 truncate">{c.room || '—'}</span>
                   </div>
                 ))}
               </div>
@@ -376,10 +376,10 @@ function CircuitMap() {
 
         {result && (
           <div className="grid grid-cols-4 gap-2 text-[11px]">
-            <div className="rounded border border-purple-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Panels</div><div className="font-mono text-purple-200">{result.panels}</div></div>
-            <div className="rounded border border-purple-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Circuits</div><div className="font-mono text-purple-200">{result.totalCircuits}</div></div>
-            <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Unassigned</div><div className="font-mono text-amber-200">{result.unassigned}</div></div>
-            <div className="rounded border border-purple-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Avg devices</div><div className="font-mono text-purple-200">{result.avgDevicesPerCircuit}</div></div>
+            <div className="rounded border border-purple-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Panels</div><div className="font-mono text-purple-200">{result.panels}</div></div>
+            <div className="rounded border border-purple-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Circuits</div><div className="font-mono text-purple-200">{result.totalCircuits}</div></div>
+            <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Unassigned</div><div className="font-mono text-amber-200">{result.unassigned}</div></div>
+            <div className="rounded border border-purple-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Avg devices</div><div className="font-mono text-purple-200">{result.avgDevicesPerCircuit}</div></div>
           </div>
         )}
       </div>
@@ -434,7 +434,7 @@ function SafetyChecklist() {
               <label className="flex items-center justify-center gap-1 self-start rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-[10px] text-rose-300">
                 <input type="checkbox" checked={item.critical} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, critical: e.target.checked } : x))} />Crit
               </label>
-              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="self-start rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="self-start rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>

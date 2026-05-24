@@ -163,7 +163,7 @@ export function BioActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="md:col-span-2">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Sequence A ({seqKind})</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Sequence A ({seqKind})</label>
           <textarea value={sequence} onChange={(e) => setSequence(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
         </div>
         <div className="space-y-2">
@@ -180,7 +180,7 @@ export function BioActionPanel() {
           </div>
         </div>
         <div className="md:col-span-3">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Sequence B (for alignment)</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Sequence B (for alignment)</label>
           <textarea value={seqB} onChange={(e) => setSeqB(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
         </div>
       </div>
@@ -195,7 +195,7 @@ export function BioActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -208,7 +208,7 @@ export function BioActionPanel() {
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
               {seqResult.gcPercent != null && <div className="text-[11px] text-zinc-300">GC <span className="text-green-200 font-mono">{seqResult.gcPercent}%</span></div>}
               {seqResult.tm != null && <div className="text-[11px] text-zinc-300">Tm <span className="text-green-200 font-mono">{seqResult.tm}°C</span></div>}
-              {seqResult.orfs && <div className="text-[11px] text-zinc-300 col-span-2">ORFs <span className="text-green-200 font-mono">{seqResult.orfs.length}</span> {seqResult.orfs.slice(0, 3).map((o, i) => <span key={i} className="text-[10px] text-zinc-500 ml-1">{o.start}-{o.end} ({o.length})</span>)}</div>}
+              {seqResult.orfs && <div className="text-[11px] text-zinc-300 col-span-2">ORFs <span className="text-green-200 font-mono">{seqResult.orfs.length}</span> {seqResult.orfs.slice(0, 3).map((o, i) => <span key={i} className="text-[10px] text-zinc-400 ml-1">{o.start}-{o.end} ({o.length})</span>)}</div>}
             </div>
           </div>
         )}

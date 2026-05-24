@@ -66,7 +66,7 @@ export function SkillTree() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Target className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Skill tree · mastery</span>
-        <span className="ml-auto text-[10px] text-gray-500">{skills.length} skills</span>
+        <span className="ml-auto text-[10px] text-gray-400">{skills.length} skills</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2 text-xs">
@@ -90,9 +90,9 @@ export function SkillTree() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : skills.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Target className="w-6 h-6 mx-auto mb-2 opacity-30" />No skills yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Target className="w-6 h-6 mx-auto mb-2 opacity-30" />No skills yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {skills.map(s => (
@@ -107,7 +107,7 @@ export function SkillTree() {
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div className={cn('h-full transition-all', s.mastery === 'mastered' ? 'bg-amber-400' : s.mastery === 'proficient' ? 'bg-emerald-400' : 'bg-cyan-400')} style={{ width: `${MASTERY_BARS[s.mastery]}%` }} />
                 </div>
-                <div className="mt-0.5 flex justify-between text-[9px] text-gray-500">
+                <div className="mt-0.5 flex justify-between text-[9px] text-gray-400">
                   <span>{s.attempts} attempts</span>
                   {s.lastPracticedAt && <span>last: {new Date(s.lastPracticedAt).toLocaleDateString()}</span>}
                 </div>

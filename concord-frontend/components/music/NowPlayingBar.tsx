@@ -263,7 +263,7 @@ export function NowPlayingBar() {
             </div>
             <button
               onClick={() => { window.dispatchEvent(new CustomEvent('music:like-track', { detail: { trackId: track.id } })); }}
-              className="text-gray-500 hover:text-neon-pink transition-colors flex-shrink-0"
+              className="text-gray-400 hover:text-neon-pink transition-colors flex-shrink-0"
               aria-label="Like track"
             >
               <Heart className="w-4 h-4" />
@@ -275,7 +275,7 @@ export function NowPlayingBar() {
             <div className="flex items-center gap-4">
               <button
                 onClick={toggleShuffle}
-                className={cn('p-1 transition-colors', shuffle ? 'text-neon-cyan' : 'text-gray-500 hover:text-white')}
+                className={cn('p-1 transition-colors', shuffle ? 'text-neon-cyan' : 'text-gray-400 hover:text-white')}
                 aria-label={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
               >
                 <Shuffle className="w-4 h-4" />
@@ -309,13 +309,13 @@ export function NowPlayingBar() {
               </button>
               <button
                 onClick={cycleRepeat}
-                className={cn('p-1 transition-colors', repeat !== 'off' ? 'text-neon-cyan' : 'text-gray-500 hover:text-white')}
+                className={cn('p-1 transition-colors', repeat !== 'off' ? 'text-neon-cyan' : 'text-gray-400 hover:text-white')}
                 aria-label={repeat === 'off' ? 'Enable repeat' : repeat === 'one' ? 'Repeat all' : 'Disable repeat'}
               >
                 {repeat === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
               </button>
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+            <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
               <span>{formatTime(seeking ? seekValue : currentTime)}</span>
               <span>/</span>
               <span>{formatTime(duration)}</span>
@@ -349,7 +349,7 @@ export function NowPlayingBar() {
             {/* Queue toggle */}
             <button
               onClick={() => setShowQueue(!showQueue)}
-              className={cn('p-1 transition-colors', showQueue ? 'text-neon-cyan' : 'text-gray-500 hover:text-white')}
+              className={cn('p-1 transition-colors', showQueue ? 'text-neon-cyan' : 'text-gray-400 hover:text-white')}
               aria-label={showQueue ? 'Hide queue' : 'Show queue'}
             >
               <ListMusic className="w-4 h-4" />
@@ -358,7 +358,7 @@ export function NowPlayingBar() {
             {/* Expand toggle */}
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-gray-500 hover:text-white transition-colors"
+              className="text-gray-400 hover:text-white transition-colors"
               aria-label={expanded ? 'Collapse player' : 'Expand player'}
             >
               {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -395,7 +395,7 @@ export function NowPlayingBar() {
                 <div className="space-y-0.5">
                   <p className="text-sm font-semibold">{track.title}</p>
                   <p className="text-xs text-gray-400">{track.artistName}{track.albumTitle ? ` — ${track.albumTitle}` : ''}</p>
-                  <div className="flex items-center gap-2 justify-center text-[10px] text-gray-500">
+                  <div className="flex items-center gap-2 justify-center text-[10px] text-gray-400">
                     {track.bpm && <span>{track.bpm} BPM</span>}
                     {track.key && <span>{track.key}</span>}
                     <span>{track.genre}</span>
@@ -420,7 +420,7 @@ export function NowPlayingBar() {
                       <span className="text-gray-600 w-5 text-right font-mono">{i + 1}</span>
                       <div className="min-w-0 flex-1">
                         <p className={cn('truncate', i === queueIndex && 'text-neon-cyan')}>{item.track.title}</p>
-                        <p className="text-gray-500 truncate">{item.track.artistName}</p>
+                        <p className="text-gray-400 truncate">{item.track.artistName}</p>
                       </div>
                       <span className="text-gray-600">{formatTime(item.track.duration)}</span>
                     </div>

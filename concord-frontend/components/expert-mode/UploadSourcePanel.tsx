@@ -113,7 +113,7 @@ export function UploadSourcePanel({
       )}
 
       {uploads.length === 0 ? (
-        <p className="text-[11px] text-zinc-600">No documents yet. Add one to ground an answer in your own file.</p>
+        <p className="text-[11px] text-zinc-400">No documents yet. Add one to ground an answer in your own file.</p>
       ) : (
         <ul className="space-y-1">
           {uploads.map((u) => {

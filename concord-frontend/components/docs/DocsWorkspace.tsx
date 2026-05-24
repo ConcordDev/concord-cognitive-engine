@@ -152,7 +152,7 @@ export function DocsWorkspace() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6 text-zinc-500">
+      <div className="flex items-center justify-center py-6 text-zinc-400">
         <Loader2 className="w-4 h-4 animate-spin" />
       </div>
     );
@@ -163,7 +163,7 @@ export function DocsWorkspace() {
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <FileText className="w-4 h-4 text-zinc-300" />
         <h3 className="text-sm font-bold text-zinc-100">Docs Workspace</h3>
-        <span className="text-[11px] text-zinc-500">Notion / Confluence shape</span>
+        <span className="text-[11px] text-zinc-400">Notion / Confluence shape</span>
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-zinc-800 p-0.5">
           <button onClick={() => setTab('editor')}
             className={cn('px-2 py-0.5 rounded text-[11px]', tab === 'editor' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400')}>
@@ -184,7 +184,7 @@ export function DocsWorkspace() {
           <div>
             <div className="flex gap-1 mb-2">
               <div className="relative flex-1">
-                <Search className="w-3 h-3 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" />
+                <Search className="w-3 h-3 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
                 <input value={search} onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') void runSearch(); }}
                   placeholder="Search" className="w-full bg-zinc-950 border border-zinc-800 rounded pl-6 pr-2 py-1 text-xs text-zinc-200" />
@@ -196,7 +196,7 @@ export function DocsWorkspace() {
             </div>
             {results ? (
               <div>
-                <p className="text-[10px] text-zinc-500 mb-1">
+                <p className="text-[10px] text-zinc-400 mb-1">
                   {results.length} results{' '}
                   <button onClick={() => { setResults(null); setSearch(''); }} className="text-zinc-400 underline">clear</button>
                 </p>
@@ -204,13 +204,13 @@ export function DocsWorkspace() {
                   <button key={r.id} onClick={() => { void openPage(r.id); setResults(null); }}
                     className="block w-full text-left px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 rounded">
                     <span className="truncate block">{r.icon} {r.title}</span>
-                    {r.snippet && <span className="block text-[10px] text-zinc-500 truncate">{r.snippet}</span>}
+                    {r.snippet && <span className="block text-[10px] text-zinc-400 truncate">{r.snippet}</span>}
                   </button>
                 ))}
               </div>
             ) : (
               <ul className="space-y-0.5">
-                {topLevel.length === 0 && <li className="text-[11px] text-zinc-600 italic">No pages — create one.</li>}
+                {topLevel.length === 0 && <li className="text-[11px] text-zinc-400 italic">No pages — create one.</li>}
                 {topLevel.map(p => (
                   <PageTreeNode key={p.id} page={p} depth={0} activeId={active?.id} childrenOf={childrenOf}
                     onOpen={openPage} onAddChild={(id) => createPage(id)} onDelete={deletePage}
@@ -269,12 +269,12 @@ export function DocsWorkspace() {
                     onFocus={() => presence.ping(b.id)} />
                 ))}
                 {active.blocks.length === 0 && (
-                  <p className="text-[11px] text-zinc-600 italic py-2">Empty page — add a block below.</p>
+                  <p className="text-[11px] text-zinc-400 italic py-2">Empty page — add a block below.</p>
                 )}
               </div>
 
               <div className="mt-3 flex items-center gap-1 flex-wrap">
-                <span className="text-[10px] text-zinc-500">Add block:</span>
+                <span className="text-[10px] text-zinc-400">Add block:</span>
                 {BLOCK_TYPES.map(t => (
                   <button key={t.id} onClick={() => addBlock(t.id)}
                     className="px-1.5 py-0.5 text-[10px] rounded border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600">
@@ -282,12 +282,12 @@ export function DocsWorkspace() {
                   </button>
                 ))}
               </div>
-              <p className="mt-2 text-[10px] text-zinc-600">
+              <p className="mt-2 text-[10px] text-zinc-400">
                 Tip: write <code className="text-zinc-400">[[Page title]]</code> in any block to link pages — they appear in Backlinks.
               </p>
             </div>
           ) : (
-            <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[160px]">
+            <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[160px]">
               Select or create a page.
             </div>
           )}
@@ -363,10 +363,10 @@ function PageTreeNode({ page, depth, activeId, childrenOf, onOpen, onAddChild, o
         </button>
         {page.parentId && (
           <button onClick={() => onMoveToRoot(page.id)} title="Move to top level"
-            className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-zinc-200 text-[9px]">↑root</button>
+            className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200 text-[9px]">↑root</button>
         )}
         <button onClick={() => onAddChild(page.id)} title="Add sub-page"
-          className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-zinc-200"><Plus className="w-3 h-3" /></button>
+          className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200"><Plus className="w-3 h-3" /></button>
         <button onClick={() => onDelete(page.id)} title="Delete"
           className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
       </div>

@@ -50,7 +50,7 @@ async function run<T = any>(action: string, input: Record<string, unknown> = {})
 
 const card = 'rounded-xl border border-zinc-800 bg-zinc-950/60 p-4';
 const inp = 'w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white';
-const lbl = 'block text-[10px] uppercase tracking-wider text-zinc-500 mb-1';
+const lbl = 'block text-[10px] uppercase tracking-wider text-zinc-400 mb-1';
 const btnP = 'inline-flex items-center gap-1 rounded bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-50';
 const btnS = 'inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-amber-500/40';
 const money = (n: number | undefined) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -125,7 +125,7 @@ function TakeoffTab() {
             <input className={inp} value={sg.label} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
             <input type="number" className={inp} placeholder="L ft" value={sg.lengthFeet || ''} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, lengthFeet: Number(e.target.value) || 0 } : x))} />
             <input type="number" className={inp} placeholder="H ft" value={sg.heightFeet || ''} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: Number(e.target.value) || 0 } : x))} />
-            <button className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300" onClick={() => setSegments((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove segment"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setSegments((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove segment"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
 
@@ -138,7 +138,7 @@ function TakeoffTab() {
             <input className={inp} value={op.label} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
             <input type="number" className={inp} placeholder="W ft" value={op.widthFeet || ''} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, widthFeet: Number(e.target.value) || 0 } : x))} />
             <input type="number" className={inp} placeholder="H ft" value={op.heightFeet || ''} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: Number(e.target.value) || 0 } : x))} />
-            <button className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300" onClick={() => setOpenings((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove opening"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setOpenings((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove opening"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <button className={`${btnP} mt-4`} onClick={save} disabled={busy || !name.trim()}>
@@ -169,12 +169,12 @@ function TakeoffTab() {
         )}
         <div className={card}>
           <h4 className="mb-2 text-sm font-semibold text-white">Saved takeoffs ({saved.length})</h4>
-          {saved.length === 0 && <p className="text-xs text-zinc-600">No takeoffs yet.</p>}
+          {saved.length === 0 && <p className="text-xs text-zinc-400">No takeoffs yet.</p>}
           {saved.map((t) => (
             <div key={t.id} className="mt-2 flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
               <button className="text-left" onClick={() => setPreview(t)}>
                 <p className="text-xs font-medium text-white">{t.name}</p>
-                <p className="text-[10px] text-zinc-500">{t.materialLabel} · {t.netAreaSqFt} sf · {t.unitsNeeded} units · {money(t.totalMaterialCost)}</p>
+                <p className="text-[10px] text-zinc-400">{t.materialLabel} · {t.netAreaSqFt} sf · {t.unitsNeeded} units · {money(t.totalMaterialCost)}</p>
               </button>
               <button onClick={() => del(t.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete takeoff"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
@@ -257,7 +257,7 @@ function ProposalsTab() {
             <input className={inp} placeholder="unit" value={l.unit} onChange={(e) => setLines((s) => s.map((x, idx) => idx === i ? { ...x, unit: e.target.value } : x))} />
             <input type="number" className={inp} placeholder="qty" value={l.quantity || ''} onChange={(e) => setLines((s) => s.map((x, idx) => idx === i ? { ...x, quantity: Number(e.target.value) || 0 } : x))} />
             <input type="number" className={inp} placeholder="$/unit" value={l.unitCost || ''} onChange={(e) => setLines((s) => s.map((x, idx) => idx === i ? { ...x, unitCost: Number(e.target.value) || 0 } : x))} />
-            <button className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300" onClick={() => setLines((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove line"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setLines((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove line"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -271,13 +271,13 @@ function ProposalsTab() {
 
       <div className={card}>
         <h4 className="mb-2 text-sm font-semibold text-white">Proposals ({list.length})</h4>
-        {list.length === 0 && <p className="text-xs text-zinc-600">No proposals yet.</p>}
+        {list.length === 0 && <p className="text-xs text-zinc-400">No proposals yet.</p>}
         {list.map((p) => (
           <div key={p.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-white">{p.number} · {p.projectTitle}</p>
-                <p className="text-[10px] text-zinc-500">{p.client} · {money(p.total)}</p>
+                <p className="text-[10px] text-zinc-400">{p.client} · {money(p.total)}</p>
               </div>
               <span className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] uppercase text-amber-300">{p.status}</span>
             </div>
@@ -375,13 +375,13 @@ function ScheduleTab() {
       <div className={card}>
         <h4 className="mb-2 text-sm font-semibold text-white">Job calendar ({jobs.length})</h4>
         {jobs.length > 0 && <TimelineView events={timeline} height={110} />}
-        {jobs.length === 0 && <p className="text-xs text-zinc-600">No jobs scheduled.</p>}
+        {jobs.length === 0 && <p className="text-xs text-zinc-400">No jobs scheduled.</p>}
         {jobs.map((j) => (
           <div key={j.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-white">{j.title}</p>
-                <p className="text-[10px] text-zinc-500">{j.startDate} · {j.durationDays}d · {j.crew.join(', ') || 'no crew'}</p>
+                <p className="text-[10px] text-zinc-400">{j.startDate} · {j.durationDays}d · {j.crew.join(', ') || 'no crew'}</p>
               </div>
               <button onClick={() => del(j.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete job"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
@@ -453,7 +453,7 @@ function PhotosTab() {
           return (
             <div key={ph} className={card}>
               <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-amber-300">{ph} ({list.length})</h4>
-              {list.length === 0 && <p className="text-[11px] text-zinc-600">None.</p>}
+              {list.length === 0 && <p className="text-[11px] text-zinc-400">None.</p>}
               {list.map((p) => (
                 <div key={p.id} className="mt-2 overflow-hidden rounded border border-zinc-800 bg-zinc-950">
                   <div className="relative h-28 w-full bg-zinc-900">
@@ -531,17 +531,17 @@ function ChangeOrdersTab() {
       <div className={card}>
         <div className="mb-2 flex items-center justify-between">
           <h4 className="text-sm font-semibold text-white">Change orders ({list.length})</h4>
-          <span className="text-[10px] text-zinc-500">Approved {money(totals.approvedTotal)} · Pending {money(totals.pendingTotal)}</span>
+          <span className="text-[10px] text-zinc-400">Approved {money(totals.approvedTotal)} · Pending {money(totals.pendingTotal)}</span>
         </div>
-        {list.length === 0 && <p className="text-xs text-zinc-600">No change orders yet.</p>}
+        {list.length === 0 && <p className="text-xs text-zinc-400">No change orders yet.</p>}
         {list.map((co) => (
           <div key={co.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-white">{co.number} · {money(co.amount)}</p>
               <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${co.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300' : co.status === 'rejected' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}`}>{co.status}</span>
             </div>
-            <p className="mt-0.5 text-[10px] text-zinc-500">{co.description}</p>
-            <p className="text-[10px] text-zinc-600">{co.laborHours}h labor · {money(co.materialCost)} materials · {co.scheduleImpactDays}d impact</p>
+            <p className="mt-0.5 text-[10px] text-zinc-400">{co.description}</p>
+            <p className="text-[10px] text-zinc-400">{co.laborHours}h labor · {money(co.materialCost)} materials · {co.scheduleImpactDays}d impact</p>
             {co.signedBy && <p className="text-[10px] text-emerald-400">Signed off by {co.signedBy}</p>}
             {co.status === 'pending' && (
               <div className="mt-1.5 flex gap-1.5">
@@ -588,7 +588,7 @@ function PriceBookTab() {
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
-          <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
+          <thead className="text-[10px] uppercase tracking-wider text-zinc-400">
             <tr><th className="py-1">SKU</th><th>Name</th><th>Unit</th><th>Category</th><th className="text-right">Unit cost</th><th></th></tr>
           </thead>
           <tbody>
@@ -600,15 +600,15 @@ function PriceBookTab() {
                 <td className="text-zinc-400">{p.category}</td>
                 <td className="text-right font-mono text-amber-200">{money(p.unitCost)}</td>
                 <td className="text-right">
-                  <button onClick={() => setEditing(p)} className="mr-2 text-zinc-500 hover:text-amber-400" aria-label="Edit"><ClipboardEdit className="inline h-3.5 w-3.5" /></button>
-                  <button onClick={() => del(p.id)} className="text-zinc-500 hover:text-rose-400" aria-label="Delete"><Trash2 className="inline h-3.5 w-3.5" /></button>
+                  <button onClick={() => setEditing(p)} className="mr-2 text-zinc-400 hover:text-amber-400" aria-label="Edit"><ClipboardEdit className="inline h-3.5 w-3.5" /></button>
+                  <button onClick={() => del(p.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete"><Trash2 className="inline h-3.5 w-3.5" /></button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {list.length === 0 && <p className="mt-2 text-xs text-zinc-600">No price-book items.</p>}
+      {list.length === 0 && <p className="mt-2 text-xs text-zinc-400">No price-book items.</p>}
 
       {editing && (
         <Modal title={editing.id ? 'Edit price item' : 'New price item'} onClose={() => setEditing(null)}>
@@ -686,7 +686,7 @@ function InvoicesTab() {
             <div><label className={lbl}>Progress %</label><input type="number" className={inp} value={progress} onChange={(e) => setProgress(Number(e.target.value) || 0)} /></div>
             <div className="col-span-2"><label className={lbl}>Due date</label><input type="date" className={inp} value={due} onChange={(e) => setDue(e.target.value)} /></div>
           </div>
-          <p className="mt-2 text-[10px] text-zinc-500">This invoice bills {money((contract * progress) / 100)} ({progress}% of contract).</p>
+          <p className="mt-2 text-[10px] text-zinc-400">This invoice bills {money((contract * progress) / 100)} ({progress}% of contract).</p>
           <button className={`${btnP} mt-3`} onClick={create} disabled={busy || !client.trim() || contract <= 0}>
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}Create invoice
           </button>
@@ -694,13 +694,13 @@ function InvoicesTab() {
 
         <div className={card}>
           <h4 className="mb-2 text-sm font-semibold text-white">Invoices ({list.length})</h4>
-          {list.length === 0 && <p className="text-xs text-zinc-600">No invoices yet.</p>}
+          {list.length === 0 && <p className="text-xs text-zinc-400">No invoices yet.</p>}
           {list.map((iv) => (
             <div key={iv.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-white">{iv.number} · {iv.client}</p>
-                  <p className="text-[10px] text-zinc-500">{money(iv.amount)} billed · {money(iv.amountPaid)} paid · {money(iv.balance)} due</p>
+                  <p className="text-[10px] text-zinc-400">{money(iv.amount)} billed · {money(iv.amountPaid)} paid · {money(iv.balance)} due</p>
                 </div>
                 <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${iv.status === 'paid' ? 'bg-emerald-500/20 text-emerald-300' : iv.status === 'partial' ? 'bg-amber-500/20 text-amber-300' : 'bg-zinc-700 text-zinc-300'}`}>{iv.status}</span>
               </div>
@@ -772,7 +772,7 @@ function CodesTab() {
           <button className={btnP} onClick={search}><Library className="h-3.5 w-3.5" />Search</button>
         </div>
         <div className="mt-3 space-y-2">
-          {results.length === 0 && <p className="text-xs text-zinc-600">No matching code references.</p>}
+          {results.length === 0 && <p className="text-xs text-zinc-400">No matching code references.</p>}
           {results.map((c, i) => (
             <div key={`${c.code}-${c.section}-${i}`} className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
               <div className="flex items-center justify-between">
@@ -794,7 +794,7 @@ function CodesTab() {
           ))}
         </div>
         <div className="mt-3 space-y-2">
-          {checkRefs.length === 0 && <p className="text-xs text-zinc-600">Pick a check type to surface its governing codes.</p>}
+          {checkRefs.length === 0 && <p className="text-xs text-zinc-400">Pick a check type to surface its governing codes.</p>}
           {checkRefs.map((c, i) => (
             <div key={`chk-${c.code}-${i}`} className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2">
               <span className="font-mono text-xs text-amber-300">{c.code} §{c.section}</span>
@@ -814,7 +814,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">{title}</h3>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
         {children}
       </div>

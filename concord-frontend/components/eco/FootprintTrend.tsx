@@ -29,7 +29,7 @@ const TREND_TONE: Record<string, string> = {
   improving: 'text-green-400',
   worsening: 'text-red-400',
   stable: 'text-cyan-400',
-  none: 'text-gray-500',
+  none: 'text-gray-400',
 };
 
 export function FootprintTrend() {
@@ -111,14 +111,14 @@ export function FootprintTrend() {
           Carbon-footprint trend
         </span>
         {data && data.count > 0 && (
-          <span className="ml-auto text-[10px] text-gray-500">{data.count} snapshots</span>
+          <span className="ml-auto text-[10px] text-gray-400">{data.count} snapshots</span>
         )}
       </header>
 
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Total kg CO₂e</span>
+            <span className="text-[10px] text-gray-400 uppercase">Total kg CO₂e</span>
             <input
               value={total}
               onChange={(e) => setTotal(e.target.value)}
@@ -128,7 +128,7 @@ export function FootprintTrend() {
             />
           </label>
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Net (after offsets)</span>
+            <span className="text-[10px] text-gray-400 uppercase">Net (after offsets)</span>
             <input
               value={net}
               onChange={(e) => setNet(e.target.value)}
@@ -138,7 +138,7 @@ export function FootprintTrend() {
             />
           </label>
           <label className="flex flex-col gap-0.5 md:col-span-2">
-            <span className="text-[10px] text-gray-500 uppercase">Label</span>
+            <span className="text-[10px] text-gray-400 uppercase">Label</span>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -160,13 +160,13 @@ export function FootprintTrend() {
         {error && <div className="text-xs text-red-400">{error}</div>}
 
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 py-6 justify-center">
+          <div className="flex items-center gap-2 text-xs text-gray-400 py-6 justify-center">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading history…
           </div>
         )}
 
         {!loading && data && data.count === 0 && (
-          <p className="py-8 text-center text-xs text-gray-500">
+          <p className="py-8 text-center text-xs text-gray-400">
             No data yet. Record a footprint snapshot to start tracking your trend over time.
           </p>
         )}
@@ -179,20 +179,20 @@ export function FootprintTrend() {
                   <TrendIcon className="w-3.5 h-3.5" />
                   {data.trend}
                 </p>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-gray-400">
                   {data.changePct > 0 ? '+' : ''}
                   {data.changePct}% over period
                 </p>
               </div>
               <div className="p-2 bg-white/[0.03] rounded text-center">
                 <p className="text-sm font-bold text-cyan-400">{data.averageNetKgCO2e}</p>
-                <p className="text-[10px] text-gray-500">avg net kg CO₂e</p>
+                <p className="text-[10px] text-gray-400">avg net kg CO₂e</p>
               </div>
               <div className="p-2 bg-white/[0.03] rounded text-center">
                 <p className="text-sm font-bold text-green-400">
                   {data.bestEntry ? data.bestEntry.netKgCO2e : '—'}
                 </p>
-                <p className="text-[10px] text-gray-500">best (lowest) net</p>
+                <p className="text-[10px] text-gray-400">best (lowest) net</p>
               </div>
             </div>
 
@@ -217,14 +217,14 @@ export function FootprintTrend() {
                       <div className="text-sm text-white truncate">
                         {e.label || 'Snapshot'}
                       </div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-gray-400">
                         {new Date(e.at).toLocaleDateString()} · net {e.netKgCO2e} kg · total{' '}
                         {e.totalKgCO2e} kg
                       </div>
                     </div>
                     <button
                       onClick={() => remove(e.id)}
-                      className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400"
+                      className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400"
                       aria-label="Delete snapshot"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

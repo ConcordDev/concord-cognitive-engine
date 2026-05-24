@@ -262,13 +262,13 @@ export function BoardWorkspace() {
       {err && <p className="text-xs text-red-400 mb-3">{err}</p>}
 
       {listLoading && (
-        <div className="flex items-center justify-center py-12 text-gray-500">
+        <div className="flex items-center justify-center py-12 text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       )}
 
       {!listLoading && boards.length === 0 && (
-        <div className="text-center py-12 text-sm text-gray-500">
+        <div className="text-center py-12 text-sm text-gray-400">
           No boards yet. Create your first board above.
         </div>
       )}
@@ -300,7 +300,7 @@ export function BoardWorkspace() {
             </div>
             {labelDefs.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-gray-500" />
+                <Filter className="w-3.5 h-3.5 text-gray-400" />
                 <select
                   value={filterLabel}
                   onChange={(e) => setFilterLabel(e.target.value)}
@@ -318,7 +318,7 @@ export function BoardWorkspace() {
           </div>
 
           {boardLoading && (
-            <div className="flex items-center justify-center py-8 text-gray-500">
+            <div className="flex items-center justify-center py-8 text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           )}
@@ -347,7 +347,7 @@ export function BoardWorkspace() {
                       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
                         <span className="text-sm font-semibold text-gray-200">{col.name}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-gray-500">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-gray-400">
                             {colCards.length}
                           </span>
                           <button
@@ -393,7 +393,7 @@ export function BoardWorkspace() {
                                 </div>
                               )}
                               <p className="text-sm text-gray-200">{card.title}</p>
-                              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-500">
+                              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-400">
                                 {card.dueDate && (
                                   <span
                                     className={
@@ -418,7 +418,7 @@ export function BoardWorkspace() {
                         ))}
 
                         {colCards.length === 0 && (
-                          <p className="text-[11px] text-gray-600 text-center py-2">
+                          <p className="text-[11px] text-gray-400 text-center py-2">
                             No cards yet
                           </p>
                         )}
@@ -475,7 +475,7 @@ export function BoardWorkspace() {
           {!boardLoading && view === 'calendar' && (
             <div>
               {!calendar && (
-                <div className="flex items-center justify-center py-8 text-gray-500">
+                <div className="flex items-center justify-center py-8 text-gray-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
               )}
@@ -494,7 +494,7 @@ export function BoardWorkspace() {
                     </span>
                   </div>
                   {calendar.days.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-8">
+                    <p className="text-sm text-gray-400 text-center py-8">
                       No cards have due dates yet.
                     </p>
                   ) : (
@@ -522,7 +522,7 @@ export function BoardWorkspace() {
                                   </span>
                                   <span
                                     className={`text-[10px] flex-shrink-0 ${
-                                      c.overdue ? 'text-red-400' : 'text-gray-500'
+                                      c.overdue ? 'text-red-400' : 'text-gray-400'
                                     }`}
                                   >
                                     {c.columnName}
@@ -534,7 +534,7 @@ export function BoardWorkspace() {
                                     {c.labels.map((l) => (
                                       <span
                                         key={l}
-                                        className="text-[9px] flex items-center gap-0.5 text-gray-500"
+                                        className="text-[9px] flex items-center gap-0.5 text-gray-400"
                                       >
                                         <Tag className="w-2.5 h-2.5" />
                                         {l}

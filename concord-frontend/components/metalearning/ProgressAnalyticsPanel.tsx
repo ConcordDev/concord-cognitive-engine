@@ -66,15 +66,15 @@ export function ProgressAnalyticsPanel() {
               <p className="text-xl font-bold text-neon-green">
                 {(data.overallRetention * 100).toFixed(0)}%
               </p>
-              <p className="text-[10px] text-gray-500">Overall retention</p>
+              <p className="text-[10px] text-gray-400">Overall retention</p>
             </div>
             <div className="bg-lattice-deep rounded-lg p-3 border border-white/5">
               <p className="text-xl font-bold text-neon-cyan">{data.totalReviews}</p>
-              <p className="text-[10px] text-gray-500">Total reviews</p>
+              <p className="text-[10px] text-gray-400">Total reviews</p>
             </div>
             <div className="bg-lattice-deep rounded-lg p-3 border border-white/5">
               <p className="text-xl font-bold text-neon-purple">{data.studySessions}</p>
-              <p className="text-[10px] text-gray-500">Study sessions</p>
+              <p className="text-[10px] text-gray-400">Study sessions</p>
             </div>
           </div>
 
@@ -95,7 +95,7 @@ export function ProgressAnalyticsPanel() {
               />
             </div>
           ) : (
-            <p className="text-xs text-gray-500 text-center py-3">
+            <p className="text-xs text-gray-400 text-center py-3">
               Review cards to build a retention curve.
             </p>
           )}
@@ -108,7 +108,7 @@ export function ProgressAnalyticsPanel() {
                   <div key={m.topic} className="bg-lattice-surface rounded p-2 border border-white/5">
                     <div className="flex justify-between text-xs">
                       <span className="font-medium text-gray-200">{m.topic}</span>
-                      <span className="text-gray-500">
+                      <span className="text-gray-400">
                         {m.mastered}/{m.cards} mastered
                         {m.avgDaysToMastery != null && ` · ${m.avgDaysToMastery}d avg`}
                       </span>

@@ -113,7 +113,7 @@ export function WorldSettingsPanel({
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-cyan-800/60 bg-zinc-950 p-5 space-y-4">
         <header className="flex items-center justify-between">
           <h2 className="text-base font-bold text-cyan-300">World Settings</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-200">
+          <button type="button" onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-zinc-200">
             <X className="h-5 w-5" />
           </button>
         </header>
@@ -125,7 +125,7 @@ export function WorldSettingsPanel({
         )}
 
         <div className="space-y-2">
-          <label className="block text-[11px] uppercase tracking-wider text-zinc-500">Name</label>
+          <label className="block text-[11px] uppercase tracking-wider text-zinc-400">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -134,7 +134,7 @@ export function WorldSettingsPanel({
         </div>
 
         <div className="space-y-2">
-          <label className="block text-[11px] uppercase tracking-wider text-zinc-500">Description</label>
+          <label className="block text-[11px] uppercase tracking-wider text-zinc-400">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -144,7 +144,7 @@ export function WorldSettingsPanel({
         </div>
 
         <div className="space-y-2">
-          <label className="block text-[11px] uppercase tracking-wider text-zinc-500">Thumbnail URL</label>
+          <label className="block text-[11px] uppercase tracking-wider text-zinc-400">Thumbnail URL</label>
           <input
             value={thumbnail}
             onChange={(e) => setThumbnail(e.target.value)}
@@ -155,7 +155,7 @@ export function WorldSettingsPanel({
 
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Privacy</label>
+            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 mb-1">Privacy</label>
             <select
               value={privacy}
               onChange={(e) => setPrivacy(e.target.value)}
@@ -165,7 +165,7 @@ export function WorldSettingsPanel({
             </select>
           </div>
           <div>
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Kind</label>
+            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 mb-1">Kind</label>
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value)}
@@ -175,7 +175,7 @@ export function WorldSettingsPanel({
             </select>
           </div>
           <div>
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Capacity</label>
+            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 mb-1">Capacity</label>
             <input
               type="number"
               min={1}
@@ -197,9 +197,9 @@ export function WorldSettingsPanel({
         </button>
 
         <div className="border-t border-zinc-800 pt-3 space-y-2">
-          <h3 className="text-[11px] uppercase tracking-wider text-zinc-500">Co-Editors</h3>
+          <h3 className="text-[11px] uppercase tracking-wider text-zinc-400">Co-Editors</h3>
           {editors.length === 0 ? (
-            <p className="text-xs text-zinc-600 italic">No co-editors yet.</p>
+            <p className="text-xs text-zinc-400 italic">No co-editors yet.</p>
           ) : (
             <ul className="space-y-1">
               {editors.map((e) => (

@@ -281,7 +281,7 @@ export default function FilmStudiosPage() {
 
           {filmActionResult && (
             <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-              <button onClick={() => setFilmActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
+              <button onClick={() => setFilmActionResult(null)} className="absolute top-3 right-3 text-gray-400 hover:text-white" aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
 
@@ -416,7 +416,7 @@ export default function FilmStudiosPage() {
                       ))}
                     </div>
                   )}
-                  {!!filmActionResult.parallelizable && <p className="text-xs text-gray-500 italic">{String(filmActionResult.parallelizable)}</p>}
+                  {!!filmActionResult.parallelizable && <p className="text-xs text-gray-400 italic">{String(filmActionResult.parallelizable)}</p>}
                   {!!filmActionResult.estimatedCompletion && <p className="text-xs text-neon-green">Completion: {String(filmActionResult.estimatedCompletion)}</p>}
                 </div>
               )}
@@ -439,7 +439,7 @@ export default function FilmStudiosPage() {
         {tab === 'discover' && (
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search films, creators, genres..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-purple/50" />
             </div>
@@ -465,7 +465,7 @@ export default function FilmStudiosPage() {
                   <div className="flex flex-wrap items-center gap-1.5 mb-2">
                     {typePill(film.type)}
                     {film.duration && (
-                      <span className="text-[10px] text-gray-500 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{Math.round(film.duration / 60)}m</span>
+                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{Math.round(film.duration / 60)}m</span>
                     )}
                   </div>
                   <div className="flex gap-2 mt-3">
@@ -475,7 +475,7 @@ export default function FilmStudiosPage() {
                 </motion.div>
               ))}
               {!isLoading && (discoveredFilms as FilmProject[]).length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-500 text-sm">No films found. Create your first film to get started.</div>
+                <div className="col-span-full text-center py-12 text-gray-400 text-sm">No films found. Create your first film to get started.</div>
               )}
             </div>
           </div>
@@ -485,7 +485,7 @@ export default function FilmStudiosPage() {
         {tab === 'my-films' && (
           <div className="space-y-4">
             {myFilms.length === 0 ? (
-              <div className="text-center py-16 text-gray-500">
+              <div className="text-center py-16 text-gray-400">
                 <Film className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No films yet. Create your first project.</p>
                 <button onClick={() => setShowCreateModal(true)} className="mt-3 px-4 py-2 text-xs bg-neon-purple/20 rounded-lg hover:bg-neon-purple/30">Create Film</button>
@@ -521,7 +521,7 @@ export default function FilmStudiosPage() {
                             </div>
                           ))}
                         </div>
-                        <div className="flex justify-between text-[9px] text-gray-500 px-0.5">
+                        <div className="flex justify-between text-[9px] text-gray-400 px-0.5">
                           {PIPELINE_PHASES.map((phase, i) => (
                             <span key={phase.key} className={cn('truncate', i === phaseIdx ? 'text-white/70 font-medium' : '')}>{phase.label}</span>
                           ))}
@@ -625,7 +625,7 @@ export default function FilmStudiosPage() {
 
               {/* Party code input */}
               <div className="space-y-1.5">
-                <label className="text-[10px] text-gray-500 uppercase tracking-wider">Party Code</label>
+                <label className="text-[10px] text-gray-400 uppercase tracking-wider">Party Code</label>
                 <div className="flex gap-2">
                   <input
                     value={partyCode}
@@ -658,7 +658,7 @@ export default function FilmStudiosPage() {
                 </button>
               </div>
             </div>
-            <p className="text-xs text-center text-gray-600">Create synchronized viewing sessions for your films. Invite collaborators and audiences.</p>
+            <p className="text-xs text-center text-gray-400">Create synchronized viewing sessions for your films. Invite collaborators and audiences.</p>
           </div>
         )}
 
@@ -679,7 +679,7 @@ export default function FilmStudiosPage() {
                     <Film className="w-5 h-5 text-neon-purple" />
                   </div>
                 </div>
-                <div className="mt-2 text-[10px] text-gray-500">{dtusLoading ? '…' : `${contextDTUs.length} DTU${contextDTUs.length !== 1 ? 's' : ''} linked`}</div>
+                <div className="mt-2 text-[10px] text-gray-400">{dtusLoading ? '…' : `${contextDTUs.length} DTU${contextDTUs.length !== 1 ? 's' : ''} linked`}</div>
               </div>
 
               {/* DTU activity */}
@@ -693,7 +693,7 @@ export default function FilmStudiosPage() {
                     <TrendingUp className="w-5 h-5 text-green-400" />
                   </div>
                 </div>
-                <div className="mt-2 text-[10px] text-gray-500">Knowledge units tracked</div>
+                <div className="mt-2 text-[10px] text-gray-400">Knowledge units tracked</div>
               </div>
 
               {/* Live status */}
@@ -701,15 +701,15 @@ export default function FilmStudiosPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-xs text-gray-400 mb-1">Stream Status</div>
-                    <div className={cn('text-3xl font-bold', isLive ? 'text-green-400' : 'text-gray-500')}>{isLive ? 'Live' : 'Offline'}</div>
+                    <div className={cn('text-3xl font-bold', isLive ? 'text-green-400' : 'text-gray-400')}>{isLive ? 'Live' : 'Offline'}</div>
                   </div>
                   <div className={cn('p-2 rounded-lg', isLive ? 'bg-green-500/20' : 'bg-white/5')}>
-                    <Globe className={cn('w-5 h-5', isLive ? 'text-green-400' : 'text-gray-500')} />
+                    <Globe className={cn('w-5 h-5', isLive ? 'text-green-400' : 'text-gray-400')} />
                   </div>
                 </div>
                 <div className="mt-2 flex items-center gap-1">
                   <span className={cn('w-1.5 h-1.5 rounded-full', isLive ? 'bg-green-400 animate-pulse' : 'bg-gray-600')} />
-                  <span className="text-[10px] text-gray-500">{isLive ? 'Realtime updates active' : 'Realtime inactive'}</span>
+                  <span className="text-[10px] text-gray-400">{isLive ? 'Realtime updates active' : 'Realtime inactive'}</span>
                 </div>
               </div>
             </div>
@@ -725,7 +725,7 @@ export default function FilmStudiosPage() {
                   <div key={phase.key} className="bg-white/5 rounded-lg p-3 text-center">
                     <div className={cn('w-2.5 h-2.5 rounded-full mx-auto mb-1.5', phase.color)} />
                     <div className="text-xl font-bold">{phase.count}</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">{phase.label}</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">{phase.label}</div>
                   </div>
                 ))}
               </div>
@@ -827,7 +827,7 @@ export default function FilmStudiosPage() {
                     <div className="absolute inset-x-0 top-0 h-3 flex">
                       {Array.from({ length: 10 }).map((_, i) => (
                         <div key={i} className="flex-1 border-r border-white/10 px-1">
-                          <span className="text-[8px] text-gray-600">{Math.round(((previewFilm.duration || 120) / 10) * i)}s</span>
+                          <span className="text-[8px] text-gray-400">{Math.round(((previewFilm.duration || 120) / 10) * i)}s</span>
                         </div>
                       ))}
                     </div>

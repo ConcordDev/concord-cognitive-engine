@@ -80,7 +80,7 @@ export function SaelStall() {
                   {l.rarity && <span className="rounded bg-amber-500/20 px-1 font-mono text-[10px] uppercase text-amber-200">{l.rarity}</span>}
                 </div>
                 <p className="mt-1 line-clamp-2 italic text-[12px] text-zinc-200">&quot;{l.teaser}&quot;</p>
-                <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-zinc-500">
+                <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-zinc-400">
                   {l.fenceNpcId && <span>fence: {l.fenceNpcId}</span>}
                   {l.interceptedAt && <span>intercepted {new Date(l.interceptedAt).toLocaleString()}</span>}
                 </div>
@@ -95,7 +95,7 @@ export function SaelStall() {
           </div>
         ))}
         {listings.data && listings.data.length === 0 && !listings.isPending && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500"><Eye className="mx-auto mb-1 h-5 w-5" />No intercepts on the rack right now.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400"><Eye className="mx-auto mb-1 h-5 w-5" />No intercepts on the rack right now.</div>
         )}
       </div>
     </div>

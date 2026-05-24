@@ -219,12 +219,12 @@ export default function QuestPanel({
         <div className="flex items-center gap-2">
           <ScrollText className="w-4 h-4 text-cyan-400" />
           <h2 className="text-sm font-semibold">Quest Journal</h2>
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-gray-400">
             {quests.filter((q) => q.status === 'active').length} active
           </span>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -237,7 +237,7 @@ export default function QuestPanel({
           className={`px-2 py-1 text-[10px] rounded whitespace-nowrap transition-colors ${
             categoryFilter === 'all'
               ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-              : 'text-gray-500 hover:text-gray-300'
+              : 'text-gray-400 hover:text-gray-300'
           }`}
         >
           All
@@ -251,7 +251,7 @@ export default function QuestPanel({
               className={`px-2 py-1 text-[10px] rounded whitespace-nowrap transition-colors ${
                 categoryFilter === cat
                   ? meta.color + ' border'
-                  : 'text-gray-500 hover:text-gray-300'
+                  : 'text-gray-400 hover:text-gray-300'
               }`}
             >
               {meta.label}
@@ -282,7 +282,7 @@ export default function QuestPanel({
           {/* Active quests */}
           {activeQuests.length > 0 && (
             <>
-              <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pt-2 pb-1">
+              <p className="text-[9px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">
                 Active ({activeQuests.length})
               </p>
               {activeQuests.map((quest) => {
@@ -312,7 +312,7 @@ export default function QuestPanel({
                           style={{ width: `${prog.pct}%` }}
                         />
                       </div>
-                      <span className="text-[8px] text-gray-500">{prog.done}/{prog.total}</span>
+                      <span className="text-[8px] text-gray-400">{prog.done}/{prog.total}</span>
                     </div>
                   </button>
                 );
@@ -323,7 +323,7 @@ export default function QuestPanel({
           {/* Available quests */}
           {availableQuests.length > 0 && (
             <>
-              <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pt-2 pb-1">
+              <p className="text-[9px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">
                 Available ({availableQuests.length})
               </p>
               {availableQuests.map((quest) => {
@@ -345,7 +345,7 @@ export default function QuestPanel({
                         {catMeta.label}
                       </span>
                       {quest.district && (
-                        <span className="text-[8px] text-gray-600 ml-1.5">{quest.district}</span>
+                        <span className="text-[8px] text-gray-400 ml-1.5">{quest.district}</span>
                       )}
                     </div>
                   </button>
@@ -357,7 +357,7 @@ export default function QuestPanel({
           {/* Completed quests */}
           {completedQuests.length > 0 && (
             <>
-              <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pt-2 pb-1">
+              <p className="text-[9px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">
                 Completed ({completedQuests.length})
               </p>
               {completedQuests.map((quest) => (
@@ -370,7 +370,7 @@ export default function QuestPanel({
                 >
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />
-                    <span className="text-[11px] text-gray-500 truncate flex-1 line-through">{quest.title}</span>
+                    <span className="text-[11px] text-gray-400 truncate flex-1 line-through">{quest.title}</span>
                   </div>
                 </button>
               ))}
@@ -380,7 +380,7 @@ export default function QuestPanel({
           {filtered.length === 0 && (
             <div className="px-3 py-6 text-center">
               <ScrollText className="w-6 h-6 text-gray-700 mx-auto mb-1" />
-              <p className="text-[10px] text-gray-600">No quests match your filters.</p>
+              <p className="text-[10px] text-gray-400">No quests match your filters.</p>
             </div>
           )}
         </div>
@@ -390,7 +390,7 @@ export default function QuestPanel({
           {!selectedQuest ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <ScrollText className="w-8 h-8 text-gray-700 mb-2" />
-              <p className="text-xs text-gray-500">Select a quest to view details.</p>
+              <p className="text-xs text-gray-400">Select a quest to view details.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -404,7 +404,7 @@ export default function QuestPanel({
                 </div>
                 <p className="text-[11px] text-gray-400">{selectedQuest.description}</p>
                 {selectedQuest.questGiver && (
-                  <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+                  <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
                     <MessageSquare className="w-3 h-3" />
                     Quest from: <span className="text-cyan-400">{selectedQuest.questGiver}</span>
                   </p>
@@ -430,7 +430,7 @@ export default function QuestPanel({
                       )}
                     </React.Fragment>
                   ))}
-                  <span className="text-[9px] text-gray-500 ml-1">
+                  <span className="text-[9px] text-gray-400 ml-1">
                     Step {selectedQuest.chainIndex + 1} of {selectedQuest.chainTotal}
                   </span>
                 </div>
@@ -438,7 +438,7 @@ export default function QuestPanel({
 
               {/* Objectives */}
               <div>
-                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Objectives</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Objectives</p>
                 <div className="space-y-1">
                   {selectedQuest.objectives.map((obj) => {
                     const ObjIcon = OBJECTIVE_ICONS[obj.type];
@@ -459,8 +459,8 @@ export default function QuestPanel({
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <ObjIcon className="w-3 h-3 text-gray-500" />
-                            <span className={`text-[11px] ${obj.completed ? 'text-gray-500 line-through' : 'text-gray-300'}`}>
+                            <ObjIcon className="w-3 h-3 text-gray-400" />
+                            <span className={`text-[11px] ${obj.completed ? 'text-gray-400 line-through' : 'text-gray-300'}`}>
                               {obj.description}
                             </span>
                           </div>
@@ -472,7 +472,7 @@ export default function QuestPanel({
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
-                              <span className="text-[9px] text-gray-500">{obj.current}/{obj.target}</span>
+                              <span className="text-[9px] text-gray-400">{obj.current}/{obj.target}</span>
                             </div>
                           )}
                         </div>
@@ -484,7 +484,7 @@ export default function QuestPanel({
 
               {/* Rewards */}
               <div>
-                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Rewards</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Rewards</p>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedQuest.rewards.map((reward, i) => {
                     const RIcon = REWARD_ICONS[reward.type];
@@ -545,7 +545,7 @@ export default function QuestPanel({
 
       {/* Footer notice */}
       <div className="px-3 py-2 border-t border-white/5">
-        <p className="text-[9px] text-gray-600 flex items-center gap-1">
+        <p className="text-[9px] text-gray-400 flex items-center gap-1">
           <Coins className="w-3 h-3 text-yellow-400/60" />
           Quest designers earn royalties when players complete their quests.
         </p>

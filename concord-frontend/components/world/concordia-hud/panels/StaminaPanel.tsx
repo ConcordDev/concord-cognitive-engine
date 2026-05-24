@@ -11,8 +11,8 @@ export function StaminaPanel() {
   useEffect(() => { void refresh(); const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [refresh]);
   return (
     <div className="text-sm">
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Current</h3>
-      {!s ? <p className="text-zinc-500 text-xs italic">Loading…</p> : (
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Current</h3>
+      {!s ? <p className="text-zinc-400 text-xs italic">Loading…</p> : (
         <>
           <p className="text-xs text-zinc-300 mb-2">{Math.round(s.value)} / {s.max_value} · <span className="text-amber-300">{s.state}</span></p>
           <div className="flex gap-1 flex-wrap">

@@ -187,7 +187,7 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
               <div className="w-full border-t border-lattice-surface" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-lattice-elevated px-3 text-gray-500">
+              <span className="bg-lattice-elevated px-3 text-gray-400">
                 or continue with email
               </span>
             </div>
@@ -253,7 +253,7 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
                 <button
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -301,7 +301,7 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-gray-600">
+        <p className="mt-6 text-center text-xs text-gray-400">
           By continuing, you agree to the Concord terms of service and privacy policy.
         </p>
       </div>

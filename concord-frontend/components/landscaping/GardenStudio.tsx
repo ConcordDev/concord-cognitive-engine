@@ -268,7 +268,7 @@ function YardDesigner() {
       )}
       <div className="flex flex-wrap items-end gap-2">
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Layout name</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Layout name</label>
           <input
             className={inputCls}
             value={newName}
@@ -277,7 +277,7 @@ function YardDesigner() {
           />
         </div>
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Width ft</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Width ft</label>
           <input
             type="number"
             className={inputCls}
@@ -286,7 +286,7 @@ function YardDesigner() {
           />
         </div>
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Height ft</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Height ft</label>
           <input
             type="number"
             className={inputCls}
@@ -342,7 +342,7 @@ function YardDesigner() {
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               {dirty ? 'Save layout' : 'Saved'}
             </button>
-            <span className="text-[11px] text-zinc-500">
+            <span className="text-[11px] text-zinc-400">
               {active.plotWidthFt} × {active.plotHeightFt} ft · drag elements to place
             </span>
           </div>
@@ -379,7 +379,7 @@ function YardDesigner() {
               </div>
             ))}
             {elements.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-[11px] text-zinc-600">
+              <div className="absolute inset-0 flex items-center justify-center text-[11px] text-zinc-400">
                 Add elements then drag them onto the plot
               </div>
             )}
@@ -548,7 +548,7 @@ function PhotoOverlay() {
       )}
       <div className="flex flex-wrap items-end gap-2">
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Preview name</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Preview name</label>
           <input
             className={inputCls}
             value={name}
@@ -601,7 +601,7 @@ function PhotoOverlay() {
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               {dirty ? 'Save preview' : 'Saved'}
             </button>
-            <span className="text-[11px] text-zinc-500">
+            <span className="text-[11px] text-zinc-400">
               Click the photo to position the selected plant
             </span>
           </div>
@@ -675,7 +675,7 @@ function PhotoOverlay() {
                       setDirty(true);
                     }}
                   />
-                  <label className="flex items-center gap-1 text-zinc-500">
+                  <label className="flex items-center gap-1 text-zinc-400">
                     size
                     <input
                       type="range"
@@ -757,7 +757,7 @@ function PlantIdentify() {
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanSearch className="h-3.5 w-3.5" />}
         Identify plant from photo
       </button>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Vision brain identifies species, plant type, and visible health issues.
       </p>
       {preview && (
@@ -825,7 +825,7 @@ function CareReminders() {
       )}
       <div className="flex items-end gap-2">
         <div className="w-32">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Horizon days</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Horizon days</label>
           <input
             type="number"
             className={inputCls}
@@ -838,13 +838,13 @@ function CareReminders() {
           Refresh
         </button>
         {loaded && (
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-zinc-400">
             {reminders.length} due · {overdue} overdue
           </span>
         )}
       </div>
       {loaded && reminders.length === 0 && !err && (
-        <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">
+        <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">
           No care due in this horizon. Reminders derive from care-log cadence — log care events on
           your beds first.
         </p>
@@ -862,13 +862,13 @@ function CareReminders() {
             <div>
               <span className="font-medium text-white">{rm.bedName}</span>
               <span className="ml-2 text-emerald-300 capitalize">{rm.kind.replace('_', ' ')}</span>
-              <span className="ml-2 text-zinc-500">every {rm.cadenceDays}d</span>
+              <span className="ml-2 text-zinc-400">every {rm.cadenceDays}d</span>
             </div>
             <div className="text-right">
               <div className={rm.overdue ? 'text-red-300' : 'text-zinc-300'}>
                 {rm.overdue ? `${Math.abs(rm.daysUntil)}d overdue` : `due in ${rm.daysUntil}d`}
               </div>
-              <div className="text-[10px] text-zinc-600">
+              <div className="text-[10px] text-zinc-400">
                 last {rm.lastDone} · due {rm.dueDate}
               </div>
             </div>
@@ -931,11 +931,11 @@ function ClimateMatch() {
       )}
       <div className="flex flex-wrap items-end gap-2">
         <div className="w-32">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Latitude</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Latitude</label>
           <input className={inputCls} value={lat} onChange={(e) => setLat(e.target.value)} />
         </div>
         <div className="w-32">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Longitude</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Longitude</label>
           <input className={inputCls} value={lon} onChange={(e) => setLon(e.target.value)} />
         </div>
         <button onClick={useMyLocation} className={btnCls}>
@@ -965,7 +965,7 @@ function ClimateMatch() {
                   className="rounded border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[11px] text-emerald-200"
                 >
                   {p.name}
-                  <span className="ml-1 text-zinc-500">
+                  <span className="ml-1 text-zinc-400">
                     {p.type} · z{p.zoneRange}
                   </span>
                 </span>
@@ -1132,7 +1132,7 @@ function ProposalBuilder() {
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Overhead %</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Overhead %</label>
           <input
             type="number"
             className={inputCls}
@@ -1141,7 +1141,7 @@ function ProposalBuilder() {
           />
         </div>
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Margin %</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Margin %</label>
           <input
             type="number"
             className={inputCls}
@@ -1150,7 +1150,7 @@ function ProposalBuilder() {
           />
         </div>
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Tax %</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Tax %</label>
           <input
             type="number"
             className={inputCls}
@@ -1235,7 +1235,7 @@ function MaintenanceCalendar() {
       )}
       <div className="flex items-end gap-2">
         <div className="w-56">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Scope</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Scope</label>
           <select
             className={inputCls}
             value={bedId}
@@ -1440,7 +1440,7 @@ function HealthDiary() {
 
       {plants.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Filter:</span>
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400">Filter:</span>
           <button
             onClick={() => {
               setFilter('');
@@ -1487,10 +1487,10 @@ function HealthDiary() {
             <div>
               <span className="font-medium text-white">{e.plant}</span>
               <span className="ml-2 capitalize text-emerald-300">{e.health}</span>
-              {e.heightCm ? <span className="ml-2 text-zinc-500">{e.heightCm}cm</span> : null}
+              {e.heightCm ? <span className="ml-2 text-zinc-400">{e.heightCm}cm</span> : null}
               {e.hasPhoto ? <span className="ml-2 text-zinc-600">📷</span> : null}
               <span className="ml-2 text-zinc-600">{e.date}</span>
-              {e.notes && <p className="mt-0.5 text-[11px] text-zinc-500">{e.notes}</p>}
+              {e.notes && <p className="mt-0.5 text-[11px] text-zinc-400">{e.notes}</p>}
             </div>
             <button onClick={() => removeEntry(e.id)} aria-label="Delete diary entry">
               <Trash2 className="h-3.5 w-3.5 text-red-400" />
@@ -1498,7 +1498,7 @@ function HealthDiary() {
           </div>
         ))}
         {entries.length === 0 && !busy && (
-          <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">
+          <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">
             No diary entries yet. Log one above to start a photo timeline per planting.
           </p>
         )}
@@ -1511,7 +1511,7 @@ function HealthDiary() {
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-sm ${accent ? 'text-emerald-300' : 'text-zinc-200'}`}>
         {value}
       </div>

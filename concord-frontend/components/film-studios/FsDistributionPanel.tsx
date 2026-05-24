@@ -79,7 +79,7 @@ export function FsDistributionPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -129,14 +129,14 @@ export function FsDistributionPanel({ projectId }: { projectId: string }) {
           <Trophy className="w-3.5 h-3.5 text-fuchsia-400" /> Festival submissions
         </h3>
         {!data || data.count === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">No submissions tracked. Add a festival above to start your distribution plan.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No submissions tracked. Add a festival above to start your distribution plan.</p>
         ) : (
           <ul className="space-y-1.5">
             {data.submissions.map((s) => (
               <li key={s.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-zinc-100 truncate">{s.festival}</span>
-                  {s.category && <span className="text-[10px] text-zinc-500">{s.category}</span>}
+                  {s.category && <span className="text-[10px] text-zinc-400">{s.category}</span>}
                   <select value={s.status} onChange={(e) => updateStatus(s.id, e.target.value)}
                     className={cn('text-[10px] rounded px-1.5 py-0.5 border-0 font-medium ml-auto', STATUS_COLOR[s.status] || 'bg-zinc-700 text-zinc-300')}>
                     {STATUSES.map((st) => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}
@@ -145,7 +145,7 @@ export function FsDistributionPanel({ projectId }: { projectId: string }) {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 mt-1 text-[10px] text-zinc-500">
+                <div className="flex flex-wrap items-center gap-3 mt-1 text-[10px] text-zinc-400">
                   {s.deadline && (
                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> deadline {s.deadline}</span>
                   )}
@@ -166,7 +166,7 @@ function Stat({ label, value, accent }: { label: string; value: string | number;
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
       <p className={cn('text-base font-bold', accent || 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

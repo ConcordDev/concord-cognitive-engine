@@ -63,7 +63,7 @@ export function ForecastPanel({ className }: ForecastPanelProps) {
         <CloudSun className="w-4 h-4 text-sky-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">Forecast · {data?.city || city}{data?.country ? `, ${data.country}` : ''}</h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
-        <button type="button" onClick={() => void fetchData(city)} disabled={loading} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label="Refresh">
+        <button type="button" onClick={() => void fetchData(city)} disabled={loading} className="p-1 text-zinc-400 hover:text-zinc-200" aria-label="Refresh">
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
@@ -95,24 +95,24 @@ export function ForecastPanel({ className }: ForecastPanelProps) {
       )}
 
       {data?.ok && (data.forecasts?.length ?? 0) === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No forecast for that location.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No forecast for that location.</div>
       )}
 
       {data?.ok && data.forecasts && data.forecasts.length > 0 && (
         <ul className="px-3 py-2 space-y-1 max-h-80 overflow-y-auto">
           {data.forecasts.slice(0, 16).map((f, i) => (
             <li key={i} className="flex items-center justify-between gap-2 text-xs">
-              <div className="text-[10px] text-zinc-500 font-mono w-28 flex-shrink-0">{f.dtTxt}</div>
+              <div className="text-[10px] text-zinc-400 font-mono w-28 flex-shrink-0">{f.dtTxt}</div>
               <div className="flex-1 min-w-0 text-zinc-300 truncate">{f.description}</div>
               <div className="text-zinc-200 tabular-nums font-medium w-14 text-right">{f.temp?.toFixed(0)}°</div>
-              <div className="text-[10px] text-zinc-500 w-12 text-right tabular-nums">{f.humidity}%</div>
+              <div className="text-[10px] text-zinc-400 w-12 text-right tabular-nums">{f.humidity}%</div>
               <div className="text-[10px] text-sky-300/80 w-10 text-right tabular-nums">{f.pop ? `${Math.round(f.pop * 100)}%` : ''}</div>
             </li>
           ))}
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: OpenWeatherMap · openweathermap.org
       </footer>
     </section>

@@ -79,17 +79,17 @@ export function AlertsPanel({ worldId }: { worldId: string }) {
             {unack}
           </span>
         )}
-        <span className="ml-auto font-mono text-[10px] text-zinc-600">polls every 30s</span>
+        <span className="ml-auto font-mono text-[10px] text-zinc-400">polls every 30s</span>
       </header>
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Listening for alerts…
         </div>
       )}
 
       {!loading && alerts.length === 0 && (
-        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-500">
+        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-400">
           No new or escalated crises.
         </p>
       )}

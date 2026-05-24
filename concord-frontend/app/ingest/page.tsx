@@ -453,7 +453,7 @@ export default function IngestMonitorPage() {
               Loading queue...
             </div>
           ) : queue.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-400">
               <Download className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p>Queue is empty. Submit a URL above to start ingesting.</p>
             </div>
@@ -554,7 +554,7 @@ export default function IngestMonitorPage() {
               Loading allowlist...
             </div>
           ) : allowlist.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">
+            <p className="text-center py-8 text-gray-400">
               No domains on the allowlist. Add a domain above.
             </p>
           ) : (
@@ -623,7 +623,7 @@ export default function IngestMonitorPage() {
           </form>
 
           {blocklist.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">
+            <p className="text-center py-8 text-gray-400">
               No blocked domains. Use the form above to block a domain.
             </p>
           ) : (
@@ -658,7 +658,7 @@ export default function IngestMonitorPage() {
             Domain Breakdown
           </h2>
           {sortedDomains.length === 0 ? (
-            <p className="text-center py-6 text-gray-500">No domain data yet.</p>
+            <p className="text-center py-6 text-gray-400">No domain data yet.</p>
           ) : (
             <div className="space-y-2 max-h-[360px] overflow-y-auto">
               {sortedDomains.map(([domain, count]) => {
@@ -738,7 +738,7 @@ export default function IngestMonitorPage() {
                     </div>
                   ))}
                 {queue.filter((i) => i.status === 'completed' && i.dtusGenerated).length === 0 && (
-                  <p className="text-center py-4 text-gray-500 text-sm">
+                  <p className="text-center py-4 text-gray-400 text-sm">
                     No completed items with DTUs yet.
                   </p>
                 )}

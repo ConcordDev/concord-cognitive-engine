@@ -111,12 +111,12 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
     <article className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/20 transition-colors">
       <div className="flex items-baseline gap-2">
         <span className="text-sm font-medium text-zinc-100">@{post.username}</span>
-        <span className="text-[10px] text-zinc-600">{relTime(post.createdAt)}</span>
+        <span className="text-[10px] text-zinc-400">{relTime(post.createdAt)}</span>
         <div className="relative ml-auto">
           <button
             type="button"
             onClick={() => setShowMenu((m) => !m)}
-            className="rounded p-1 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+            className="rounded p-1 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300"
             aria-label="Post menu"
           >
             <MoreHorizontal className="w-4 h-4" />
@@ -206,19 +206,19 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
                   <span className={cn('text-zinc-200', chosen && 'font-semibold')}>
                     {chosen && <Check className="mr-1 inline w-3 h-3" />}{o.label}
                   </span>
-                  <span className="text-zinc-500">{pct}%</span>
+                  <span className="text-zinc-400">{pct}%</span>
                 </span>
               </button>
             );
           })}
-          <p className="flex items-center gap-1 text-[10px] text-zinc-600">
+          <p className="flex items-center gap-1 text-[10px] text-zinc-400">
             <BarChart3 className="w-3 h-3" /> {totalVotes} vote{totalVotes === 1 ? '' : 's'}
           </p>
         </div>
       )}
 
       {post.quoteOf && (
-        <div className="mt-2 rounded border border-zinc-800 bg-zinc-900/40 p-2 text-[11px] text-zinc-500">
+        <div className="mt-2 rounded border border-zinc-800 bg-zinc-900/40 p-2 text-[11px] text-zinc-400">
           <Quote className="mr-1 inline w-3 h-3" />
           Quoting another post —
           <button type="button" onClick={() => onOpenDetail(post.quoteOf!)} className="ml-1 text-indigo-300 hover:underline">
@@ -227,7 +227,7 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
         </div>
       )}
 
-      <div className="mt-2 flex items-center gap-3 text-zinc-500">
+      <div className="mt-2 flex items-center gap-3 text-zinc-400">
         <div className="relative">
           <button
             type="button"

@@ -115,13 +115,13 @@ export function ActivityImportPanel({ onImported }: { onImported?: () => void })
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
           Bulk activity import
         </span>
-        <span className="ml-auto text-[10px] text-gray-500">
+        <span className="ml-auto text-[10px] text-gray-400">
           {rows.length} valid row{rows.length === 1 ? '' : 's'} parsed
         </span>
       </header>
 
       <div className="p-3 space-y-3">
-        <div className="text-[10px] text-gray-500">
+        <div className="text-[10px] text-gray-400">
           Paste CSV rows from a utility bill export or spreadsheet. Columns:{' '}
           <code className="text-emerald-400">{CSV_HEADER}</code>. Each{' '}
           <code className="text-emerald-400">factorKey</code> must match a real EPA
@@ -224,7 +224,7 @@ export function ActivityImportPanel({ onImported }: { onImported?: () => void })
                     key={i}
                     className={cn('text-[10px] text-rose-300/90 flex gap-2')}
                   >
-                    <span className="font-mono text-gray-500">row {e.row}</span>
+                    <span className="font-mono text-gray-400">row {e.row}</span>
                     <span>{e.error}</span>
                   </li>
                 ))}

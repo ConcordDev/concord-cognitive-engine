@@ -52,7 +52,7 @@ export function PgGrowthPanel({ childId }: { childId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const weightSeries = history.filter((e) => e.weightKg != null).map((e) => ({ date: e.date.slice(5), weight: e.weightKg }));
@@ -86,10 +86,10 @@ export function PgGrowthPanel({ childId }: { childId: string }) {
             <PctCard label="Height" m={pct.height} unit="cm" />
             <PctCard label="Head" m={pct.head} unit="cm" />
           </div>
-          <p className="text-[10px] text-zinc-500 mt-1.5">{pct.note}</p>
+          <p className="text-[10px] text-zinc-400 mt-1.5">{pct.note}</p>
         </div>
       ) : (
-        <p className="text-[11px] text-zinc-500 italic">Log a measurement to see WHO percentile estimates.</p>
+        <p className="text-[11px] text-zinc-400 italic">Log a measurement to see WHO percentile estimates.</p>
       )}
 
       {/* Weight chart */}
@@ -120,12 +120,12 @@ function PctCard({ label, m, unit }: { label: string; m?: Measure; unit: string 
         <>
           <p className="text-lg font-bold text-rose-300">{m.percentile}th</p>
           <p className="text-[11px] text-zinc-300">{m.value} {unit}</p>
-          <p className="text-[10px] text-zinc-500">WHO median {m.whoMedian}</p>
+          <p className="text-[10px] text-zinc-400">WHO median {m.whoMedian}</p>
         </>
       ) : (
-        <p className="text-xs text-zinc-600 py-2">—</p>
+        <p className="text-xs text-zinc-400 py-2">—</p>
       )}
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide mt-1">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide mt-1">{label}</p>
     </div>
   );
 }

@@ -56,8 +56,8 @@ export default function AtlasOverlay({ query, result, loading }: AtlasOverlayPro
   if (!result.ok) {
     return (
       <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-        <Map size={14} className="text-zinc-500" />
-        <span className="text-xs text-zinc-500">No atlas data for this location</span>
+        <Map size={14} className="text-zinc-400" />
+        <span className="text-xs text-zinc-400">No atlas data for this location</span>
       </div>
     );
   }
@@ -72,12 +72,12 @@ export default function AtlasOverlay({ query, result, loading }: AtlasOverlayPro
           {result.material}
         </span>
         {result.confidence !== undefined && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-zinc-400">
             {Math.round(result.confidence * 100)}% confidence
           </span>
         )}
         {result.resolution_cm && (
-          <span className="text-xs text-zinc-600">
+          <span className="text-xs text-zinc-400">
             {result.resolution_cm}cm res
           </span>
         )}

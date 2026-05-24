@@ -161,7 +161,7 @@ function RfiTab() {
                   Ball-in-court: {r.ballInCourt}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-300">{r.status}</span>
-                {r.dueDate && <span className="text-gray-500">Due {r.dueDate}</span>}
+                {r.dueDate && <span className="text-gray-400">Due {r.dueDate}</span>}
               </div>
               {r.response && (
                 <p className="mt-2 text-xs text-emerald-300 border-l-2 border-emerald-500 pl-2">
@@ -305,7 +305,7 @@ function SubmittalsTab() {
               <p className={ds.textMuted}>Spec {s.specSection} · {s.type.replace('_', ' ')} · rev {s.revision}</p>
               <div className="flex flex-wrap gap-2 mt-1 text-xs">
                 <span className="px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-300">{s.status}</span>
-                {s.contractor && <span className="text-gray-500">{s.contractor}</span>}
+                {s.contractor && <span className="text-gray-400">{s.contractor}</span>}
               </div>
               {s.reviewCycles?.length > 0 && (
                 <div className="mt-2 space-y-1">
@@ -452,7 +452,7 @@ function DailyLogTab() {
             <div className="min-w-0">
               <p className="text-white font-medium">{l.date} · {l.weather}
                 {(l.tempHigh != null || l.tempLow != null) &&
-                  <span className="text-gray-500 ml-2">{l.tempLow ?? '?'}–{l.tempHigh ?? '?'}°</span>}
+                  <span className="text-gray-400 ml-2">{l.tempLow ?? '?'}–{l.tempHigh ?? '?'}°</span>}
               </p>
               <p className={ds.textMuted}>{l.totalManHours} man-hours · {l.author}</p>
               {l.manpower?.length > 0 && (
@@ -465,7 +465,7 @@ function DailyLogTab() {
                 </div>
               )}
               {l.equipment?.length > 0 && (
-                <p className="text-xs text-gray-500 mt-1">Equipment: {l.equipment.join(', ')}</p>
+                <p className="text-xs text-gray-400 mt-1">Equipment: {l.equipment.join(', ')}</p>
               )}
               {l.workCompleted && <p className="text-xs text-gray-400 mt-1">{l.workCompleted}</p>}
               {l.delays && <p className="text-xs text-red-400 mt-1">Delays: {l.delays}</p>}
@@ -589,11 +589,11 @@ function PunchTab() {
             <div className="min-w-0">
               <p className="text-white font-medium">#{p.number} · {p.description}</p>
               <div className="flex flex-wrap gap-2 mt-1 text-xs">
-                {p.location && <span className="text-gray-500">{p.location}</span>}
+                {p.location && <span className="text-gray-400">{p.location}</span>}
                 <span className="px-2 py-0.5 rounded-full bg-blue-400/20 text-blue-400">{p.trade}</span>
                 {p.assignee && <span className="px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-400">{p.assignee}</span>}
                 <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-400">{p.priority}</span>
-                {p.dueDate && <span className="text-gray-500">Due {p.dueDate}</span>}
+                {p.dueDate && <span className="text-gray-400">Due {p.dueDate}</span>}
               </div>
               {p.markup && <p className="text-xs text-gray-400 mt-1">Markup: {p.markup}</p>}
             </div>
@@ -723,7 +723,7 @@ function ChangeOrdersTab() {
                     <Clock className="w-3 h-3 inline mr-1" />{c.scheduleImpactDays}d impact
                   </span>
                 )}
-                {c.decidedBy && <span className="text-gray-500">Decided by {c.decidedBy}</span>}
+                {c.decidedBy && <span className="text-gray-400">Decided by {c.decidedBy}</span>}
               </div>
             </div>
             <div className="flex flex-col gap-1 shrink-0">
@@ -860,7 +860,7 @@ function DrawingsTab() {
             {selected.revisions?.map((rev: any) => (
               <div key={rev.revision} className="flex items-center gap-2 text-xs text-gray-400 py-0.5">
                 <span className="font-bold text-white w-6">{rev.revision}</span>
-                <span className="text-gray-500">{(rev.date || '').slice(0, 10)}</span>
+                <span className="text-gray-400">{(rev.date || '').slice(0, 10)}</span>
                 <span>{rev.notes}</span>
               </div>
             ))}
@@ -913,12 +913,12 @@ function DrawingsTab() {
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div className="border border-lattice-border rounded-lg p-2">
                   <p className="text-xs font-bold text-white">Rev {cmpResult.revA?.revision}</p>
-                  <p className="text-xs text-gray-500">{(cmpResult.revA?.date || '').slice(0, 10)} · {cmpResult.revA?.notes}</p>
+                  <p className="text-xs text-gray-400">{(cmpResult.revA?.date || '').slice(0, 10)} · {cmpResult.revA?.notes}</p>
                   <p className="text-xs text-amber-400 mt-1">{cmpResult.markupsOnA?.length || 0} markups</p>
                 </div>
                 <div className="border border-lattice-border rounded-lg p-2">
                   <p className="text-xs font-bold text-white">Rev {cmpResult.revB?.revision}</p>
-                  <p className="text-xs text-gray-500">{(cmpResult.revB?.date || '').slice(0, 10)} · {cmpResult.revB?.notes}</p>
+                  <p className="text-xs text-gray-400">{(cmpResult.revB?.date || '').slice(0, 10)} · {cmpResult.revB?.notes}</p>
                   <p className="text-xs text-amber-400 mt-1">{cmpResult.markupsOnB?.length || 0} markups</p>
                 </div>
               </div>
@@ -1240,10 +1240,10 @@ function GanttTab() {
                     {b.duration}d
                   </div>
                 </div>
-                <span className="w-24 shrink-0 text-[10px] text-gray-500">
+                <span className="w-24 shrink-0 text-[10px] text-gray-400">
                   {b.startDate}
                 </span>
-                <span className="w-12 shrink-0 text-[10px] text-gray-500">
+                <span className="w-12 shrink-0 text-[10px] text-gray-400">
                   {b.slack > 0 ? `+${b.slack}d` : 'crit'}
                 </span>
               </div>
@@ -1269,7 +1269,7 @@ export function FieldManagementPanel() {
     <div data-lens-theme="construction" className={cn(ds.panel, 'p-4')}>
       <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
         <ListChecks className="w-4 h-4 text-neon-cyan" /> Field Management
-        <span className="text-xs text-gray-500 font-normal">RFIs · Submittals · Logs · Punch · COs · Drawings · Budget · Gantt</span>
+        <span className="text-xs text-gray-400 font-normal">RFIs · Submittals · Logs · Punch · COs · Drawings · Budget · Gantt</span>
       </h3>
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 mb-3 flex-wrap">
         {FIELD_TABS.map((t) => (

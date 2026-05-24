@@ -150,7 +150,7 @@ export default function PersonasPage() {
               className={`px-3 py-2 text-sm ${
                 tab === t.id
                   ? 'border-b-2 border-purple-500 text-purple-200'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >{t.label}</button>
           ))}
@@ -178,9 +178,9 @@ export default function PersonasPage() {
             {tab === 'mine' && (
               <section>
                 {loadingMine ? (
-                  <div className="text-zinc-500 py-6 text-center">Loading…</div>
+                  <div className="text-zinc-400 py-6 text-center">Loading…</div>
                 ) : mine.length === 0 ? (
-                  <div className="text-center text-zinc-500 italic py-8 border border-zinc-800 rounded-xl">
+                  <div className="text-center text-zinc-400 italic py-8 border border-zinc-800 rounded-xl">
                     No personas yet. Use the <strong>Create</strong> tab to author your first.
                   </div>
                 ) : (
@@ -195,8 +195,8 @@ export default function PersonasPage() {
                           <img src={p.portrait} alt={p.name} className="h-14 w-14 rounded-lg flex-shrink-0" />
                           <div className="min-w-0">
                             <div className="text-sm font-semibold text-zinc-100 truncate">{p.name}</div>
-                            <div className="text-[11px] text-zinc-500 truncate">{p.tagline || p.category}</div>
-                            <div className="text-[10px] text-zinc-600 mt-0.5">
+                            <div className="text-[11px] text-zinc-400 truncate">{p.tagline || p.category}</div>
+                            <div className="text-[10px] text-zinc-400 mt-0.5">
                               v{p.version} · {p.published ? 'published' : 'draft'} · {p.installCount} installs
                             </div>
                           </div>
@@ -244,7 +244,7 @@ export default function PersonasPage() {
 
             {tab === 'npc' && (
               <section className="space-y-4">
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-zinc-400">
                   The legacy NPC-packaging pipeline bundles an existing NPC&apos;s grudges, schemes, schedule, and opinions into a sellable DTU. Royalty cascade pays the author on every install.
                 </p>
                 <div className="bg-zinc-900/80 border border-purple-800/50 rounded-xl p-4 space-y-3">
@@ -288,7 +288,7 @@ export default function PersonasPage() {
                 <div>
                   <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Your Packaged NPCs</h2>
                   {packages.length === 0 ? (
-                    <div className="text-center text-zinc-500 italic py-6 border border-zinc-800 rounded-xl">
+                    <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
                       No NPC packages yet.
                     </div>
                   ) : (
@@ -297,10 +297,10 @@ export default function PersonasPage() {
                         <li key={p.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-lg p-3 text-xs">
                           <div className="flex justify-between gap-2">
                             <span className="text-zinc-100 font-medium">{p.origin_npc_id}</span>
-                            <span className="text-zinc-500 font-mono">{new Date(p.created_at * 1000).toLocaleDateString()}</span>
+                            <span className="text-zinc-400 font-mono">{new Date(p.created_at * 1000).toLocaleDateString()}</span>
                           </div>
-                          <div className="mt-1 text-[10px] text-zinc-500 font-mono break-all">{p.dtu_id}</div>
-                          <div className="text-[10px] text-zinc-600 font-mono break-all">sha {p.package_sha256.slice(0, 16)}…</div>
+                          <div className="mt-1 text-[10px] text-zinc-400 font-mono break-all">{p.dtu_id}</div>
+                          <div className="text-[10px] text-zinc-400 font-mono break-all">sha {p.package_sha256.slice(0, 16)}…</div>
                         </li>
                       ))}
                     </ul>

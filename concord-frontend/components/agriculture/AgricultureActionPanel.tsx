@@ -190,7 +190,7 @@ export function AgricultureActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -201,7 +201,7 @@ export function AgricultureActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-48 overflow-y-auto md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Weather · 7-day · open-meteo</div>
             <div className="text-[11px] text-zinc-300 mt-1">Today: <span className="font-mono text-blue-200">{wxResult.today.tempMin}-{wxResult.today.tempMax}°C · {wxResult.today.precipSum}mm · ET₀ {wxResult.today.et0}mm</span></div>
-            {wxResult.currentSoilMoisture != null && <div className="text-[10px] text-zinc-500">Soil: {Math.round((wxResult.currentSoilMoisture ?? 0) * 100)}% moist · {wxResult.currentSoilTemp}°C</div>}
+            {wxResult.currentSoilMoisture != null && <div className="text-[10px] text-zinc-400">Soil: {Math.round((wxResult.currentSoilMoisture ?? 0) * 100)}% moist · {wxResult.currentSoilTemp}°C</div>}
             <div className="mt-1 grid grid-cols-7 gap-0.5">
               {wxResult.forecast7.slice(0, 7).map((d, i) => <div key={i} className="text-center text-[9px] text-zinc-400"><div className="font-mono text-blue-200">{d.date?.slice(5)}</div><div>{d.tempMin}-{d.tempMax}°</div><div className="text-cyan-300">{d.precip}mm</div></div>)}
             </div>
@@ -210,7 +210,7 @@ export function AgricultureActionPanel() {
         {rotResult && (
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Rotation</div>
-            {(rotResult.plan ?? []).map((p, i) => <div key={i} className="text-[11px] text-zinc-300 mt-0.5"><span className="font-mono text-green-200">{p.season}</span>: {p.crop ?? '-'} <span className="text-zinc-500">({p.rotationFamily ?? '-'})</span></div>)}
+            {(rotResult.plan ?? []).map((p, i) => <div key={i} className="text-[11px] text-zinc-300 mt-0.5"><span className="font-mono text-green-200">{p.season}</span>: {p.crop ?? '-'} <span className="text-zinc-400">({p.rotationFamily ?? '-'})</span></div>)}
             {(rotResult.warnings ?? []).length > 0 && <div className="text-[10px] text-amber-300 mt-1">⚠ {rotResult.warnings?.join('; ')}</div>}
             {(rotResult.coverCrops ?? []).length > 0 && <div className="text-[10px] text-emerald-300 mt-0.5">cover: {rotResult.coverCrops?.join(', ')}</div>}
           </div>
@@ -219,8 +219,8 @@ export function AgricultureActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Irrigation · {waterResult.frequency}</div>
             <div className="text-2xl font-bold text-cyan-300">{waterResult.totalGallons} <span className="text-xs text-zinc-400">gal/cycle</span></div>
-            <div className="text-[10px] text-zinc-500">{waterResult.perPlantLiters}L per plant</div>
-            <div className="text-[10px] text-zinc-500">next: {waterResult.nextWatering}</div>
+            <div className="text-[10px] text-zinc-400">{waterResult.perPlantLiters}L per plant</div>
+            <div className="text-[10px] text-zinc-400">next: {waterResult.nextWatering}</div>
             {waterResult.warning && <div className="text-[10px] text-amber-300 italic">⚠ {waterResult.warning}</div>}
           </div>
         )}

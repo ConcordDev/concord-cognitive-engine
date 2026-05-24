@@ -222,7 +222,7 @@ function ExportPanel({ anim }: { anim: Anim }) {
       <div>
         <h4 className="text-[11px] font-semibold text-zinc-400 mb-1">Export history</h4>
         {exports.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No exports yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No exports yet.</p>
         ) : (
           <ul className="space-y-1">
             {exports.map((x) => (
@@ -231,8 +231,8 @@ function ExportPanel({ anim }: { anim: Anim }) {
                 <span className="uppercase font-mono text-cyan-300">{x.format}</span>
                 <span>{x.width}×{x.height}</span>
                 <span>{x.frameCount} fr</span>
-                <span className="text-zinc-500">{x.durationSec}s</span>
-                <span className="ml-auto text-zinc-500">{fmtBytes(x.fileSizeBytes)}</span>
+                <span className="text-zinc-400">{x.durationSec}s</span>
+                <span className="ml-auto text-zinc-400">{fmtBytes(x.fileSizeBytes)}</span>
               </li>
             ))}
           </ul>
@@ -335,17 +335,17 @@ function AudioSyncPanel({ anim, onChange }: { anim: Anim; onChange: () => void }
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           Add audio + waveform
         </button>
-        {sync && <span className="text-[11px] text-zinc-500">{sync.totalFrames} frames · {sync.durationSec}s</span>}
+        {sync && <span className="text-[11px] text-zinc-400">{sync.totalFrames} frames · {sync.durationSec}s</span>}
       </div>
       {!sync || sync.tracks.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No audio tracks. Add a file to see its waveform aligned to the frame timeline.</p>
+        <p className="text-[11px] text-zinc-400 italic">No audio tracks. Add a file to see its waveform aligned to the frame timeline.</p>
       ) : (
         <ul className="space-y-2">
           {sync.tracks.map((t) => (
             <li key={t.id} className="bg-zinc-950/50 rounded-lg p-2">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] text-zinc-200 font-medium flex-1 truncate">{t.name}</span>
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-zinc-400">
                   frame {t.startFrame}{t.endFrame != null ? `–${t.endFrame}` : ''}
                 </span>
                 <button type="button" onClick={() => removeTrack(t.id)} className="text-zinc-600 hover:text-rose-400">
@@ -363,7 +363,7 @@ function AudioSyncPanel({ anim, onChange }: { anim: Anim; onChange: () => void }
 
 function WaveformBar({ peaks }: { peaks: number[] }) {
   if (!peaks.length) {
-    return <p className="text-[10px] text-zinc-600 italic">Waveform unavailable.</p>;
+    return <p className="text-[10px] text-zinc-400 italic">Waveform unavailable.</p>;
   }
   return (
     <div className="flex items-end gap-px h-12 bg-zinc-900 rounded px-1 py-1 overflow-hidden">
@@ -468,14 +468,14 @@ function TweenPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Click points on each canvas to define a start and end shape. Point counts must match.
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] text-cyan-400">Start path · {fromPath.length} pts</span>
-            <button type="button" onClick={() => setFromPath([])} className="text-[10px] text-zinc-500 hover:text-zinc-300">clear</button>
+            <button type="button" onClick={() => setFromPath([])} className="text-[10px] text-zinc-400 hover:text-zinc-300">clear</button>
           </div>
           <canvas ref={fromRef} width={W} height={H} onClick={(e) => addPoint(e.currentTarget, e, true)}
             className="w-full rounded border border-zinc-700 cursor-crosshair" />
@@ -483,7 +483,7 @@ function TweenPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] text-orange-400">End path · {toPath.length} pts</span>
-            <button type="button" onClick={() => setToPath([])} className="text-[10px] text-zinc-500 hover:text-zinc-300">clear</button>
+            <button type="button" onClick={() => setToPath([])} className="text-[10px] text-zinc-400 hover:text-zinc-300">clear</button>
           </div>
           <canvas ref={toRef} width={W} height={H} onClick={(e) => addPoint(e.currentTarget, e, false)}
             className="w-full rounded border border-zinc-700 cursor-crosshair" />
@@ -510,7 +510,7 @@ function TweenPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
       {msg && <p className="text-[11px] text-zinc-400">{msg}</p>}
       {preview.length > 0 && (
         <div className="bg-zinc-950/50 rounded-lg p-2">
-          <p className="text-[10px] text-zinc-500 mb-1">{preview.length}-frame tween preview</p>
+          <p className="text-[10px] text-zinc-400 mb-1">{preview.length}-frame tween preview</p>
           <TweenPreviewCanvas frames={preview} width={W * 1.6} height={H * 1.6} animW={anim.width} animH={anim.height} />
         </div>
       )}
@@ -588,7 +588,7 @@ function CanvasPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
     <div className="space-y-3">
       <div>
         <h4 className="text-[11px] font-semibold text-zinc-400 mb-1">Canvas size presets</h4>
-        <p className="text-[10px] text-zinc-500 mb-1.5">
+        <p className="text-[10px] text-zinc-400 mb-1.5">
           Current: {anim.width}×{anim.height} · {anim.fps} fps. Presets seed new projects from the gallery.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -729,7 +729,7 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Build a bone armature for cut-out animation. Pose bones per frame; forward kinematics resolves the skeleton.
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -752,14 +752,14 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
       <canvas ref={previewRef} width={W} height={H}
         className="w-full rounded border border-zinc-700 bg-zinc-900" />
       {bones.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No bones yet. Add a root bone to start the armature.</p>
+        <p className="text-[11px] text-zinc-400 italic">No bones yet. Add a root bone to start the armature.</p>
       ) : (
         <ul className="space-y-1.5">
           {bones.map((b) => (
             <li key={b.id} className="flex items-center gap-2 bg-zinc-950/50 rounded px-2 py-1.5">
               <Bone className="w-3 h-3 text-cyan-400 shrink-0" />
               <span className="text-[11px] text-zinc-200 w-24 truncate">{b.name}</span>
-              <span className="text-[10px] text-zinc-500 w-16">
+              <span className="text-[10px] text-zinc-400 w-16">
                 {b.parentId ? 'child' : 'root'}
               </span>
               <input type="range" min={-180} max={180} defaultValue={b.angle}
@@ -807,7 +807,7 @@ function BrushPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Save brushes with pressure-sensitive size/opacity dynamics. Saved brushes appear in the studio brush bar.
       </p>
       <div className="bg-zinc-950/50 rounded-lg p-2.5 grid grid-cols-2 gap-2">
@@ -862,14 +862,14 @@ function BrushPanel() {
         </button>
       </div>
       {brushes.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No custom brushes saved yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No custom brushes saved yet.</p>
       ) : (
         <ul className="space-y-1">
           {brushes.map((b) => (
             <li key={b.id} className="flex items-center gap-2 bg-zinc-950/50 rounded px-2 py-1.5">
               <span className="w-4 h-4 rounded-full border border-zinc-600" style={{ background: b.color }} />
               <span className="text-[11px] text-zinc-200 flex-1 truncate">{b.name}</span>
-              <span className="text-[10px] text-zinc-500">{b.tool} · {b.size}px</span>
+              <span className="text-[10px] text-zinc-400">{b.tool} · {b.size}px</span>
               <span className="text-[10px] text-cyan-400">P{Math.round(b.pressureSize * 100)}</span>
               <button type="button" onClick={() => del(b.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -919,7 +919,7 @@ function SharePanel({ anim }: { anim: Anim }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Generate a shareable link to this animation. Anyone with the link can view it.
       </p>
       {!share ? (
@@ -944,7 +944,7 @@ function SharePanel({ anim }: { anim: Anim }) {
               {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>
-          <div className="flex items-center gap-3 text-[11px] text-zinc-500">
+          <div className="flex items-center gap-3 text-[11px] text-zinc-400">
             <span>{share.views} view{share.views === 1 ? '' : 's'}</span>
             <span>{share.allowDownload ? 'download allowed' : 'view only'}</span>
             <button type="button" onClick={revoke} disabled={busy}

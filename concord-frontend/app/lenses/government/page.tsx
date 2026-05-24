@@ -1795,12 +1795,12 @@ export default function GovernmentLensPage() {
                   <div
                     className={cn(
                       'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold',
-                      done ? 'bg-green-400/20 text-green-400' : 'bg-lattice-elevated text-gray-500'
+                      done ? 'bg-green-400/20 text-green-400' : 'bg-lattice-elevated text-gray-400'
                     )}
                   >
                     {done ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                   </div>
-                  <span className={cn('text-sm', done ? 'text-white' : 'text-gray-500')}>
+                  <span className={cn('text-sm', done ? 'text-white' : 'text-gray-400')}>
                     {step.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                   </span>
                 </div>
@@ -1877,7 +1877,7 @@ export default function GovernmentLensPage() {
                           'w-6 h-6 rounded-full flex items-center justify-center text-xs',
                           done
                             ? 'bg-green-400/20 text-green-400'
-                            : 'bg-lattice-elevated text-gray-500'
+                            : 'bg-lattice-elevated text-gray-400'
                         )}
                       >
                         {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
@@ -2024,12 +2024,12 @@ export default function GovernmentLensPage() {
                         'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold',
                         done
                           ? 'bg-green-400/20 text-green-400'
-                          : 'bg-lattice-elevated text-gray-500'
+                          : 'bg-lattice-elevated text-gray-400'
                       )}
                     >
                       {done ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                     </div>
-                    <span className={cn('text-sm', done ? 'text-white' : 'text-gray-500')}>
+                    <span className={cn('text-sm', done ? 'text-white' : 'text-gray-400')}>
                       {step.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                     </span>
                   </div>
@@ -3628,7 +3628,7 @@ function CivicWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
-                : 'text-gray-500 hover:text-amber-300 hover:bg-amber-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-amber-300 hover:bg-amber-900/10 border border-transparent')
             }
           >
             {t.label}

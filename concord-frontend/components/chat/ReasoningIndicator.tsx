@@ -67,7 +67,7 @@ export function ReasoningIndicator({ sessionId }: ReasoningIndicatorProps) {
         {session.status === 'synthesizing' ? 'Synthesizing response…' : 'Reasoning in depth'}
       </span>
       {session.shadowCount > 0 && (
-        <span className="flex items-center gap-1 text-gray-500">
+        <span className="flex items-center gap-1 text-gray-400">
           <Layers className="w-3 h-3" />
           {session.shadowCount} {session.shadowCount === 1 ? 'shadow' : 'shadows'}
         </span>

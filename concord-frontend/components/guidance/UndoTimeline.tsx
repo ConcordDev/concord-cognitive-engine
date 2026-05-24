@@ -58,7 +58,7 @@ function UndoTimeline() {
   };
 
   if (isLoading) {
-    return <div className="text-gray-500 text-sm p-4">Loading timeline...</div>;
+    return <div className="text-gray-400 text-sm p-4">Loading timeline...</div>;
   }
 
   return (
@@ -67,14 +67,14 @@ function UndoTimeline() {
         <Clock className="w-5 h-5 text-neon-blue" />
         Undo Timeline
         {undoableItems.length > 0 && (
-          <span className="text-sm text-gray-500 font-normal">
+          <span className="text-sm text-gray-400 font-normal">
             ({undoableItems.length} undoable)
           </span>
         )}
       </h2>
 
       {timelineItems.length === 0 ? (
-        <p className="text-gray-500 text-sm">No actions recorded yet.</p>
+        <p className="text-gray-400 text-sm">No actions recorded yet.</p>
       ) : (
         <div className="relative">
           {/* Timeline line */}
@@ -105,23 +105,23 @@ function UndoTimeline() {
                       <span
                         className={cn(
                           'text-xs font-mono px-1 py-0.5 rounded',
-                          isUndo ? 'text-gray-500 bg-gray-500/10' : 'text-gray-400 bg-gray-400/10'
+                          isUndo ? 'text-gray-400 bg-gray-500/10' : 'text-gray-400 bg-gray-400/10'
                         )}
                       >
                         {item.type}
                       </span>
-                      <span className="text-xs text-gray-600">{formatTime(item.createdAt)}</span>
+                      <span className="text-xs text-gray-400">{formatTime(item.createdAt)}</span>
                     </div>
                     <p
                       className={cn(
                         'text-sm mt-0.5',
-                        isUndo ? 'text-gray-500 italic' : 'text-gray-300'
+                        isUndo ? 'text-gray-400 italic' : 'text-gray-300'
                       )}
                     >
                       {item.summary || item.type}
                     </p>
                     {item.entityType && (
-                      <span className="text-xs text-gray-600">
+                      <span className="text-xs text-gray-400">
                         {item.entityType}:{item.entityId?.slice(0, 10)}
                       </span>
                     )}
@@ -138,7 +138,7 @@ function UndoTimeline() {
                     </button>
                   )}
                   {isUndo && (
-                    <span className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500">
+                    <span className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400">
                       <CheckCircle className="w-3 h-3" />
                       Reversed
                     </span>

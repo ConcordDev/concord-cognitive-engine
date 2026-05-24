@@ -48,7 +48,7 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading || !stats) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -115,7 +115,7 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
               <li key={s.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-[11px] text-zinc-400">{s.date}</span>
                 <span className="text-xs text-zinc-200">
-                  +{s.words.toLocaleString()} words{s.minutes > 0 && <span className="text-zinc-500"> · {s.minutes} min</span>}
+                  +{s.words.toLocaleString()} words{s.minutes > 0 && <span className="text-zinc-400"> · {s.minutes} min</span>}
                 </span>
               </li>
             ))}
@@ -136,7 +136,7 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
                 {projection.onTrack ? 'on track' : 'behind pace'}</span>
             </p>
           ) : (
-            <p className="text-[11px] text-zinc-500">Deadline {projection.deadline} has passed.</p>
+            <p className="text-[11px] text-zinc-400">Deadline {projection.deadline} has passed.</p>
           )}
         </div>
       )}
@@ -151,7 +151,7 @@ function Stat({ label, value, icon }: { label: string; value: string | number; i
       <p className="flex items-center justify-center gap-1 text-lg font-bold text-zinc-100">
         {icon && <Flame className="w-4 h-4 text-orange-400" />}{value}
       </p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

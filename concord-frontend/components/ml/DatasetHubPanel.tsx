@@ -105,7 +105,7 @@ export function DatasetHubPanel() {
       {loading ? (
         <div className="py-10 text-center text-gray-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
       ) : mode === 'hub' ? (
-        hub.length === 0 ? <div className="py-10 text-center text-gray-500">No datasets found.</div> : (
+        hub.length === 0 ? <div className="py-10 text-center text-gray-400">No datasets found.</div> : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {hub.map((d) => (
               <a key={d.id} href={d.url} target="_blank" rel="noreferrer"
@@ -114,9 +114,9 @@ export function DatasetHubPanel() {
                   <Database className="w-4 h-4 text-neon-cyan mt-0.5 shrink-0" />
                   <div className="min-w-0">
                     <p className="font-semibold text-sm truncate" title={d.id}>{d.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{d.author}</p>
+                    <p className="text-xs text-gray-400 truncate">{d.author}</p>
                   </div>
-                  <ExternalLink className="w-3 h-3 text-gray-500 ml-auto shrink-0" />
+                  <ExternalLink className="w-3 h-3 text-gray-400 ml-auto shrink-0" />
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
                   <span className="flex items-center gap-1"><Download className="w-3 h-3" />{fmt(d.downloads)}</span>
@@ -133,7 +133,7 @@ export function DatasetHubPanel() {
         )
       ) : (
         mine.length === 0 ? (
-          <div className="panel p-10 text-center text-gray-500 text-sm">
+          <div className="panel p-10 text-center text-gray-400 text-sm">
             <Database className="w-8 h-8 mx-auto mb-2 opacity-40" />
             No datasets registered. Register one to track versions and splits.
           </div>
@@ -160,7 +160,7 @@ export function DatasetHubPanel() {
                     <div className="h-2 bg-neon-purple/40 rounded" style={{ width: `${ds.splits.val * 100}%` }} title={`Val ${ds.splits.val * 100}%`} />
                     <div className="h-2 bg-neon-pink/40 rounded" style={{ width: `${ds.splits.test * 100}%` }} title={`Test ${ds.splits.test * 100}%`} />
                   </div>
-                  <div className="flex justify-between text-[10px] text-gray-500">
+                  <div className="flex justify-between text-[10px] text-gray-400">
                     <span>Train {Math.round(ds.splits.train * 100)}%</span>
                     <span>Val {Math.round(ds.splits.val * 100)}%</span>
                     <span>Test {Math.round(ds.splits.test * 100)}%</span>
@@ -203,7 +203,7 @@ function RegisterDatasetModal({ onClose, onDone }: { onClose: () => void; onDone
           <h2 className="text-lg font-bold">Register Dataset Version</h2>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded" aria-label="Close"><X className="w-5 h-5" /></button>
         </div>
-        <p className="text-xs text-gray-500">Re-registering an existing name appends a new version.</p>
+        <p className="text-xs text-gray-400">Re-registering an existing name appends a new version.</p>
         <input value={cfg.name} onChange={(e) => setCfg({ ...cfg, name: e.target.value })}
           placeholder="Dataset name"
           className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-sm outline-none focus:border-neon-purple" />

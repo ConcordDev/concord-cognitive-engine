@@ -63,7 +63,7 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -85,7 +85,7 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
                 {p.name} ({p.taskCount})
               </button>
               <button type="button" onClick={() => delProject(p.id)}
-                className={cn('text-[11px] px-1 py-0.5 rounded-r-full border-y border-r text-zinc-600 hover:text-rose-400',
+                className={cn('text-[11px] px-1 py-0.5 rounded-r-full border-y border-r text-zinc-400 hover:text-rose-400',
                   projectFilter === p.id ? 'border-red-700/50 bg-red-950/40' : 'border-zinc-700')}>
                 ✕
               </button>
@@ -142,7 +142,7 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {tasks.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No tasks. Add one to get started.
         </div>
       ) : (

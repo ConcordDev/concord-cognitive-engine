@@ -108,7 +108,7 @@ export function MarketingWorkflowsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -126,7 +126,7 @@ export function MarketingWorkflowsPanel() {
       </div>
 
       {workflows.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No workflows yet. Chain trigger → delay → email → branch steps.</p>
+        <p className="text-[11px] text-zinc-400 italic">No workflows yet. Chain trigger → delay → email → branch steps.</p>
       ) : (
         <ul className="space-y-2">
           {workflows.map((w) => (
@@ -134,7 +134,7 @@ export function MarketingWorkflowsPanel() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{w.name}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {w.stepCount} steps · {w.enrolled} enrolled · {w.completionRate}% completed · {w.status}
                   </p>
                 </div>
@@ -190,7 +190,7 @@ export function MarketingWorkflowsPanel() {
               ))}
             </div>
             {fSteps.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">Add steps to define the nurture sequence.</p>
+              <p className="text-[11px] text-zinc-400 italic">Add steps to define the nurture sequence.</p>
             ) : (
               <ul className="space-y-1.5">
                 {fSteps.map((st, i) => (
@@ -259,7 +259,7 @@ export function MarketingWorkflowsPanel() {
               <button type="button" onClick={() => setRunsFor(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
             </div>
             {runs.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">No runs yet. Enroll a contact to simulate the sequence.</p>
+              <p className="text-[11px] text-zinc-400 italic">No runs yet. Enroll a contact to simulate the sequence.</p>
             ) : (
               <ul className="space-y-3">
                 {runs.map((run) => {
@@ -274,7 +274,7 @@ export function MarketingWorkflowsPanel() {
                     <li key={run.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs text-zinc-200">{run.contact}</span>
-                        <span className={cn('text-[10px]', run.reachedGoal ? 'text-emerald-300' : 'text-zinc-500')}>
+                        <span className={cn('text-[10px]', run.reachedGoal ? 'text-emerald-300' : 'text-zinc-400')}>
                           {run.reachedGoal ? 'reached goal' : 'in progress'} · {run.durationHours}h
                         </span>
                       </div>

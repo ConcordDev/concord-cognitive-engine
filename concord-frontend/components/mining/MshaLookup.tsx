@@ -69,7 +69,7 @@ export function MshaLookup() {
               <div>
                 <h3 className="text-lg font-semibold text-white">{mine.name}</h3>
                 <p className="text-xs text-zinc-400">{mine.operator}</p>
-                <p className="mt-1 text-[11px] text-zinc-500">Mine ID {mine.mineId} · {mine.county}, {mine.state} · {mine.mineType} · {mine.status}</p>
+                <p className="mt-1 text-[11px] text-zinc-400">Mine ID {mine.mineId} · {mine.county}, {mine.state} · {mine.mineType} · {mine.status}</p>
               </div>
               <SaveAsDtuButton
                 compact
@@ -95,9 +95,9 @@ export function MshaLookup() {
               <div className="space-y-1 max-h-72 overflow-y-auto">
                 {violations.slice(0, 50).map((v, i) => (
                   <div key={`${v.citationNumber}-${i}`} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">
-                    <div className="flex justify-between"><span className="font-mono text-amber-300">{v.citationNumber}</span><span className="text-zinc-500">{v.issuedDate}</span></div>
+                    <div className="flex justify-between"><span className="font-mono text-amber-300">{v.citationNumber}</span><span className="text-zinc-400">{v.issuedDate}</span></div>
                     <div className="mt-0.5 text-zinc-400">{v.section} · {v.standard}</div>
-                    <div className="mt-0.5 text-[10px] text-zinc-500">Gravity: {v.gravity} · Penalty: ${v.proposedPenalty?.toLocaleString() || '—'}</div>
+                    <div className="mt-0.5 text-[10px] text-zinc-400">Gravity: {v.gravity} · Penalty: ${v.proposedPenalty?.toLocaleString() || '—'}</div>
                   </div>
                 ))}
               </div>
@@ -112,7 +112,7 @@ export function MshaLookup() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-cyan-300">{value}</div>
     </div>
   );

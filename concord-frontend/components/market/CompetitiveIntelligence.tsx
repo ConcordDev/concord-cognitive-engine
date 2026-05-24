@@ -42,7 +42,7 @@ export function CompetitiveIntelligence() {
       <div className="flex items-center gap-2 mb-3">
         <Swords className="w-4 h-4 text-indigo-400" />
         <h3 className="text-sm font-bold text-zinc-100">Competitive Intelligence</h3>
-        <span className="text-[10px] text-zinc-600">Crayon / Klue parity</span>
+        <span className="text-[10px] text-zinc-400">Crayon / Klue parity</span>
       </div>
       <div className="flex flex-wrap gap-1 mb-4">
         {TABS.map((t) => (
@@ -73,7 +73,7 @@ export function CompetitiveIntelligence() {
 // ── shared bits ───────────────────────────────────────────────────────
 function Spinner() {
   return (
-    <div className="flex items-center justify-center py-6 text-zinc-500">
+    <div className="flex items-center justify-center py-6 text-zinc-400">
       <Loader2 className="w-4 h-4 animate-spin" />
     </div>
   );
@@ -145,14 +145,14 @@ function NewsTab() {
       </div>
       {error && <ErrorRow msg={error} />}
       {meta && !error && (
-        <p className="text-[10px] text-zinc-500">
+        <p className="text-[10px] text-zinc-400">
           {meta.totalCount} stories · {meta.taggedCount} tagged to tracked competitors · query: {meta.query}
         </p>
       )}
       {loading && <Spinner />}
       <ul className="space-y-1.5 max-h-80 overflow-y-auto">
         {!loading && items.length === 0 && !error && (
-          <li className="text-xs text-zinc-500 italic py-3 text-center">No competitor news found.</li>
+          <li className="text-xs text-zinc-400 italic py-3 text-center">No competitor news found.</li>
         )}
         {items.map((it, i) => (
           <li key={i} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
@@ -166,7 +166,7 @@ function NewsTab() {
               <ExternalLink className="w-3 h-3 shrink-0 mt-0.5 text-zinc-600" />
             </a>
             <div className="flex flex-wrap items-center gap-1.5 mt-1">
-              <span className="text-[9px] text-zinc-600">{it.source || 'news'} · {it.pubDate}</span>
+              <span className="text-[9px] text-zinc-400">{it.source || 'news'} · {it.pubDate}</span>
               {it.competitors.map((c) => (
                 <span key={c.id} className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900/50">
                   {c.name}
@@ -235,7 +235,7 @@ function BattlecardsTab() {
       >
         <Plus className="w-3 h-3" /> New battlecard
       </button>
-      {cards.length === 0 && <p className="text-xs text-zinc-500 italic py-3 text-center">No battlecards yet.</p>}
+      {cards.length === 0 && <p className="text-xs text-zinc-400 italic py-3 text-center">No battlecards yet.</p>}
       {cards.map((c) => (
         <div key={c.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
@@ -252,7 +252,7 @@ function BattlecardsTab() {
             <CardList title="Landmines to plant" color="text-amber-400" items={c.landmines} />
             <CardList title="Objection handling" color="text-sky-400" items={c.objections} />
           </div>
-          {c.pricingNotes && <p className="text-[10px] text-zinc-500 mt-2">Pricing: {c.pricingNotes}</p>}
+          {c.pricingNotes && <p className="text-[10px] text-zinc-400 mt-2">Pricing: {c.pricingNotes}</p>}
         </div>
       ))}
     </div>
@@ -398,7 +398,7 @@ function WinLossTab() {
           ] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -406,7 +406,7 @@ function WinLossTab() {
 
       {data && data.lossReasons.length > 0 && (
         <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-2">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Loss reasons</p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">Loss reasons</p>
           <ChartKit
             kind="bar"
             data={data.lossReasons as unknown as Array<Record<string, unknown>>}
@@ -420,14 +420,14 @@ function WinLossTab() {
 
       {data && data.competitorRecords.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Head-to-head record</p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Head-to-head record</p>
           {data.competitorRecords.map((c) => (
             <div key={c.competitor} className="flex items-center justify-between bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-[11px]">
               <span className="text-zinc-200 font-medium truncate">{c.competitor}</span>
               <span className="text-zinc-400">
                 <span className="text-emerald-400">{c.won}W</span> / <span className="text-rose-400">{c.lost}L</span>
                 {' · '}<span className="text-zinc-300">{c.winRate}%</span>
-                {c.valueAtStake > 0 && <span className="text-zinc-500"> · ${c.valueAtStake.toLocaleString()}</span>}
+                {c.valueAtStake > 0 && <span className="text-zinc-400"> · ${c.valueAtStake.toLocaleString()}</span>}
               </span>
             </div>
           ))}
@@ -449,7 +449,7 @@ function WinLossTab() {
       </div>
 
       <ul className="space-y-1 max-h-56 overflow-y-auto">
-        {data && data.deals.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No deals recorded.</li>}
+        {data && data.deals.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No deals recorded.</li>}
         {data?.deals.map((d) => (
           <li key={d.id} className="group flex items-center justify-between bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1.5 text-[11px]">
             <span className="flex items-center gap-1.5 min-w-0">
@@ -457,7 +457,7 @@ function WinLossTab() {
                 ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 : <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
               <span className="text-zinc-200 truncate">{d.dealName}</span>
-              <span className="text-zinc-500">· {d.competitor} · {d.reason}</span>
+              <span className="text-zinc-400">· {d.competitor} · {d.reason}</span>
             </span>
             <button onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </li>
@@ -540,7 +540,7 @@ function WebWatchTab() {
       {alerts.length > 0 && (
         <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-2">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] text-zinc-500 uppercase tracking-wide flex items-center gap-1">
+            <p className="text-[10px] text-zinc-400 uppercase tracking-wide flex items-center gap-1">
               <Bell className="w-3 h-3" /> Change alerts {unread > 0 && <span className="text-amber-400">({unread} unread)</span>}
             </p>
             {unread > 0 && <button onClick={markAll} className="text-[10px] text-indigo-400 hover:text-indigo-300">Mark all read</button>}
@@ -551,7 +551,7 @@ function WebWatchTab() {
                 key={a.id}
                 onClick={() => !a.read && markOne(a.id)}
                 className={`text-[11px] rounded px-2 py-1 cursor-pointer ${
-                  a.read ? 'text-zinc-500 bg-zinc-900/40' : 'text-zinc-200 bg-amber-950/30 border border-amber-900/40'
+                  a.read ? 'text-zinc-400 bg-zinc-900/40' : 'text-zinc-200 bg-amber-950/30 border border-amber-900/40'
                 }`}
               >
                 <span className={`text-[8px] uppercase font-bold mr-1.5 ${a.kind === 'pricing' ? 'text-rose-400' : 'text-sky-400'}`}>{a.kind}</span>
@@ -563,13 +563,13 @@ function WebWatchTab() {
       )}
 
       <ul className="space-y-1.5">
-        {watches.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No pages watched yet.</li>}
+        {watches.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No pages watched yet.</li>}
         {watches.map((w) => (
           <li key={w.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
             <div className="group flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{w.label}</p>
-                <p className="text-[9px] text-zinc-600 truncate">{w.url}</p>
+                <p className="text-[9px] text-zinc-400 truncate">{w.url}</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => rescan(w.url)} disabled={busy} className="text-[10px] text-indigo-400 hover:text-indigo-300 disabled:opacity-40">Re-scan</button>
@@ -577,7 +577,7 @@ function WebWatchTab() {
               </div>
             </div>
             {w.current && (
-              <p className="text-[9px] text-zinc-500 mt-1">
+              <p className="text-[9px] text-zinc-400 mt-1">
                 {w.current.textLength.toLocaleString()} chars · {w.current.prices.length} price tokens · captured {new Date(w.current.capturedAt).toLocaleString()}
               </p>
             )}
@@ -659,23 +659,23 @@ function SizingTab() {
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         {method === 'top-down' ? (
-          <label className="text-[10px] text-zinc-500">TAM ($)
+          <label className="text-[10px] text-zinc-400">TAM ($)
             <input value={tam} onChange={(e) => setTam(e.target.value)} placeholder="total addressable" className={`w-full mt-0.5 ${inputCls}`} />
           </label>
         ) : (
           <>
-            <label className="text-[10px] text-zinc-500">Potential customers
+            <label className="text-[10px] text-zinc-400">Potential customers
               <input value={customers} onChange={(e) => setCustomers(e.target.value)} className={`w-full mt-0.5 ${inputCls}`} />
             </label>
-            <label className="text-[10px] text-zinc-500">Avg revenue / customer ($)
+            <label className="text-[10px] text-zinc-400">Avg revenue / customer ($)
               <input value={arpc} onChange={(e) => setArpc(e.target.value)} className={`w-full mt-0.5 ${inputCls}`} />
             </label>
           </>
         )}
-        <label className="text-[10px] text-zinc-500">Serviceable %
+        <label className="text-[10px] text-zinc-400">Serviceable %
           <input value={serviceablePct} onChange={(e) => setServiceablePct(e.target.value)} className={`w-full mt-0.5 ${inputCls}`} />
         </label>
-        <label className="text-[10px] text-zinc-500">Obtainable share %
+        <label className="text-[10px] text-zinc-400">Obtainable share %
           <input value={marketSharePct} onChange={(e) => setMarketSharePct(e.target.value)} className={`w-full mt-0.5 ${inputCls}`} />
         </label>
       </div>
@@ -707,18 +707,18 @@ function SizingTab() {
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-zinc-500">SOM is {result.somAsPctOfTam}% of TAM · serviceable {result.serviceablePct}% · obtainable {result.obtainablePct}%</p>
+          <p className="text-[10px] text-zinc-400">SOM is {result.somAsPctOfTam}% of TAM · serviceable {result.serviceablePct}% · obtainable {result.obtainablePct}%</p>
         </div>
       )}
 
       {scenarios.length > 0 && (
         <div>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Saved scenarios</p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">Saved scenarios</p>
           <ul className="space-y-1">
             {scenarios.map((s) => (
               <li key={s.id} className="flex items-center justify-between bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-[11px]">
                 <span className="text-zinc-200 truncate">{s.label}</span>
-                <span className="text-zinc-500">
+                <span className="text-zinc-400">
                   TAM {fmt(s.tam, s.currency)} · SAM {fmt(s.sam, s.currency)} · SOM {fmt(s.som, s.currency)}
                 </span>
               </li>
@@ -770,7 +770,7 @@ function QuadrantTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-1.5 items-center text-[10px] text-zinc-500">
+      <div className="flex flex-wrap gap-1.5 items-center text-[10px] text-zinc-400">
         <span>X:</span>
         <select value={xAxis} onChange={(e) => setXAxis(e.target.value)} className={inputCls}>
           {AXIS_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -782,7 +782,7 @@ function QuadrantTab() {
         {data?.leader && <span className="text-indigo-400">Leader: {data.leader.name}</span>}
       </div>
 
-      {data?.note && <p className="text-xs text-zinc-500 italic py-3 text-center">{data.note}</p>}
+      {data?.note && <p className="text-xs text-zinc-400 italic py-3 text-center">{data.note}</p>}
 
       {pts.length > 0 && (
         <>
@@ -791,10 +791,10 @@ function QuadrantTab() {
             <div className="absolute left-1/2 top-0 bottom-0 w-px bg-zinc-700/60" />
             <div className="absolute top-1/2 left-0 right-0 h-px bg-zinc-700/60" />
             {/* axis labels */}
-            <span className="absolute bottom-1 left-2 text-[8px] text-zinc-600">{data?.xAxis.low}</span>
-            <span className="absolute bottom-1 right-2 text-[8px] text-zinc-600">{data?.xAxis.high}</span>
-            <span className="absolute top-1 left-2 text-[8px] text-zinc-600 rotate-0">{data?.yAxis.high}</span>
-            <span className="absolute bottom-5 left-2 text-[8px] text-zinc-600">{data?.yAxis.low}</span>
+            <span className="absolute bottom-1 left-2 text-[8px] text-zinc-400">{data?.xAxis.low}</span>
+            <span className="absolute bottom-1 right-2 text-[8px] text-zinc-400">{data?.xAxis.high}</span>
+            <span className="absolute top-1 left-2 text-[8px] text-zinc-400 rotate-0">{data?.yAxis.high}</span>
+            <span className="absolute bottom-5 left-2 text-[8px] text-zinc-400">{data?.yAxis.low}</span>
             {pts.map((p) => (
               <div
                 key={p.id}
@@ -806,13 +806,13 @@ function QuadrantTab() {
               </div>
             ))}
           </div>
-          <p className="text-[9px] text-zinc-600 text-center">
+          <p className="text-[9px] text-zinc-400 text-center">
             {data?.xAxis.axis} (X) vs {data?.yAxis.axis} (Y) · dot color = threat level
           </p>
           <div className="grid grid-cols-2 gap-1.5">
             {Object.entries(data?.quadrants || {}).map(([q, names]) => (
               <div key={q} className="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1.5">
-                <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{q.replace('-', ' / ')}</p>
+                <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{q.replace('-', ' / ')}</p>
                 <p className="text-[10px] text-zinc-300">{names.length > 0 ? names.join(', ') : '—'}</p>
               </div>
             ))}

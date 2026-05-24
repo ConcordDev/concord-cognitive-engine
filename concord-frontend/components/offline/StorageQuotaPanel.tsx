@@ -118,7 +118,7 @@ export function StorageQuotaPanel() {
                 style={{ width: `${Math.max(pct, 1)}%` }}
               />
             </div>
-            <div className="mt-1 flex justify-between text-[10px] text-zinc-600">
+            <div className="mt-1 flex justify-between text-[10px] text-zinc-400">
               <span>0</span>
               <span>{fmtBytes(state.quota)} quota</span>
             </div>
@@ -126,20 +126,20 @@ export function StorageQuotaPanel() {
 
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Used</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Used</div>
               <div className="mt-0.5 font-mono text-sm text-zinc-200">{fmtBytes(state.usage)}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Free</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Free</div>
               <div className="mt-0.5 font-mono text-sm text-zinc-200">
                 {fmtBytes(Math.max(state.quota - state.usage, 0))}
               </div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Persistent</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Persistent</div>
               <div
                 className={`mt-0.5 font-mono text-sm ${
-                  state.persisted ? 'text-emerald-400' : 'text-zinc-500'
+                  state.persisted ? 'text-emerald-400' : 'text-zinc-400'
                 }`}
               >
                 {state.persisted === null ? 'n/a' : state.persisted ? 'Yes' : 'No'}
@@ -159,7 +159,7 @@ export function StorageQuotaPanel() {
           )}
         </>
       ) : (
-        <p className="rounded border border-zinc-800 bg-zinc-950 px-3 py-4 text-center text-[11px] text-zinc-500">
+        <p className="rounded border border-zinc-800 bg-zinc-950 px-3 py-4 text-center text-[11px] text-zinc-400">
           This browser does not expose the StorageManager API. The offline DB
           still works, but quota cannot be measured here.
         </p>

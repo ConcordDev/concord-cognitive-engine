@@ -129,7 +129,7 @@ export function DailyNotes({
           </div>
 
           {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
+          <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1">
             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
               <div key={day}>{day}</div>
             ))}
@@ -161,7 +161,7 @@ export function DailyNotes({
 
         {/* Recent notes list */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-4 py-2 text-xs text-gray-500 uppercase tracking-wider">
+          <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wider">
             Recent Notes
           </div>
           {notes.slice(0, 10).map(note => (
@@ -174,7 +174,7 @@ export function DailyNotes({
               )}
             >
               <div className="text-sm text-white">{note.date}</div>
-              <div className="text-xs text-gray-500 truncate">
+              <div className="text-xs text-gray-400 truncate">
                 {note.dtu.title}
               </div>
             </button>

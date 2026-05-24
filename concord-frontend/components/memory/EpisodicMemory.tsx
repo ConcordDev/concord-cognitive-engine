@@ -77,7 +77,7 @@ function EpisodicMemory({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Episodic Memory</h3>
-            <p className="text-xs text-gray-500">{summary.total || 0} experiences recorded</p>
+            <p className="text-xs text-gray-400">{summary.total || 0} experiences recorded</p>
           </div>
         </div>
         <button
@@ -92,19 +92,19 @@ function EpisodicMemory({ className }: { className?: string }) {
       <div className="p-4 grid grid-cols-3 gap-3">
         <div className="text-center">
           <p className="text-lg font-bold text-white">{summary.total || 0}</p>
-          <p className="text-xs text-gray-500">Episodes</p>
+          <p className="text-xs text-gray-400">Episodes</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-bold text-neon-cyan">
             {summary.averageIntensity ? Math.round(summary.averageIntensity * 100) : 0}%
           </p>
-          <p className="text-xs text-gray-500">Avg Intensity</p>
+          <p className="text-xs text-gray-400">Avg Intensity</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-bold text-purple-400">
             {summary.topEmotions?.[0]?.emotion || '—'}
           </p>
-          <p className="text-xs text-gray-500">Top Emotion</p>
+          <p className="text-xs text-gray-400">Top Emotion</p>
         </div>
       </div>
 
@@ -170,7 +170,7 @@ function EpisodicMemory({ className }: { className?: string }) {
             {/* Episodes */}
             <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
               {episodes.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-gray-400 text-center py-4">
                   No episodes recorded yet. Use Concord to create memories.
                 </p>
               ) : (
@@ -196,7 +196,7 @@ function EpisodicMemory({ className }: { className?: string }) {
                               <span className="text-sm font-medium text-white truncate">
                                 {ep.title}
                               </span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-400">
                                 {new Date(ep.timestamp).toLocaleDateString()}
                               </span>
                             </div>
@@ -217,7 +217,7 @@ function EpisodicMemory({ className }: { className?: string }) {
                                   {em}
                                 </span>
                               ))}
-                              <span className="text-[10px] text-gray-600">
+                              <span className="text-[10px] text-gray-400">
                                 {Math.round(ep.intensity * 100)}% intensity
                               </span>
                             </div>

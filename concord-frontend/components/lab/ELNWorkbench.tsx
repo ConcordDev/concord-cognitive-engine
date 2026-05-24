@@ -170,7 +170,7 @@ function NotebookTab() {
         className="input-lattice text-sm h-24 resize-none w-full" />
       <ErrLine msg={err} />
       <div className="space-y-2">
-        {entries.length === 0 && <p className="text-center py-6 text-gray-500 text-sm">No notebook entries yet.</p>}
+        {entries.length === 0 && <p className="text-center py-6 text-gray-400 text-sm">No notebook entries yet.</p>}
         {entries.map((e) => (
           <div key={e.id} className="lens-card space-y-2">
             <div className="flex items-center justify-between">
@@ -297,12 +297,12 @@ function InventoryTab() {
       </button>
       <ErrLine msg={err} />
       <div className="space-y-2">
-        {items.length === 0 && <p className="text-center py-6 text-gray-500 text-sm">No reagents tracked.</p>}
+        {items.length === 0 && <p className="text-center py-6 text-gray-400 text-sm">No reagents tracked.</p>}
         {items.map((it) => (
           <div key={it.id} className={`lens-card flex items-center justify-between gap-3 flex-wrap ${
             it.expiryStatus === 'expired' || it.lowStock ? 'border-red-500/40' : ''}`}>
             <div className="min-w-0">
-              <p className="font-medium text-sm">{it.name} {it.lot && <span className="text-xs text-gray-500">lot {it.lot}</span>}</p>
+              <p className="font-medium text-sm">{it.name} {it.lot && <span className="text-xs text-gray-400">lot {it.lot}</span>}</p>
               <p className="text-xs text-gray-400">
                 {it.quantity} {it.unit} · {it.freezerBox || it.location}
                 {it.expiry && ` · exp ${it.expiry}`}
@@ -316,7 +316,7 @@ function InventoryTab() {
               {it.lowStock && <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400">low</span>}
               <button onClick={() => consume(it.id, -1)} disabled={busy} className="btn-neon text-xs px-2">−1</button>
               <button onClick={() => consume(it.id, 10)} disabled={busy} className="btn-neon text-xs px-2">+10</button>
-              <button onClick={() => remove(it.id)} disabled={busy} className="text-gray-500 hover:text-red-400" aria-label="Remove">
+              <button onClick={() => remove(it.id)} disabled={busy} className="text-gray-400 hover:text-red-400" aria-label="Remove">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -405,9 +405,9 @@ function ProtocolsTab() {
                       if (ev.target.checked) next.add(s.order); else next.delete(s.order);
                       setRunDone(next);
                     }} />
-                  <span className={runDone.has(s.order) ? 'line-through text-gray-500' : ''}>
-                    <span className="text-gray-500">{s.order}.</span> {s.text}
-                    {s.durationMinutes > 0 && <span className="text-xs text-gray-500"> · {s.durationMinutes}m</span>}
+                  <span className={runDone.has(s.order) ? 'line-through text-gray-400' : ''}>
+                    <span className="text-gray-400">{s.order}.</span> {s.text}
+                    {s.durationMinutes > 0 && <span className="text-xs text-gray-400"> · {s.durationMinutes}m</span>}
                     {s.critical && <span className="text-xs text-red-400"> · critical</span>}
                   </span>
                 </label>
@@ -418,11 +418,11 @@ function ProtocolsTab() {
       )}
 
       <div className="space-y-2">
-        {protocols.length === 0 && <p className="text-center py-6 text-gray-500 text-sm">No protocols in the library.</p>}
+        {protocols.length === 0 && <p className="text-center py-6 text-gray-400 text-sm">No protocols in the library.</p>}
         {protocols.map((p) => (
           <div key={p.id} className="lens-card flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <p className="font-medium text-sm">{p.name} <span className="text-xs text-gray-500">v{p.version}</span></p>
+              <p className="font-medium text-sm">{p.name} <span className="text-xs text-gray-400">v{p.version}</span></p>
               <p className="text-xs text-gray-400">{p.category} · {p.stepCount} steps · {p.totalMinutes} min</p>
             </div>
             <button onClick={() => startRun(p.id)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1">
@@ -526,7 +526,7 @@ function PlatesTab() {
         <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `auto repeat(${gCols}, minmax(0, 1fr))` }}>
           <div />
           {Array.from({ length: gCols }, (_, c) => (
-            <div key={c} className="text-[9px] text-gray-500 text-center">{c + 1}</div>
+            <div key={c} className="text-[9px] text-gray-400 text-center">{c + 1}</div>
           ))}
           {gRows.map((rl) => (
             <Row key={rl} rl={rl} cols={gCols} gridFor={gridFor} draft={draft} view={view} toggleWell={toggleWell} />
@@ -541,7 +541,7 @@ function PlatesTab() {
       )}
       <div className="space-y-2">
         <h4 className="text-sm font-semibold text-gray-300">Saved layouts</h4>
-        {plates.length === 0 && <p className="text-gray-500 text-sm">No plate layouts saved.</p>}
+        {plates.length === 0 && <p className="text-gray-400 text-sm">No plate layouts saved.</p>}
         {plates.map((p) => (
           <div key={p.id} className="lens-card flex items-center justify-between">
             <div>
@@ -562,7 +562,7 @@ function Row({ rl, cols, gridFor, draft, view, toggleWell }: {
 }) {
   return (
     <>
-      <div className="text-[9px] text-gray-500 flex items-center justify-center pr-1">{rl}</div>
+      <div className="text-[9px] text-gray-400 flex items-center justify-center pr-1">{rl}</div>
       {Array.from({ length: cols }, (_, c) => {
         const well = `${rl}${c + 1}`;
         const r = view ? gridFor?.[well]?.role : draft[well];
@@ -647,7 +647,7 @@ function RunsTab() {
                 <div key={c} className="bg-lattice-deep rounded p-2 text-xs">
                   <p className="text-gray-400">{c}</p>
                   <p>mean {view.summary[c].mean} · n {view.summary[c].n}</p>
-                  <p className="text-gray-500">[{view.summary[c].min}, {view.summary[c].max}]</p>
+                  <p className="text-gray-400">[{view.summary[c].min}, {view.summary[c].max}]</p>
                 </div>
               ))}
             </div>
@@ -674,7 +674,7 @@ function RunsTab() {
 
       <div className="space-y-2">
         <h4 className="text-sm font-semibold text-gray-300">Imported runs</h4>
-        {runs.length === 0 && <p className="text-gray-500 text-sm">No instrument runs imported.</p>}
+        {runs.length === 0 && <p className="text-gray-400 text-sm">No instrument runs imported.</p>}
         {runs.map((rn) => (
           <div key={rn.id} className="lens-card flex items-center justify-between">
             <div>
@@ -788,11 +788,11 @@ function ConstructsTab() {
       )}
 
       <div className="space-y-2">
-        {constructs.length === 0 && <p className="text-center py-6 text-gray-500 text-sm">No constructs registered.</p>}
+        {constructs.length === 0 && <p className="text-center py-6 text-gray-400 text-sm">No constructs registered.</p>}
         {constructs.map((c) => (
           <div key={c.id} className="lens-card flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <p className="font-medium text-sm">{c.name} <span className="text-xs text-gray-500">{c.type}</span></p>
+              <p className="font-medium text-sm">{c.name} <span className="text-xs text-gray-400">{c.type}</span></p>
               <p className="text-xs text-gray-400">{c.length} bp · GC {c.gcContent}%
                 {c.resistance && ` · ${c.resistance}`}</p>
             </div>

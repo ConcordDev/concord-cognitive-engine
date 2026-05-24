@@ -293,7 +293,7 @@ export default function AnalyticsPage() {
                   <BarChart3 className="w-5 h-5 text-neon-cyan" />
                   Creator Analytics Dashboard
                 </h1>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-400 mt-0.5">
                   Full performance overview for {profileData?.displayName || 'your account'}
                 </p>
               </div>
@@ -397,7 +397,7 @@ export default function AnalyticsPage() {
                       <div key={tag} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-300 capitalize">{tag}</span>
-                          <span className="text-gray-500">
+                          <span className="text-gray-400">
                             {count} DTUs ({pct.toFixed(0)}%)
                           </span>
                         </div>
@@ -418,7 +418,7 @@ export default function AnalyticsPage() {
                 </div>
               </motion.div>
             ) : (
-              <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+              <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                 <p>No lens analytics data yet. Lens usage breakdown will appear here.</p>
               </div>
             )}
@@ -452,7 +452,7 @@ export default function AnalyticsPage() {
                         >
                           {tx.type || 'transfer'}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           {new Date(tx.timestamp).toLocaleDateString()}
                         </span>
                       </div>
@@ -464,7 +464,7 @@ export default function AnalyticsPage() {
                 </div>
               </motion.div>
             ) : (
-              <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+              <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                 <p>No transaction data yet. Transaction history will appear here.</p>
               </div>
             )}
@@ -494,7 +494,7 @@ export default function AnalyticsPage() {
                       <span
                         className={cn(
                           'text-sm font-bold w-6 text-center',
-                          idx < 3 ? 'text-neon-cyan' : 'text-gray-500'
+                          idx < 3 ? 'text-neon-cyan' : 'text-gray-400'
                         )}
                       >
                         {idx + 1}
@@ -503,7 +503,7 @@ export default function AnalyticsPage() {
                         <p className="text-sm text-white truncate">
                           {dtu.title || dtu.summary || dtu.id.slice(0, 24)}
                         </p>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
                           {dtu.tier && <span className="capitalize">{dtu.tier}</span>}
                           {(dtu.tags || []).slice(0, 2).map((t) => (
                             <span key={t} className="text-neon-cyan/60">
@@ -517,13 +517,13 @@ export default function AnalyticsPage() {
                           <Quote className="w-3.5 h-3.5" />
                           {dtu.citationCount || 0}
                         </div>
-                        <div className="text-[10px] text-gray-600">citations</div>
+                        <div className="text-[10px] text-gray-400">citations</div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 text-center py-8">No DTUs yet</p>
+                <p className="text-sm text-gray-400 text-center py-8">No DTUs yet</p>
               )}
             </motion.div>
 
@@ -568,7 +568,7 @@ export default function AnalyticsPage() {
                     <FilterIcon className="w-6 h-6 text-neon-cyan" />
                   )}
                   <span className="text-xs text-gray-300 font-medium">Funnel Analysis</span>
-                  <span className="text-[10px] text-gray-500">Stage-by-stage conversion</span>
+                  <span className="text-[10px] text-gray-400">Stage-by-stage conversion</span>
                 </button>
                 <button
                   onClick={() => handleAnalyticsAction('cohortAnalysis')}
@@ -581,7 +581,7 @@ export default function AnalyticsPage() {
                     <Layers className="w-6 h-6 text-neon-purple" />
                   )}
                   <span className="text-xs text-gray-300 font-medium">Cohort Analysis</span>
-                  <span className="text-[10px] text-gray-500">Retention by cohort</span>
+                  <span className="text-[10px] text-gray-400">Retention by cohort</span>
                 </button>
                 <button
                   onClick={() => handleAnalyticsAction('detectAnomalies')}
@@ -594,7 +594,7 @@ export default function AnalyticsPage() {
                     <AlertTriangle className="w-6 h-6 text-red-400" />
                   )}
                   <span className="text-xs text-gray-300 font-medium">Detect Anomalies</span>
-                  <span className="text-[10px] text-gray-500">Statistical outliers</span>
+                  <span className="text-[10px] text-gray-400">Statistical outliers</span>
                 </button>
                 <button
                   onClick={() => handleAnalyticsAction('trendForecast')}
@@ -607,7 +607,7 @@ export default function AnalyticsPage() {
                     <TrendingUp className="w-6 h-6 text-green-400" />
                   )}
                   <span className="text-xs text-gray-300 font-medium">Trend Forecast</span>
-                  <span className="text-[10px] text-gray-500">Linear regression forecast</span>
+                  <span className="text-[10px] text-gray-400">Linear regression forecast</span>
                 </button>
               </div>
             </motion.div>
@@ -679,7 +679,7 @@ export default function AnalyticsPage() {
                                     ? 'text-red-400'
                                     : stage.dropoff > 25
                                       ? 'text-yellow-400'
-                                      : 'text-gray-500'
+                                      : 'text-gray-400'
                                 )}
                               >
                                 -{stage.dropoff}%
@@ -738,7 +738,7 @@ export default function AnalyticsPage() {
                                     style={{ height: `${p.rate}%` }}
                                   />
                                 </div>
-                                <span className="text-[9px] text-gray-500">P{p.period}</span>
+                                <span className="text-[9px] text-gray-400">P{p.period}</span>
                               </div>
                             ))}
                           </div>
@@ -756,19 +756,19 @@ export default function AnalyticsPage() {
                         <p className="text-sm font-bold text-white">
                           {actionResult.totalPoints as number}
                         </p>
-                        <p className="text-[10px] text-gray-500">Data Points</p>
+                        <p className="text-[10px] text-gray-400">Data Points</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan">
                           {actionResult.mean as number}
                         </p>
-                        <p className="text-[10px] text-gray-500">Mean</p>
+                        <p className="text-[10px] text-gray-400">Mean</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-purple">
                           {actionResult.stdDev as number}
                         </p>
-                        <p className="text-[10px] text-gray-500">Std Dev</p>
+                        <p className="text-[10px] text-gray-400">Std Dev</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p
@@ -781,7 +781,7 @@ export default function AnalyticsPage() {
                         >
                           {actionResult.anomaliesFound as number}
                         </p>
-                        <p className="text-[10px] text-gray-500">Anomalies</p>
+                        <p className="text-[10px] text-gray-400">Anomalies</p>
                       </div>
                     </div>
                     {(
@@ -880,7 +880,7 @@ export default function AnalyticsPage() {
                           key={f.periodsAhead}
                           className="flex items-center gap-3 p-2 bg-lattice-surface rounded"
                         >
-                          <span className="text-xs text-gray-500 w-20">
+                          <span className="text-xs text-gray-400 w-20">
                             +{f.periodsAhead} period{f.periodsAhead !== 1 ? 's' : ''}
                           </span>
                           <div className="flex-1 h-2 bg-lattice-deep rounded-full overflow-hidden">
@@ -983,7 +983,7 @@ function StatCard({
       <div className={cn('text-2xl font-bold', color)}>
         {raw ? value : formatNumber(value as number)}
       </div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
+      <div className="text-xs text-gray-400 mt-1">{label}</div>
     </motion.div>
   );
 }
@@ -1050,7 +1050,7 @@ function TierBreakdown({ dtus }: { dtus: DTUSummary[] }) {
   }));
 
   if (pieData.length === 0) {
-    return <p className="text-sm text-gray-500 text-center py-4">No DTU data available</p>;
+    return <p className="text-sm text-gray-400 text-center py-4">No DTU data available</p>;
   }
 
   return (
@@ -1091,7 +1091,7 @@ function TierBreakdown({ dtus }: { dtus: DTUSummary[] }) {
               style={{ backgroundColor: color }}
             />
             <span className="text-gray-300 capitalize flex-1">{name}</span>
-            <span className="text-gray-500">{value}</span>
+            <span className="text-gray-400">{value}</span>
           </div>
         ))}
       </div>

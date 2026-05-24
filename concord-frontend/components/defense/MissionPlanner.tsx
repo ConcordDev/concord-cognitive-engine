@@ -167,7 +167,7 @@ export function MissionPlanner() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-zinc-500">
+        <div className="flex items-center justify-center py-12 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -182,7 +182,7 @@ export function MissionPlanner() {
                     key={p.phase}
                     className="rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5"
                   >
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-500">{p.phase}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-400">{p.phase}</div>
                     <div className="text-sm text-white">
                       {p.complete}/{p.count} done
                     </div>
@@ -213,9 +213,9 @@ export function MissionPlanner() {
                     {t.status}
                   </button>
                   <span className="text-xs text-white truncate">{t.name}</span>
-                  <span className="text-[10px] text-zinc-600 shrink-0">{t.phase}</span>
-                  {t.owner && <span className="text-[10px] text-zinc-500 shrink-0">@{t.owner}</span>}
-                  <span className="text-[10px] text-zinc-600 shrink-0 font-mono">
+                  <span className="text-[10px] text-zinc-400 shrink-0">{t.phase}</span>
+                  {t.owner && <span className="text-[10px] text-zinc-400 shrink-0">@{t.owner}</span>}
+                  <span className="text-[10px] text-zinc-400 shrink-0 font-mono">
                     +{t.earliestStart ?? 0}h / {t.durationHours}h
                   </span>
                   {t.dependsOn.length > 0 && (
@@ -231,14 +231,14 @@ export function MissionPlanner() {
                   onClick={() => removeTask(t.id)}
                   disabled={busy}
                   aria-label="Delete task"
-                  className="p-1 text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                  className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
             {tasks.length === 0 && (
-              <div className="text-center py-6 text-xs text-zinc-500">
+              <div className="text-center py-6 text-xs text-zinc-400">
                 No mission tasks. Add a phased task below to build the plan.
               </div>
             )}
@@ -280,7 +280,7 @@ export function MissionPlanner() {
       </div>
       {tasks.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          <span className="text-[10px] text-zinc-500 self-center mr-1">Depends on:</span>
+          <span className="text-[10px] text-zinc-400 self-center mr-1">Depends on:</span>
           {tasks.map((t) => (
             <button
               key={t.id}
@@ -288,7 +288,7 @@ export function MissionPlanner() {
               className={`text-[10px] px-1.5 py-0.5 rounded border ${
                 dependsOn.includes(t.id)
                   ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300'
-                  : 'border-zinc-800 bg-zinc-900 text-zinc-500'
+                  : 'border-zinc-800 bg-zinc-900 text-zinc-400'
               }`}
             >
               {t.name}

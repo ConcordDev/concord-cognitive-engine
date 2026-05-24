@@ -60,9 +60,9 @@ export function EarthquakeList() {
         </div>
       </header>
       <div className="flex items-center gap-2 text-xs">
-        <label className="text-zinc-500">Min mag:</label>
+        <label className="text-zinc-400">Min mag:</label>
         <input type="number" step="0.5" min="0" max="9" value={minMag} onChange={(e) => setMinMag(Number(e.target.value))} className="w-16 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-white" />
-        <label className="text-zinc-500">Since (hrs):</label>
+        <label className="text-zinc-400">Since (hrs):</label>
         <select value={sinceHours} onChange={(e) => setSinceHours(Number(e.target.value))} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-white">
           {[1, 6, 12, 24, 72, 168, 720].map((h) => <option key={h} value={h}>{h}h</option>)}
         </select>
@@ -76,7 +76,7 @@ export function EarthquakeList() {
             <div className="font-mono text-lg font-bold w-12 text-center">{q.magnitude?.toFixed(1)}</div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs text-white">{q.place}</div>
-              <div className="flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
+              <div className="flex flex-wrap gap-x-2 text-[10px] text-zinc-400">
                 <span>{q.time ? new Date(q.time).toLocaleString() : ''}</span>
                 <span>depth {q.depthKm?.toFixed(0)} km</span>
                 {q.tsunami && <span className="font-bold text-rose-400">⚠ tsunami flag</span>}
@@ -93,7 +93,7 @@ export function EarthquakeList() {
               rawData={q}
             />
             {q.url && (
-              <a href={q.url} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>
+              <a href={q.url} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>
             )}
             {(q.alert === 'orange' || q.alert === 'red') && <AlertTriangle className="h-3.5 w-3.5 text-red-400" />}
           </motion.div>

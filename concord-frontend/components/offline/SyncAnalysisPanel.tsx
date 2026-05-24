@@ -240,7 +240,7 @@ export function SyncAnalysisPanel() {
               { l: 'Avg severity', v: conflict.summary.avgSeverity },
             ].map((m) => (
               <div key={m.l} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{m.l}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">{m.l}</div>
                 <div className="mt-0.5 font-mono text-lg text-zinc-200">{m.v}</div>
               </div>
             ))}
@@ -291,7 +291,7 @@ export function SyncAnalysisPanel() {
               { l: 'Global TTL', v: `${cache.ttlOptimization.globalRecommendedTtlSeconds}s` },
             ].map((m) => (
               <div key={m.l} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{m.l}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">{m.l}</div>
                 <div className="mt-0.5 font-mono text-lg text-zinc-200">{m.v}</div>
               </div>
             ))}
@@ -322,7 +322,7 @@ export function SyncAnalysisPanel() {
               { l: 'Delta savings', v: `${delta.bandwidth.deltaSavingsPercent}%` },
             ].map((m) => (
               <div key={m.l} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{m.l}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">{m.l}</div>
                 <div className="mt-0.5 font-mono text-lg text-zinc-200">{m.v}</div>
               </div>
             ))}
@@ -350,7 +350,7 @@ export function SyncAnalysisPanel() {
       )}
 
       {!conflict && !cache && !delta && !err && (
-        <p className="rounded border border-dashed border-zinc-800 px-3 py-4 text-center text-[11px] text-zinc-500">
+        <p className="rounded border border-dashed border-zinc-800 px-3 py-4 text-center text-[11px] text-zinc-400">
           Run the analysis to score conflict resolution, cache strategy, and
           delta bandwidth against your real local store.
         </p>

@@ -84,14 +84,14 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
         <BookText className="w-4 h-4 text-indigo-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">
           {title || `arXiv · ${domain}`}
-          {category && <span className="ml-2 text-[10px] font-mono text-zinc-500">cat:{category}</span>}
+          {category && <span className="ml-2 text-[10px] font-mono text-zinc-400">cat:{category}</span>}
         </h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         <button
           type="button"
           onClick={() => void fetchData(query.trim() || undefined)}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -99,7 +99,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -117,7 +117,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
       )}
 
       {!error && papers.length === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
           No papers returned. Try a broader query.
         </div>
       )}
@@ -127,7 +127,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
           {papers.map((p) => (
             <li key={p.arxivId} className="px-3 py-2.5 text-xs">
               <div className="flex items-start gap-2">
-                <FileText className="w-3 h-3 text-zinc-500 shrink-0 mt-0.5" aria-hidden="true" />
+                <FileText className="w-3 h-3 text-zinc-400 shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   <a
                     href={p.abstractUrl}
@@ -136,7 +136,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
                   >
                     {p.title}
                   </a>
-                  <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                  <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     {p.published?.slice(0, 10)} · {p.authors.slice(0, 3).join(', ')}
                     {p.authors.length > 3 && ` +${p.authors.length - 3}`}
                     {p.arxivId && ` · ${p.arxivId}`}
@@ -149,7 +149,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
                 <a
                   href={p.pdfUrl}
                   target="_blank" rel="noopener noreferrer"
-                  className="text-zinc-500 hover:text-indigo-300 shrink-0 text-[10px] flex items-center gap-0.5 mt-0.5"
+                  className="text-zinc-400 hover:text-indigo-300 shrink-0 text-[10px] flex items-center gap-0.5 mt-0.5"
                   aria-label="Open PDF"
                 >
                   PDF<ExternalLink className="w-2.5 h-2.5" />
@@ -160,7 +160,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: arXiv · {updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

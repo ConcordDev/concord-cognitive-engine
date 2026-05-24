@@ -136,7 +136,7 @@ export function PlaceFinder() {
       </header>
 
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
         <input
           type="text"
           value={queryInput}
@@ -152,7 +152,7 @@ export function PlaceFinder() {
 
       {places.length > 0 && (
         <div className="space-y-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Matches</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Matches</div>
           {places.map((p) => (
             <button
               key={`${p.osmType}-${p.osmId}-${p.placeId}`}
@@ -165,7 +165,7 @@ export function PlaceFinder() {
               }`}
             >
               <div className="line-clamp-1 text-sm text-white">{p.displayName}</div>
-              <div className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-500">
+              <div className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-400">
                 <span className="rounded bg-zinc-800 px-1.5 font-mono">{p.type || p.category}</span>
                 <span className="font-mono">{p.latitude.toFixed(4)}, {p.longitude.toFixed(4)}</span>
               </div>
@@ -179,7 +179,7 @@ export function PlaceFinder() {
           <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="text-xs text-zinc-500">Focused place</div>
+                <div className="text-xs text-zinc-400">Focused place</div>
                 <div className="text-sm font-semibold text-white">{focusPlace.displayName}</div>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -238,7 +238,7 @@ export function PlaceFinder() {
             </div>
             <div className="space-y-1 max-h-[28rem] overflow-y-auto">
               {pois.length === 0 ? (
-                <div className="rounded border border-dashed border-zinc-800 bg-zinc-950/40 p-3 text-center text-[11px] text-zinc-500">
+                <div className="rounded border border-dashed border-zinc-800 bg-zinc-950/40 p-3 text-center text-[11px] text-zinc-400">
                   {activeAmenity ? 'No POIs in this bbox.' : 'Pick a category above to query OSM POIs in this area.'}
                 </div>
               ) : (
@@ -254,7 +254,7 @@ export function PlaceFinder() {
                       <MapPin className="h-3 w-3 shrink-0 text-cyan-400" />
                       <span className="truncate">{p.name || `(${p.amenity})`}</span>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-zinc-400">
                       {p.cuisine && <span>{p.cuisine}</span>}
                       {p.opening_hours && <span>{p.opening_hours}</span>}
                       {p.website && <a href={p.website} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline"><ExternalLink className="inline h-2.5 w-2.5" /> site</a>}

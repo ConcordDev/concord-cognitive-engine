@@ -76,7 +76,7 @@ export function TradePanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <CandlestickChart className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Limit orders</span>
-        <span className="text-[10px] text-gray-500">{open.length} open</span>
+        <span className="text-[10px] text-gray-400">{open.length} open</span>
         <button type="button" onClick={checkFills} disabled={checking || open.length === 0}
           className="ml-auto px-2.5 py-1 text-[11px] rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
           {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}Check fills
@@ -104,9 +104,9 @@ export function TradePanel() {
       {notice && <div className="px-3 py-1.5 text-[11px] text-blue-200 bg-blue-500/10 border-b border-white/5">{notice}</div>}
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
       ) : orders.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No orders yet. Place a limit order above.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No orders yet. Place a limit order above.</div>
       ) : (
         <div className="divide-y divide-white/5">
           {[...open, ...closed].map((o) => (
@@ -119,11 +119,11 @@ export function TradePanel() {
               <span className="text-[11px] text-gray-400">@ {fmtUsd(o.limitPriceUsd)}</span>
               <div className="flex-1" />
               <span className={cn('text-[10px] uppercase',
-                o.status === 'open' ? 'text-blue-300' : o.status === 'filled' ? 'text-emerald-400' : 'text-gray-500')}>
+                o.status === 'open' ? 'text-blue-300' : o.status === 'filled' ? 'text-emerald-400' : 'text-gray-400')}>
                 {o.status}{o.status === 'filled' && o.fillPriceUsd ? ` @ ${fmtUsd(o.fillPriceUsd)}` : ''}
               </span>
               {o.status === 'open' && (
-                <button type="button" onClick={() => cancel(o.id)} className="text-gray-500 hover:text-rose-300">
+                <button type="button" onClick={() => cancel(o.id)} className="text-gray-400 hover:text-rose-300">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -166,11 +166,11 @@ export function MarketPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Globe className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Market overview</span>
-        <button type="button" onClick={refresh} className="ml-auto text-gray-500 hover:text-white"><RefreshCw className="w-3.5 h-3.5" /></button>
+        <button type="button" onClick={refresh} className="ml-auto text-gray-400 hover:text-white"><RefreshCw className="w-3.5 h-3.5" /></button>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading market…</div>
+        <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading market…</div>
       ) : error ? (
         <div className="px-3 py-10 text-center text-xs text-rose-300">{error}</div>
       ) : data ? (
@@ -188,8 +188,8 @@ export function MarketPanel() {
               {data.trending.map((c) => (
                 <li key={c.id} className="flex items-center gap-2 px-2 py-1 text-xs">
                   <span className="text-white font-medium truncate flex-1">{c.name}</span>
-                  <span className="text-gray-500 font-mono">{c.symbol}</span>
-                  {c.rank && <span className="text-[10px] text-gray-600">#{c.rank}</span>}
+                  <span className="text-gray-400 font-mono">{c.symbol}</span>
+                  {c.rank && <span className="text-[10px] text-gray-400">#{c.rank}</span>}
                 </li>
               ))}
             </MarketList>
@@ -231,7 +231,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-black/30 border border-white/5 rounded px-2 py-1.5 text-center">
       <div className="text-sm font-bold text-white">{value}</div>
-      <div className="text-[9px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wide text-gray-400">{label}</div>
     </div>
   );
 }
@@ -284,9 +284,9 @@ export function PerformanceCard() {
         </button>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
       ) : series.length < 2 ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-500">
+        <div className="px-3 py-8 text-center text-xs text-gray-400">
           {history?.message || 'Capture snapshots over time to chart performance.'}
         </div>
       ) : (
@@ -365,7 +365,7 @@ export function WalletsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Wallet className="w-4 h-4 text-blue-400" />
           <span className="text-sm font-semibold text-gray-200">Wallets</span>
-          <span className="text-[10px] text-gray-500">{wallets.length}</span>
+          <span className="text-[10px] text-gray-400">{wallets.length}</span>
         </header>
         <div className="p-3 border-b border-white/10 flex items-center gap-2">
           <input value={wForm.name} onChange={(e) => setWForm({ ...wForm, name: e.target.value })}
@@ -380,9 +380,9 @@ export function WalletsPanel() {
           </button>
         </div>
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
         ) : wallets.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">No wallets yet. Add one to organise holdings.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No wallets yet. Add one to organise holdings.</div>
         ) : (
           <div className="divide-y divide-white/5">
             {wallets.map((w) => (
@@ -391,7 +391,7 @@ export function WalletsPanel() {
                 <span className="text-xs text-white font-medium">{w.name}</span>
                 <span className="text-[9px] uppercase px-1 rounded bg-white/10 text-gray-400">{w.kind}</span>
                 <div className="flex-1" />
-                <button type="button" onClick={() => delWallet(w.id)} className="text-gray-500 hover:text-rose-300">
+                <button type="button" onClick={() => delWallet(w.id)} className="text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -424,7 +424,7 @@ export function WalletsPanel() {
             </button>
           </div>
           {notice && <p className="text-[11px] text-emerald-300">{notice}</p>}
-          <p className="text-[10px] text-gray-500">
+          <p className="text-[10px] text-gray-400">
             Sending FIFO-debits your holdings and records a transfer in Activity. No on-chain broadcast — this is a portfolio-accurate ledger.
           </p>
         </div>

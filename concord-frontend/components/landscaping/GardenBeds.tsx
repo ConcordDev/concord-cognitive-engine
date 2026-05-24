@@ -137,7 +137,7 @@ export function GardenBeds() {
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="w-44">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Bed name</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Bed name</label>
           <input
             className={inputCls}
             value={name}
@@ -146,7 +146,7 @@ export function GardenBeds() {
           />
         </div>
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Sq ft</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Sq ft</label>
           <input
             type="number"
             className={inputCls}
@@ -155,7 +155,7 @@ export function GardenBeds() {
           />
         </div>
         <div className="w-28">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Sun</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Sun</label>
           <select className={inputCls} value={sun} onChange={(e) => setSun(e.target.value)}>
             {SUN.map((s) => (
               <option key={s} value={s}>
@@ -165,7 +165,7 @@ export function GardenBeds() {
           </select>
         </div>
         <div className="w-28">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Soil</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Soil</label>
           <select className={inputCls} value={soil} onChange={(e) => setSoil(e.target.value)}>
             {SOIL.map((s) => (
               <option key={s} value={s}>
@@ -210,7 +210,7 @@ export function GardenBeds() {
           />
         ))}
         {beds.length === 0 && (
-          <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">
+          <p className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">
             No garden beds yet. Add one above — beds feed the care-reminders and maintenance-calendar
             features in the Garden Studio.
           </p>
@@ -275,7 +275,7 @@ function BedRow({
         <button onClick={onToggle} className="flex items-center gap-2 text-sm text-white">
           <Flower2 className="h-4 w-4 text-emerald-400" />
           {bed.name}
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-zinc-400">
             {bed.sizeSqft} sq ft · {bed.sunExposure} sun · {bed.soilType} ·{' '}
             {bed.plantingCount ?? bed.plantings.length}🌱 · {bed.careCount ?? bed.careLog.length}💧
           </span>
@@ -331,7 +331,7 @@ function BedRow({
                 </span>
               ))}
               {bed.plantings.length === 0 && (
-                <span className="text-[11px] text-zinc-600">No plantings yet</span>
+                <span className="text-[11px] text-zinc-400">No plantings yet</span>
               )}
             </div>
           </div>
@@ -381,7 +381,7 @@ function BedRow({
                   </div>
                 ))}
               {bed.careLog.length === 0 && (
-                <span className="text-[11px] text-zinc-600">No care logged yet</span>
+                <span className="text-[11px] text-zinc-400">No care logged yet</span>
               )}
             </div>
           </div>
@@ -394,7 +394,7 @@ function BedRow({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-sm text-emerald-300">{value}</div>
     </div>
   );

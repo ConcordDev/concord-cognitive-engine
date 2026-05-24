@@ -64,7 +64,7 @@ export function FleetVehiclesPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Fleet vehicles</span>
-        <span className="ml-auto text-[10px] text-gray-500">{vehicles.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{vehicles.length}</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
@@ -81,12 +81,12 @@ export function FleetVehiclesPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : vehicles.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No vehicles yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No vehicles yet.</div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+            <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
               <tr><th className="text-left px-3 py-1.5">Truck</th><th className="text-left">Kind</th><th className="text-left">Make/Model</th><th className="text-right">Mileage</th><th>Status</th><th /></tr>
             </thead>
             <tbody className="divide-y divide-white/5">

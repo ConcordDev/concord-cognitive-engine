@@ -79,7 +79,7 @@ export function PartyHUD({ myUserId }: { myUserId: string }) {
     <div className="bg-gray-900/80 border border-gray-700 rounded p-3 w-64 text-sm" data-testid="party-hud">
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-semibold text-cyan-300">{party.name || 'Party'}</h3>
-        <span className="text-[10px] text-gray-500">{party.members.length}/{party.max_size}</span>
+        <span className="text-[10px] text-gray-400">{party.members.length}/{party.max_size}</span>
       </div>
       <ul className="space-y-1 mb-2">
         {party.members.map((m) => (
@@ -92,7 +92,7 @@ export function PartyHUD({ myUserId }: { myUserId: string }) {
           </li>
         ))}
       </ul>
-      <div className="text-[10px] text-gray-500 mb-2">
+      <div className="text-[10px] text-gray-400 mb-2">
         Loot: <span className="text-gray-300">{party.loot_policy.replace(/_/g, ' ')}</span>
       </div>
       <button

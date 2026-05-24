@@ -68,7 +68,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Job detail / pipeline ──
@@ -81,7 +81,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h3 className="text-sm font-bold text-zinc-100">{selected.title}</h3>
-          <p className="text-[11px] text-zinc-500">{selected.department} · {applicants.length} applicants</p>
+          <p className="text-[11px] text-zinc-400">{selected.department} · {applicants.length} applicants</p>
         </div>
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -96,7 +96,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
         </div>
 
         {applicants.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No applicants yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No applicants yet.</p>
         ) : (
           <ul className="space-y-2">
             {applicants.map((a) => (
@@ -104,7 +104,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{a.name}</p>
-                    {a.email && <p className="text-[10px] text-zinc-500">{a.email}</p>}
+                    {a.email && <p className="text-[10px] text-zinc-400">{a.email}</p>}
                   </div>
                   <span className={cn('text-[10px] uppercase', STAGE_COLOR[a.stage])}>{a.stage}</span>
                 </div>
@@ -112,7 +112,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
                   {STAGES.map((st) => (
                     <button key={st} type="button" onClick={() => advance(a.id, st)}
                       className={cn('text-[10px] px-1.5 py-0.5 rounded border capitalize',
-                        a.stage === st ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 text-zinc-500')}>
+                        a.stage === st ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 text-zinc-400')}>
                       {st}
                     </button>
                   ))}
@@ -142,7 +142,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
       </div>
 
       {jobs.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No open jobs. Post a requisition to start recruiting.
         </div>
       ) : (
@@ -154,7 +154,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
                 <Briefcase className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{j.title}</p>
-                  <p className="text-[11px] text-zinc-500">{j.department} · {j.applicantCount} applicants</p>
+                  <p className="text-[11px] text-zinc-400">{j.department} · {j.applicantCount} applicants</p>
                 </div>
               </button>
             </li>

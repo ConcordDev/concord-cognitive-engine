@@ -94,7 +94,7 @@ export function FieldTripPlanner() {
     else setError(r.data?.error || 'Could not reorder stops');
   }, [active, refresh]);
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
@@ -121,7 +121,7 @@ export function FieldTripPlanner() {
       {error && <p className="text-xs text-rose-400 mb-2">{error}</p>}
 
       {trips.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No field trips planned yet.</p>
+        <p className="text-xs text-zinc-400 italic">No field trips planned yet.</p>
       ) : (
         <>
           <div className="flex flex-wrap gap-1 mb-3">
@@ -139,7 +139,7 @@ export function FieldTripPlanner() {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-sm font-bold text-zinc-100">{active.name}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {active.area ? `${active.area} · ` : ''}{active.date} · {active.stops.length} stops
                   </p>
                 </div>
@@ -151,14 +151,14 @@ export function FieldTripPlanner() {
 
               <ol className="space-y-1 mb-3">
                 {active.stops.length === 0 && (
-                  <p className="text-xs text-zinc-500 italic">No stops yet — add the first outcrop below.</p>
+                  <p className="text-xs text-zinc-400 italic">No stops yet — add the first outcrop below.</p>
                 )}
                 {active.stops.map((s, idx) => (
                   <li key={s.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5 flex items-start gap-2">
                     <span className="w-5 h-5 shrink-0 rounded-full bg-orange-900/70 text-orange-300 text-[11px] font-bold flex items-center justify-center">{s.order}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-zinc-100 truncate">{s.name}</p>
-                      <p className="text-[11px] text-zinc-500">
+                      <p className="text-[11px] text-zinc-400">
                         {s.lithology && <span>{s.lithology} · </span>}
                         {s.formation && <span>{s.formation} · </span>}
                         {s.lat != null && s.lon != null && (
@@ -167,15 +167,15 @@ export function FieldTripPlanner() {
                           </span>
                         )}
                       </p>
-                      {s.notes && <p className="text-[11px] text-zinc-600 mt-0.5">{s.notes}</p>}
+                      {s.notes && <p className="text-[11px] text-zinc-400 mt-0.5">{s.notes}</p>}
                     </div>
                     <div className="flex flex-col gap-0.5 shrink-0">
                       <button onClick={() => move(idx, -1)} disabled={idx === 0} aria-label="Move stop up"
-                        className="text-zinc-500 hover:text-zinc-200 disabled:opacity-20">
+                        className="text-zinc-400 hover:text-zinc-200 disabled:opacity-20">
                         <ChevronUp className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => move(idx, 1)} disabled={idx === active.stops.length - 1} aria-label="Move stop down"
-                        className="text-zinc-500 hover:text-zinc-200 disabled:opacity-20">
+                        className="text-zinc-400 hover:text-zinc-200 disabled:opacity-20">
                         <ChevronDown className="w-3.5 h-3.5" />
                       </button>
                     </div>

@@ -132,7 +132,7 @@ export function CommonOperatingPicture() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-zinc-500">
+        <div className="flex items-center justify-center py-12 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -215,17 +215,17 @@ export function CommonOperatingPicture() {
                   }`}
                 />
                 <span className="text-xs text-white truncate">{m.label}</span>
-                <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+                <span className="text-[10px] text-zinc-400 font-mono shrink-0">
                   {m.lat.toFixed(2)}, {m.lon.toFixed(2)}
                 </span>
-                <span className="text-[10px] text-zinc-600 shrink-0">{m.kind}</span>
+                <span className="text-[10px] text-zinc-400 shrink-0">{m.kind}</span>
               </div>
               {m.id.startsWith('cop_') && (
                 <button
                   onClick={() => remove(m.id)}
                   disabled={busy}
                   aria-label="Remove marker"
-                  className="p-1 text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                  className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

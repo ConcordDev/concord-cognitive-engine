@@ -49,10 +49,10 @@ export function StakingPools({
   }, [months]);
 
   if (loading) {
-    return <div className="text-xs text-zinc-500 py-3">Loading pools…</div>;
+    return <div className="text-xs text-zinc-400 py-3">Loading pools…</div>;
   }
   if (pools.length === 0) {
-    return <div className="text-xs text-zinc-500 py-3">No pools available.</div>;
+    return <div className="text-xs text-zinc-400 py-3">No pools available.</div>;
   }
 
   return (
@@ -76,10 +76,10 @@ export function StakingPools({
             </div>
             <p className="mt-1 text-[11px] text-zinc-400 leading-snug">{p.description}</p>
             <dl className="mt-2 space-y-0.5 text-[11px] font-mono">
-              <div className="flex justify-between"><dt className="text-zinc-500">APR @{p.previewMonths}mo</dt><dd className="text-amber-300">{p.previewAprPct.toFixed(2)}%</dd></div>
-              <div className="flex justify-between"><dt className="text-zinc-500">Range</dt><dd className="text-zinc-300">{p.baseAprPct.toFixed(1)}–{p.capAprPct.toFixed(1)}%</dd></div>
-              <div className="flex justify-between"><dt className="text-zinc-500">Min stake</dt><dd className="text-zinc-300">{p.minStake} CC</dd></div>
-              <div className="flex justify-between"><dt className="text-zinc-500">Early penalty</dt><dd className="text-rose-300">{(p.earlyPenaltyPct * 100).toFixed(0)}%</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">APR @{p.previewMonths}mo</dt><dd className="text-amber-300">{p.previewAprPct.toFixed(2)}%</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">Range</dt><dd className="text-zinc-300">{p.baseAprPct.toFixed(1)}–{p.capAprPct.toFixed(1)}%</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">Min stake</dt><dd className="text-zinc-300">{p.minStake} CC</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">Early penalty</dt><dd className="text-rose-300">{(p.earlyPenaltyPct * 100).toFixed(0)}%</dd></div>
             </dl>
           </button>
         );

@@ -60,11 +60,11 @@ export function CrtCalendarPanel() {
       </div>
 
       {loading || !cal ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : (
         <div className="grid grid-cols-7 gap-1">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-            <div key={i} className="text-center text-[10px] text-zinc-600 uppercase">{d}</div>
+            <div key={i} className="text-center text-[10px] text-zinc-400 uppercase">{d}</div>
           ))}
           {Array.from({ length: firstWeekday }, (_, i) => <div key={`pad${i}`} />)}
           {Array.from({ length: daysInMonth }, (_, i) => {
@@ -74,7 +74,7 @@ export function CrtCalendarPanel() {
               <div key={d}
                 className={cn('min-h-[56px] rounded-lg border p-1',
                   items.length ? 'border-red-900/50 bg-red-950/20' : 'border-zinc-800 bg-zinc-900/40')}>
-                <p className="text-[10px] text-zinc-500">{i + 1}</p>
+                <p className="text-[10px] text-zinc-400">{i + 1}</p>
                 <div className="space-y-0.5 mt-0.5">
                   {items.slice(0, 3).map((it) => (
                     <p key={it.id} className="flex items-center gap-1 text-[9px] text-zinc-300 truncate">
@@ -82,14 +82,14 @@ export function CrtCalendarPanel() {
                       {it.title}
                     </p>
                   ))}
-                  {items.length > 3 && <p className="text-[9px] text-zinc-500">+{items.length - 3} more</p>}
+                  {items.length > 3 && <p className="text-[9px] text-zinc-400">+{items.length - 3} more</p>}
                 </div>
               </div>
             );
           })}
         </div>
       )}
-      <p className="text-[10px] text-zinc-500">Schedule content by setting a date on a pipeline item.</p>
+      <p className="text-[10px] text-zinc-400">Schedule content by setting a date on a pipeline item.</p>
     </div>
   );
 }

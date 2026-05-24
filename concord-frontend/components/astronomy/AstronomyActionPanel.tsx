@@ -188,7 +188,7 @@ export function AstronomyActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -202,15 +202,15 @@ export function AstronomyActionPanel() {
             {/* eslint-disable-next-line @next/next/no-img-element -- NASA APOD serves arbitrary external image hosts; next/image domain allowlist is impractical here */}
             {apodResult.mediaType === 'image' && apodResult.url && <img src={apodResult.url} alt={apodResult.title} className="mt-1.5 rounded max-h-64 object-contain" />}
             <div className="text-[10px] text-zinc-400 mt-1 line-clamp-3">{apodResult.explanation}</div>
-            {apodResult.copyright && <div className="text-[10px] text-zinc-500 italic mt-0.5">© {apodResult.copyright}</div>}
+            {apodResult.copyright && <div className="text-[10px] text-zinc-400 italic mt-0.5">© {apodResult.copyright}</div>}
           </div>
         )}
         {issResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">ISS · {issResult.name}</div>
             <div className="text-sm text-cyan-200 font-mono">{issResult.latitude.toFixed(3)}, {issResult.longitude.toFixed(3)}</div>
-            <div className="text-[10px] text-zinc-500">alt {Math.round(issResult.altitudeKm)}km · {Math.round(issResult.velocityKmH).toLocaleString()}km/h</div>
-            <div className="text-[10px] text-zinc-500">visibility: {issResult.visibility} · footprint {Math.round(issResult.footprintKm)}km</div>
+            <div className="text-[10px] text-zinc-400">alt {Math.round(issResult.altitudeKm)}km · {Math.round(issResult.velocityKmH).toLocaleString()}km/h</div>
+            <div className="text-[10px] text-zinc-400">visibility: {issResult.visibility} · footprint {Math.round(issResult.footprintKm)}km</div>
           </div>
         )}
         {neoResult && (
@@ -224,8 +224,8 @@ export function AstronomyActionPanel() {
           <div className={cn('rounded-md border p-2.5', posResult.visible ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-zinc-500/30 bg-zinc-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">{posResult.body}</div>
             <div className="text-2xl font-bold text-emerald-300">{posResult.alt}°<span className="text-xs text-zinc-400"> alt</span></div>
-            <div className="text-[10px] text-zinc-500">az {posResult.az}° · {posResult.constellation}</div>
-            <div className="text-[10px] text-zinc-500">{posResult.visible ? '✓ above horizon' : '✗ below horizon'}</div>
+            <div className="text-[10px] text-zinc-400">az {posResult.az}° · {posResult.constellation}</div>
+            <div className="text-[10px] text-zinc-400">{posResult.visible ? '✓ above horizon' : '✗ below horizon'}</div>
           </div>
         )}
       </div>

@@ -68,7 +68,7 @@ export function DockAppointmentsPanel() {
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2 text-xs">
-        <span className="text-gray-500 uppercase text-[10px] flex items-center">Add dock:</span>
+        <span className="text-gray-400 uppercase text-[10px] flex items-center">Add dock:</span>
         <input value={dockForm.name} onChange={e => setDockForm({ ...dockForm, name: e.target.value })} placeholder="Dock name" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={dockForm.facility} onChange={e => setDockForm({ ...dockForm, facility: e.target.value })} placeholder="Facility" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={addDock} className="px-3 py-1 rounded bg-amber-500/30 text-amber-300 hover:bg-amber-500/50 inline-flex items-center justify-center gap-1"><Anchor className="w-3 h-3" />Add dock</button>
@@ -90,9 +90,9 @@ export function DockAppointmentsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : appts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No appointments on {date}.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No appointments on {date}.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {appts.map(a => (
@@ -106,7 +106,7 @@ export function DockAppointmentsPanel() {
                     <span className="text-sm text-white">{a.dockName}</span>
                     <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', a.kind === 'pickup' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-violet-500/15 text-violet-300')}>{a.kind}</span>
                   </div>
-                  <div className="text-[10px] text-gray-500">{a.truckNumber || '—'}</div>
+                  <div className="text-[10px] text-gray-400">{a.truckNumber || '—'}</div>
                 </div>
                 {a.status === 'scheduled' && <button onClick={() => cancel(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
               </li>

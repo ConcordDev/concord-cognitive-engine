@@ -305,28 +305,28 @@ export default function CommonsenseLensPage() {
           <Database className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{rawFacts.length}</p>
-            <p className="text-xs text-gray-500">Facts Cataloged</p>
+            <p className="text-xs text-gray-400">Facts Cataloged</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{rawFacts.length > 0 ? `${((rawFacts.filter(f => (f.confidence ?? 1) > 0.7).length / rawFacts.length) * 100).toFixed(0)}%` : '0%'}</p>
-            <p className="text-xs text-gray-500">Verification Rate</p>
+            <p className="text-xs text-gray-400">Verification Rate</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Shield className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{relationStats.length}</p>
-            <p className="text-xs text-gray-500">Categories</p>
+            <p className="text-xs text-gray-400">Categories</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Brain className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{topSubjects.length}</p>
-            <p className="text-xs text-gray-500">Unique Subjects</p>
+            <p className="text-xs text-gray-400">Unique Subjects</p>
           </div>
         </motion.div>
       </div>
@@ -411,14 +411,14 @@ export default function CommonsenseLensPage() {
         </div>
 
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text" value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)}
             placeholder="Filter facts..." className="input-lattice w-full pl-10 pr-10"
           />
           {searchFilter && (
             <button onClick={() => setSearchFilter('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -468,7 +468,7 @@ export default function CommonsenseLensPage() {
                   <h3 className="text-sm font-semibold flex items-center gap-1">
                     <ArrowRight className="w-3 h-3 text-neon-green" /> Results
                   </h3>
-                  <button onClick={() => setResults(null)} className="text-xs text-gray-500 hover:text-white">
+                  <button onClick={() => setResults(null)} className="text-xs text-gray-400 hover:text-white">
                     Clear
                   </button>
                 </div>
@@ -476,7 +476,7 @@ export default function CommonsenseLensPage() {
                   const qr = results as { ok?: boolean; results?: { id: string; fact: string; category: string; confidence: number; relevance: number }[]; query?: string } | null;
                   const facts = qr?.results || [];
                   if (facts.length === 0) {
-                    return <p className="text-xs text-gray-500 italic">No matching facts found.</p>;
+                    return <p className="text-xs text-gray-400 italic">No matching facts found.</p>;
                   }
                   return (
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -486,8 +486,8 @@ export default function CommonsenseLensPage() {
                             <p className="text-xs text-gray-200 leading-relaxed">{f.fact}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 capitalize">{f.category}</span>
-                              <span className="text-[10px] text-gray-500">conf: <span className="text-gray-400 font-mono">{(f.confidence * 100).toFixed(0)}%</span></span>
-                              <span className="text-[10px] text-gray-500">rel: <span className="text-neon-green font-mono">{(f.relevance * 100).toFixed(0)}%</span></span>
+                              <span className="text-[10px] text-gray-400">conf: <span className="text-gray-400 font-mono">{(f.confidence * 100).toFixed(0)}%</span></span>
+                              <span className="text-[10px] text-gray-400">rel: <span className="text-neon-green font-mono">{(f.relevance * 100).toFixed(0)}%</span></span>
                             </div>
                           </div>
                         </div>
@@ -502,12 +502,12 @@ export default function CommonsenseLensPage() {
           {/* List View */}
           {viewMode === 'list' && (
             <div className="space-y-1">
-              <div className="text-xs text-gray-500 mb-2">
+              <div className="text-xs text-gray-400 mb-2">
                 {filteredFacts.length} fact{filteredFacts.length !== 1 ? 's' : ''}
                 {searchFilter && ` matching "${searchFilter}"`}
               </div>
               {filteredFacts.length === 0 ? (
-                <div className="panel p-8 text-center text-gray-500">
+                <div className="panel p-8 text-center text-gray-400">
                   <Database className="w-10 h-10 mx-auto mb-3 opacity-40" />
                   <p>No facts match your filters</p>
                 </div>
@@ -535,11 +535,11 @@ export default function CommonsenseLensPage() {
                         <ArrowRight className="w-3 h-3 text-gray-600 shrink-0" />
                         <span className="text-sm text-neon-purple flex-1">{f.object}</span>
                         {f.confidence !== undefined && (
-                          <span className="text-[10px] text-gray-500 font-mono">{(f.confidence * 100).toFixed(0)}%</span>
+                          <span className="text-[10px] text-gray-400 font-mono">{(f.confidence * 100).toFixed(0)}%</span>
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); handleCopyFact(f); }}
-                          className={`shrink-0 transition-colors ${isCopied ? 'text-neon-green' : 'text-gray-500 hover:text-white'}`}
+                          className={`shrink-0 transition-colors ${isCopied ? 'text-neon-green' : 'text-gray-400 hover:text-white'}`}
                         aria-label="Copy">
                           <Copy className="w-3 h-3" />
                         </button>
@@ -566,7 +566,7 @@ export default function CommonsenseLensPage() {
                         <span className={`text-sm font-semibold ${RELATION_COLORS[rel] || 'text-gray-400'}`}>
                           {rel.replace(/_/g, ' ')}
                         </span>
-                        <span className="text-xs text-gray-500">({count})</span>
+                        <span className="text-xs text-gray-400">({count})</span>
                       </div>
                       <div className="ml-4 space-y-1">
                         {relFacts.map((f, i) => (
@@ -589,7 +589,7 @@ export default function CommonsenseLensPage() {
                   );
                 })}
                 {relationStats.length === 0 && (
-                  <p className="text-gray-500 text-center py-8">No relations to visualize</p>
+                  <p className="text-gray-400 text-center py-8">No relations to visualize</p>
                 )}
               </div>
             </div>
@@ -607,7 +607,7 @@ export default function CommonsenseLensPage() {
                     <div key={rel} className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className={RELATION_COLORS[rel] || 'text-gray-400'}>{rel.replace(/_/g, ' ')}</span>
-                        <span className="text-gray-500 font-mono">{count} ({pct.toFixed(1)}%)</span>
+                        <span className="text-gray-400 font-mono">{count} ({pct.toFixed(1)}%)</span>
                       </div>
                       <div className="w-full h-2 bg-lattice-elevated rounded-full overflow-hidden">
                         <div className="h-full bg-neon-blue/60 rounded-full transition-all" style={{ width: `${pct}%` }} />
@@ -624,13 +624,13 @@ export default function CommonsenseLensPage() {
                 <div className="space-y-2">
                   {topSubjects.map(({ subject: subj, count }, i) => (
                     <div key={subj} className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500 w-4 text-right font-mono">{i + 1}</span>
+                      <span className="text-xs text-gray-400 w-4 text-right font-mono">{i + 1}</span>
                       <span className="text-sm text-neon-cyan flex-1">{subj}</span>
-                      <span className="text-xs text-gray-500 font-mono">{count} facts</span>
+                      <span className="text-xs text-gray-400 font-mono">{count} facts</span>
                     </div>
                   ))}
                   {topSubjects.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No subjects yet</p>
+                    <p className="text-gray-400 text-center py-4">No subjects yet</p>
                   )}
                 </div>
               </div>
@@ -647,22 +647,22 @@ export default function CommonsenseLensPage() {
               </h3>
               <div className="space-y-3 text-sm">
                 <div>
-                  <span className="text-xs text-gray-500">Subject</span>
+                  <span className="text-xs text-gray-400">Subject</span>
                   <p className="text-neon-cyan font-medium">{selectedFact.subject}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500">Relation</span>
+                  <span className="text-xs text-gray-400">Relation</span>
                   <p className={`font-medium ${RELATION_COLORS[selectedFact.relation] || 'text-gray-400'}`}>
                     {selectedFact.relation.replace(/_/g, ' ')}
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500">Object</span>
+                  <span className="text-xs text-gray-400">Object</span>
                   <p className="text-neon-purple font-medium">{selectedFact.object}</p>
                 </div>
                 {selectedFact.confidence !== undefined && (
                   <div>
-                    <span className="text-xs text-gray-500">Confidence</span>
+                    <span className="text-xs text-gray-400">Confidence</span>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 h-2 bg-lattice-elevated rounded-full overflow-hidden">
                         <div
@@ -676,7 +676,7 @@ export default function CommonsenseLensPage() {
                 )}
                 {selectedFact.source && (
                   <div>
-                    <span className="text-xs text-gray-500">Source</span>
+                    <span className="text-xs text-gray-400">Source</span>
                     <p className="text-gray-300">{selectedFact.source}</p>
                   </div>
                 )}
@@ -698,7 +698,7 @@ export default function CommonsenseLensPage() {
               </h3>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="w-full py-6 border-2 border-dashed border-lattice-border rounded-lg text-gray-500 hover:text-neon-purple hover:border-neon-purple/30 transition-colors text-sm"
+                className="w-full py-6 border-2 border-dashed border-lattice-border rounded-lg text-gray-400 hover:text-neon-purple hover:border-neon-purple/30 transition-colors text-sm"
               >
                 Click to add a new fact
               </button>
@@ -751,7 +751,7 @@ export default function CommonsenseLensPage() {
                     }`}
                   >
                     <span className={RELATION_COLORS[r] || 'text-gray-400'}>{r.replace(/_/g, ' ')}</span>
-                    <span className="text-gray-500 font-mono">{count}</span>
+                    <span className="text-gray-400 font-mono">{count}</span>
                   </button>
                 );
               })}
@@ -801,7 +801,7 @@ export default function CommonsenseLensPage() {
             <div className="mt-2 rounded-lg bg-lattice-surface border border-neon-yellow/20 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-neon-yellow capitalize">{actionResult.action}</span>
-                <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-white transition-colors" aria-label="Xcircle">
+                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white transition-colors" aria-label="Xcircle">
                   <XCircle className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -814,13 +814,13 @@ export default function CommonsenseLensPage() {
                       <p className={`text-xl font-bold font-mono ${(r.plausibilityScore as number) >= 80 ? 'text-neon-green' : (r.plausibilityScore as number) >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
                         {r.plausibilityScore as number}%
                       </p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Plausibility Score</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Plausibility Score</p>
                     </div>
                     <div className="bg-lattice-deep rounded-lg p-2 text-center">
                       <p className={`text-xl font-bold capitalize ${(r.plausibilityScore as number) >= 80 ? 'text-neon-green' : (r.plausibilityScore as number) >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
                         {r.plausibilityLabel as string}
                       </p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Label</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Label</p>
                     </div>
                   </div>
                   <div className="w-full h-2 bg-lattice-deep rounded-full overflow-hidden">
@@ -829,22 +829,22 @@ export default function CommonsenseLensPage() {
                   <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
                     <div className="bg-lattice-deep rounded p-2">
                       <p className="font-bold text-neon-cyan">{r.eventsAnalyzed as number}</p>
-                      <p className="text-gray-500">Events Analyzed</p>
+                      <p className="text-gray-400">Events Analyzed</p>
                     </div>
                     <div className="bg-lattice-deep rounded p-2">
                       <p className="font-bold text-neon-green">{r.constraintsSatisfied as number}</p>
-                      <p className="text-gray-500">Satisfied</p>
+                      <p className="text-gray-400">Satisfied</p>
                     </div>
                     <div className="bg-lattice-deep rounded p-2">
                       <p className={`font-bold ${((r.violations as { count: number }).count) > 0 ? 'text-red-400' : 'text-neon-green'}`}>
                         {(r.violations as { count: number }).count}
                       </p>
-                      <p className="text-gray-500">Violations</p>
+                      <p className="text-gray-400">Violations</p>
                     </div>
                   </div>
                   {(r.violations as { items: { type: string; description: string; severity: string }[] }).items.length > 0 && (
                     <div className="space-y-1">
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Violations</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Violations</p>
                       {(r.violations as { items: { type: string; description: string; severity: string }[] }).items.map((v, i) => (
                         <div key={i} className="flex items-start gap-2 text-[11px] bg-lattice-deep rounded p-2">
                           <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase ${v.severity === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>{v.severity}</span>
@@ -862,7 +862,7 @@ export default function CommonsenseLensPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-neon-cyan font-medium">{r.sourceDomain as string}</span>
-                    <ArrowRight className="w-3 h-3 text-gray-500" />
+                    <ArrowRight className="w-3 h-3 text-gray-400" />
                     <span className="text-neon-purple font-medium">{r.targetDomain as string}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-center text-[11px]">
@@ -870,30 +870,30 @@ export default function CommonsenseLensPage() {
                       <p className={`text-xl font-bold font-mono ${(r.systematicityScore as number) >= 70 ? 'text-neon-green' : (r.systematicityScore as number) >= 40 ? 'text-amber-400' : 'text-gray-400'}`}>
                         {r.systematicityScore as number}%
                       </p>
-                      <p className="text-gray-500">Systematicity</p>
-                      <p className="text-[10px] text-gray-600 capitalize">{r.systematicityLabel as string}</p>
+                      <p className="text-gray-400">Systematicity</p>
+                      <p className="text-[10px] text-gray-400 capitalize">{r.systematicityLabel as string}</p>
                     </div>
                     <div className="bg-lattice-deep rounded p-2 space-y-1">
                       {(() => { const cov = r.coverage as Record<string, number>; return (
                         <>
                           <p className="text-neon-cyan font-bold">{cov.entitiesMapped}/{cov.totalSourceEntities}</p>
-                          <p className="text-gray-500">Entities Mapped</p>
+                          <p className="text-gray-400">Entities Mapped</p>
                           <p className="text-neon-purple font-bold">{cov.relationsMapped}/{cov.totalSourceRelations}</p>
-                          <p className="text-gray-500">Relations Mapped</p>
+                          <p className="text-gray-400">Relations Mapped</p>
                         </>
                       ); })()}
                     </div>
                   </div>
                   {(r.entityMapping as { source: string; target: string; similarity: number }[]).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Entity Mappings</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Entity Mappings</p>
                       <div className="space-y-1">
                         {(r.entityMapping as { source: string; target: string; similarity: number }[]).map((m, i) => (
                           <div key={i} className="flex items-center gap-2 text-[11px] bg-lattice-deep rounded px-2 py-1">
                             <span className="text-neon-cyan">{m.source}</span>
                             <ArrowRight className="w-2.5 h-2.5 text-gray-600" />
                             <span className="text-neon-purple">{m.target}</span>
-                            <span className="ml-auto text-gray-500 font-mono">{(m.similarity * 100).toFixed(0)}%</span>
+                            <span className="ml-auto text-gray-400 font-mono">{(m.similarity * 100).toFixed(0)}%</span>
                           </div>
                         ))}
                       </div>
@@ -901,14 +901,14 @@ export default function CommonsenseLensPage() {
                   )}
                   {(r.candidateInferences as { predictedRelation: string; from: string; to: string }[]).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Candidate Inferences</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Candidate Inferences</p>
                       <div className="space-y-1">
                         {(r.candidateInferences as { predictedRelation: string; from: string; to: string }[]).map((inf, i) => (
                           <div key={i} className="text-[11px] bg-lattice-deep rounded px-2 py-1 text-gray-300">
                             <span className="text-neon-yellow">{inf.predictedRelation}</span>
                             {': '}
                             <span className="text-neon-cyan">{inf.from}</span>
-                            <ArrowRight className="w-2.5 h-2.5 inline mx-1 text-gray-500" />
+                            <ArrowRight className="w-2.5 h-2.5 inline mx-1 text-gray-400" />
                             <span className="text-neon-purple">{inf.to}</span>
                           </div>
                         ))}
@@ -922,9 +922,9 @@ export default function CommonsenseLensPage() {
               {actionResult.action === 'defaultReasoning' && r && !r.message && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] text-gray-500">Class:</span>
+                    <span className="text-[10px] text-gray-400">Class:</span>
                     <span className="text-xs font-mono text-neon-cyan">{r.instanceClass as string}</span>
-                    <span className="text-[10px] text-gray-500 ml-2">Chain:</span>
+                    <span className="text-[10px] text-gray-400 ml-2">Chain:</span>
                     {(r.inheritanceChain as string[]).map((c, i) => (
                       <span key={i} className="flex items-center gap-1 text-[10px]">
                         {i > 0 && <ArrowRight className="w-2.5 h-2.5 text-gray-600" />}
@@ -935,24 +935,24 @@ export default function CommonsenseLensPage() {
                   <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
                     <div className="bg-lattice-deep rounded p-2">
                       <p className="font-bold text-neon-cyan">{r.totalProperties as number}</p>
-                      <p className="text-gray-500">Properties</p>
+                      <p className="text-gray-400">Properties</p>
                     </div>
                     <div className="bg-lattice-deep rounded p-2">
                       <p className={`font-bold ${(r.conflicts as { inheritanceOverrides: number }).inheritanceOverrides > 0 ? 'text-amber-400' : 'text-neon-green'}`}>
                         {(r.conflicts as { inheritanceOverrides: number }).inheritanceOverrides}
                       </p>
-                      <p className="text-gray-500">Overrides</p>
+                      <p className="text-gray-400">Overrides</p>
                     </div>
                     <div className="bg-lattice-deep rounded p-2">
                       <p className={`font-bold ${(r.conflicts as { siblingConflicts: number }).siblingConflicts > 0 ? 'text-red-400' : 'text-neon-green'}`}>
                         {(r.conflicts as { siblingConflicts: number }).siblingConflicts}
                       </p>
-                      <p className="text-gray-500">Sibling Conflicts</p>
+                      <p className="text-gray-400">Sibling Conflicts</p>
                     </div>
                   </div>
                   {Object.keys(r.resolvedProperties as Record<string, unknown>).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Resolved Properties</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Resolved Properties</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
                         {Object.entries(r.resolvedProperties as Record<string, unknown>).map(([key, val]) => (
                           <div key={key} className="flex items-center justify-between text-[11px] bg-lattice-deep rounded px-2 py-1">

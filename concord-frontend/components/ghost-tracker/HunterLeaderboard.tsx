@@ -48,16 +48,16 @@ export function HunterLeaderboard({ refreshKey }: { refreshKey: number }) {
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-xs uppercase tracking-wide text-violet-400">Hunter ranks</h3>
-        <span className="text-[10px] text-gray-500">{total} hunters</span>
+        <span className="text-[10px] text-gray-400">{total} hunters</span>
       </div>
-      {loading && <p className="text-xs text-gray-500">Loading ranks…</p>}
+      {loading && <p className="text-xs text-gray-400">Loading ranks…</p>}
       {!loading && rows.length === 0 && (
-        <p className="text-xs text-gray-500">No confronted hauntings yet. Be the first.</p>
+        <p className="text-xs text-gray-400">No confronted hauntings yet. Be the first.</p>
       )}
       {!loading && rows.length > 0 && (
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-[10px] uppercase tracking-wide text-gray-500">
+            <tr className="text-[10px] uppercase tracking-wide text-gray-400">
               <th className="px-1 py-1 text-left">#</th>
               <th className="px-1 py-1 text-left">Hunter</th>
               <th className="px-1 py-1 text-right">W/L</th>

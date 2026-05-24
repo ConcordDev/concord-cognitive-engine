@@ -91,14 +91,14 @@ export function SchemaDesigner() {
     if (r.data?.ok) setSql(r.data.result?.sql || '');
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Database className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-bold text-zinc-100">Schema Designer</h3>
-        <span className="text-[11px] text-zinc-500">dbdiagram shape</span>
+        <span className="text-[11px] text-zinc-400">dbdiagram shape</span>
         {active && (
           <button onClick={exportSql} className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 inline-flex items-center gap-1">
             <Code2 className="w-3 h-3" />Export SQL
@@ -124,7 +124,7 @@ export function SchemaDesigner() {
       {sql != null ? (
         <div>
           <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-[11px] text-emerald-300 font-mono overflow-x-auto max-h-72">{sql || '-- empty schema'}</pre>
-          <button onClick={() => setSql(null)} className="mt-2 text-[11px] text-zinc-500 hover:text-zinc-300">← back to designer</button>
+          <button onClick={() => setSql(null)} className="mt-2 text-[11px] text-zinc-400 hover:text-zinc-300">← back to designer</button>
         </div>
       ) : active ? (
         <div>
@@ -147,8 +147,8 @@ export function SchemaDesigner() {
                   <div key={c.id} className="group flex items-center gap-1.5 text-[11px] py-0.5">
                     {c.pk ? <Key className="w-2.5 h-2.5 text-amber-400" /> : <span className="w-2.5" />}
                     <span className="text-zinc-200 font-mono">{c.name}</span>
-                    <span className="text-zinc-500">{c.type}</span>
-                    {!c.nullable && <span className="text-[9px] text-zinc-600">NOT NULL</span>}
+                    <span className="text-zinc-400">{c.type}</span>
+                    {!c.nullable && <span className="text-[9px] text-zinc-400">NOT NULL</span>}
                     <button onClick={() => delColumn(t.id, c.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-2.5 h-2.5" /></button>
                   </div>
                 ))}
@@ -191,7 +191,7 @@ export function SchemaDesigner() {
           )}
         </div>
       ) : (
-        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[120px]">
+        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">
           Select or create a schema.
         </div>
       )}

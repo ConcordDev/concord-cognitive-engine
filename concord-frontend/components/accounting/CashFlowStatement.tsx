@@ -38,15 +38,15 @@ export function CashFlowStatement() {
         <span className="text-sm font-semibold text-gray-200">Cash flow · direct method</span>
         <div className="ml-auto flex items-center gap-2">
           <input type="date" value={start} onChange={e => setStart(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <span className="text-[10px] text-gray-500">to</span>
+          <span className="text-[10px] text-gray-400">to</span>
           <input type="date" value={end} onChange={e => setEnd(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
         </div>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !cf || cf.series.length === 0 ? (
-        <div className="p-10 text-center text-xs text-gray-500">No cash activity in this period.</div>
+        <div className="p-10 text-center text-xs text-gray-400">No cash activity in this period.</div>
       ) : (
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-3 gap-2">
@@ -79,7 +79,7 @@ export function CashFlowStatement() {
 function Tile({ label, value, tone, bold }: { label: string; value: number; tone: 'positive' | 'negative'; bold?: boolean }) {
   return (
     <div className={`rounded border border-white/10 bg-black/40 p-3 ${bold ? 'ring-1 ring-emerald-500/30' : ''}`}>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={`text-xl font-mono tabular-nums ${tone === 'positive' ? 'text-emerald-300' : 'text-rose-300'} ${bold ? 'font-bold' : ''}`}>
         ${value.toFixed(0)}
       </div>

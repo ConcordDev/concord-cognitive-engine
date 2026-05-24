@@ -86,13 +86,13 @@ function DeploymentsTab() {
   return (
     <div className="space-y-4">
       <div className={`${card} p-3 flex flex-wrap items-end gap-2`}>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Service
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Service
           <input className={input} value={service} onChange={(e) => setService(e.target.value)} />
         </label>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Git ref
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Git ref
           <input className={input} value={ref} onChange={(e) => setRef(e.target.value)} />
         </label>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Environment
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Environment
           <select className={input} value={environment} onChange={(e) => setEnvironment(e.target.value)}>
             <option value="production">production</option>
             <option value="preview">preview</option>
@@ -109,20 +109,20 @@ function DeploymentsTab() {
       </div>
 
       {deployments.length === 0 ? (
-        <p className="text-xs text-gray-500 text-center py-8">No deployments yet. Trigger one above.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No deployments yet. Trigger one above.</p>
       ) : deployments.map((d) => (
         <div key={d.id} className={`${card} p-3`}>
           <div className="flex items-center gap-3 flex-wrap">
             <GitBranch className="w-4 h-4 text-neon-blue shrink-0" />
             <span className="text-sm font-mono text-gray-200">{d.service}</span>
-            <span className="text-xs text-gray-500">{d.ref} · {d.sha}</span>
+            <span className="text-xs text-gray-400">{d.ref} · {d.sha}</span>
             <span className="text-[10px] px-2 py-0.5 rounded bg-lattice-surface text-gray-400">{d.environment}</span>
             <span className={`text-[10px] px-2 py-0.5 rounded ${d.status === 'ready' ? 'bg-neon-green/15 text-neon-green' : 'bg-yellow-500/15 text-yellow-400'}`}>
               {d.status}
             </span>
             {d.active && <span className="text-[10px] px-2 py-0.5 rounded bg-neon-blue/15 text-neon-blue">ACTIVE</span>}
             {d.rolledBack && <span className="text-[10px] px-2 py-0.5 rounded bg-neon-orange/15 text-neon-orange">rolled back</span>}
-            <span className="text-[10px] text-gray-600 ml-auto">{d.buildSeconds}s build</span>
+            <span className="text-[10px] text-gray-400 ml-auto">{d.buildSeconds}s build</span>
             <button className={btn} onClick={() => showLogs(d.id)}>
               {openLogs === d.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />} Logs
             </button>
@@ -166,7 +166,7 @@ function MetricsTab() {
   return (
     <div className="space-y-4">
       <div className={`${card} p-3 flex items-end gap-2`}>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Service
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Service
           <input className={input} value={service} onChange={(e) => setService(e.target.value)} />
         </label>
         <button className={btn} onClick={load} disabled={loading}>
@@ -184,9 +184,9 @@ function MetricsTab() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {(['cpu', 'memory', 'requests', 'latencyMs'] as const).map((k) => (
               <div key={k} className={`${card} p-3 text-center`}>
-                <p className="text-[10px] text-gray-500 uppercase">{k}</p>
+                <p className="text-[10px] text-gray-400 uppercase">{k}</p>
                 <p className="text-lg font-bold font-mono text-neon-cyan">{data.current?.[k]}</p>
-                <p className="text-[10px] text-gray-600">avg {data.summary?.[k]?.avg} · peak {data.summary?.[k]?.peak}</p>
+                <p className="text-[10px] text-gray-400">avg {data.summary?.[k]?.avg} · peak {data.summary?.[k]?.peak}</p>
               </div>
             ))}
           </div>
@@ -241,13 +241,13 @@ function ConfigTab() {
   return (
     <div className="space-y-4">
       <div className={`${card} p-3 flex flex-wrap items-end gap-2`}>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Key
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Key
           <input className={input} value={key} onChange={(e) => setKey(e.target.value)} placeholder="API_KEY" />
         </label>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Value
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Value
           <input className={input} value={value} onChange={(e) => setValue(e.target.value)} />
         </label>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Environment
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Environment
           <select className={input} value={target} onChange={(e) => setTarget(e.target.value)}>
             <option value="">all</option>
             <option value="production">production</option>
@@ -255,7 +255,7 @@ function ConfigTab() {
             <option value="development">development</option>
           </select>
         </label>
-        <label className="flex items-center gap-1 text-[10px] text-gray-500 pb-1">
+        <label className="flex items-center gap-1 text-[10px] text-gray-400 pb-1">
           <input type="checkbox" checked={secret} onChange={(e) => setSecret(e.target.checked)} /> Secret
         </label>
         <button className={btn} onClick={save} disabled={busy}>
@@ -267,15 +267,15 @@ function ConfigTab() {
         {err && <span className="text-[10px] text-red-400">{err}</span>}
       </div>
       {vars.length === 0 ? (
-        <p className="text-xs text-gray-500 text-center py-8">No environment variables yet.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No environment variables yet.</p>
       ) : (
         <div className={`${card} divide-y divide-lattice-border`}>
           {vars.map((v) => (
             <div key={v.id} className="flex items-center gap-3 p-2 text-xs">
-              <KeyRound className={`w-3 h-3 ${v.secret ? 'text-neon-orange' : 'text-gray-500'}`} />
+              <KeyRound className={`w-3 h-3 ${v.secret ? 'text-neon-orange' : 'text-gray-400'}`} />
               <span className="font-mono text-gray-200 w-40 truncate">{v.key}</span>
-              <span className="font-mono text-gray-500 flex-1 truncate">{v.value}</span>
-              <span className="text-[10px] text-gray-600">{(v.targets || []).join(', ')}</span>
+              <span className="font-mono text-gray-400 flex-1 truncate">{v.value}</span>
+              <span className="text-[10px] text-gray-400">{(v.targets || []).join(', ')}</span>
               <button className="text-red-400 hover:text-red-300" onClick={() => del(v.id)}>
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -317,10 +317,10 @@ function DomainsTab() {
   return (
     <div className="space-y-4">
       <div className={`${card} p-3 flex flex-wrap items-end gap-2`}>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Domain host
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Domain host
           <input className={input} value={host} onChange={(e) => setHost(e.target.value)} placeholder="app.example.com" />
         </label>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Service
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Service
           <input className={input} value={service} onChange={(e) => setService(e.target.value)} />
         </label>
         <button className={btn} onClick={attach} disabled={busy}>
@@ -329,17 +329,17 @@ function DomainsTab() {
         {err && <span className="text-[10px] text-red-400">{err}</span>}
       </div>
       {domains.length === 0 ? (
-        <p className="text-xs text-gray-500 text-center py-8">No custom domains attached.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No custom domains attached.</p>
       ) : domains.map((d) => (
         <div key={d.id} className={`${card} p-3`}>
           <div className="flex items-center gap-3 flex-wrap text-xs">
             <Globe className="w-4 h-4 text-neon-cyan shrink-0" />
             <span className="font-mono text-gray-200">{d.host}</span>
-            <span className="text-[10px] text-gray-500">→ {d.service}</span>
+            <span className="text-[10px] text-gray-400">→ {d.service}</span>
             <span className={`text-[10px] px-2 py-0.5 rounded ${d.verified ? 'bg-neon-green/15 text-neon-green' : 'bg-yellow-500/15 text-yellow-400'}`}>
               {d.verified ? 'verified' : 'pending'}
             </span>
-            <span className="text-[10px] text-gray-600">SSL: {d.sslStatus}</span>
+            <span className="text-[10px] text-gray-400">SSL: {d.sslStatus}</span>
             <button className={`${btn} ml-auto`} onClick={() => setOpenDns(openDns === d.id ? null : d.id)}>
               {openDns === d.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />} DNS
             </button>
@@ -447,7 +447,7 @@ function AlertsTab() {
         {err && <span className="text-[10px] text-red-400">{err}</span>}
       </div>
       {alerts.length === 0 ? (
-        <p className="text-xs text-gray-500 text-center py-8">No alert rules. Evaluated against a live metric snapshot.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No alert rules. Evaluated against a live metric snapshot.</p>
       ) : (
         <div className={`${card} divide-y divide-lattice-border`}>
           {alerts.map((a) => (
@@ -461,7 +461,7 @@ function AlertsTab() {
                   : a.severity === 'warning' ? 'bg-yellow-500/15 text-yellow-400'
                     : 'bg-lattice-surface text-gray-400'}`}>{a.severity}</span>
               {a.triggered && <span className="text-[10px] text-red-400">FIRING</span>}
-              {a.channel && <span className="text-[10px] text-gray-500">→ {a.channel.label}</span>}
+              {a.channel && <span className="text-[10px] text-gray-400">→ {a.channel.label}</span>}
               <button className="text-red-400 hover:text-red-300 ml-auto" onClick={() => del(a.id)}>
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -492,7 +492,7 @@ function CostTab() {
   return (
     <div className="space-y-4">
       <div className={`${card} p-3 flex items-end gap-2`}>
-        <label className="flex flex-col gap-1 text-[10px] text-gray-500">Plan
+        <label className="flex flex-col gap-1 text-[10px] text-gray-400">Plan
           <select className={input} value={plan} onChange={(e) => setPlan(e.target.value)}>
             {['hobby', 'pro', 'enterprise'].map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -505,15 +505,15 @@ function CostTab() {
         <>
           <div className="grid grid-cols-3 gap-2">
             <div className={`${card} p-3 text-center`}>
-              <p className="text-[10px] text-gray-500">Base plan</p>
+              <p className="text-[10px] text-gray-400">Base plan</p>
               <p className="text-lg font-bold font-mono">${data.basePlanCost}</p>
             </div>
             <div className={`${card} p-3 text-center`}>
-              <p className="text-[10px] text-gray-500">Overage</p>
+              <p className="text-[10px] text-gray-400">Overage</p>
               <p className="text-lg font-bold font-mono text-yellow-400">${data.overageCost}</p>
             </div>
             <div className={`${card} p-3 text-center`}>
-              <p className="text-[10px] text-gray-500">Total</p>
+              <p className="text-[10px] text-gray-400">Total</p>
               <p className="text-lg font-bold font-mono text-neon-green">${data.totalCost}</p>
             </div>
           </div>
@@ -521,7 +521,7 @@ function CostTab() {
             <p className="text-xs text-gray-400 mb-2">Usage line items</p>
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-[10px] text-gray-600 text-left">
+                <tr className="text-[10px] text-gray-400 text-left">
                   <th className="pb-1">Item</th><th className="pb-1">Used</th>
                   <th className="pb-1">Included</th><th className="pb-1">Overage</th><th className="pb-1">Cost</th>
                 </tr>
@@ -531,7 +531,7 @@ function CostTab() {
                   <tr key={i} className="border-t border-lattice-border">
                     <td className="py-1 text-gray-300">{l.label}</td>
                     <td className="py-1 font-mono text-neon-cyan">{l.used}</td>
-                    <td className="py-1 font-mono text-gray-500">{l.included}</td>
+                    <td className="py-1 font-mono text-gray-400">{l.included}</td>
                     <td className="py-1 font-mono text-yellow-400">{l.overage}</td>
                     <td className="py-1 font-mono text-neon-green">${l.cost}</td>
                   </tr>
@@ -578,15 +578,15 @@ function AuditTab() {
         ))}
       </div>
       {entries.length === 0 ? (
-        <p className="text-xs text-gray-500 text-center py-8">No audit entries. Platform changes are recorded here.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No audit entries. Platform changes are recorded here.</p>
       ) : (
         <div className={`${card} divide-y divide-lattice-border`}>
           {entries.map((e) => (
             <div key={e.id} className="flex items-center gap-3 p-2 text-xs">
-              <ScrollText className="w-3 h-3 text-gray-500 shrink-0" />
+              <ScrollText className="w-3 h-3 text-gray-400 shrink-0" />
               <span className="font-mono text-neon-blue w-36 truncate">{e.action}</span>
               <span className="text-gray-300 flex-1 truncate">{e.target}</span>
-              <span className="text-[10px] text-gray-600">{new Date(e.at).toLocaleString()}</span>
+              <span className="text-[10px] text-gray-400">{new Date(e.at).toLocaleString()}</span>
             </div>
           ))}
         </div>

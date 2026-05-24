@@ -84,7 +84,7 @@ export function LandingPage(_props: LandingPageProps) {
             <span className="px-4 py-2 rounded-lg bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-center">No data extraction.</span>
             <span className="px-4 py-2 rounded-lg bg-neon-green/10 border border-neon-green/20 text-neon-green text-center">Free for all services.</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2">Not a promise — it&apos;s architecture. The sovereignty lock makes it mathematically enforced.</p>
+          <p className="text-xs text-gray-400 mt-2">Not a promise — it&apos;s architecture. The sovereignty lock makes it mathematically enforced.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -284,7 +284,7 @@ export function LandingPage(_props: LandingPageProps) {
             </div>
             <span className="text-gray-400">Concordos Cognitive Engine</span>
           </div>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-400 text-sm">
             Sovereign by design. Open by philosophy. Yours forever.
           </p>
         </div>
@@ -355,7 +355,7 @@ function ArchItem({ label, desc }: { label: string; desc: string }) {
   return (
     <div className="p-4 bg-lattice-surface border border-lattice-border rounded-lg hover:border-neon-cyan/50 transition-colors">
       <div className="font-semibold text-white text-sm">{label}</div>
-      <div className="text-gray-500 text-xs mt-1">{desc}</div>
+      <div className="text-gray-400 text-xs mt-1">{desc}</div>
     </div>
   );
 }

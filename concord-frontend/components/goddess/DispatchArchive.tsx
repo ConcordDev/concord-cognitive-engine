@@ -72,7 +72,7 @@ export function DispatchArchive({
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px]">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text" value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Search the goddess's words…"
@@ -96,7 +96,7 @@ export function DispatchArchive({
 
       {result && toneChart.length > 0 && (
         <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
-          <p className="mb-2 text-[11px] uppercase tracking-wider text-zinc-500">
+          <p className="mb-2 text-[11px] uppercase tracking-wider text-zinc-400">
             Tone distribution — full history
           </p>
           <ChartKit
@@ -108,18 +108,18 @@ export function DispatchArchive({
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Searching the archive…
         </div>
       ) : !result || result.count === 0 ? (
-        <div className="rounded-xl border border-zinc-800 py-8 text-center text-xs text-zinc-500 italic">
+        <div className="rounded-xl border border-zinc-800 py-8 text-center text-xs text-zinc-400 italic">
           {query || tone || range !== 'all'
             ? 'No dispatches match these filters.'
             : 'No dispatches archived in this world yet.'}
         </div>
       ) : (
         <>
-          <p className="text-[11px] text-zinc-500">{result.count} dispatch(es) found</p>
+          <p className="text-[11px] text-zinc-400">{result.count} dispatch(es) found</p>
           <ul className="space-y-2">
             {result.dispatches.map((d) => (
               <li key={d.id}>

@@ -35,7 +35,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
             </svg>
             Back to Concord
           </Link>
-          <span className="text-xs text-zinc-500">Last updated: {LAST_UPDATED}</span>
+          <span className="text-xs text-zinc-400">Last updated: {LAST_UPDATED}</span>
         </div>
       </header>
 
@@ -43,7 +43,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
         {/* Sidebar navigation */}
         <aside className="hidden w-56 shrink-0 md:block">
           <nav className="sticky top-20 space-y-1">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
               Legal
             </p>
             {NAV_ITEMS.map((item) => {
@@ -64,7 +64,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
             })}
 
             <div className="mt-6 border-t border-lattice-border pt-4">
-              <p className="text-[11px] text-zinc-600">
+              <p className="text-[11px] text-zinc-400">
                 Questions about our policies? Contact us at{' '}
                 <a
                   href="mailto:legal@concord-os.org"

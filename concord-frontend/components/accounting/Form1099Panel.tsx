@@ -35,18 +35,18 @@ export function Form1099Panel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <FileText className="w-4 h-4 text-amber-400" />
         <span className="text-sm font-semibold text-gray-200">1099-NEC summary</span>
-        {data && <span className="text-[10px] text-gray-500">threshold ≥ ${data.threshold} per IRS</span>}
+        {data && <span className="text-[10px] text-gray-400">threshold ≥ ${data.threshold} per IRS</span>}
         <select value={year} onChange={e => setYear(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono">
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !data ? (
-        <div className="p-10 text-center text-xs text-gray-500">No data.</div>
+        <div className="p-10 text-center text-xs text-gray-400">No data.</div>
       ) : data.vendors.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />No 1099 vendors paid in {year}.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />No 1099 vendors paid in {year}.</div>
       ) : (
         <div className="p-4 space-y-3">
           {reportable.length > 0 && (
@@ -57,7 +57,7 @@ export function Form1099Panel() {
           )}
           {subThreshold.length > 0 && (
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">Below threshold ({subThreshold.length})</div>
+              <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Below threshold ({subThreshold.length})</div>
               <Table rows={subThreshold} />
             </div>
           )}
@@ -70,7 +70,7 @@ export function Form1099Panel() {
 function Table({ rows, highlight }: { rows: Form1099Row[]; highlight?: boolean }) {
   return (
     <table className="w-full text-xs">
-      <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+      <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
         <tr><th className="text-left py-1.5">Vendor</th><th className="text-left">Tax ID</th><th className="text-right">Bills</th><th className="text-right">Total paid</th></tr>
       </thead>
       <tbody className="divide-y divide-white/5">

@@ -78,7 +78,7 @@ function fmtClock(ms: number | null): string {
 
 const STATUS_COLOR: Record<string, string> = {
   healthy: 'text-emerald-400', erroring: 'text-red-400',
-  stale: 'text-amber-400', paused: 'text-zinc-500',
+  stale: 'text-amber-400', paused: 'text-zinc-400',
 };
 const STATUS_DOT: Record<string, string> = {
   healthy: 'bg-emerald-400', erroring: 'bg-red-400',
@@ -325,7 +325,7 @@ export function MonitorPanel() {
                 key={w.ms}
                 onClick={() => setWindowMs(w.ms)}
                 className={`rounded px-2 py-0.5 text-[11px] font-mono transition-colors ${
-                  windowMs === w.ms ? 'bg-cyan-500/20 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
+                  windowMs === w.ms ? 'bg-cyan-500/20 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
                 }`}
               >
                 {w.label}
@@ -393,7 +393,7 @@ export function MonitorPanel() {
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-300">
               <Activity className="h-3.5 w-3.5 text-cyan-400" /> Tick rate &amp; latency
-              <span className="ml-auto font-mono text-[10px] text-zinc-600">{stream.length} samples</span>
+              <span className="ml-auto font-mono text-[10px] text-zinc-400">{stream.length} samples</span>
             </div>
             {streamChart.length > 0 ? (
               <ChartKit
@@ -416,7 +416,7 @@ export function MonitorPanel() {
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-300">
               <AlertTriangle className="h-3.5 w-3.5 text-amber-400" /> Skipped ticks / overrun
               {skip && (
-                <span className="ml-auto font-mono text-[10px] text-zinc-500">
+                <span className="ml-auto font-mono text-[10px] text-zinc-400">
                   {skip.ticks} ticks · {skip.skipped} skipped · peak {skip.peak}
                 </span>
               )}
@@ -448,11 +448,11 @@ export function MonitorPanel() {
             <MiniStat label="Healthy" value={detailSummary.healthy} color="text-emerald-400" />
             <MiniStat label="Erroring" value={detailSummary.erroring} color="text-red-400" />
             <MiniStat label="Stale" value={detailSummary.stale} color="text-amber-400" />
-            <MiniStat label="Paused" value={detailSummary.paused} color="text-zinc-500" />
+            <MiniStat label="Paused" value={detailSummary.paused} color="text-zinc-400" />
           </div>
           <div className="overflow-hidden rounded-lg border border-zinc-800">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
+              <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-400">
                 <tr>
                   <th className="px-3 py-2">Heartbeat module</th>
                   <th className="px-3 py-2">Frequency</th>
@@ -477,7 +477,7 @@ export function MonitorPanel() {
                       <td className="px-3 py-2 font-mono text-zinc-200">{m.id}</td>
                       <td className="px-3 py-2 font-mono text-zinc-400">every {m.frequency}</td>
                       <td className="px-3 py-2 font-mono text-zinc-400">{m.periodHuman}</td>
-                      <td className="px-3 py-2 font-mono text-zinc-500">{fmtMs(m.sinceRunMs)} ago</td>
+                      <td className="px-3 py-2 font-mono text-zinc-400">{fmtMs(m.sinceRunMs)} ago</td>
                       <td className={`px-3 py-2 font-mono ${m.recentErrors > 0 ? 'text-red-400' : 'text-zinc-600'}`}>
                         {m.errorCount}{m.recentErrors > 0 ? ` (+${m.recentErrors})` : ''}
                       </td>
@@ -538,7 +538,7 @@ export function MonitorPanel() {
               <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-300">
                   <BarChart3 className="h-3.5 w-3.5 text-amber-400" /> governorTick duration histogram
-                  <span className="ml-auto font-mono text-[10px] text-zinc-600">{hist.sampleCount} samples</span>
+                  <span className="ml-auto font-mono text-[10px] text-zinc-400">{hist.sampleCount} samples</span>
                 </div>
                 <ChartKit
                   kind="bar"
@@ -567,7 +567,7 @@ export function MonitorPanel() {
         <div className="space-y-3">
           {/* Notification config */}
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Notify on</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Notify on</span>
             {([
               { key: 'notifyOnStop' as const, label: 'tick stop' },
               { key: 'notifyOnError' as const, label: 'heartbeat error' },
@@ -579,7 +579,7 @@ export function MonitorPanel() {
                 className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] ${
                   alertCfg[c.key]
                     ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300'
-                    : 'border-zinc-800 bg-zinc-900 text-zinc-500'
+                    : 'border-zinc-800 bg-zinc-900 text-zinc-400'
                 }`}
               >
                 {alertCfg[c.key] ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
@@ -619,8 +619,8 @@ export function MonitorPanel() {
                       <span className={`font-mono text-[10px] uppercase ${
                         a.severity === 'critical' ? 'text-red-400' : 'text-amber-400'
                       }`}>{a.kind.replace(/_/g, ' ')}</span>
-                      <span className="font-mono text-[10px] text-zinc-600">{a.subject}</span>
-                      <span className="ml-auto font-mono text-[10px] text-zinc-600">{fmtClock(a.at)}</span>
+                      <span className="font-mono text-[10px] text-zinc-400">{a.subject}</span>
+                      <span className="ml-auto font-mono text-[10px] text-zinc-400">{fmtClock(a.at)}</span>
                     </div>
                     <p className="mt-0.5 text-zinc-300">{a.message}</p>
                   </div>
@@ -658,12 +658,12 @@ export function MonitorPanel() {
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {sla.windows.map((w) => {
                   const pct = w.uptimePct;
-                  const color = pct == null ? 'text-zinc-500'
+                  const color = pct == null ? 'text-zinc-400'
                     : w.meetsTarget ? 'text-emerald-400' : 'text-red-400';
                   return (
                     <div key={w.label} className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-wider text-zinc-500">{w.label} uptime</span>
+                        <span className="text-[11px] uppercase tracking-wider text-zinc-400">{w.label} uptime</span>
                         <Clock className="h-3.5 w-3.5 text-zinc-600" />
                       </div>
                       <div className={`mt-1 font-mono text-2xl ${color}`}>
@@ -675,7 +675,7 @@ export function MonitorPanel() {
                           style={{ width: `${pct ?? 0}%` }}
                         />
                       </div>
-                      <p className="mt-1.5 font-mono text-[10px] text-zinc-600">
+                      <p className="mt-1.5 font-mono text-[10px] text-zinc-400">
                         {w.upSamples ?? 0}/{w.samples} samples up · downtime {w.downtimeHuman ?? '0s'}
                       </p>
                     </div>
@@ -703,7 +703,7 @@ function StatCard({ icon: Icon, label, value, alert }: {
     <div className={`rounded-lg border bg-zinc-950 px-2.5 py-2 ${
       alert ? 'border-red-500/30' : 'border-zinc-800'
     }`}>
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
         <Icon className="h-2.5 w-2.5" />{label}
       </div>
       <div className={`mt-0.5 font-mono text-lg ${alert ? 'text-red-300' : 'text-cyan-300'}`}>{value}</div>
@@ -714,7 +714,7 @@ function StatCard({ icon: Icon, label, value, alert }: {
 function MiniStat({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-base ${color}`}>{value}</div>
     </div>
   );
@@ -737,7 +737,7 @@ function CtlBtn({ children, onClick, disabled, busy, title }: {
 
 function EmptyHint({ text }: { text: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-6 text-center text-[11px] text-zinc-600">
+    <div className="rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-6 text-center text-[11px] text-zinc-400">
       {text}
     </div>
   );

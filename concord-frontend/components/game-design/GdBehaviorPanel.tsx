@@ -108,7 +108,7 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const entName = (id: string | null) => (id ? entities.find((e) => e.id === id)?.name || 'unknown' : null);
@@ -133,7 +133,7 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
       </section>
 
       {behaviors.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No entity behaviors yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No entity behaviors yet.</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {behaviors.map((b) => (
@@ -152,7 +152,7 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
         <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-zinc-100">{active.name}</span>
-            <span className="text-[11px] text-zinc-500">bound to</span>
+            <span className="text-[11px] text-zinc-400">bound to</span>
             <select value={active.entityId || ''} onChange={(e) => bindEntity(active.id, e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
               <option value="">no entity</option>
@@ -163,7 +163,7 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
 
           {/* Event sheet */}
           {active.rules.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic py-3 text-center">No rules — add a trigger -&gt; action below.</p>
+            <p className="text-[11px] text-zinc-400 italic py-3 text-center">No rules — add a trigger -&gt; action below.</p>
           ) : (
             <ul className="space-y-1.5">
               {active.rules.map((r) => (

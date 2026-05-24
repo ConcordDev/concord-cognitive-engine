@@ -71,7 +71,7 @@ export function SharedShoppingLists() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
@@ -87,7 +87,7 @@ export function SharedShoppingLists() {
       </div>
 
       {lists.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No data yet — create a shopping list above.</p>
+        <p className="text-xs text-zinc-400 italic">No data yet — create a shopping list above.</p>
       ) : (
         <>
           <div className="flex gap-1.5 flex-wrap mb-3">
@@ -96,7 +96,7 @@ export function SharedShoppingLists() {
                 className={cn('group px-2.5 py-1 text-xs rounded-lg inline-flex items-center gap-1.5',
                   l.id === activeId ? 'bg-emerald-700 text-white' : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800')}>
                 {l.name}
-                <span className={cn('text-[10px]', l.id === activeId ? 'text-emerald-200' : 'text-zinc-500')}>
+                <span className={cn('text-[10px]', l.id === activeId ? 'text-emerald-200' : 'text-zinc-400')}>
                   {l.checkedCount}/{l.itemCount}
                 </span>
                 <Trash2 className="w-3 h-3 opacity-0 group-hover:opacity-100 text-rose-300"
@@ -119,7 +119,7 @@ export function SharedShoppingLists() {
                   className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40">Add</button>
               </div>
               {active.items.length === 0 ? (
-                <p className="text-[11px] text-zinc-600 italic">No items yet.</p>
+                <p className="text-[11px] text-zinc-400 italic">No items yet.</p>
               ) : (
                 <ul className="space-y-1">
                   {active.items.map(it => (
@@ -132,7 +132,7 @@ export function SharedShoppingLists() {
                       <span className={cn('text-xs flex-1 truncate', it.checked ? 'text-zinc-600 line-through' : 'text-zinc-200')}>
                         {it.name}{it.quantity ? ` · ${it.quantity}` : ''}
                       </span>
-                      {it.addedBy && <span className="text-[10px] text-zinc-600">{it.addedBy}</span>}
+                      {it.addedBy && <span className="text-[10px] text-zinc-400">{it.addedBy}</span>}
                       <button onClick={() => removeItem(it.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Remove">
                         <Trash2 className="w-3 h-3" />
                       </button>

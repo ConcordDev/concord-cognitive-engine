@@ -95,7 +95,7 @@ function MetricCard({
         <span>{label}</span>
       </div>
       <p className="text-xl font-bold text-white">{value}</p>
-      {subValue && <p className="text-xs text-gray-500">{subValue}</p>}
+      {subValue && <p className="text-xs text-gray-400">{subValue}</p>}
     </div>
   );
 }
@@ -130,7 +130,7 @@ function BreakerBadge({ breaker }: { breaker: CircuitBreakerState }) {
       </div>
       <div className="flex items-center gap-3 text-xs">
         <span>{cfg.label}</span>
-        <span className="text-gray-500">
+        <span className="text-gray-400">
           {breaker.totalFailures}/{breaker.totalCalls} failures
         </span>
       </div>
@@ -301,7 +301,7 @@ function MonitoringPanel() {
         </div>
         <div>
           <h2 className="font-semibold">System Monitoring</h2>
-          <p className="text-xs text-gray-500">Live metrics from /metrics endpoint</p>
+          <p className="text-xs text-gray-400">Live metrics from /metrics endpoint</p>
         </div>
         <span
           className={cn(
@@ -432,7 +432,7 @@ function MonitoringPanel() {
           <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-neon-cyan" />
             Brain Latency Breakdown
-            <span className="ml-auto text-xs text-gray-500">last {historyLen} samples</span>
+            <span className="ml-auto text-xs text-gray-400">last {historyLen} samples</span>
           </h3>
           <div className="space-y-2">
             {brainMetrics.map((m) => {

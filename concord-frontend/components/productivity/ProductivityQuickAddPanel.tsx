@@ -23,7 +23,7 @@ interface Parsed {
 }
 
 const PRIORITY_COLOR: Record<number, string> = {
-  1: 'text-rose-400', 2: 'text-amber-400', 3: 'text-sky-400', 4: 'text-zinc-500',
+  1: 'text-rose-400', 2: 'text-amber-400', 3: 'text-sky-400', 4: 'text-zinc-400',
 };
 
 export function ProductivityQuickAddPanel({ onChange }: { onChange: () => void }) {
@@ -66,7 +66,7 @@ export function ProductivityQuickAddPanel({ onChange }: { onChange: () => void }
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Natural language — tokens are parsed out: <code className="text-zinc-400">p1-p4</code> priority,
         {' '}<code className="text-zinc-400">#project</code>, <code className="text-zinc-400">@label</code>,
         {' '}dates (<code className="text-zinc-400">today</code>, <code className="text-zinc-400">tomorrow</code>,
@@ -94,11 +94,11 @@ export function ProductivityQuickAddPanel({ onChange }: { onChange: () => void }
 
       {/* Live parse preview */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500 mb-2">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-400 mb-2">
           <Wand2 className="w-3 h-3" /> Parsed preview {parsing && <Loader2 className="w-3 h-3 animate-spin" />}
         </div>
         {!parsed ? (
-          <p className="text-xs text-zinc-600 italic">Start typing to see the parse.</p>
+          <p className="text-xs text-zinc-400 italic">Start typing to see the parse.</p>
         ) : (
           <div className="space-y-2">
             <p className="text-sm text-zinc-100 font-medium">{parsed.content || '(no title)'}</p>

@@ -66,7 +66,7 @@ export function VendorsPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Vendors</span>
-        <span className="text-[10px] text-gray-500">{list.length} · {list.filter(v => v.is1099).length} 1099</span>
+        <span className="text-[10px] text-gray-400">{list.length} · {list.filter(v => v.is1099).length} 1099</span>
         <button
           onClick={() => setCreating(v => !v)}
           className="ml-auto px-2.5 py-1 text-xs rounded bg-emerald-500 text-black font-semibold hover:bg-emerald-400 inline-flex items-center gap-1"
@@ -97,9 +97,9 @@ export function VendorsPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No vendors yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No vendors yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(v => (
@@ -112,7 +112,7 @@ export function VendorsPanel() {
                     {v.name}
                     {v.is1099 && <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">1099</span>}
                   </div>
-                  <div className="text-[10px] text-gray-500 flex items-center gap-3">
+                  <div className="text-[10px] text-gray-400 flex items-center gap-3">
                     <span className="font-mono">{v.number}</span>
                     <span>{TERMS.find(t => t.id === v.paymentTerms)?.label}</span>
                     {v.email && <span className="inline-flex items-center gap-0.5"><Mail className="w-2.5 h-2.5" />{v.email}</span>}

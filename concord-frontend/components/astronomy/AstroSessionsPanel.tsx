@@ -54,7 +54,7 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -92,7 +92,7 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {sessions.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No observing sessions logged.
         </div>
       ) : (
@@ -104,7 +104,7 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
                 <Moon className="w-4 h-4 text-indigo-400" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{ses.date}{ses.location ? ` · ${ses.location}` : ''}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     Bortle {ses.bortle} · seeing {ses.seeing} · {ses.observationCount} observations
                   </p>
                 </div>
@@ -113,7 +113,7 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
               {open === ses.id && (
                 <div className="border-t border-zinc-800 px-3 py-2 bg-zinc-950/50">
                   {openObs.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 italic">No observations linked to this session.</p>
+                    <p className="text-[11px] text-zinc-400 italic">No observations linked to this session.</p>
                   ) : (
                     <ul className="space-y-1">
                       {openObs.map((o) => (

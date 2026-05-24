@@ -88,7 +88,7 @@ export function MetricsDashboardPanel() {
       <h2 className="text-amber-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <BarChart3 className="w-4 h-4" /> Activity metrics
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Federation in/out volume over time. Record samples after each sync pass.
       </p>
 
@@ -145,7 +145,7 @@ export function MetricsDashboardPanel() {
       </div>
 
       {loading ? (
-        <p className="text-xs text-gray-500 italic">Loading metrics…</p>
+        <p className="text-xs text-gray-400 italic">Loading metrics…</p>
       ) : data ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 text-xs">
@@ -170,7 +170,7 @@ export function MetricsDashboardPanel() {
               height={220}
             />
           ) : (
-            <p className="text-xs text-gray-500 italic">
+            <p className="text-xs text-gray-400 italic">
               No metric samples in this window. Record one above.
             </p>
           )}

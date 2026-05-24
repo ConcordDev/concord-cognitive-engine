@@ -56,7 +56,7 @@ export function CustomerPortalPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <UserCircle className="w-4 h-4 text-sky-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Customer portal</span>
-        <span className="ml-auto text-[10px] text-gray-500">client-facing job / quote / invoice view</span>
+        <span className="ml-auto text-[10px] text-gray-400">client-facing job / quote / invoice view</span>
       </header>
 
       <div className="p-3 border-b border-white/10">
@@ -67,22 +67,22 @@ export function CustomerPortalPanel() {
       </div>
 
       {!selected ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">Pick a customer above to preview what they see.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">Pick a customer above to preview what they see.</div>
       ) : loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading portal…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading portal…</div>
       ) : !view ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No portal data.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No portal data.</div>
       ) : (
         <div className="p-3 space-y-3">
           <div className="rounded border border-sky-500/20 bg-sky-500/[0.04] p-3">
             <div className="text-sm text-white font-medium">{view.customer.name}</div>
-            <div className="text-[10px] text-gray-500">{[view.customer.email, view.customer.phone, view.customer.address].filter(Boolean).join(' · ') || 'no contact info'}</div>
+            <div className="text-[10px] text-gray-400">{[view.customer.email, view.customer.phone, view.customer.address].filter(Boolean).join(' · ') || 'no contact info'}</div>
             <div className="mt-1 text-xs">Balance due: <span className={cn('font-mono', view.balanceDue > 0 ? 'text-amber-300' : 'text-emerald-300')}>${view.balanceDue.toFixed(2)}</span></div>
           </div>
 
           <section>
             <div className="text-[10px] uppercase tracking-wider text-violet-400 mb-1 flex items-center gap-1"><FileText className="w-3 h-3" /> Quotes · {view.quotes.length}</div>
-            {view.quotes.length === 0 ? <p className="text-[10px] text-gray-600">No quotes.</p> : (
+            {view.quotes.length === 0 ? <p className="text-[10px] text-gray-400">No quotes.</p> : (
               <ul className="space-y-1">
                 {view.quotes.map(q => (
                   <li key={q.id} className="rounded border border-white/10 bg-black/20 px-2 py-1.5 flex items-center gap-2">
@@ -103,12 +103,12 @@ export function CustomerPortalPanel() {
 
           <section>
             <div className="text-[10px] uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1"><Receipt className="w-3 h-3" /> Invoices · {view.invoices.length}</div>
-            {view.invoices.length === 0 ? <p className="text-[10px] text-gray-600">No invoices.</p> : (
+            {view.invoices.length === 0 ? <p className="text-[10px] text-gray-400">No invoices.</p> : (
               <ul className="space-y-1">
                 {view.invoices.map(inv => (
                   <li key={inv.id} className="rounded border border-white/10 bg-black/20 px-2 py-1.5 flex items-center gap-2">
                     <span className="font-mono text-xs text-emerald-300">{inv.number}</span>
-                    <span className="text-[10px] text-gray-500 flex-1">{inv.dueDate ? `due ${inv.dueDate}` : ''}</span>
+                    <span className="text-[10px] text-gray-400 flex-1">{inv.dueDate ? `due ${inv.dueDate}` : ''}</span>
                     <span className="font-mono text-xs text-white">${inv.total.toFixed(2)}</span>
                     <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{inv.status}</span>
                   </li>
@@ -119,14 +119,14 @@ export function CustomerPortalPanel() {
 
           <section>
             <div className="text-[10px] uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1"><Wrench className="w-3 h-3" /> Jobs · {view.jobs.length}</div>
-            {view.jobs.length === 0 ? <p className="text-[10px] text-gray-600">No jobs.</p> : (
+            {view.jobs.length === 0 ? <p className="text-[10px] text-gray-400">No jobs.</p> : (
               <ul className="space-y-1">
                 {view.jobs.map((j, i) => (
                   <li key={j.number + i} className="rounded border border-white/10 bg-black/20 px-2 py-1.5">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-cyan-300">{j.number}</span>
                       <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{j.status}</span>
-                      {j.scheduledFor && <span className="text-[10px] text-gray-500 ml-auto">{j.scheduledFor.replace('T', ' ')}</span>}
+                      {j.scheduledFor && <span className="text-[10px] text-gray-400 ml-auto">{j.scheduledFor.replace('T', ' ')}</span>}
                     </div>
                     <div className="text-[11px] text-gray-400 mt-0.5">{j.description}</div>
                   </li>

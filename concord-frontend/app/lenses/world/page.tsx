@@ -1034,7 +1034,7 @@ function CityStreamingSection() {
       <EvolutionModal />
 
       {/* Connection status */}
-      <div className="flex items-center gap-2 text-xs text-gray-500">
+      <div className="flex items-center gap-2 text-xs text-gray-400">
         <div
           className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}
         />
@@ -1151,7 +1151,7 @@ function CityStreamingSection() {
         </div>
 
         {activeStreams.length === 0 ? (
-          <div className="text-center py-6 text-gray-500 text-xs">No active streams right now</div>
+          <div className="text-center py-6 text-gray-400 text-xs">No active streams right now</div>
         ) : (
           <div className="space-y-2">
             <AnimatePresence mode="popLayout">
@@ -1176,7 +1176,7 @@ function CityStreamingSection() {
                       <div className="text-sm text-white font-medium truncate mt-0.5">
                         {stream.title}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                         <span className="flex items-center gap-0.5">
                           <Globe className="w-2.5 h-2.5" /> {stream.cityId}
                         </span>
@@ -3740,7 +3740,7 @@ export default function WorldLensPage() {
               <h1 className="text-base font-bold">World Lens</h1>
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             </div>
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-gray-400">
               Design, validate, and publish DTU-based creations in shared districts
             </p>
           </div>
@@ -5079,7 +5079,7 @@ export default function WorldLensPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-yellow-400 text-sm">⚔</span>
                   <span className="text-xs font-semibold text-yellow-300">Nearby Loot</span>
-                  <span className="ml-auto text-[10px] text-gray-500">
+                  <span className="ml-auto text-[10px] text-gray-400">
                     {lootBags.length} bag{lootBags.length !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -5503,7 +5503,7 @@ export default function WorldLensPage() {
                     const tools = DISTRICT_TOOLS.filter((t) => t.group === group);
                     return (
                       <div key={group}>
-                        <div className="text-[10px] uppercase tracking-wider text-gray-500 px-1 mb-1">
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400 px-1 mb-1">
                           {group}
                         </div>
                         <div className="grid grid-cols-2 gap-1">

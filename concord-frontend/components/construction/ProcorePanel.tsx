@@ -79,7 +79,7 @@ function TakeoffEstimate() {
       </header>
 
       <div className="p-4 space-y-2">
-        <div className="grid grid-cols-[1fr_70px_70px_80px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_70px_70px_80px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Description</span><span>Qty</span><span>Unit</span><span>Unit $</span><span>Waste %</span><span></span>
         </div>
         {items.map((it, i) => (
@@ -91,7 +91,7 @@ function TakeoffEstimate() {
             </select>
             <input type="number" step="0.01" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.unitCost} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, unitCost: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.wastePercent} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, wastePercent: e.target.value } : x))} />
-            <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -111,8 +111,8 @@ function TakeoffEstimate() {
               </div>
             ))}
             <div className="grid grid-cols-3 gap-2 pt-1">
-              <div className="rounded border border-orange-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Materials</div><div className="font-mono text-orange-200">${result.subtotalMaterials}</div></div>
-              <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Tax</div><div className="font-mono text-zinc-300">${result.tax}</div></div>
+              <div className="rounded border border-orange-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Materials</div><div className="font-mono text-orange-200">${result.subtotalMaterials}</div></div>
+              <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Tax</div><div className="font-mono text-zinc-300">${result.tax}</div></div>
               <div className="rounded border-2 border-orange-500/40 bg-orange-500/10 px-2 py-1.5"><div className="text-[9px] text-orange-300">Total</div><div className="font-mono text-orange-100">${result.total}</div></div>
             </div>
           </div>
@@ -158,7 +158,7 @@ function CriticalPathView() {
       </header>
 
       <div className="p-4 space-y-2">
-        <div className="grid grid-cols-[1fr_70px_1fr_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_70px_1fr_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Task</span><span>Days</span><span>Deps (comma)</span><span></span>
         </div>
         {tasks.map((t, i) => (
@@ -166,7 +166,7 @@ function CriticalPathView() {
             <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Foundation" value={t.name} onChange={(e) => setTasks((ts) => ts.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.duration} onChange={(e) => setTasks((ts) => ts.map((x, idx) => idx === i ? { ...x, duration: e.target.value } : x))} />
             <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Excavation, Permits" value={t.deps} onChange={(e) => setTasks((ts) => ts.map((x, idx) => idx === i ? { ...x, deps: e.target.value } : x))} />
-            <button type="button" onClick={() => setTasks((ts) => ts.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => setTasks((ts) => ts.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -179,11 +179,11 @@ function CriticalPathView() {
         {result?.tasks && (
           <div className="space-y-2 pt-2">
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border-2 border-purple-500/40 bg-purple-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-purple-300">Project duration</div><div className="font-mono text-2xl text-purple-100">{result.projectDuration} <span className="text-sm text-zinc-500">days</span></div></div>
+              <div className="rounded-lg border-2 border-purple-500/40 bg-purple-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-purple-300">Project duration</div><div className="font-mono text-2xl text-purple-100">{result.projectDuration} <span className="text-sm text-zinc-400">days</span></div></div>
               <div className="rounded-lg border-2 border-rose-500/40 bg-rose-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-rose-300">Critical tasks</div><div className="font-mono text-2xl text-rose-100">{result.criticalTaskCount}</div></div>
             </div>
             <div className="space-y-1">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Task schedule (CPM analysis)</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Task schedule (CPM analysis)</div>
               {taskList.map((t, i) => (
                 <div key={i} className={`grid grid-cols-[1fr_60px_60px_60px_70px] gap-2 rounded border px-2 py-1.5 text-[11px] ${critSet.has(t.name) ? 'border-rose-500/40 bg-rose-500/10' : 'border-purple-500/15 bg-zinc-950/40'}`}>
                   <span className={critSet.has(t.name) ? 'font-semibold text-rose-100' : 'text-zinc-100'}>{critSet.has(t.name) && '⚠ '}{t.name}</span>
@@ -240,19 +240,19 @@ function SafetyCompliance() {
 
       <div className="p-4 space-y-3">
         <div className="grid gap-2 sm:grid-cols-3">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Incidents</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Incidents</span>
             <input type="number" min={0} value={incidents || ''} onChange={(e) => setIncidents(Math.max(0, Number(e.target.value) || 0))} placeholder="0" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Worker count</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Worker count</span>
             <input type="number" min={0} value={workers || ''} onChange={(e) => setWorkers(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 12" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Hours worked</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Hours worked</span>
             <input type="number" min={0} value={hours || ''} onChange={(e) => setHours(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 4800" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
         </div>
 
         <div className="space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Checklist items</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Checklist items</div>
           {items.map((it, i) => (
             <div key={i} className="grid grid-cols-[1fr_70px_60px_30px] gap-1.5">
               <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Fall protection on Level 3" value={it.name} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
@@ -262,7 +262,7 @@ function SafetyCompliance() {
               <label className="flex items-center justify-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-1 text-[10px] text-rose-300">
                 <input type="checkbox" checked={it.critical} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, critical: e.target.checked } : x))} />Crit
               </label>
-              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -283,7 +283,7 @@ function SafetyCompliance() {
             <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3 text-center">
               <div className="font-mono text-2xl text-amber-100">{result.incidentRate}</div>
               <div className="text-[10px] uppercase text-amber-300">OSHA IIR</div>
-              <div className="mt-0.5 text-[9px] text-zinc-500">per 200k hrs</div>
+              <div className="mt-0.5 text-[9px] text-zinc-400">per 200k hrs</div>
             </div>
             {result.criticalFailures && result.criticalFailures.length > 0 && (
               <div className="col-span-2 rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200">
@@ -332,7 +332,7 @@ function ProgressReport() {
       </header>
 
       <div className="p-4 space-y-2">
-        <div className="grid grid-cols-[1fr_90px_90px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_90px_90px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Phase</span><span>Planned %</span><span>Actual %</span><span></span>
         </div>
         {phases.map((p, i) => (
@@ -340,7 +340,7 @@ function ProgressReport() {
             <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Foundation" value={p.name} onChange={(e) => setPhases((ps) => ps.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
             <input type="number" min={0} max={100} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={p.plannedPercent} onChange={(e) => setPhases((ps) => ps.map((x, idx) => idx === i ? { ...x, plannedPercent: e.target.value } : x))} />
             <input type="number" min={0} max={100} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={p.actualPercent} onChange={(e) => setPhases((ps) => ps.map((x, idx) => idx === i ? { ...x, actualPercent: e.target.value } : x))} />
-            <button type="button" onClick={() => setPhases((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => setPhases((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -358,7 +358,7 @@ function ProgressReport() {
                   <span className="text-white">{p.phase}</span>
                   <span className="font-mono">
                     <span className="text-cyan-200">{p.actualPercent}%</span>
-                    <span className="text-zinc-500"> / planned </span>
+                    <span className="text-zinc-400"> / planned </span>
                     <span className="text-zinc-300">{p.plannedPercent}%</span>
                     <span className={`ml-2 ${p.variance >= 0 ? 'text-emerald-300' : p.variance >= -10 ? 'text-amber-300' : 'text-rose-300'}`}>{p.variance > 0 ? '+' : ''}{p.variance}</span>
                   </span>

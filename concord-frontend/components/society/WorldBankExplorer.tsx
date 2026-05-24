@@ -167,7 +167,7 @@ export function WorldBankExplorer() {
                     <div className="h-3 rounded-full bg-cyan-500/60" style={{ width: `${Math.max(2, (p.value / max) * 100)}%` }} />
                   </div>
                   <span className="w-32 text-right font-mono text-cyan-300">{p.value.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-                  <span className="w-12 text-right text-zinc-500">{p.year}</span>
+                  <span className="w-12 text-right text-zinc-400">{p.year}</span>
                 </div>
               ))}
             </div>

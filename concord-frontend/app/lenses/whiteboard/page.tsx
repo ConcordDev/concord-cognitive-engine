@@ -1003,7 +1003,7 @@ export default function WhiteboardLensPage() {
         <div className="flex-1 overflow-y-auto space-y-2">
           <p className="text-xs text-gray-400 mb-2">Whiteboards ({whiteboards?.count || 0})</p>
           {isLoading ? (
-            <div className="text-gray-500 text-sm">Loading...</div>
+            <div className="text-gray-400 text-sm">Loading...</div>
           ) : (
             (whiteboards?.whiteboards && whiteboards.whiteboards.length > 0 ? whiteboards.whiteboards : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: 0 }))).map((wb: Record<string, unknown>) => (
               <button key={wb.id as string} onClick={() => setSelectedWbId(wb.id as string)}
@@ -1086,7 +1086,7 @@ export default function WhiteboardLensPage() {
                       title="Raster — best for sharing"
                     >
                       <span>PNG image</span>
-                      <code className="text-[9px] text-gray-500">.png</code>
+                      <code className="text-[9px] text-gray-400">.png</code>
                     </button>
                     <button
                       onClick={exportSVG}
@@ -1095,7 +1095,7 @@ export default function WhiteboardLensPage() {
                       title="Vector — opens in Figma / Illustrator / Inkscape"
                     >
                       <span>SVG vector</span>
-                      <code className="text-[9px] text-gray-500">.svg</code>
+                      <code className="text-[9px] text-gray-400">.svg</code>
                     </button>
                     <button
                       onClick={exportClipboardJSON}
@@ -1175,7 +1175,7 @@ export default function WhiteboardLensPage() {
                       <div className="grid grid-cols-4 gap-2">
                         <button onClick={() => setFillColor('transparent')}
                           className={`w-8 h-8 rounded-lg border-2 ${fillColor === 'transparent' ? 'border-white' : 'border-transparent'} bg-transparent`} aria-label="Close">
-                          <X className="w-4 h-4 mx-auto text-gray-500" />
+                          <X className="w-4 h-4 mx-auto text-gray-400" />
                         </button>
                         {COLORS.slice(0, 7).map(c => (
                           <button key={c} onClick={() => setFillColor(c + '40')}
@@ -1364,7 +1364,7 @@ export default function WhiteboardLensPage() {
                         style={{ borderColor: sec.color, width: Math.max(sec.bars * 20, 80), minHeight: 120, backgroundColor: sec.color + '15' }}>
                         <div className="p-3 flex flex-col h-full">
                           <div className="flex items-center gap-1 mb-2">
-                            <GripVertical className="w-3 h-3 text-gray-500" />
+                            <GripVertical className="w-3 h-3 text-gray-400" />
                             <span className="text-xs font-bold" style={{ color: sec.color }}>{sec.label}</span>
                           </div>
                           <div className="flex-1 flex items-center justify-center">
@@ -1407,7 +1407,7 @@ export default function WhiteboardLensPage() {
                       <div key={`ruler_${sec.id}`} className="flex-shrink-0 flex" style={{ width: Math.max(sec.bars * 20, 80) + 12 }}>
                         {Array.from({ length: sec.bars }, (_, i) => (
                           <div key={i} className="flex-1 h-4 border-l border-gray-700 flex items-end">
-                            <span className="text-[9px] text-gray-600 pl-0.5">{i + 1}</span>
+                            <span className="text-[9px] text-gray-400 pl-0.5">{i + 1}</span>
                           </div>
                         ))}
                       </div>
@@ -1459,7 +1459,7 @@ export default function WhiteboardLensPage() {
                           </div>
                         ))}
                         {zone.items.length === 0 && (
-                          <p className="text-xs text-gray-600 italic">Drop or add items here...</p>
+                          <p className="text-xs text-gray-400 italic">Drop or add items here...</p>
                         )}
                       </div>
                     </div>
@@ -1530,7 +1530,7 @@ export default function WhiteboardLensPage() {
             )}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-gray-400">
             <div className="text-center">
               <PenTool className="w-16 h-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg mb-2">Creative Canvas &amp; Moodboard</p>

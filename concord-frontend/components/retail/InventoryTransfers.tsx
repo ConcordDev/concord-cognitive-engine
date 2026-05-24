@@ -60,7 +60,7 @@ export function InventoryTransfers() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Inventory transfers</span>
-        <span className="ml-auto text-[10px] text-gray-500">{transfers.filter(t => t.status === 'in_transit').length} in transit</span>
+        <span className="ml-auto text-[10px] text-gray-400">{transfers.filter(t => t.status === 'in_transit').length} in transit</span>
       </header>
 
       <div className="p-3 border-b border-white/10 space-y-2">
@@ -83,9 +83,9 @@ export function InventoryTransfers() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : transfers.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No inventory transfers.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No inventory transfers.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {transfers.map(t => (

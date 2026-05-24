@@ -70,7 +70,7 @@ export function Watchlist() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Eye className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Watchlist</span>
-        <span className="ml-auto text-[10px] text-gray-500">{quotes.length} symbols</span>
+        <span className="ml-auto text-[10px] text-gray-400">{quotes.length} symbols</span>
       </header>
       <div className="p-3 border-b border-white/10 flex items-center gap-2 text-xs">
         <input value={newSym} onChange={e => setNewSym(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder="Add symbol (e.g. AAPL)" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white uppercase" />
@@ -80,17 +80,17 @@ export function Watchlist() {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading quotes…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading quotes…</div>
         ) : (
           <table className="w-full text-xs">
             <thead className="border-b border-white/10">
               <tr>
-                <th className="px-3 py-1.5 text-left text-[10px] uppercase text-gray-500">Symbol</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">Price</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">1D</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">1Y</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">P/E</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">Mkt Cap</th>
+                <th className="px-3 py-1.5 text-left text-[10px] uppercase text-gray-400">Symbol</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">Price</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">1D</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">1Y</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">P/E</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">Mkt Cap</th>
                 <th></th>
               </tr>
             </thead>
@@ -99,7 +99,7 @@ export function Watchlist() {
                 <tr key={q.symbol} className="border-b border-white/5 hover:bg-white/[0.03] group">
                   <td className="px-3 py-1.5">
                     <div className="font-mono font-bold text-white">{q.symbol}</div>
-                    <div className="text-[9px] text-gray-500 truncate">{q.name}</div>
+                    <div className="text-[9px] text-gray-400 truncate">{q.name}</div>
                   </td>
                   <td className="px-3 py-1.5 text-right font-mono tabular-nums text-white">${q.price.toFixed(2)}</td>
                   <td className={cn('px-3 py-1.5 text-right font-mono tabular-nums', q.pctChange1d >= 0 ? 'text-green-300' : 'text-red-300')}>
@@ -112,7 +112,7 @@ export function Watchlist() {
                   <td className="px-3 py-1.5 text-right text-gray-300 tabular-nums">{q.pe?.toFixed(1) ?? '—'}</td>
                   <td className="px-3 py-1.5 text-right text-gray-300 tabular-nums">${(q.marketCap / 1e9).toFixed(0)}B</td>
                   <td className="px-3 py-1.5 text-right">
-                    <button onClick={() => remove(q.symbol)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400">
+                    <button onClick={() => remove(q.symbol)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>

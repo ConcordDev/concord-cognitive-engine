@@ -78,7 +78,7 @@ export function SwipeNav({ initialIndex = 0, onIndexChange, showChevrons = true,
             type="button"
             onClick={() => goTo(idx - 1)}
             disabled={idx === 0}
-            className="p-1 text-zinc-500 hover:text-zinc-200 disabled:opacity-30 shrink-0"
+            className="p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 shrink-0"
             aria-label="Previous tab"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -95,7 +95,7 @@ export function SwipeNav({ initialIndex = 0, onIndexChange, showChevrons = true,
               'text-xs px-2 py-1 rounded whitespace-nowrap shrink-0 transition-colors',
               i === idx
                 ? 'bg-zinc-800 text-zinc-100 font-medium'
-                : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900/60',
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60',
             )}
           >
             {p.props.label}
@@ -106,7 +106,7 @@ export function SwipeNav({ initialIndex = 0, onIndexChange, showChevrons = true,
             type="button"
             onClick={() => goTo(idx + 1)}
             disabled={idx === panels.length - 1}
-            className="p-1 text-zinc-500 hover:text-zinc-200 disabled:opacity-30 shrink-0 ml-auto"
+            className="p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 shrink-0 ml-auto"
             aria-label="Next tab"
           >
             <ChevronRight className="w-4 h-4" />

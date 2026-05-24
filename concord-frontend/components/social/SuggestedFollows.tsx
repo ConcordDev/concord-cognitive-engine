@@ -215,7 +215,7 @@ function SuggestedFollows({ currentUserId, onNavigateToUser, className }: Sugges
                     </div>
 
                     {/* Follower count */}
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
                       <span className="flex items-center gap-1">
                         <Users className="w-3 h-3" />
                         {formatNumber(creator.followerCount)} followers

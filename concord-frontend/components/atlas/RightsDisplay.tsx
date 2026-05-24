@@ -27,7 +27,7 @@ export function RightsDisplay({ rights, origin, compact = false }: RightsDisplay
       <div className="flex items-center gap-2 text-xs">
         <LicenseBadge licenseType={rights.license_type} size="sm" />
         <AtlasScopeBadge scope={rights.origin_lane} size="sm" />
-        {origin && <span title="Origin verified"><Fingerprint className="w-3 h-3 text-gray-500" /></span>}
+        {origin && <span title="Origin verified"><Fingerprint className="w-3 h-3 text-gray-400" /></span>}
       </div>
     );
   }
@@ -56,7 +56,7 @@ export function RightsDisplay({ rights, origin, compact = false }: RightsDisplay
       </div>
 
       {/* Origin */}
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs text-gray-400">
         <div className="flex items-center gap-2">
           <AtlasScopeBadge scope={rights.origin_lane} size="sm" />
           <span>Stamped {new Date(rights.stamped_at).toLocaleDateString()}</span>
@@ -93,7 +93,7 @@ function LicensePermissionsGrid({ profile }: LicensePermissionsGridProps) {
           className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs ${
             value
               ? 'bg-green-500/5 text-green-400'
-              : 'bg-gray-500/5 text-gray-500'
+              : 'bg-gray-500/5 text-gray-400'
           }`}
         >
           <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -124,19 +124,19 @@ function OriginPanel({ origin }: OriginPanelProps) {
       </div>
       <div className="grid grid-cols-1 gap-1 text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 w-16">Created</span>
+          <span className="text-gray-400 w-16">Created</span>
           <span className="text-gray-300">{new Date(origin.created_at).toLocaleString()}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 w-16">Creator</span>
+          <span className="text-gray-400 w-16">Creator</span>
           <span className="text-gray-300 font-mono">{origin.creator_id}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 w-16">Hash</span>
+          <span className="text-gray-400 w-16">Hash</span>
           <span className="text-gray-400 font-mono truncate">{origin.content_hash}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 w-16">Fingerprint</span>
+          <span className="text-gray-400 w-16">Fingerprint</span>
           <span className="text-gray-400 font-mono truncate">{origin.origin_fingerprint}</span>
         </div>
       </div>
@@ -150,7 +150,7 @@ function HashRow({ label, hash }: { label: string; hash: string }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <Lock className="w-3 h-3 text-gray-600" />
-      <span className="text-gray-500 w-16">{label}</span>
+      <span className="text-gray-400 w-16">{label}</span>
       <span className="text-gray-400 font-mono truncate flex-1">{hash}</span>
     </div>
   );
@@ -205,7 +205,7 @@ export function RightsActionCheck({ action, allowed, reason }: RightsActionCheck
         <XCircle className="w-4 h-4" />
       )}
       {reason && !allowed && (
-        <span className="text-xs text-gray-500 max-w-[200px] truncate">{reason}</span>
+        <span className="text-xs text-gray-400 max-w-[200px] truncate">{reason}</span>
       )}
     </div>
   );

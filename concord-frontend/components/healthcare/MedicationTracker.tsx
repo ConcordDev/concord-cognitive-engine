@@ -73,7 +73,7 @@ export function MedicationTracker() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Pill className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Medications</span>
-        <span className="ml-auto text-[10px] text-gray-500">{Math.round(adherence)}% adherence today{needsRefill > 0 ? ` · ${needsRefill} refill needed` : ''}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{Math.round(adherence)}% adherence today{needsRefill > 0 ? ` · ${needsRefill} refill needed` : ''}</span>
         <button onClick={() => setAdding(v => !v)} className="p-1 text-gray-400 hover:text-white" title="Add medication">
           <Plus className="w-4 h-4" />
         </button>
@@ -97,9 +97,9 @@ export function MedicationTracker() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : meds.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Pill className="w-6 h-6 mx-auto mb-2 opacity-30" /> No medications yet. Hit + to add.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Pill className="w-6 h-6 mx-auto mb-2 opacity-30" /> No medications yet. Hit + to add.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {meds.map(m => {
@@ -116,9 +116,9 @@ export function MedicationTracker() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-white">{m.name}</span>
                         <span className="text-xs text-cyan-300">{m.dose}</span>
-                        <span className="text-[9px] text-gray-500 uppercase">{m.schedule.replace(/_/g, ' ')}</span>
+                        <span className="text-[9px] text-gray-400 uppercase">{m.schedule.replace(/_/g, ' ')}</span>
                       </div>
-                      <div className="text-[10px] text-gray-500 mt-0.5">
+                      <div className="text-[10px] text-gray-400 mt-0.5">
                         {m.dosesTakenToday}/{m.dosesScheduledToday} taken today
                         {m.prescribedBy && ` · Rx ${m.prescribedBy}`}
                         {m.refillRemaining != null && (
@@ -134,7 +134,7 @@ export function MedicationTracker() {
                     {m.refillRemaining != null && m.refillRemaining <= 7 && (
                       <Bell className="w-4 h-4 text-yellow-400" />
                     )}
-                    <button onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400" title="Remove">
+                    <button onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400" title="Remove">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>

@@ -87,7 +87,7 @@ function EmergentCardInner({ emergent }: { emergent: EmergentEntity }) {
               {stateInfo.label}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{config.label}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{config.label}</p>
 
           {/* Stats row */}
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
@@ -101,7 +101,7 @@ function EmergentCardInner({ emergent }: { emergent: EmergentEntity }) {
 
           {/* Last action */}
           {(emergent.lastAction || emergent.activity || emergent.lastActivity) && (
-            <p className="text-[11px] text-gray-500 mt-1 truncate">
+            <p className="text-[11px] text-gray-400 mt-1 truncate">
               {emergent.lastAction || emergent.activity || emergent.lastActivity}
               {emergent.lastActionAt && (
                 <span className="ml-1 text-gray-600">
@@ -115,7 +115,7 @@ function EmergentCardInner({ emergent }: { emergent: EmergentEntity }) {
         {/* Expand toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
+          className="p-1 text-gray-400 hover:text-gray-300 transition-colors"
           aria-label={expanded ? 'Collapse details' : 'Expand details'}
         >
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -127,7 +127,7 @@ function EmergentCardInner({ emergent }: { emergent: EmergentEntity }) {
         <div className="mt-3 pt-3 border-t border-lattice-border space-y-2">
           {emergent.capabilities && emergent.capabilities.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Capabilities</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Capabilities</p>
               <div className="flex flex-wrap gap-1">
                 {emergent.capabilities.map((cap) => (
                   <span key={cap} className="px-1.5 py-0.5 text-[10px] rounded bg-lattice-deep text-gray-400">
@@ -139,7 +139,7 @@ function EmergentCardInner({ emergent }: { emergent: EmergentEntity }) {
           )}
           {emergent.boundaries && emergent.boundaries.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Behavioral Boundaries</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Behavioral Boundaries</p>
               <div className="flex flex-wrap gap-1">
                 {emergent.boundaries.map((b) => (
                   <span key={b} className="px-1.5 py-0.5 text-[10px] rounded bg-red-500/10 text-red-400">
@@ -151,7 +151,7 @@ function EmergentCardInner({ emergent }: { emergent: EmergentEntity }) {
           )}
           {emergent.cognitiveSignature && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Cognitive Signature</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Cognitive Signature</p>
               <pre className="text-[10px] text-gray-400 bg-lattice-deep rounded p-2 overflow-x-auto">
                 {JSON.stringify(emergent.cognitiveSignature, null, 2)}
               </pre>

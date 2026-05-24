@@ -215,7 +215,7 @@ function StressLegend() {
   const stops = [0, 0.25, 0.5, 0.75, 1.0];
   return (
     <div className="flex items-center gap-3 mt-3 px-2">
-      <span className="text-xs text-gray-500">Utilization:</span>
+      <span className="text-xs text-gray-400">Utilization:</span>
       <div className="flex items-center gap-1">
         {stops.map((u) => {
           const c = stressToColor(u);
@@ -225,7 +225,7 @@ function StressLegend() {
                 className="w-6 h-3 rounded-sm"
                 style={{ backgroundColor: `#${c.getHexString()}` }}
               />
-              <span className="text-[9px] text-gray-500">{(u * 100).toFixed(0)}%</span>
+              <span className="text-[9px] text-gray-400">{(u * 100).toFixed(0)}%</span>
             </div>
           );
         })}
@@ -258,7 +258,7 @@ export function FEAResultViewer({
         style={{ height }}
       >
         {nodes.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
             No FEA data to display
           </div>
         ) : (
@@ -304,7 +304,7 @@ export function FEAResultViewer({
         <div className="absolute top-3 right-3 bg-lattice-void/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-lattice-border text-xs space-y-1">
           <div className="flex items-center gap-2">
             <div className="w-6 h-0.5 bg-[#555566] opacity-50" />
-            <span className="text-gray-500">Undeformed</span>
+            <span className="text-gray-400">Undeformed</span>
           </div>
           {showDeformed && displacements.length > 0 && (
             <div className="flex items-center gap-2">
@@ -328,16 +328,16 @@ export function FEAResultViewer({
             <table className="w-full text-sm">
               <thead className="bg-lattice-void sticky top-0">
                 <tr className="border-b border-lattice-border">
-                  <th className="px-3 py-2 text-left text-xs text-gray-500 font-medium">
+                  <th className="px-3 py-2 text-left text-xs text-gray-400 font-medium">
                     Member ID
                   </th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-500 font-medium">
+                  <th className="px-3 py-2 text-right text-xs text-gray-400 font-medium">
                     Stress (MPa)
                   </th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-500 font-medium">
+                  <th className="px-3 py-2 text-right text-xs text-gray-400 font-medium">
                     Utilization
                   </th>
-                  <th className="px-3 py-2 text-center text-xs text-gray-500 font-medium">
+                  <th className="px-3 py-2 text-center text-xs text-gray-400 font-medium">
                     Status
                   </th>
                 </tr>

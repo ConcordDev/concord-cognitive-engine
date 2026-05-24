@@ -420,7 +420,7 @@ function VideoPlayer({
         />
 
         {mediaDTU.resolution && (
-          <div className="absolute bottom-2 right-2 text-xs text-gray-500 bg-black/40 px-1.5 rounded pointer-events-none">
+          <div className="absolute bottom-2 right-2 text-xs text-gray-400 bg-black/40 px-1.5 rounded pointer-events-none">
             {mediaDTU.resolution.width}x{mediaDTU.resolution.height}
           </div>
         )}
@@ -706,7 +706,7 @@ function DocumentViewer({
           <h3 className="text-white font-medium mb-2">{mediaDTU.title}</h3>
           <p className="text-sm text-gray-400">{mediaDTU.mimeType || 'Document'}</p>
           {mediaDTU.description && (
-            <p className="text-sm text-gray-500 mt-3 max-w-md mx-auto">{mediaDTU.description}</p>
+            <p className="text-sm text-gray-400 mt-3 max-w-md mx-auto">{mediaDTU.description}</p>
           )}
         </div>
       </div>
@@ -769,7 +769,7 @@ function StreamViewer({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-gray-500">
+            <div className="flex items-center gap-1 text-gray-400">
               <Wifi className="w-8 h-8" />
               <span className="text-sm">Stream Active</span>
             </div>
@@ -779,7 +779,7 @@ function StreamViewer({
             <WifiOff className="w-12 h-12 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-400 text-sm">Stream Offline</p>
             {mediaDTU.stream?.endedAt && (
-              <p className="text-gray-500 text-xs mt-1">
+              <p className="text-gray-400 text-xs mt-1">
                 Ended {new Date(mediaDTU.stream.endedAt).toLocaleDateString()}
               </p>
             )}
@@ -891,7 +891,7 @@ export function UniversalPlayer({
               <span className="text-sm text-gray-400">{mediaDTU.authorName}</span>
             )}
             {mediaDTU.engagement && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {formatViewCount(mediaDTU.engagement.views)} views
               </span>
             )}

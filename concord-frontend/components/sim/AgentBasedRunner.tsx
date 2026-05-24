@@ -217,7 +217,7 @@ export function AgentBasedRunner() {
           <div className={ds.panel}>
             <h4 className={cn(ds.heading3, 'text-base mb-3 flex items-center gap-2')}>
               <Grid3x3 className="w-4 h-4 text-cyan-400" /> Final Agent Grid
-              <span className="text-xs text-gray-500">({result.agents.length} agents shown)</span>
+              <span className="text-xs text-gray-400">({result.agents.length} agents shown)</span>
             </h4>
             <div className="flex justify-center">
               <svg

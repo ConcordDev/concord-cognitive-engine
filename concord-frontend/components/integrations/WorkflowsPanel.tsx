@@ -178,7 +178,7 @@ export function WorkflowsPanel() {
                     </span>
                   )}
                 </p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
+                <p className="text-[11px] text-gray-400 mt-0.5">
                   {zap.runCount} runs · {zap.successCount} ok · {zap.failureCount} failed
                   {zap.lastRunAt && ` · last ${new Date(zap.lastRunAt).toLocaleString()}`}
                 </p>
@@ -229,16 +229,16 @@ export function WorkflowsPanel() {
                   <History className="w-3 h-3" /> Run history
                 </div>
                 {history.length === 0 ? (
-                  <p className="text-xs text-gray-500">No runs recorded yet.</p>
+                  <p className="text-xs text-gray-400">No runs recorded yet.</p>
                 ) : (
                   history.map((rec) => {
                     const tone = STATUS_TONE[rec.status];
                     return (
                       <div key={rec.id} className="flex items-center justify-between bg-lattice-surface rounded px-2 py-1.5 text-xs">
                         <span className={`flex items-center gap-1 ${tone.cls}`}>{tone.icon} {rec.status}</span>
-                        <span className="text-gray-500">attempt {rec.attempt}</span>
-                        <span className="text-gray-500">{rec.durationMs}ms</span>
-                        <span className="text-gray-500">{new Date(rec.startedAt).toLocaleString()}</span>
+                        <span className="text-gray-400">attempt {rec.attempt}</span>
+                        <span className="text-gray-400">{rec.durationMs}ms</span>
+                        <span className="text-gray-400">{new Date(rec.startedAt).toLocaleString()}</span>
                         <button onClick={() => retry(rec.id, zap.id)} disabled={busy === rec.id}
                           className="text-neon-cyan hover:underline flex items-center gap-0.5 disabled:opacity-40">
                           {busy === rec.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />} Replay
@@ -351,7 +351,7 @@ function SchedulePanel({
         )}
       </div>
       {current?.nextFireAt && (
-        <p className="text-[11px] text-gray-500">Next fire: {new Date(current.nextFireAt).toLocaleString()}</p>
+        <p className="text-[11px] text-gray-400">Next fire: {new Date(current.nextFireAt).toLocaleString()}</p>
       )}
       <div className="flex gap-2">
         <button onClick={save} disabled={saving} className="btn-primary text-xs flex items-center gap-1">

@@ -153,7 +153,7 @@ export default function EvolutionModal() {
           {envelope && (
             <section className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded bg-zinc-800/60 border border-zinc-700">
-                <p className="text-xs uppercase text-gray-500">Current</p>
+                <p className="text-xs uppercase text-gray-400">Current</p>
                 <p className="font-mono text-gray-100">{envelope.nameBefore}</p>
                 <p className="text-gray-400 mt-1">max damage {envelope.maxDamageBefore}</p>
                 <p className="text-gray-400">range {envelope.rangeMBefore}m</p>
@@ -161,16 +161,16 @@ export default function EvolutionModal() {
               <div className="p-3 rounded bg-neon-blue/10 border border-neon-blue/40">
                 <p className="text-xs uppercase text-neon-blue">After commit</p>
                 <p className="font-mono text-gray-100">{envelope.nameAfter}</p>
-                <p className="text-gray-300 mt-1">max damage <strong>{envelope.maxDamageAfter}</strong> <span className="text-xs text-gray-500">(+{envelope.maxDamageAfter - envelope.maxDamageBefore})</span></p>
+                <p className="text-gray-300 mt-1">max damage <strong>{envelope.maxDamageAfter}</strong> <span className="text-xs text-gray-400">(+{envelope.maxDamageAfter - envelope.maxDamageBefore})</span></p>
                 <p className="text-gray-300">range <strong>{envelope.rangeMAfter}m</strong></p>
                 {envelope.animationTierAfter != null && envelope.animationTierAfter !== envelope.animationTierBefore && (
                   <p className="text-amber-400 text-xs mt-1">
                     animation tier <span className="font-mono">{envelope.animationTierBefore} → {envelope.animationTierAfter}</span>
-                    <span className="text-gray-500"> (procedural anim scales)</span>
+                    <span className="text-gray-400"> (procedural anim scales)</span>
                   </p>
                 )}
                 {envelope.requiredLimbs && envelope.requiredLimbs.length > 0 && (
-                  <p className="text-gray-500 text-[11px] mt-1">cast limb: {envelope.requiredLimbs.join(", ")}</p>
+                  <p className="text-gray-400 text-[11px] mt-1">cast limb: {envelope.requiredLimbs.join(", ")}</p>
                 )}
               </div>
             </section>
@@ -178,7 +178,7 @@ export default function EvolutionModal() {
 
           {history.length > 0 && (
             <section>
-              <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Lineage</p>
+              <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">Lineage</p>
               <RevisionLineageTree revisions={history} />
             </section>
           )}
@@ -195,7 +195,7 @@ export default function EvolutionModal() {
               onChange={(e) => setDescription(e.target.value)}
               maxLength={400}
             />
-            <p className="text-xs text-gray-500 mt-1">{description.length}/400 — describes how the player wants the skill to evolve. Element family must stay coherent (water → ice OK; water → fire REJECT).</p>
+            <p className="text-xs text-gray-400 mt-1">{description.length}/400 — describes how the player wants the skill to evolve. Element family must stay coherent (water → ice OK; water → fire REJECT).</p>
           </section>
 
           {error && (

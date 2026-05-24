@@ -62,11 +62,11 @@ export function HrWorkdaySection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-emerald-600/15 to-transparent">
         <Users className="w-5 h-5 text-emerald-400" />
         <h2 className="text-sm font-bold text-zinc-100">People Hub</h2>
-        <span className="text-[11px] text-zinc-500">Workday + BambooHR shape — HRIS</span>
+        <span className="text-[11px] text-zinc-400">Workday + BambooHR shape — HRIS</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : dash && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-zinc-800">
           <Stat label="Headcount" value={dash.headcount} />
@@ -113,7 +113,7 @@ function Stat({ label, value, alert }: { label: string; value: number; alert?: b
   return (
     <div className="text-center">
       <p className={cn('text-lg font-bold', alert ? 'text-amber-400' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

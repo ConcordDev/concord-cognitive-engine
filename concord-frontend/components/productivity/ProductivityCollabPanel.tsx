@@ -68,7 +68,7 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -77,11 +77,11 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
 
       {/* Share a project */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 flex items-center gap-1">
           <Share2 className="w-3 h-3" /> Share a project
         </p>
         {projects.length === 0 ? (
-          <p className="text-xs text-zinc-600 italic">No projects yet — create one in the Tasks tab.</p>
+          <p className="text-xs text-zinc-400 italic">No projects yet — create one in the Tasks tab.</p>
         ) : (
           <>
             <select value={activeProject} onChange={(e) => setActiveProject(e.target.value)}
@@ -106,14 +106,14 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
                   </button>
                 </div>
                 {collaborators.length === 0 ? (
-                  <p className="text-xs text-zinc-600 italic">Not shared with anyone yet.</p>
+                  <p className="text-xs text-zinc-400 italic">Not shared with anyone yet.</p>
                 ) : (
                   <ul className="space-y-1">
                     {collaborators.map((c) => (
                       <li key={c.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
                         <Users className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                         <span className="flex-1 text-xs text-zinc-200 truncate">{c.collaboratorId}</span>
-                        <span className="text-[10px] text-zinc-500 uppercase">{c.role}</span>
+                        <span className="text-[10px] text-zinc-400 uppercase">{c.role}</span>
                         <button type="button" onClick={() => unshare(c.collaboratorId)}
                           className="text-zinc-600 hover:text-rose-400 shrink-0">
                           <Trash2 className="w-3.5 h-3.5" />
@@ -130,9 +130,9 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
 
       {/* Task picker → full detail */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">Task detail — subtasks, assignee, comments</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">Task detail — subtasks, assignee, comments</p>
         {tasks.length === 0 ? (
-          <p className="text-xs text-zinc-600 italic">No tasks yet.</p>
+          <p className="text-xs text-zinc-400 italic">No tasks yet.</p>
         ) : (
           <ul className="space-y-1">
             {tasks.map((t) => (

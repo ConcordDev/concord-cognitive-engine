@@ -178,15 +178,15 @@ function POSTab() {
   return (
     <div className="grid grid-cols-2 gap-2 p-3 h-full">
       <div className="space-y-1 overflow-y-auto">
-        <p className="text-[10px] uppercase text-gray-500 mb-1">Tap to add</p>
-        {products.length === 0 ? <p className="text-xs text-gray-500">No products. Add some in Catalog tab.</p> :
+        <p className="text-[10px] uppercase text-gray-400 mb-1">Tap to add</p>
+        {products.length === 0 ? <p className="text-xs text-gray-400">No products. Add some in Catalog tab.</p> :
           products.map((p) => (
             <button key={p.sku} type="button" onClick={() => addToCart(p.sku)}
               className="w-full text-left rounded border border-white/10 bg-black/20 hover:bg-rose-500/10 p-2">
               <p className="text-sm text-gray-100">{p.name}</p>
               <div className="flex justify-between text-[11px]">
                 <span className="font-mono text-rose-300">${p.price}</span>
-                <span className="text-gray-500">{p.stock} in stock</span>
+                <span className="text-gray-400">{p.stock} in stock</span>
               </div>
             </button>
           ))
@@ -194,9 +194,9 @@ function POSTab() {
       </div>
 
       <div className="border-l border-white/10 pl-3 flex flex-col">
-        <p className="text-[10px] uppercase text-gray-500 mb-1">Cart</p>
+        <p className="text-[10px] uppercase text-gray-400 mb-1">Cart</p>
         <div className="flex-1 overflow-y-auto">
-          {cart?.lines.length === 0 ? <p className="text-xs text-gray-500">Empty.</p> :
+          {cart?.lines.length === 0 ? <p className="text-xs text-gray-400">Empty.</p> :
             cart?.lines.map((l) => (
               <div key={l.sku} className="flex justify-between text-xs py-1 border-b border-white/5">
                 <span className="text-gray-200">{l.qty}× {l.name}</span>
@@ -207,8 +207,8 @@ function POSTab() {
         </div>
         {totals && (
           <div className="mt-2 border-t border-white/10 pt-2 text-xs space-y-0.5 font-mono">
-            <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>${totals.subtotal}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Tax (8%)</span><span>${totals.tax}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span>${totals.subtotal}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Tax (8%)</span><span>${totals.tax}</span></div>
             <div className="flex justify-between font-bold text-lg"><span>Total</span><span className="text-rose-300">${totals.total}</span></div>
           </div>
         )}
@@ -303,12 +303,12 @@ function CatalogTab() {
           </button>
         </div>
       )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
         products.map((p) => (
           <div key={p.sku} className="rounded border border-white/10 bg-black/20 p-3 flex items-center justify-between group">
             <div>
-              <p className="text-sm text-gray-100">{p.name} <code className="text-[10px] text-gray-500 ml-2">{p.sku}</code></p>
-              <p className="text-[11px] text-gray-500">${p.price} · {p.stock} in stock · {p.category || 'uncategorized'}</p>
+              <p className="text-sm text-gray-100">{p.name} <code className="text-[10px] text-gray-400 ml-2">{p.sku}</code></p>
+              <p className="text-[11px] text-gray-400">${p.price} · {p.stock} in stock · {p.category || 'uncategorized'}</p>
             </div>
             <button type="button" onClick={() => remove(p.sku)}
               className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
@@ -333,14 +333,14 @@ function OrdersTab() {
 
   return (
     <div className="p-3 space-y-2">
-      {orders.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No orders yet. Use POS to ring one up.</p> :
+      {orders.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No orders yet. Use POS to ring one up.</p> :
         orders.map((o) => (
           <div key={o.id} className="rounded border border-white/10 bg-black/20 p-3">
             <div className="flex justify-between">
               <span className="font-mono text-rose-300">{o.number}</span>
               <span className="font-mono text-gray-100">${o.total}</span>
             </div>
-            <p className="text-[10px] text-gray-500 mt-1">{new Date(o.completedAt).toLocaleString()}</p>
+            <p className="text-[10px] text-gray-400 mt-1">{new Date(o.completedAt).toLocaleString()}</p>
             <p className="text-[11px] text-gray-400 mt-1">{o.lines.map((l) => `${l.qty}× ${l.name}`).join(', ')}</p>
           </div>
         ))
@@ -364,13 +364,13 @@ function LowStockTab() {
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[11px] text-gray-500">Products with stock ≤ {threshold}</p>
+      <p className="text-[11px] text-gray-400">Products with stock ≤ {threshold}</p>
       {items.length === 0 ? <p className="text-center text-xs text-emerald-300 py-8">✓ All stock above threshold.</p> :
         items.map((p) => (
           <div key={p.sku} className="rounded border border-amber-500/20 bg-amber-500/5 p-3 flex justify-between">
             <div>
               <p className="text-sm text-gray-100">{p.name}</p>
-              <p className="text-[11px] text-gray-500">{p.sku}</p>
+              <p className="text-[11px] text-gray-400">{p.sku}</p>
             </div>
             <span className="font-mono text-amber-300 text-lg">{p.stock}</span>
           </div>

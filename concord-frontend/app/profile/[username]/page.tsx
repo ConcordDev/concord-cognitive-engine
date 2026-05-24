@@ -330,7 +330,7 @@ export default function PublicProfilePage() {
                     }}
                     className="w-4 h-4 rounded border-gray-600 bg-white/5 text-neon-cyan focus:ring-neon-cyan/50 accent-neon-cyan"
                   />
-                  <Mail className="w-3.5 h-3.5 text-gray-500 group-hover:text-gray-300 transition-colors" />
+                  <Mail className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-300 transition-colors" />
                   <span className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
                     Get email updates
                   </span>
@@ -360,7 +360,7 @@ export default function PublicProfilePage() {
                 {profile.bio}
               </p>
             )}
-            <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-gray-400">
               {profile.website && (
                 <a
                   href={profile.website}
@@ -439,10 +439,10 @@ export default function PublicProfilePage() {
                     )}
                   >
                     <span className="capitalize">{a.name}</span>
-                    <span className="text-gray-500">{a.score}%</span>
+                    <span className="text-gray-400">{a.score}%</span>
                   </span>
                 ))}
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   <Compass className="w-3 h-3 inline mr-1" />
                   {profile.cognitiveSignature.diversityScore}% diversity
                 </span>
@@ -539,7 +539,7 @@ function PinnedPostsSection({ posts }: { posts: PublicPost[] }) {
                 {post.content && (
                   <p className="text-sm text-gray-400 line-clamp-2 mt-1">{post.content}</p>
                 )}
-                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                   {post.createdAt && (
                     <span>{formatRelativeTime(post.createdAt)}</span>
                   )}
@@ -589,7 +589,7 @@ function PostCard({ post }: { post: PublicPost }) {
           )}
           <div className="flex items-center gap-3 mt-2">
             {post.createdAt && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {formatRelativeTime(post.createdAt)}
               </span>
             )}
@@ -620,7 +620,7 @@ function PostCard({ post }: { post: PublicPost }) {
         </div>
 
         {post.engagement && (
-          <div className="flex flex-col items-end gap-1 text-xs text-gray-500 flex-shrink-0">
+          <div className="flex flex-col items-end gap-1 text-xs text-gray-400 flex-shrink-0">
             <span className="flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {formatNumber(post.engagement.views)}
@@ -662,7 +662,7 @@ function PublicPostsTab({ userId }: { userId: string }) {
       <div className={cn(ds.panel, 'text-center py-16')}>
         <BookOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">No public posts</h3>
-        <p className="text-gray-500 text-sm">This user hasn't published any posts yet.</p>
+        <p className="text-gray-400 text-sm">This user hasn't published any posts yet.</p>
       </div>
     );
   }
@@ -704,7 +704,7 @@ function PublicMediaTab({ userId }: { userId: string }) {
       <div className={cn(ds.panel, 'text-center py-16')}>
         <ImageIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">No media</h3>
-        <p className="text-gray-500 text-sm">This user hasn't shared any media content yet.</p>
+        <p className="text-gray-400 text-sm">This user hasn't shared any media content yet.</p>
       </div>
     );
   }
@@ -746,7 +746,7 @@ function PublicDTUsTab({ userId }: { userId: string }) {
       <div className={cn(ds.panel, 'text-center py-16')}>
         <Database className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-300 mb-2">No public DTUs</h3>
-        <p className="text-gray-500 text-sm">This user hasn't published any DTUs yet.</p>
+        <p className="text-gray-400 text-sm">This user hasn't published any DTUs yet.</p>
       </div>
     );
   }
@@ -775,9 +775,9 @@ function PublicDTUsTab({ userId }: { userId: string }) {
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-medium text-gray-200 truncate">{dtu.title}</h4>
               {dtu.content && (
-                <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{dtu.content}</p>
+                <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{dtu.content}</p>
               )}
-              <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-600">
+              <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                 {dtu.createdAt && (
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
@@ -800,7 +800,7 @@ function PublicDTUsTab({ userId }: { userId: string }) {
             </div>
 
             {dtu.engagement && (
-              <div className="flex items-center gap-2 text-xs text-gray-500 flex-shrink-0">
+              <div className="flex items-center gap-2 text-xs text-gray-400 flex-shrink-0">
                 <span className="flex items-center gap-1">
                   <Eye className="w-3 h-3" />
                   {formatNumber(dtu.engagement.views)}

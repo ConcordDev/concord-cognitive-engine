@@ -185,7 +185,7 @@ export function InventoryReportBuilder() {
       </div>
 
       {!report ? (
-        <div className="px-4 py-12 text-center text-xs text-gray-500">
+        <div className="px-4 py-12 text-center text-xs text-gray-400">
           <FileText className="w-7 h-7 mx-auto mb-2 opacity-30" />
           No report generated yet. Pick a framework and year, then Generate.
         </div>
@@ -201,11 +201,11 @@ export function InventoryReportBuilder() {
                 {report.framework.replace(/_/g, ' ')} · {report.reportingYear}
               </span>
             </div>
-            <div className="text-[10px] text-gray-500">
+            <div className="text-[10px] text-gray-400">
               Boundary: {report.boundary} · Generated{' '}
               {new Date(report.generatedAt).toLocaleString()}
             </div>
-            <div className="text-[10px] text-gray-600 mt-0.5">{report.methodology}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">{report.methodology}</div>
           </div>
 
           {/* Summary tiles */}
@@ -226,7 +226,7 @@ export function InventoryReportBuilder() {
 
           {report.summary.activeTargets.length > 0 && (
             <div className="rounded-md border border-white/10 bg-white/[0.02] p-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
                 Active reduction targets
               </div>
               <ul className="space-y-0.5">
@@ -258,7 +258,7 @@ export function InventoryReportBuilder() {
                   <span className="text-xs font-semibold text-white">
                     Scope {sec.scope}
                   </span>
-                  <span className="text-[10px] text-gray-500">
+                  <span className="text-[10px] text-gray-400">
                     {sec.lineItemCount} line item{sec.lineItemCount === 1 ? '' : 's'}
                   </span>
                   <span className="ml-auto text-xs font-mono tabular-nums text-emerald-300">
@@ -268,12 +268,12 @@ export function InventoryReportBuilder() {
                 {expanded === sec.scope && (
                   <div className="max-h-72 overflow-y-auto">
                     {sec.lineItems.length === 0 ? (
-                      <div className="px-3 py-6 text-center text-xs text-gray-500">
+                      <div className="px-3 py-6 text-center text-xs text-gray-400">
                         No Scope {sec.scope} activities for {report.reportingYear}.
                       </div>
                     ) : (
                       <table className="w-full text-[11px]">
-                        <thead className="text-gray-500 border-b border-white/5">
+                        <thead className="text-gray-400 border-b border-white/5">
                           <tr>
                             <th className="text-left px-3 py-1 font-normal">Date</th>
                             <th className="text-left px-2 py-1 font-normal">Factor</th>
@@ -311,7 +311,7 @@ export function InventoryReportBuilder() {
                                       ? 'bg-emerald-500/15 text-emerald-300'
                                       : li.verificationStatus === 'rejected'
                                         ? 'bg-rose-500/15 text-rose-300'
-                                        : 'bg-white/5 text-gray-500',
+                                        : 'bg-white/5 text-gray-400',
                                   )}
                                 >
                                   {li.verificationStatus}
@@ -367,7 +367,7 @@ function SummaryTile({
           : 'text-emerald-300';
   return (
     <div className="rounded border border-white/10 bg-white/[0.03] p-2">
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-sm font-mono font-bold tabular-nums', colour)}>{value}</div>
     </div>
   );

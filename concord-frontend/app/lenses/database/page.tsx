@@ -175,7 +175,7 @@ function StatusCard({ title, value, icon, status, detail }: {
       </div>
       <p className="text-sm text-gray-400">{title}</p>
       <p className={`text-lg font-bold ${colors[status]}`}>{value}</p>
-      {detail && <p className="text-xs text-gray-500 mt-1">{detail}</p>}
+      {detail && <p className="text-xs text-gray-400 mt-1">{detail}</p>}
     </div>
   );
 }
@@ -204,7 +204,7 @@ function MiniBarChart({ data, label, color }: { data: number[]; label: string; c
           />
         ))}
       </div>
-      <p className="text-xs text-gray-500 mt-1 text-right">{data[data.length - 1]?.toFixed(1)}</p>
+      <p className="text-xs text-gray-400 mt-1 text-right">{data[data.length - 1]?.toFixed(1)}</p>
     </div>
   );
 }
@@ -535,7 +535,7 @@ export default function DatabaseLensPage() {
                     <Terminal className="w-4 h-4" />
                     SQL Query
                   </h2>
-                  <span className="text-xs text-gray-500">Ctrl+Enter to execute</span>
+                  <span className="text-xs text-gray-400">Ctrl+Enter to execute</span>
                 </div>
                 <textarea
                   ref={textareaRef}
@@ -563,7 +563,7 @@ export default function DatabaseLensPage() {
                     Clear
                   </button>
                   {queryResult && (
-                    <span className="text-xs text-gray-500 ml-auto">
+                    <span className="text-xs text-gray-400 ml-auto">
                       {queryResult.rowCount} row{queryResult.rowCount !== 1 ? 's' : ''} in {queryResult.duration}ms
                       {queryResult.error && <span className="text-red-400 ml-2">{queryResult.error}</span>}
                     </span>
@@ -604,7 +604,7 @@ export default function DatabaseLensPage() {
                       </thead>
                       <tbody>
                         {paginatedRows.length === 0 ? (
-                          <tr><td colSpan={queryResult.columns.length} className="px-3 py-8 text-center text-gray-500">No rows returned</td></tr>
+                          <tr><td colSpan={queryResult.columns.length} className="px-3 py-8 text-center text-gray-400">No rows returned</td></tr>
                         ) : (
                           paginatedRows.map((row, ri) => (
                             <tr key={ri} className="border-b border-lattice-border/40 hover:bg-lattice-surface/60 transition-colors">
@@ -623,7 +623,7 @@ export default function DatabaseLensPage() {
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between pt-2">
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-400">
                         Page {resultPage + 1} of {totalPages}
                       </span>
                       <div className="flex items-center gap-2">
@@ -646,7 +646,7 @@ export default function DatabaseLensPage() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+                <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                   <p>No query results yet. Run a query to see results here.</p>
                 </div>
               )}
@@ -666,7 +666,7 @@ export default function DatabaseLensPage() {
                         className="w-full text-left bg-lattice-surface border border-lattice-border/50 rounded p-2 hover:bg-lattice-elevated transition-colors"
                       >
                         <p className="text-xs font-medium text-white truncate">{item.title}</p>
-                        <p className="text-[11px] text-gray-500 font-mono truncate">{String((item.data as Record<string, unknown>)?.sql || '').slice(0, 60)}</p>
+                        <p className="text-[11px] text-gray-400 font-mono truncate">{String((item.data as Record<string, unknown>)?.sql || '').slice(0, 60)}</p>
                       </button>
                     ))}
                   </div>
@@ -687,7 +687,7 @@ export default function DatabaseLensPage() {
                   Tables ({tables.length})
                 </h2>
                 <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     value={tableFilter}
                     onChange={e => setTableFilter(e.target.value)}
@@ -710,7 +710,7 @@ export default function DatabaseLensPage() {
                         <Table2 className="w-3.5 h-3.5" />
                         {t.name}
                       </span>
-                      <span className="text-xs text-gray-500">{t.rowCount.toLocaleString()} rows</span>
+                      <span className="text-xs text-gray-400">{t.rowCount.toLocaleString()} rows</span>
                     </button>
                   ))}
                 </div>
@@ -725,7 +725,7 @@ export default function DatabaseLensPage() {
                         <Columns className="w-4 h-4" />
                         {selectedTableInfo.schema}.{selectedTableInfo.name}
                       </h2>
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
                         <span>{selectedTableInfo.rowCount.toLocaleString()} rows</span>
                         <span>{formatBytes(selectedTableInfo.sizeBytes)}</span>
                       </div>
@@ -750,8 +750,8 @@ export default function DatabaseLensPage() {
                                 {col.name}
                               </td>
                               <td className="px-3 py-2 font-mono text-xs text-neon-purple">{col.type}</td>
-                              <td className="px-3 py-2 text-xs">{col.nullable ? <span className="text-gray-500">YES</span> : <span className="text-neon-pink">NOT NULL</span>}</td>
-                              <td className="px-3 py-2 font-mono text-xs text-gray-500">{col.defaultValue ?? '-'}</td>
+                              <td className="px-3 py-2 text-xs">{col.nullable ? <span className="text-gray-400">YES</span> : <span className="text-neon-pink">NOT NULL</span>}</td>
+                              <td className="px-3 py-2 font-mono text-xs text-gray-400">{col.defaultValue ?? '-'}</td>
                               <td className="px-3 py-2 text-xs">
                                 {col.isPrimary && <span className="px-1.5 py-0.5 bg-neon-yellow/10 text-neon-yellow rounded text-[10px] font-bold">PK</span>}
                                 {col.isForeign && <span className="px-1.5 py-0.5 bg-neon-blue/10 text-neon-blue rounded text-[10px] font-bold ml-1">FK</span>}
@@ -774,7 +774,7 @@ export default function DatabaseLensPage() {
                     </button>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                  <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                     <Table2 className="w-10 h-10 mb-3 opacity-30" />
                     <p className="text-sm">Select a table to view its schema</p>
                   </div>
@@ -805,7 +805,7 @@ export default function DatabaseLensPage() {
                     >
                       <div className="flex items-center justify-between">
                         <h3 className="font-mono text-sm font-bold text-neon-cyan">{t.name}</h3>
-                        <span className="text-xs text-gray-500">{t.rowCount.toLocaleString()} rows</span>
+                        <span className="text-xs text-gray-400">{t.rowCount.toLocaleString()} rows</span>
                       </div>
                       <div className="space-y-0.5">
                         {t.columns.map(c => (
@@ -844,10 +844,10 @@ export default function DatabaseLensPage() {
               <div className="bg-lattice-surface rounded p-3">
                 <h3 className="text-xs font-semibold text-gray-400 mb-2">Relationship Summary</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div><span className="text-gray-500">Tables:</span> <span className="text-neon-cyan font-bold">{tables.length}</span></div>
-                  <div><span className="text-gray-500">Foreign Keys:</span> <span className="text-neon-blue font-bold">{relationships.length}</span></div>
-                  <div><span className="text-gray-500">Total Columns:</span> <span className="text-neon-purple font-bold">{tables.reduce((s, t) => s + t.columns.length, 0)}</span></div>
-                  <div><span className="text-gray-500">Total Rows:</span> <span className="text-neon-green font-bold">{tables.reduce((s, t) => s + t.rowCount, 0).toLocaleString()}</span></div>
+                  <div><span className="text-gray-400">Tables:</span> <span className="text-neon-cyan font-bold">{tables.length}</span></div>
+                  <div><span className="text-gray-400">Foreign Keys:</span> <span className="text-neon-blue font-bold">{relationships.length}</span></div>
+                  <div><span className="text-gray-400">Total Columns:</span> <span className="text-neon-purple font-bold">{tables.reduce((s, t) => s + t.columns.length, 0)}</span></div>
+                  <div><span className="text-gray-400">Total Rows:</span> <span className="text-neon-green font-bold">{tables.reduce((s, t) => s + t.rowCount, 0).toLocaleString()}</span></div>
                 </div>
               </div>
             </div>
@@ -863,7 +863,7 @@ export default function DatabaseLensPage() {
                   <Key className="w-4 h-4" />
                   Indexes ({indexes.length})
                 </h2>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   Total index size: {formatBytes(indexes.reduce((s, idx) => s + idx.sizeBytes, 0))}
                 </span>
               </div>
@@ -1023,7 +1023,7 @@ export default function DatabaseLensPage() {
                 {queryHistory.length > 0 && (
                   <button
                     onClick={() => setQueryHistory([])}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-400 transition-colors"
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 transition-colors"
                   >
                     <Trash2 className="w-3 h-3" />
                     Clear
@@ -1031,7 +1031,7 @@ export default function DatabaseLensPage() {
                 )}
               </div>
               {queryHistory.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                <div className="flex flex-col items-center justify-center h-48 text-gray-400">
                   <History className="w-10 h-10 mb-3 opacity-30" />
                   <p className="text-sm">No queries executed yet</p>
                   <p className="text-xs mt-1">Execute a query in the editor and it will appear here</p>
@@ -1050,7 +1050,7 @@ export default function DatabaseLensPage() {
                           {entry.success
                             ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
                             : <XCircle className="w-3.5 h-3.5 text-red-400" />}
-                          <span className="text-gray-500">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                          <span className="text-gray-400">{new Date(entry.timestamp).toLocaleTimeString()}</span>
                           <span className="text-gray-600">|</span>
                           <span className="text-gray-400">{entry.duration}ms</span>
                           <span className="text-gray-600">|</span>
@@ -1062,7 +1062,7 @@ export default function DatabaseLensPage() {
                             className="p-1 hover:bg-lattice-border/30 rounded transition-colors"
                             title="Copy to clipboard"
                           >
-                            <Copy className="w-3 h-3 text-gray-500" />
+                            <Copy className="w-3 h-3 text-gray-400" />
                           </button>
                           <button
                             onClick={() => { setSql(entry.sql); setActiveTab('query'); }}
@@ -1106,15 +1106,15 @@ export default function DatabaseLensPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalTables ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Tables</p>
+                <p className="text-[10px] text-gray-400">Tables</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-green">{String(actionResult.totalColumns ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Columns</p>
+                <p className="text-[10px] text-gray-400">Columns</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-sm font-bold ${Number(actionResult.totalIssues) > 0 ? 'text-red-400' : 'text-neon-green'}`}>{String(actionResult.totalIssues ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Issues</p>
+                <p className="text-[10px] text-gray-400">Issues</p>
               </div>
             </div>
             <div className="space-y-1">
@@ -1132,7 +1132,7 @@ export default function DatabaseLensPage() {
                 {(actionResult.tables as Array<{table:string;columns:number;hasPrimaryKey:boolean;indexedColumns:number;issues:string[]}>).map((t, i) => (
                   <div key={i} className="flex items-center justify-between text-xs bg-lattice-surface/50 rounded px-2 py-1">
                     <span className="font-medium text-gray-200">{t.table}</span>
-                    <span className="text-gray-500">{t.columns} cols</span>
+                    <span className="text-gray-400">{t.columns} cols</span>
                     {t.issues.length > 0 ? (
                       <span className="text-red-400">{t.issues[0]}</span>
                     ) : (
@@ -1151,11 +1151,11 @@ export default function DatabaseLensPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-2xl font-bold ${actionResult.grade === 'A' ? 'text-neon-green' : actionResult.grade === 'F' ? 'text-red-400' : 'text-yellow-400'}`}>{String(actionResult.grade)}</p>
-                <p className="text-[10px] text-gray-500">Query Grade</p>
+                <p className="text-[10px] text-gray-400">Query Grade</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-xl font-bold ${Number(actionResult.issueCount) > 0 ? 'text-orange-400' : 'text-neon-green'}`}>{String(actionResult.issueCount ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Issues Found</p>
+                <p className="text-[10px] text-gray-400">Issues Found</p>
               </div>
             </div>
             {Array.isArray(actionResult.issues) && actionResult.issues.length > 0 && (
@@ -1166,7 +1166,7 @@ export default function DatabaseLensPage() {
                       <span className="text-xs font-medium text-gray-200">{issue.issue}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${issue.severity === 'critical' ? 'bg-red-500/20 text-red-400' : issue.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{issue.severity}</span>
                     </div>
-                    <p className="text-[10px] text-gray-500">{issue.fix}</p>
+                    <p className="text-[10px] text-gray-400">{issue.fix}</p>
                   </div>
                 ))}
               </div>
@@ -1180,15 +1180,15 @@ export default function DatabaseLensPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalChanges ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Changes</p>
+                <p className="text-[10px] text-gray-400">Changes</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-sm font-bold ${Number(actionResult.highRiskChanges) > 0 ? 'text-red-400' : 'text-neon-green'}`}>{String(actionResult.highRiskChanges ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">High Risk</p>
+                <p className="text-[10px] text-gray-400">High Risk</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-xs font-bold text-yellow-400">{String(actionResult.estimatedDowntime)}</p>
-                <p className="text-[10px] text-gray-500">Downtime</p>
+                <p className="text-[10px] text-gray-400">Downtime</p>
               </div>
             </div>
             {!!actionResult.recommendation && <p className={`text-xs px-3 py-2 rounded ${Number(actionResult.highRiskChanges) > 0 ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-neon-green/10 text-neon-green border border-neon-green/20'}`}>{String(actionResult.recommendation)}</p>}
@@ -1196,7 +1196,7 @@ export default function DatabaseLensPage() {
               <div className="space-y-1 max-h-40 overflow-y-auto">
                 {(actionResult.steps as Array<{step:number;operation:string;table:string;risk:string;reversible:boolean}>).map((s, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs bg-lattice-surface/50 rounded px-2 py-1">
-                    <span className="text-gray-500">#{s.step}</span>
+                    <span className="text-gray-400">#{s.step}</span>
                     <span className="font-mono text-neon-cyan">{s.operation}</span>
                     <span className="text-gray-300 flex-1">{s.table}</span>
                     <span className={`text-[10px] px-1 rounded ${s.risk === 'high' ? 'bg-red-500/20 text-red-400' : s.risk === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neon-green/20 text-neon-green'}`}>{s.risk}</span>
@@ -1213,15 +1213,15 @@ export default function DatabaseLensPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.queriesAnalyzed ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Queries Analyzed</p>
+                <p className="text-[10px] text-gray-400">Queries Analyzed</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-orange">{String(actionResult.suggestedIndexes ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Indexes Suggested</p>
+                <p className="text-[10px] text-gray-400">Indexes Suggested</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center col-span-1">
                 <p className="text-xs font-bold text-neon-green">{String(actionResult.estimatedSpeedup ?? '—')}</p>
-                <p className="text-[10px] text-gray-500">Speed Gain</p>
+                <p className="text-[10px] text-gray-400">Speed Gain</p>
               </div>
             </div>
             {Array.isArray(actionResult.recommendations) && (actionResult.recommendations as Array<{column:string;reason:string;type:string}>).map((r, i) => (

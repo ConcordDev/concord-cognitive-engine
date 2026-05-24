@@ -49,7 +49,7 @@ export function ResearchArxiv() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); setQ(draft.trim()); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search arXiv" className="w-full rounded border border-zinc-800 bg-zinc-950 pl-7 pr-2 py-1.5 text-xs text-white focus:border-emerald-500/40 focus:outline-none" />
         </div>
         <button type="submit" className="rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono text-emerald-200 hover:bg-emerald-500/20">search</button>
@@ -60,16 +60,16 @@ export function ResearchArxiv() {
           <a key={p.id} href={p.link} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5 hover:border-emerald-500/40">
             <p className="line-clamp-2 text-[12px] text-zinc-100">{p.title}</p>
             <p className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{p.summary}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
               <span>{p.authors.slice(0, 2).join(', ')}</span>
               <span>{p.published.slice(0, 10)}</span>
-              <ExternalLink className="h-3 w-3 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 text-zinc-400" />
             </div>
           </a>
         ))}
-        {list.length === 0 && !papers.isPending && !papers.isError && q.length >= 2 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No papers.</div>}
+        {list.length === 0 && !papers.isPending && !papers.isError && q.length >= 2 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No papers.</div>}
       </div>
-      {papers.isPending && q.length >= 2 && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {papers.isPending && q.length >= 2 && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
 }

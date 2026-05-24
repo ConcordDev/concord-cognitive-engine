@@ -121,7 +121,7 @@ function parseNumberList(text: string): number[] {
 /* ─────────────────────────── small atoms ───────────────────────────── */
 
 const INPUT = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white';
-const LABEL = 'text-[9px] uppercase tracking-wider text-zinc-500 font-semibold';
+const LABEL = 'text-[9px] uppercase tracking-wider text-zinc-400 font-semibold';
 const BTN = 'flex items-center gap-1 rounded px-2.5 py-1 text-[11px] font-semibold transition-colors';
 
 function Stat({ label, value, tone }: { label: string; value: string | number; tone?: string }) {
@@ -207,7 +207,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
               <div className="flex items-center gap-2">
                 <Ship className="w-4 h-4 text-blue-400" />
                 <span className="text-[12px] font-semibold text-white">{s.reference}</span>
-                <span className="text-[10px] text-zinc-500">{s.carrier}</span>
+                <span className="text-[10px] text-zinc-400">{s.carrier}</span>
                 <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase',
                   s.health === 'delivered' ? 'bg-emerald-500/20 text-emerald-300'
                     : s.health === 'delayed' ? 'bg-amber-500/20 text-amber-300'
@@ -216,7 +216,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
               </div>
               <button onClick={() => del(s.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete shipment"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
-            <div className="text-[10px] text-zinc-500 mt-0.5">
+            <div className="text-[10px] text-zinc-400 mt-0.5">
               {s.origin || '?'} <ArrowRight className="inline w-2.5 h-2.5" /> {s.destination || '?'}
               {s.etaDriftDays !== 0 && (
                 <span className={cn('ml-2 font-mono', s.etaDriftDays > 0 ? 'text-rose-300' : 'text-emerald-300')}>
@@ -244,7 +244,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
             )}
           </div>
         ))}
-        {data && data.shipments.length === 0 && <p className="text-[11px] text-zinc-600 py-3 text-center">No shipments tracked yet.</p>}
+        {data && data.shipments.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No shipments tracked yet.</p>}
       </div>
     </div>
   );
@@ -370,7 +370,7 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
         </div>
       </div>
 
-      {result?.message && <p className="text-[11px] text-zinc-500">{result.message}</p>}
+      {result?.message && <p className="text-[11px] text-zinc-400">{result.message}</p>}
       {result && !result.message && (
         <>
           <div className="grid grid-cols-3 gap-2">
@@ -383,7 +383,7 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
             series={[{ key: 'current', label: 'On hand', color: '#06b6d4' }, { key: 'target', label: 'Target', color: '#22c55e' }, { key: 'safety', label: 'Safety', color: '#f59e0b' }]} />
           <div className="overflow-x-auto">
             <table className="w-full text-[10px]">
-              <thead><tr className="text-zinc-500 uppercase tracking-wider text-left">
+              <thead><tr className="text-zinc-400 uppercase tracking-wider text-left">
                 <th className="py-1">Echelon</th><th>Tier</th><th>On hand</th><th>ROP</th><th>Safety</th><th>Target</th><th>Days</th><th>Imbalance</th>
               </tr></thead>
               <tbody>
@@ -499,7 +499,7 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
             </div>
           </div>
         ))}
-        {scenarios.length === 0 && <p className="text-[11px] text-zinc-600 py-3 text-center">No scenarios run yet.</p>}
+        {scenarios.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No scenarios run yet.</p>}
       </div>
     </div>
   );
@@ -548,7 +548,7 @@ function ForecastPanel({ notify }: { notify: (f: Feedback) => void }) {
         </div>
       </div>
 
-      {result?.message && <p className="text-[11px] text-zinc-500">{result.message}</p>}
+      {result?.message && <p className="text-[11px] text-zinc-400">{result.message}</p>}
       {result && !result.message && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -564,11 +564,11 @@ function ForecastPanel({ notify }: { notify: (f: Feedback) => void }) {
               <div key={p.period} className="rounded border border-cyan-700/40 bg-cyan-950/20 px-2.5 py-1.5">
                 <div className="text-[9px] uppercase tracking-wider text-cyan-400">{p.period}</div>
                 <div className="text-base font-bold text-cyan-200">{p.predicted}</div>
-                <div className="text-[9px] text-zinc-500">{p.confidence}</div>
+                <div className="text-[9px] text-zinc-400">{p.confidence}</div>
               </div>
             ))}
           </div>
-          <div className="text-[10px] text-zinc-500">Seasonal indices: {result.seasonalIndices.join(', ')}</div>
+          <div className="text-[10px] text-zinc-400">Seasonal indices: {result.seasonalIndices.join(', ')}</div>
         </>
       )}
     </div>
@@ -633,10 +633,10 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
                 <div className="flex items-center gap-2">
                   <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase',
                     a.severity === 'critical' ? 'bg-rose-500/30 text-rose-200' : 'bg-amber-500/30 text-amber-200')}>{a.severity}</span>
-                  <span className="text-[9px] text-zinc-500 uppercase">{a.kind.replace(/_/g, ' ')}</span>
+                  <span className="text-[9px] text-zinc-400 uppercase">{a.kind.replace(/_/g, ' ')}</span>
                   <span className="text-[11px] text-white">{a.message}</span>
                 </div>
-                {a.detail && <div className="text-[10px] text-zinc-500 mt-0.5">{a.detail}</div>}
+                {a.detail && <div className="text-[10px] text-zinc-400 mt-0.5">{a.detail}</div>}
               </div>
             ))}
             {result.alerts.length === 0 && (
@@ -716,7 +716,7 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
                   <div className="flex items-center gap-2">
                     <ClipboardList className="w-4 h-4 text-teal-400" />
                     <span className="text-[12px] font-semibold text-white">{wo.poNumber}</span>
-                    <span className="text-[10px] text-zinc-500">{wo.item} ×{wo.quantity}</span>
+                    <span className="text-[10px] text-zinc-400">{wo.item} ×{wo.quantity}</span>
                     {wo.overdue && <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-semibold">OVERDUE</span>}
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -739,7 +739,7 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
                 )}
               </div>
             ))}
-            {data.workOrders.length === 0 && <p className="text-[11px] text-zinc-600 py-3 text-center">No work orders yet.</p>}
+            {data.workOrders.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No work orders yet.</p>}
           </div>
         </>
       )}
@@ -779,7 +779,7 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
         </button>
       </div>
 
-      {result?.message && result.totalSpend === 0 && <p className="text-[11px] text-zinc-500">{result.message}</p>}
+      {result?.message && result.totalSpend === 0 && <p className="text-[11px] text-zinc-400">{result.message}</p>}
       {result && result.totalSpend > 0 && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -804,7 +804,7 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[10px]">
-              <thead><tr className="text-zinc-500 uppercase tracking-wider text-left"><th className="py-1">Supplier</th><th>Spend</th><th>Share</th></tr></thead>
+              <thead><tr className="text-zinc-400 uppercase tracking-wider text-left"><th className="py-1">Supplier</th><th>Spend</th><th>Share</th></tr></thead>
               <tbody>
                 {result.bySupplier.map((s) => (
                   <tr key={s.name} className="border-t border-zinc-800 text-zinc-300">
@@ -816,7 +816,7 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
               </tbody>
             </table>
           </div>
-          <div className="text-[10px] text-zinc-500">
+          <div className="text-[10px] text-zinc-400">
             Pareto concentration: {result.paretoConcentration}% of suppliers drive 80% of spend.
             {result.topSupplier && <> Top: <span className="text-amber-300">{result.topSupplier.name}</span> (${result.topSupplier.amount.toLocaleString()}).</>}
           </div>
@@ -864,7 +864,7 @@ export function SupplyChainPlanner() {
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={cn('flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] transition-colors',
-                tab === t.id ? 'bg-teal-500/20 text-teal-200' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/60')}>
+                tab === t.id ? 'bg-teal-500/20 text-teal-200' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60')}>
               <Icon className="w-3.5 h-3.5" /> {t.label}
             </button>
           );

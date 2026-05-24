@@ -81,7 +81,7 @@ export function WikipediaSearchPanel({ domain, title, initialQuery = '', classNa
           type="button"
           onClick={() => void fetchData(query)}
           disabled={loading || !query.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -89,7 +89,7 @@ export function WikipediaSearchPanel({ domain, title, initialQuery = '', classNa
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -106,11 +106,11 @@ export function WikipediaSearchPanel({ domain, title, initialQuery = '', classNa
       )}
 
       {!error && !loading && results.length === 0 && query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No Wikipedia matches.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No Wikipedia matches.</div>
       )}
 
       {!error && !query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">Type a topic to search Wikipedia.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Type a topic to search Wikipedia.</div>
       )}
 
       {results.length > 0 && (
@@ -129,10 +129,10 @@ export function WikipediaSearchPanel({ domain, title, initialQuery = '', classNa
                     className="text-zinc-200 font-medium hover:text-blue-300 leading-snug flex items-center gap-1"
                   >
                     {r.title}
-                    {r.url && <ExternalLink className="w-3 h-3 text-zinc-500 shrink-0" />}
+                    {r.url && <ExternalLink className="w-3 h-3 text-zinc-400 shrink-0" />}
                   </a>
                   {r.description && (
-                    <div className="text-[10px] text-zinc-500 mt-0.5 italic">{r.description}</div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5 italic">{r.description}</div>
                   )}
                   {r.extract && (
                     <p className="text-[11px] text-zinc-400 mt-1 line-clamp-3">{r.extract}</p>
@@ -144,7 +144,7 @@ export function WikipediaSearchPanel({ domain, title, initialQuery = '', classNa
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Wikipedia · {updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

@@ -382,7 +382,7 @@ export function PortfolioWorkbench() {
       <section className="panel p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold flex items-center gap-2 text-sm">
-            <Radio className={cn('w-4 h-4', streaming ? 'text-neon-green animate-pulse' : 'text-gray-500')} />
+            <Radio className={cn('w-4 h-4', streaming ? 'text-neon-green animate-pulse' : 'text-gray-400')} />
             Live P&amp;L Ticker
           </h3>
           <button
@@ -398,7 +398,7 @@ export function PortfolioWorkbench() {
           </button>
         </div>
         {!streaming && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Streaming polls real CoinGecko prices every 30s and re-totals against your FIFO cost basis.
           </p>
         )}
@@ -412,7 +412,7 @@ export function PortfolioWorkbench() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div className="p-3 bg-lattice-deep rounded-lg">
                 <p className="text-lg font-bold">{fmtUsd(stream.totalValueUsd)}</p>
-                <p className="text-[11px] text-gray-500">Live Portfolio Value</p>
+                <p className="text-[11px] text-gray-400">Live Portfolio Value</p>
               </div>
               <div className="p-3 bg-lattice-deep rounded-lg">
                 <p className={cn('text-lg font-bold flex items-center gap-1',
@@ -421,11 +421,11 @@ export function PortfolioWorkbench() {
                     ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   {stream.unrealizedPnlUsd >= 0 ? '+' : ''}{fmtUsd(stream.unrealizedPnlUsd)}
                 </p>
-                <p className="text-[11px] text-gray-500">Unrealized P&amp;L ({stream.unrealizedPnlPct}%)</p>
+                <p className="text-[11px] text-gray-400">Unrealized P&amp;L ({stream.unrealizedPnlPct}%)</p>
               </div>
               <div className="p-3 bg-lattice-deep rounded-lg">
                 <p className="text-lg font-bold">{stream.ticks.length}</p>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-gray-400">
                   Tracked · {new Date(stream.at).toLocaleTimeString()}
                 </p>
               </div>
@@ -435,7 +435,7 @@ export function PortfolioWorkbench() {
                 <div key={t.symbol} className="flex items-center justify-between text-xs px-3 py-1.5 bg-lattice-deep rounded">
                   <span className="font-mono font-semibold text-gray-200">{t.ticker}</span>
                   <span className="text-gray-400">{fmtUsd(t.priceUsd)}</span>
-                  <span className="text-gray-500">{t.qty} held</span>
+                  <span className="text-gray-400">{t.qty} held</span>
                   <span className={cn('font-mono',
                     (t.unrealizedPnlUsd ?? 0) >= 0 ? 'text-neon-green' : 'text-neon-pink')}>
                     {t.unrealizedPnlUsd != null
@@ -523,14 +523,14 @@ export function PortfolioWorkbench() {
         )}
 
         {filteredHoldings.length === 0 ? (
-          <p className="text-xs text-gray-500 py-4 text-center">
+          <p className="text-xs text-gray-400 py-4 text-center">
             {holdings.length === 0
               ? 'No holdings yet. Add a lot or sync an on-chain wallet below.'
               : 'No holdings on this network.'}
           </p>
         ) : (
           <>
-            <div className="text-xs text-gray-500 mb-2">
+            <div className="text-xs text-gray-400 mb-2">
               {chainFilter === 'all' ? 'All networks' : chainFilter} total:{' '}
               <span className="text-neon-green font-mono font-semibold">{fmtUsd(filteredTotal)}</span>
             </div>
@@ -571,7 +571,7 @@ export function PortfolioWorkbench() {
           <Link2 className="w-4 h-4 text-neon-purple" />
           On-chain Balance Sync
         </h3>
-        <p className="text-[11px] text-gray-500 mb-3">
+        <p className="text-[11px] text-gray-400 mb-3">
           Read-only native-balance import via public RPC. The balance lands as a zero-cost
           observation lot — set a cost basis with Add Holding to track realized P&amp;L.
         </p>
@@ -606,7 +606,7 @@ export function PortfolioWorkbench() {
                 <span className="font-mono text-gray-400">
                   {s.address.slice(0, 8)}…{s.address.slice(-6)}
                 </span>
-                <span className="capitalize text-gray-500">{s.chain}</span>
+                <span className="capitalize text-gray-400">{s.chain}</span>
                 <span className="font-mono text-gray-200">{s.balance} {s.nativeTicker}</span>
                 <span className="text-gray-600">{new Date(s.syncedAt).toLocaleString()}</span>
               </div>
@@ -640,15 +640,15 @@ export function PortfolioWorkbench() {
           </button>
         </div>
         {positions.length === 0 ? (
-          <p className="text-xs text-gray-500 py-2 text-center">No staking positions yet.</p>
+          <p className="text-xs text-gray-400 py-2 text-center">No staking positions yet.</p>
         ) : (
           <div className="space-y-1.5">
             {positions.map(p => (
               <div key={p.id} className="flex items-center justify-between px-3 py-2 bg-lattice-deep rounded-lg text-xs">
                 <span className="font-mono font-bold text-gray-100 w-16">{p.ticker}</span>
                 <span className="text-gray-400">{p.qty} staked</span>
-                <span className="text-gray-500">{p.aprPct != null ? `${p.aprPct}% APR` : 'APR n/a'}</span>
-                <span className="text-gray-500 truncate max-w-[120px]">{p.validator || 'no validator'}</span>
+                <span className="text-gray-400">{p.aprPct != null ? `${p.aprPct}% APR` : 'APR n/a'}</span>
+                <span className="text-gray-400 truncate max-w-[120px]">{p.validator || 'no validator'}</span>
                 <span className="text-neon-green font-mono">
                   +{fmtUsd(p.cumulativeRewardsUsd)} rewards
                 </span>
@@ -660,7 +660,7 @@ export function PortfolioWorkbench() {
                     Unstake
                   </button>
                 ) : (
-                  <span className="px-2 py-0.5 rounded bg-lattice-surface text-gray-500 text-[10px]">Unstaked</span>
+                  <span className="px-2 py-0.5 rounded bg-lattice-surface text-gray-400 text-[10px]">Unstaked</span>
                 )}
               </div>
             ))}
@@ -685,12 +685,12 @@ export function PortfolioWorkbench() {
           </button>
         </div>
         {breakdown.length === 0 ? (
-          <p className="text-xs text-gray-500 py-2 text-center">
+          <p className="text-xs text-gray-400 py-2 text-center">
             Run Compute to see current vs equal-weight target allocation and rebalancing trades.
           </p>
         ) : (
           <div className="space-y-3">
-            <p className="text-[11px] text-gray-500">Target mode: {targetMode}</p>
+            <p className="text-[11px] text-gray-400">Target mode: {targetMode}</p>
             <ChartKit
               kind="bar"
               data={allocChartData}
@@ -716,7 +716,7 @@ export function PortfolioWorkbench() {
                     </span>
                     <span className="font-mono font-bold text-gray-100">{r.ticker}</span>
                     <span className="text-gray-400">{fmtUsd(r.deltaUsd)}</span>
-                    <span className="text-gray-500">{r.deltaQty} units</span>
+                    <span className="text-gray-400">{r.deltaQty} units</span>
                     <span className="text-gray-600">{r.currentPct}% → {r.targetPct}%</span>
                   </div>
                 ))}
@@ -734,7 +734,7 @@ export function PortfolioWorkbench() {
           <Upload className="w-4 h-4 text-neon-blue" />
           Transaction CSV Import
         </h3>
-        <p className="text-[11px] text-gray-500 mb-2">
+        <p className="text-[11px] text-gray-400 mb-2">
           Paste an exchange export. Required columns: type (buy/sell), symbol, qty. Optional: date, price, total, fee.
           Buys create cost-basis lots; sells close lots FIFO with realized G/L.
         </p>
@@ -778,7 +778,7 @@ export function PortfolioWorkbench() {
       <section className="panel p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold flex items-center gap-2 text-sm">
-            <BellRing className={cn('w-4 h-4', deliveryUnread > 0 ? 'text-yellow-400' : 'text-gray-500')} />
+            <BellRing className={cn('w-4 h-4', deliveryUnread > 0 ? 'text-yellow-400' : 'text-gray-400')} />
             Price-alert Delivery
             {deliveryUnread > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-[10px]">
@@ -805,12 +805,12 @@ export function PortfolioWorkbench() {
             </button>
           </div>
         </div>
-        <p className="text-[11px] text-gray-500 mb-2">
+        <p className="text-[11px] text-gray-400 mb-2">
           Runs your armed price alerts against live CoinGecko prices and pushes any crossings as
           delivered notifications (also emitted on the <code>crypto:alert</code> socket channel).
         </p>
         {deliveries.length === 0 ? (
-          <p className="text-xs text-gray-500 py-2 text-center">No alert deliveries yet.</p>
+          <p className="text-xs text-gray-400 py-2 text-center">No alert deliveries yet.</p>
         ) : (
           <div className="space-y-1.5">
             {deliveries.map(d => (

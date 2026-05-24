@@ -87,7 +87,7 @@ export function DistanceMatrixPanel() {
       </header>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 text-[10px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 text-[10px] uppercase tracking-wider text-zinc-400">
           <span>Name</span><span>Latitude</span><span>Longitude</span><span></span>
         </div>
         {waypoints.map((w, i) => (
@@ -95,7 +95,7 @@ export function DistanceMatrixPanel() {
             <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" placeholder={`Point_${i}`} value={w.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
             <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" placeholder="40.71" value={w.lat} onChange={(e) => updateRow(i, 'lat', e.target.value)} />
             <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" placeholder="-74.00" value={w.lon} onChange={(e) => updateRow(i, 'lon', e.target.value)} />
-            <button type="button" onClick={() => removeRow(i)} className="rounded border border-zinc-800 bg-zinc-950 text-xs text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => removeRow(i)} className="rounded border border-zinc-800 bg-zinc-950 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3.5 w-3.5" /></button>
           </div>
         ))}
         <div className="flex items-center gap-2">
@@ -111,8 +111,8 @@ export function DistanceMatrixPanel() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Distance matrix (km)</div>
-          {!matrix && <div className="text-[11px] text-zinc-500">Compute to populate.</div>}
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Distance matrix (km)</div>
+          {!matrix && <div className="text-[11px] text-zinc-400">Compute to populate.</div>}
           {matrix?.matrix && matrix.labels && (
             <div className="overflow-x-auto">
               <table className="w-full text-[10px] font-mono">
@@ -144,25 +144,25 @@ export function DistanceMatrixPanel() {
           )}
         </div>
         <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Optimal route (nearest-neighbor TSP)</div>
-          {!route && <div className="text-[11px] text-zinc-500">Compute to populate.</div>}
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Optimal route (nearest-neighbor TSP)</div>
+          {!route && <div className="text-[11px] text-zinc-400">Compute to populate.</div>}
           {route?.route && (
             <div className="space-y-1 text-[11px]">
               <div className="mb-2 rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1.5">
-                <div className="text-[9px] uppercase tracking-wider text-zinc-500">Total distance</div>
+                <div className="text-[9px] uppercase tracking-wider text-zinc-400">Total distance</div>
                 <div className="font-mono text-sky-200">{route.totalDistanceKm} km</div>
               </div>
               <ol className="space-y-0.5">
                 {route.route.map((r, i) => (
                   <li key={i} className="flex items-center gap-2 rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1">
-                    <span className="font-mono text-[9px] text-zinc-500">{(i + 1).toString().padStart(2, '0')}</span>
+                    <span className="font-mono text-[9px] text-zinc-400">{(i + 1).toString().padStart(2, '0')}</span>
                     <span className="text-zinc-100">{r}</span>
                   </li>
                 ))}
               </ol>
               {route.legs && route.legs.length > 0 && (
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-[10px] text-zinc-500 hover:text-zinc-300">Legs ({route.legs.length})</summary>
+                  <summary className="cursor-pointer text-[10px] text-zinc-400 hover:text-zinc-300">Legs ({route.legs.length})</summary>
                   <div className="mt-1 space-y-0.5">
                     {route.legs.map((leg, i) => (
                       <div key={i} className="flex items-center justify-between rounded border border-sky-500/10 bg-zinc-950/40 px-2 py-0.5 text-[10px]">

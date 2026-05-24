@@ -108,7 +108,7 @@ export function WikipediaOnThisDayPanel({ className }: { className?: string }) {
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -135,7 +135,7 @@ export function WikipediaOnThisDayPanel({ className }: { className?: string }) {
             >
               <Icon className="w-3 h-3" aria-hidden="true" />
               {TAB_LABELS[t]}
-              {count > 0 && <span className="text-[10px] text-zinc-500 font-mono">{count}</span>}
+              {count > 0 && <span className="text-[10px] text-zinc-400 font-mono">{count}</span>}
             </button>
           );
         })}
@@ -144,7 +144,7 @@ export function WikipediaOnThisDayPanel({ className }: { className?: string }) {
       <div className="min-h-[300px] max-h-[700px] overflow-y-auto">
         {loading && !data && (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-5 h-5 animate-spin text-zinc-500" aria-hidden="true" />
+            <Loader2 className="w-5 h-5 animate-spin text-zinc-400" aria-hidden="true" />
           </div>
         )}
         {error && (
@@ -154,7 +154,7 @@ export function WikipediaOnThisDayPanel({ className }: { className?: string }) {
           </div>
         )}
         {!error && items.length === 0 && !loading && (
-          <div className="px-3 py-8 text-xs text-zinc-500 italic text-center">
+          <div className="px-3 py-8 text-xs text-zinc-400 italic text-center">
             No <TabIcon className="inline w-3 h-3 -mt-0.5" /> {TAB_LABELS[tab].toLowerCase()} found for this date.
           </div>
         )}
@@ -178,12 +178,12 @@ export function WikipediaOnThisDayPanel({ className }: { className?: string }) {
                           <div className="flex items-center gap-1">
                             <span className="text-zinc-300 font-medium truncate">{p.title}</span>
                             {p.url && (
-                              <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-violet-300 shrink-0" aria-label={`Open ${p.title} on Wikipedia`}>
+                              <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-violet-300 shrink-0" aria-label={`Open ${p.title} on Wikipedia`}>
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                             )}
                           </div>
-                          {p.extract && <p className="text-zinc-500 text-[10px] leading-tight line-clamp-2 mt-0.5">{p.extract}</p>}
+                          {p.extract && <p className="text-zinc-400 text-[10px] leading-tight line-clamp-2 mt-0.5">{p.extract}</p>}
                         </div>
                       </li>
                     ))}
@@ -195,7 +195,7 @@ export function WikipediaOnThisDayPanel({ className }: { className?: string }) {
         )}
       </div>
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Wikimedia · {updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

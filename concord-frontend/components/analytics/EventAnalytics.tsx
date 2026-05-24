@@ -70,14 +70,14 @@ export function EventAnalytics() {
     setRet(r.data?.ok ? (r.data.result?.retention as RetentionDay[]) : null);
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Event Analytics</h3>
-        <span className="text-[11px] text-zinc-500">Mixpanel / Amplitude shape</span>
+        <span className="text-[11px] text-zinc-400">Mixpanel / Amplitude shape</span>
       </div>
 
       {dash && (
@@ -85,7 +85,7 @@ export function EventAnalytics() {
           {([['Events', dash.totalEvents], ['Users', dash.uniqueUsers], ['Today', dash.eventsToday], ['Types', dash.eventTypes]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -93,7 +93,7 @@ export function EventAnalytics() {
 
       {/* Event tracker */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Track an event</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Track an event</p>
         <div className="flex flex-wrap gap-1.5">
           <input value={evt.name} onChange={e => setEvt({ ...evt, name: e.target.value })} placeholder="event name"
             className="flex-1 min-w-[110px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
@@ -121,7 +121,7 @@ export function EventAnalytics() {
       <div className="grid sm:grid-cols-2 gap-3">
         {/* Funnel + retention */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Funnel / retention</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Funnel / retention</p>
           <input value={steps} onChange={e => setSteps(e.target.value)} placeholder="event steps, comma-separated"
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 mb-1.5" />
           <div className="flex gap-1.5 mb-2">
@@ -152,7 +152,7 @@ export function EventAnalytics() {
 
         {/* Segment */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Segment by property</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Segment by property</p>
           <div className="flex gap-1.5 mb-2">
             <input value={seg.eventName} onChange={e => setSeg({ ...seg, eventName: e.target.value })} placeholder="event"
               className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
@@ -164,7 +164,7 @@ export function EventAnalytics() {
           </div>
           {segResult && (
             <ul className="space-y-1">
-              {segResult.length === 0 && <li className="text-[11px] text-zinc-600 italic">No data.</li>}
+              {segResult.length === 0 && <li className="text-[11px] text-zinc-400 italic">No data.</li>}
               {segResult.map(s => (
                 <li key={s.value} className="text-[11px]">
                   <div className="flex justify-between text-zinc-300"><span className="truncate">{s.value}</span><span>{s.count} · {s.pct}%</span></div>

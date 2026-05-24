@@ -160,7 +160,7 @@ export function DecisionJournal() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+      <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading decision journal...
       </div>
     );
@@ -206,7 +206,7 @@ export function DecisionJournal() {
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <Target className="w-4 h-4 text-neon-cyan" /> Reliability Diagram
           </h3>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-gray-400 mb-3">
             Predicted confidence vs observed outcome rate per bin. A perfectly calibrated
             forecaster has the two bars equal in every bin.
           </p>
@@ -326,7 +326,7 @@ export function DecisionJournal() {
 
         {/* Decision list */}
         {decisions.length === 0 ? (
-          <p className="text-center py-8 text-gray-500 text-sm">
+          <p className="text-center py-8 text-gray-400 text-sm">
             No decisions logged yet. Click &quot;Log Decision&quot; to start your journal.
           </p>
         ) : (
@@ -346,7 +346,7 @@ export function DecisionJournal() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{d.title}</p>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-0.5">
                         <span>Conf: {(d.confidence * 100).toFixed(0)}%</span>
                         <span className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple">{d.domain}</span>
                         <span>{fmtDate(d.createdAt)}</span>
@@ -355,13 +355,13 @@ export function DecisionJournal() {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => setExpanded(isExp ? null : d.id)}
-                        className="p-1 text-gray-500 hover:text-gray-300"
+                        className="p-1 text-gray-400 hover:text-gray-300"
                       >
                         {isExp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       <button
                         onClick={() => remove(d.id)}
-                        className="p-1 text-gray-500 hover:text-red-400"
+                        className="p-1 text-gray-400 hover:text-red-400"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -371,11 +371,11 @@ export function DecisionJournal() {
 
                   {isExp && (
                     <div className="mt-3 pt-3 border-t border-gray-700/30 space-y-2 text-xs text-gray-400">
-                      {d.context && <p><span className="text-gray-500">Context:</span> {d.context}</p>}
-                      {d.predictedOutcome && <p><span className="text-gray-500">Predicted:</span> {d.predictedOutcome}</p>}
-                      {d.actualOutcome && <p><span className="text-gray-500">Actual:</span> {d.actualOutcome}</p>}
-                      {d.lesson && <p className="text-neon-yellow"><span className="text-gray-500">Lesson:</span> {d.lesson}</p>}
-                      {d.resolvedAt && <p className="text-gray-500">Resolved: {fmtDate(d.resolvedAt)}</p>}
+                      {d.context && <p><span className="text-gray-400">Context:</span> {d.context}</p>}
+                      {d.predictedOutcome && <p><span className="text-gray-400">Predicted:</span> {d.predictedOutcome}</p>}
+                      {d.actualOutcome && <p><span className="text-gray-400">Actual:</span> {d.actualOutcome}</p>}
+                      {d.lesson && <p className="text-neon-yellow"><span className="text-gray-400">Lesson:</span> {d.lesson}</p>}
+                      {d.resolvedAt && <p className="text-gray-400">Resolved: {fmtDate(d.resolvedAt)}</p>}
                     </div>
                   )}
 

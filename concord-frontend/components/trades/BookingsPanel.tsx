@@ -53,7 +53,7 @@ export function BookingsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Inbox className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Online bookings</span>
-        <span className="ml-auto text-[10px] text-gray-500">{pending} pending · {bookings.length} total</span>
+        <span className="ml-auto text-[10px] text-gray-400">{pending} pending · {bookings.length} total</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
@@ -71,9 +71,9 @@ export function BookingsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : bookings.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Inbox className="w-6 h-6 mx-auto mb-2 opacity-30" />No bookings yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Inbox className="w-6 h-6 mx-auto mb-2 opacity-30" />No bookings yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {bookings.map(b => (
@@ -84,8 +84,8 @@ export function BookingsPanel() {
                     <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300">{b.serviceType}</span>
                     {b.status === 'confirmed' && <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">confirmed</span>}
                   </div>
-                  <div className="text-[10px] text-gray-500">{b.customerEmail}{b.customerPhone && ` · ${b.customerPhone}`}</div>
-                  {b.address && <div className="text-[10px] text-gray-500 truncate">{b.address}</div>}
+                  <div className="text-[10px] text-gray-400">{b.customerEmail}{b.customerPhone && ` · ${b.customerPhone}`}</div>
+                  {b.address && <div className="text-[10px] text-gray-400 truncate">{b.address}</div>}
                   {b.preferredDate && <div className="text-[10px] text-amber-300">Prefers {b.preferredDate} ({b.preferredTime})</div>}
                 </div>
                 {b.status === 'pending' && (

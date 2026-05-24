@@ -425,7 +425,7 @@ export default function AgentMonitorPage() {
                             {agent.id}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-gray-500 flex-wrap">
+                        <div className="flex items-center gap-4 mt-1 text-xs text-gray-400 flex-wrap">
                           {agent.territory && (
                             <span className="flex items-center gap-1">
                               <Search className="w-3 h-3" /> {agent.territory}
@@ -529,10 +529,10 @@ export default function AgentMonitorPage() {
                                   <div className="min-w-0 flex-1">
                                     <p className="text-sm text-gray-200 truncate">{f.title}</p>
                                     {f.detail && (
-                                      <p className="text-xs text-gray-500 truncate">{f.detail}</p>
+                                      <p className="text-xs text-gray-400 truncate">{f.detail}</p>
                                     )}
                                   </div>
-                                  <span className="text-xs text-gray-600 flex-shrink-0">
+                                  <span className="text-xs text-gray-400 flex-shrink-0">
                                     {relativeTime(f.timestamp)}
                                   </span>
                                 </div>
@@ -609,21 +609,21 @@ export default function AgentMonitorPage() {
                         {finding.severity}
                       </span>
                       {finding.agent_type && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           {agentTypeLabel(finding.agent_type)}
                         </span>
                       )}
-                      <span className="text-xs text-gray-600 ml-auto flex-shrink-0 flex items-center gap-1">
+                      <span className="text-xs text-gray-400 ml-auto flex-shrink-0 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {relativeTime(finding.timestamp)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-200">{finding.title}</p>
                     {finding.detail && (
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{finding.detail}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{finding.detail}</p>
                     )}
                     {finding.territory && (
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-600 mt-1">
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-400 mt-1">
                         <Search className="w-3 h-3" /> {finding.territory}
                       </span>
                     )}
@@ -676,7 +676,7 @@ export default function AgentMonitorPage() {
                           <Icon className="w-4 h-4 flex-shrink-0" />
                           <div className="min-w-0">
                             <p className="font-medium">{t.label}</p>
-                            <p className="text-xs text-gray-500 truncate">{t.description}</p>
+                            <p className="text-xs text-gray-400 truncate">{t.description}</p>
                           </div>
                         </button>
                       );

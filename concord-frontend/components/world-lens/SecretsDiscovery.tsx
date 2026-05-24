@@ -419,10 +419,10 @@ export default function SecretsDiscovery({ children, userId: _userId }: SecretsD
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-white">Discovery Journal</h3>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-500">{journal.length} discoveries</span>
+              <span className="text-[10px] text-gray-400">{journal.length} discoveries</span>
               <button
                 onClick={() => setShowJournal(false)}
-                className="text-[10px] text-gray-500 hover:text-white"
+                className="text-[10px] text-gray-400 hover:text-white"
               >
                 Close
               </button>
@@ -430,7 +430,7 @@ export default function SecretsDiscovery({ children, userId: _userId }: SecretsD
           </div>
 
           {journal.length === 0 ? (
-            <p className="text-xs text-gray-600">No discoveries yet. Explore the world to find secrets!</p>
+            <p className="text-xs text-gray-400">No discoveries yet. Explore the world to find secrets!</p>
           ) : (
             <div className="space-y-2">
               {getJournal().map((entry) => (
@@ -448,13 +448,13 @@ export default function SecretsDiscovery({ children, userId: _userId }: SecretsD
                       {entry.discovery.rarity}
                     </span>
                   </div>
-                  <p className="text-[10px] text-gray-500 mb-1">{entry.discovery.description}</p>
+                  <p className="text-[10px] text-gray-400 mb-1">{entry.discovery.description}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-[8px] text-gray-600">
+                    <span className="text-[8px] text-gray-400">
                       {new Date(entry.timestamp).toLocaleDateString()}
                     </span>
                     {entry.location && (
-                      <span className="text-[8px] text-gray-600">
+                      <span className="text-[8px] text-gray-400">
                         {entry.location.district}
                         {entry.location.cell ? ` @ ${entry.location.cell}` : ''}
                       </span>
@@ -470,7 +470,7 @@ export default function SecretsDiscovery({ children, userId: _userId }: SecretsD
       {/* Journal toggle button (unobtrusive) */}
       <button
         onClick={() => setShowJournal((prev) => !prev)}
-        className={`fixed top-16 left-4 z-[9300] ${panel} px-2.5 py-1.5 text-[10px] text-gray-500 hover:text-white transition-colors ${
+        className={`fixed top-16 left-4 z-[9300] ${panel} px-2.5 py-1.5 text-[10px] text-gray-400 hover:text-white transition-colors ${
           showJournal ? 'hidden' : ''
         }`}
         title="Discovery Journal"

@@ -44,7 +44,7 @@ export function LightroomExportPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -74,7 +74,7 @@ export function LightroomExportPanel() {
       </div>
 
       {presets.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No export presets. Save one for one-click exports.</p>
+        <p className="text-[11px] text-zinc-400 italic">No export presets. Save one for one-click exports.</p>
       ) : (
         <ul className="space-y-2">
           {presets.map((p) => (
@@ -83,13 +83,13 @@ export function LightroomExportPanel() {
                 <Download className="w-4 h-4 text-indigo-400" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{p.name}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {p.format.toUpperCase()} · quality {p.quality}
                     {p.longEdge ? ` · ${p.longEdge}px long edge` : ' · full size'}
                   </p>
                 </div>
               </div>
-              {p.watermark && <Droplet className="w-3.5 h-3.5 text-zinc-500" aria-label="Watermark" />}
+              {p.watermark && <Droplet className="w-3.5 h-3.5 text-zinc-400" aria-label="Watermark" />}
             </li>
           ))}
         </ul>

@@ -83,7 +83,7 @@ export function AnimationStudioSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-cyan-600/15 to-transparent">
         <Clapperboard className="w-5 h-5 text-cyan-400" />
         <h2 className="text-sm font-bold text-zinc-100">Animation Studio</h2>
-        <span className="text-[11px] text-zinc-500">FlipaClip + Pencil2D shape · frame-by-frame, onion skin</span>
+        <span className="text-[11px] text-zinc-400">FlipaClip + Pencil2D shape · frame-by-frame, onion skin</span>
       </header>
 
       <div className="p-4">
@@ -125,12 +125,12 @@ export function AnimationStudioSection() {
               {showTemplates && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                   {templates.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 italic col-span-3">Loading templates…</p>
+                    <p className="text-[11px] text-zinc-400 italic col-span-3">Loading templates…</p>
                   ) : templates.map((t) => (
                     <button key={t.id} type="button" onClick={() => createFromTemplate(t.id)}
                       className="text-left bg-zinc-950/60 border border-zinc-800 hover:border-cyan-600 rounded-lg p-2.5">
                       <p className="text-xs font-medium text-zinc-100">{t.label}</p>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">{t.description}</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">{t.description}</p>
                       <p className="text-[10px] text-cyan-400 mt-1">
                         {t.width}×{t.height} · {t.fps}fps · {t.frames} frame{t.frames === 1 ? '' : 's'} · {t.layers.length} layer{t.layers.length === 1 ? '' : 's'}
                       </p>
@@ -142,9 +142,9 @@ export function AnimationStudioSection() {
 
             {/* Gallery */}
             {loading ? (
-              <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
             ) : animations.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic py-6 text-center">No animations yet. Create one above and start drawing frames.</p>
+              <p className="text-[11px] text-zinc-400 italic py-6 text-center">No animations yet. Create one above and start drawing frames.</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {animations.map((a) => (
@@ -161,7 +161,7 @@ export function AnimationStudioSection() {
                     <div className="flex items-center justify-between px-2.5 py-1.5">
                       <div className="min-w-0">
                         <p className="text-xs text-zinc-100 truncate">{a.title}</p>
-                        <p className="text-[10px] text-zinc-500">{a.frameCount} frames · {a.fps} fps</p>
+                        <p className="text-[10px] text-zinc-400">{a.frameCount} frames · {a.fps} fps</p>
                       </div>
                       <button type="button" onClick={() => del(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                         <Trash2 className="w-3.5 h-3.5" />

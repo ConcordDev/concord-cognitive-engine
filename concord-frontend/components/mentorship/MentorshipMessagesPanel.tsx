@@ -90,12 +90,12 @@ export function MentorshipMessagesPanel() {
           </h4>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {messages.length === 0 ? (
-              <p className="text-xs text-zinc-500 text-center py-4">No messages yet. Say hello.</p>
+              <p className="text-xs text-zinc-400 text-center py-4">No messages yet. Say hello.</p>
             ) : messages.map((m) => (
               <div key={m.id} className="lens-card text-sm">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-xs text-neon-cyan">{m.fromName}</span>
-                  <span className="text-[10px] text-zinc-500">{new Date(m.at).toLocaleString()}</span>
+                  <span className="text-[10px] text-zinc-400">{new Date(m.at).toLocaleString()}</span>
                 </div>
                 <p className="text-zinc-200">{m.body}</p>
               </div>
@@ -137,21 +137,21 @@ export function MentorshipMessagesPanel() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
       ) : threads.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-8">No conversations yet. Start a new thread with a mentor or mentee.</p>
+        <p className="text-sm text-zinc-400 text-center py-8">No conversations yet. Start a new thread with a mentor or mentee.</p>
       ) : (
         <div className="space-y-2">
           {threads.map((t) => (
             <button key={t.threadKey} onClick={() => openThread(t.partnerId)} className="lens-card text-left w-full hover:border-neon-blue transition-colors">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm">{t.partnerId}</span>
-                <span className="text-[10px] text-zinc-500">{new Date(t.lastAt).toLocaleDateString()}</span>
+                <span className="text-[10px] text-zinc-400">{new Date(t.lastAt).toLocaleDateString()}</span>
               </div>
               <p className="text-xs text-zinc-400 truncate">
-                <span className="text-zinc-500">{t.lastFrom}:</span> {t.lastMessage}
+                <span className="text-zinc-400">{t.lastFrom}:</span> {t.lastMessage}
               </p>
-              <p className="text-[10px] text-zinc-500">{t.messageCount} message(s)</p>
+              <p className="text-[10px] text-zinc-400">{t.messageCount} message(s)</p>
             </button>
           ))}
         </div>

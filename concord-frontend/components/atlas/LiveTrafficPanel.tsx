@@ -108,10 +108,10 @@ export function LiveTrafficPanel() {
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-amber-500/40 focus:outline-none" />
         </div>
 
         <button
@@ -130,7 +130,7 @@ export function LiveTrafficPanel() {
           <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!result && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
             No data yet. Enter route coordinates to see a traffic-adjusted ETA.
           </div>
         )}
@@ -153,20 +153,20 @@ export function LiveTrafficPanel() {
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                 <p className="font-mono text-sm text-white">{result.distanceKm} km</p>
-                <p className="text-[10px] text-zinc-500">Distance</p>
+                <p className="text-[10px] text-zinc-400">Distance</p>
               </div>
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                 <p className="font-mono text-sm text-white">{result.localHour}h</p>
-                <p className="text-[10px] text-zinc-500">Local hour</p>
+                <p className="text-[10px] text-zinc-400">Local hour</p>
               </div>
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                 <p className="font-mono text-sm text-white">{result.legs.length}</p>
-                <p className="text-[10px] text-zinc-500">Legs</p>
+                <p className="text-[10px] text-zinc-400">Legs</p>
               </div>
             </div>
             {result.legs.length > 0 && (
               <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Per-leg congestion</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Per-leg congestion</div>
                 {result.legs.map((leg) => (
                   <div key={leg.index} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[11px]">
                     <span className="text-zinc-300">Leg {leg.index + 1} · {leg.distanceKm} km</span>
@@ -175,7 +175,7 @@ export function LiveTrafficPanel() {
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-zinc-600">Source: {result.source}</p>
+            <p className="text-[10px] text-zinc-400">Source: {result.source}</p>
           </div>
         )}
       </div>

@@ -224,7 +224,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
       <div className="flex items-center gap-2">
         <Zap className="w-3.5 h-3.5 text-neon-purple" />
         <h4 className="text-[11px] font-semibold uppercase tracking-wider text-neon-purple">Real actions</h4>
-        <span className="text-[10px] text-gray-500 font-mono">node {node.id.slice(0, 8)}</span>
+        <span className="text-[10px] text-gray-400 font-mono">node {node.id.slice(0, 8)}</span>
       </div>
 
       <div className="grid grid-cols-5 gap-1.5">

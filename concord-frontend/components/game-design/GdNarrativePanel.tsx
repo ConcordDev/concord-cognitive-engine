@@ -86,7 +86,7 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const titleOf = (id: string) => nodes.find((n) => n.id === id)?.title || '—';
@@ -132,7 +132,7 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
       )}
 
       {nodes.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No narrative nodes yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No narrative nodes yet.</p>
       ) : (
         <ul className="space-y-2">
           {nodes.map((n) => {
@@ -144,7 +144,7 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
                 <div className="flex items-center gap-2">
                   {n.kind === 'start' ? <Flag className="w-4 h-4 text-emerald-400 shrink-0" />
                     : n.kind === 'ending' ? <Square className="w-4 h-4 text-rose-400 shrink-0" />
-                      : <GitBranch className="w-4 h-4 text-zinc-500 shrink-0" />}
+                      : <GitBranch className="w-4 h-4 text-zinc-400 shrink-0" />}
                   <button type="button" onClick={() => setExpanded(isOpen ? null : n.id)} className="flex-1 text-left">
                     <span className="text-sm font-semibold text-zinc-100">{n.title}</span>
                     <span className={cn('ml-2 text-[10px] uppercase', KIND_COLOR[n.kind])}>{n.kind}</span>
@@ -162,7 +162,7 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
                       <li key={l.id} className="flex items-center gap-1.5 text-[11px] text-zinc-300">
                         <ArrowRight className="w-3 h-3 text-lime-400 shrink-0" />
                         <span className="text-amber-300">{l.label}</span>
-                        <span className="text-zinc-500">→</span>
+                        <span className="text-zinc-400">→</span>
                         <span className="flex-1 truncate">{titleOf(l.toId)}</span>
                         <button type="button" onClick={() => delLink(l.id)} className="text-zinc-600 hover:text-rose-400">
                           <Trash2 className="w-3 h-3" />
@@ -208,7 +208,7 @@ function GraphStat({ label, value }: { label: string; value: string | number }) 
   return (
     <div className="text-center">
       <p className="text-sm font-bold text-zinc-100 capitalize">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

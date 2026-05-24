@@ -75,14 +75,14 @@ export function MealPlanner() {
     await refresh(dates);
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <UtensilsCrossed className="w-4 h-4 text-orange-400" />
         <h3 className="text-sm font-bold text-zinc-100">Meal Planner</h3>
-        <span className="text-[11px] text-zinc-500">{grocery.length} grocery items</span>
+        <span className="text-[11px] text-zinc-400">{grocery.length} grocery items</span>
         <div className="ml-auto flex items-center gap-1">
           <button onClick={() => setOffset(o => o - 1)} className="p-1 rounded text-zinc-400 hover:bg-zinc-800" aria-label="Previous week"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-xs text-zinc-300">{offset === 0 ? 'This week' : offset > 0 ? `+${offset}w` : `${offset}w`}</span>
@@ -96,12 +96,12 @@ export function MealPlanner() {
           {dates.map(d => (
             <div key={d} className="text-center">
               <p className="text-[10px] text-zinc-400 font-medium">{new Date(d + 'T00:00').toLocaleDateString('default', { weekday: 'short' })}</p>
-              <p className="text-[9px] text-zinc-600">{d.slice(5)}</p>
+              <p className="text-[9px] text-zinc-400">{d.slice(5)}</p>
             </div>
           ))}
           {SLOTS.map(slot => (
             <div key={slot} className="contents">
-              <div className="flex items-center text-[10px] text-zinc-500">{SLOT_LABEL[slot]}</div>
+              <div className="flex items-center text-[10px] text-zinc-400">{SLOT_LABEL[slot]}</div>
               {dates.map(d => {
                 const meal = byKey.get(`${d}|${slot}`);
                 return (
@@ -114,7 +114,7 @@ export function MealPlanner() {
                     {meal ? (
                       <>
                         <p className="text-[9px] text-orange-300 font-semibold truncate">{meal.recipe}</p>
-                        <p className="text-[8px] text-zinc-500">{meal.servings} serv{meal.cook ? ` · ${meal.cook}` : ''}</p>
+                        <p className="text-[8px] text-zinc-400">{meal.servings} serv{meal.cook ? ` · ${meal.cook}` : ''}</p>
                       </>
                     ) : <Plus className="w-3 h-3 text-zinc-700 mx-auto mt-1.5" />}
                   </button>
@@ -126,11 +126,11 @@ export function MealPlanner() {
       </div>
 
       <div className="mt-3 bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-        <p className="text-[11px] uppercase tracking-wide text-zinc-500 mb-1.5 inline-flex items-center gap-1">
+        <p className="text-[11px] uppercase tracking-wide text-zinc-400 mb-1.5 inline-flex items-center gap-1">
           <ShoppingCart className="w-3 h-3 text-emerald-400" />Grocery list (from {meals.length} planned meals)
         </p>
         {grocery.length === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">No data yet — add meals with ingredients above.</p>
+          <p className="text-[11px] text-zinc-400 italic">No data yet — add meals with ingredients above.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
             {grocery.map(g => (
@@ -148,7 +148,7 @@ export function MealPlanner() {
           <div className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-md p-4 space-y-2.5" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-zinc-100">{editing.id ? 'Edit Meal' : 'Plan Meal'}</h4>
-              <button onClick={() => setEditing(null)} className="text-zinc-500 hover:text-zinc-200" aria-label="Close"><X className="w-4 h-4" /></button>
+              <button onClick={() => setEditing(null)} className="text-zinc-400 hover:text-zinc-200" aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <input type="date" value={editing.date} onChange={e => setEditing({ ...editing, date: e.target.value })}

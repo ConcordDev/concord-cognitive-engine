@@ -82,18 +82,18 @@ export function PostDetail({ postId, username, onBack, onOpenHashtag, onOpenDeta
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 p-6 text-sm text-zinc-500">
+        <div className="flex items-center gap-2 p-6 text-sm text-zinc-400">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading post…
         </div>
       ) : error || !post ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-10 text-center text-sm text-zinc-500">
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-10 text-center text-sm text-zinc-400">
           {error || 'Post not found.'}
         </div>
       ) : (
         <>
           {quoted && (
             <div className="ml-4 border-l-2 border-indigo-500/30 pl-2">
-              <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-600">Quoted</p>
+              <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Quoted</p>
               <PostCard
                 post={quoted}
                 username={username}

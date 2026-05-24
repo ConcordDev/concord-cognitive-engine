@@ -69,7 +69,7 @@ export function SharedComputationBanner({ onOpen }: { onOpen?: (p: ReloadPayload
         Open in playground
       </button>
       <button onClick={() => setDismissed(true)} aria-label="Dismiss"
-        className="p-1 text-gray-500 hover:text-gray-300">
+        className="p-1 text-gray-400 hover:text-gray-300">
         <X className="w-4 h-4" />
       </button>
     </motion.div>

@@ -200,7 +200,7 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           perplexity-shape
         </span>
-        <span className="ml-auto text-[10px] text-zinc-500 font-mono">
+        <span className="ml-auto text-[10px] text-zinc-400 font-mono">
           {sources.length} source{sources.length === 1 ? '' : 's'}
         </span>
       </header>
@@ -234,7 +234,7 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}

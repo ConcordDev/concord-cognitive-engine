@@ -63,7 +63,7 @@ export function ClauseExtractor({ contractId, onApplied }: { contractId: string 
         <ScanText className="w-4 h-4 text-neon-cyan" />
         <h3 className="text-sm font-semibold text-white">AI Clause Extraction</h3>
       </div>
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Paste a contract — clauses, dates, amounts and obligations are detected automatically.
       </p>
       <textarea
@@ -108,7 +108,7 @@ export function ClauseExtractor({ contractId, onApplied }: { contractId: string 
           )}
 
           <div>
-            <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">
               Detected clauses ({result.clauseCount})
             </p>
             <div className="space-y-1 max-h-52 overflow-y-auto">
@@ -118,9 +118,9 @@ export function ClauseExtractor({ contractId, onApplied }: { contractId: string 
                     className="mt-0.5 accent-neon-cyan" />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-white truncate">{cl.title}</p>
-                    <p className="text-[10px] text-gray-500 line-clamp-2">{cl.text}</p>
+                    <p className="text-[10px] text-gray-400 line-clamp-2">{cl.text}</p>
                   </div>
-                  <span className="text-[9px] text-gray-600 shrink-0">{cl.wordCount}w</span>
+                  <span className="text-[9px] text-gray-400 shrink-0">{cl.wordCount}w</span>
                 </label>
               ))}
             </div>
@@ -128,7 +128,7 @@ export function ClauseExtractor({ contractId, onApplied }: { contractId: string 
 
           {result.obligations.length > 0 && (
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1 inline-flex items-center gap-1">
+              <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1 inline-flex items-center gap-1">
                 <ListChecks className="w-3 h-3" />Obligations ({result.obligations.length})
               </p>
               <ul className="space-y-0.5 max-h-32 overflow-y-auto">

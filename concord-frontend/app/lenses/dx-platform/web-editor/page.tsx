@@ -166,7 +166,7 @@ export default function WebEditorPage() {
       <footer className="border-t border-zinc-800 p-3 max-h-64 overflow-auto">
         {status === "loading" && <p className="text-zinc-400">Loading Monaco from CDN…</p>}
         {err && <p className="text-red-400">Error: {err}</p>}
-        {status === "ready" && findings.length === 0 && <p className="text-zinc-500">No findings yet. Click Run detectors.</p>}
+        {status === "ready" && findings.length === 0 && <p className="text-zinc-400">No findings yet. Click Run detectors.</p>}
         <ul className="space-y-1">
           {findings.map((f, i) => (
             <li key={i} className="text-xs">

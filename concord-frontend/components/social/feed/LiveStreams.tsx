@@ -111,7 +111,7 @@ export function LiveStreams({ username }: LiveStreamsProps) {
         <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">
           <Radio className="w-4 h-4 animate-pulse text-rose-500" />
           <span className="text-sm font-medium text-zinc-100">{active.title}</span>
-          <span className="text-[10px] text-zinc-500">· @{active.hostName}</span>
+          <span className="text-[10px] text-zinc-400">· @{active.hostName}</span>
           <button
             type="button"
             onClick={hosting ? endStream : leaveStream}
@@ -125,10 +125,10 @@ export function LiveStreams({ username }: LiveStreamsProps) {
             {hosting ? (
               <video ref={videoRef} muted playsInline className="max-h-72 w-full object-contain" />
             ) : (
-              <div className="flex flex-col items-center gap-2 p-6 text-center text-xs text-zinc-500">
+              <div className="flex flex-col items-center gap-2 p-6 text-center text-xs text-zinc-400">
                 <Video className="w-8 h-8 text-zinc-700" />
                 You are watching @{active.hostName}&apos;s live stream.
-                <span className="text-[10px] text-zinc-600">
+                <span className="text-[10px] text-zinc-400">
                   Video is delivered via the host&apos;s WebRTC mesh; chat is live below.
                 </span>
               </div>
@@ -137,7 +137,7 @@ export function LiveStreams({ username }: LiveStreamsProps) {
           <div className="flex flex-col border-l border-zinc-800 h-72">
             <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
               {chat.length === 0 ? (
-                <p className="text-[11px] text-zinc-600 italic">No chat yet.</p>
+                <p className="text-[11px] text-zinc-400 italic">No chat yet.</p>
               ) : (
                 chat.map((c) => (
                   <p key={c.id} className="text-[11px] text-zinc-300">
@@ -211,15 +211,15 @@ export function LiveStreams({ username }: LiveStreamsProps) {
       </div>
 
       <div>
-        <div className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
+        <div className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-400 font-mono">
           <Eye className="w-3 h-3" /> Live now ({streams.length})
         </div>
         {loading ? (
-          <div className="flex items-center gap-2 p-4 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 p-4 text-xs text-zinc-400">
             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading streams…
           </div>
         ) : streams.length === 0 ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-8 text-center text-xs text-zinc-600">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-8 text-center text-xs text-zinc-400">
             No live streams right now. Be the first to go live.
           </div>
         ) : (
@@ -236,7 +236,7 @@ export function LiveStreams({ username }: LiveStreamsProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium text-zinc-200">{s.title}</p>
-                    <p className="text-[10px] text-zinc-500">@{s.hostName} · {s.kind}</p>
+                    <p className="text-[10px] text-zinc-400">@{s.hostName} · {s.kind}</p>
                   </div>
                   <span className="flex items-center gap-1 text-[10px] text-zinc-400">
                     <Users className="w-3 h-3" /> {s.viewers}

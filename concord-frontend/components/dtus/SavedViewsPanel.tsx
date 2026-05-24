@@ -82,7 +82,7 @@ export function SavedViewsPanel({
     <div className="space-y-3 rounded-xl border border-lattice-border bg-lattice-deep p-4">
       <h3 className="flex items-center gap-2 text-sm font-semibold">
         <Bookmark className="h-4 w-4 text-neon-purple" /> Smart Collections
-        {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" />}
+        {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
       </h3>
 
       {pendingFilter && (
@@ -113,7 +113,7 @@ export function SavedViewsPanel({
       )}
 
       {views.length === 0 ? (
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-gray-400">
           No saved collections. Build a filter and save it to pin a view.
         </p>
       ) : (
@@ -128,11 +128,11 @@ export function SavedViewsPanel({
                 className="min-w-0 flex-1 text-left"
               >
                 <p className="truncate text-xs font-medium text-white">{v.name}</p>
-                <p className="truncate text-[10px] text-gray-500">{describeFilter(v.filter)}</p>
+                <p className="truncate text-[10px] text-gray-400">{describeFilter(v.filter)}</p>
               </button>
               <button
                 onClick={() => remove(v.id)}
-                className="ml-2 text-gray-500 hover:text-red-400"
+                className="ml-2 text-gray-400 hover:text-red-400"
                 aria-label={`Delete ${v.name}`}
               >
                 <Trash2 className="h-3.5 w-3.5" />

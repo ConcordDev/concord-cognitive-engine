@@ -359,7 +359,7 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
         {tab === 'inbox' && (
           <div className="space-y-2">
             {inbox.length === 0 ? (
-              <p className="py-8 text-center text-xs text-slate-500">No messages yet.</p>
+              <p className="py-8 text-center text-xs text-slate-400">No messages yet.</p>
             ) : inbox.map((m) => (
               <button
                 key={m.id}
@@ -374,9 +374,9 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
                   <span className="truncate font-mono text-[10px] text-cyan-300">
                     {m.sender_id.slice(0, 12)}
                   </span>
-                  <span className="text-[10px] text-slate-500">{fmtTime(m.sent_at)}</span>
+                  <span className="text-[10px] text-slate-400">{fmtTime(m.sent_at)}</span>
                 </div>
-                <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
+                <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">
                   {m.source_world} → {m.dest_world} · {m.message_type} · {m.encryption_level}
                   {m.status === 'corrupted' && (
                     <span className="ml-1 rounded bg-rose-700/40 px-1 text-rose-200">corrupted</span>
@@ -505,7 +505,7 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
             >
               {sending ? 'Sending…' : `Send${costPreview?.cost ? ` (−${costPreview.cost} sparks)` : ''}`}
             </button>
-            <p className="text-center text-[10px] text-slate-500">
+            <p className="text-center text-[10px] text-slate-400">
               All Concord Link costs are paid in sparks. No real-money charges.
             </p>
           </div>
@@ -517,14 +517,14 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
               Anchor points in {currentWorld}
             </p>
             {anchors.length === 0 ? (
-              <p className="py-8 text-center text-xs text-slate-500">No anchors registered for this world.</p>
+              <p className="py-8 text-center text-xs text-slate-400">No anchors registered for this world.</p>
             ) : anchors.map((a) => (
               <div key={a.id} className="rounded border border-slate-800 bg-slate-900/40 p-2">
                 <div className="flex items-baseline justify-between gap-2">
                   <h4 className="text-xs font-semibold text-slate-100">{a.name}</h4>
                   <span className="text-[10px] text-cyan-300">stability {a.stability.toFixed(2)}</span>
                 </div>
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">
                   {a.access_method.replace(/_/g, ' ')}
                   {a.controlled_by_faction && ` · ${a.controlled_by_faction}`}
                 </p>
@@ -539,7 +539,7 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
             <p className="mb-2 text-[10px] uppercase tracking-wider text-cyan-400">
               Available walkers in {currentWorld}
             </p>
-            <p className="mb-3 text-[10px] text-slate-500">
+            <p className="mb-3 text-[10px] text-slate-400">
               Physical messages auto-dispatch the highest-reputation walker available
               when you press <span className="text-cyan-300">Send</span> in Compose.
               Walkers carry packages between worlds in real time; their journey
@@ -547,7 +547,7 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
               falls on interception.
             </p>
             {walkers.length === 0 ? (
-              <p className="py-8 text-center text-xs text-slate-500">
+              <p className="py-8 text-center text-xs text-slate-400">
                 No walkers currently available in this world.
               </p>
             ) : walkers.map((w) => (
@@ -556,7 +556,7 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
                   <h4 className="text-xs font-semibold text-slate-100">{w.npc_id}</h4>
                   <span className="text-[10px] text-cyan-300">rep {w.reputation}</span>
                 </div>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">
                   {w.status} · home {w.home_world} · here {w.current_world}
                 </p>
               </div>

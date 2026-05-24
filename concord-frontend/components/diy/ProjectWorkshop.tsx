@@ -296,7 +296,7 @@ export function ProjectWorkshop() {
         <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{err}</div>
       )}
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading workshop…
         </div>
       )}
@@ -323,7 +323,7 @@ export function ProjectWorkshop() {
             {facets && facets.total > 0 && <FacetPanel facets={facets} onPick={setFilterDiff} active={filterDiff} />}
             <div className="space-y-1.5">
               {filteredProjects.length === 0 && (
-                <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">
+                <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">
                   No projects yet. Start a new build.
                 </div>
               )}
@@ -342,10 +342,10 @@ export function ProjectWorkshop() {
                     <span className="truncate text-sm text-white">{p.name}</span>
                     {p.published && <Globe className="h-3 w-3 shrink-0 text-cyan-400" />}
                   </div>
-                  <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-500">
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400">
                     <span className={diffColor[p.difficulty] || 'text-zinc-400'}>{p.difficulty}</span>
                     <span>· {p.category}</span>
-                    {p.forkedFrom && <GitFork className="h-3 w-3 text-zinc-500" />}
+                    {p.forkedFrom && <GitFork className="h-3 w-3 text-zinc-400" />}
                   </div>
                   <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
                     <div
@@ -353,7 +353,7 @@ export function ProjectWorkshop() {
                       style={{ width: `${p.progressPct}%` }}
                     />
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-500">
+                  <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-400">
                     <span>
                       {p.completeSteps}/{p.stepCount} steps
                     </span>
@@ -367,7 +367,7 @@ export function ProjectWorkshop() {
           {/* active project detail */}
           <div>
             {!active && (
-              <div className="rounded-lg border border-dashed border-zinc-800 p-10 text-center text-sm text-zinc-500">
+              <div className="rounded-lg border border-dashed border-zinc-800 p-10 text-center text-sm text-zinc-400">
                 Select a project to open the workshop.
               </div>
             )}
@@ -505,7 +505,7 @@ function FacetPanel({
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px] text-zinc-500">
+      <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px] text-zinc-400">
         <div>
           <div className="mb-0.5 uppercase tracking-wider">Cost bands</div>
           {Object.entries(facets.costBands).map(([k, v]) => (
@@ -541,7 +541,7 @@ function RemixCatalog({
 }) {
   if (catalog.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-800 p-10 text-center text-sm text-zinc-500">
+      <div className="rounded-lg border border-dashed border-zinc-800 p-10 text-center text-sm text-zinc-400">
         No published projects to remix yet. Publish one of your builds to share it.
       </div>
     );
@@ -556,13 +556,13 @@ function RemixCatalog({
               <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[9px] text-cyan-300">yours</span>
             )}
           </div>
-          <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500">
+          <div className="flex flex-wrap gap-2 text-[10px] text-zinc-400">
             <span className={diffColor[c.difficulty] || 'text-zinc-400'}>{c.difficulty}</span>
             <span>· {c.category}</span>
             <span>· {c.stepCount} steps</span>
             <span>· {c.bomLineCount} materials</span>
           </div>
-          <div className="flex items-center justify-between text-[10px] text-zinc-500">
+          <div className="flex items-center justify-between text-[10px] text-zinc-400">
             <span>~{c.estimatedHours}h · ${c.materialsCost.toFixed(0)} materials</span>
           </div>
           <button
@@ -615,7 +615,7 @@ function ProjectDetail({
             </span>
           </div>
           {project.forkedFrom && (
-            <p className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500">
+            <p className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-400">
               <GitFork className="h-3 w-3" /> remixed from {project.forkedFrom.name}
             </p>
           )}
@@ -670,7 +670,7 @@ function ProjectDetail({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="font-mono text-sm text-orange-300">{value}</div>
     </div>
   );
@@ -719,7 +719,7 @@ function StepBuilder({
   return (
     <div className="space-y-3">
       {project.steps.length === 0 && (
-        <p className="text-xs text-zinc-500">No steps yet. Build your illustrated guide below.</p>
+        <p className="text-xs text-zinc-400">No steps yet. Build your illustrated guide below.</p>
       )}
       <ol className="space-y-2">
         {project.steps.map((s, i) => (
@@ -742,11 +742,11 @@ function StepBuilder({
                   <span className="rounded bg-orange-500/20 px-1.5 py-0.5 font-mono text-[10px] text-orange-300">
                     {s.order}
                   </span>
-                  <span className={cn('text-sm', s.complete ? 'text-zinc-500 line-through' : 'text-white')}>
+                  <span className={cn('text-sm', s.complete ? 'text-zinc-400 line-through' : 'text-white')}>
                     {s.title}
                   </span>
                   {s.estimatedMinutes > 0 && (
-                    <span className="text-[10px] text-zinc-500">~{s.estimatedMinutes} min</span>
+                    <span className="text-[10px] text-zinc-400">~{s.estimatedMinutes} min</span>
                   )}
                 </div>
                 <p className="mt-1 text-xs text-zinc-400">{s.text}</p>
@@ -870,7 +870,7 @@ function ResultPhotoInput({ onSave }: { onSave: (url: string) => void }) {
       >
         save
       </button>
-      <button onClick={() => setOpen(false)} className="text-[10px] text-zinc-500">
+      <button onClick={() => setOpen(false)} className="text-[10px] text-zinc-400">
         cancel
       </button>
     </div>
@@ -942,7 +942,7 @@ function BomEditor({
       )}
       {rollup && Object.keys(rollup.bySupplier).length > 0 && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
-          <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Shopping cost by supplier</div>
+          <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Shopping cost by supplier</div>
           <ChartKit
             kind="bar"
             height={140}
@@ -956,7 +956,7 @@ function BomEditor({
 
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800 text-left text-[10px] uppercase tracking-wider text-zinc-500">
+          <tr className="border-b border-zinc-800 text-left text-[10px] uppercase tracking-wider text-zinc-400">
             <th className="py-1.5">Material</th>
             <th>Qty</th>
             <th>Unit $</th>
@@ -971,7 +971,7 @@ function BomEditor({
             <tr key={l.id} className="border-b border-zinc-900">
               <td className="py-1.5 text-white">
                 {l.item}
-                {l.supplier && <span className="ml-1 text-[10px] text-zinc-500">· {l.supplier}</span>}
+                {l.supplier && <span className="ml-1 text-[10px] text-zinc-400">· {l.supplier}</span>}
               </td>
               <td className="text-zinc-400">
                 {l.quantity} {l.unit}
@@ -1000,7 +1000,7 @@ function BomEditor({
                       target="_blank"
                       rel="noopener noreferrer"
                       title={`Search ${lk.retailer}`}
-                      className="text-zinc-500 hover:text-orange-400"
+                      className="text-zinc-400 hover:text-orange-400"
                     >
                       <ShoppingCart className="h-3.5 w-3.5" />
                     </a>
@@ -1020,7 +1020,7 @@ function BomEditor({
           ))}
           {(!rollup || rollup.lineCount === 0) && (
             <tr>
-              <td colSpan={7} className="py-3 text-center text-zinc-500">
+              <td colSpan={7} className="py-3 text-center text-zinc-400">
                 No materials yet.
               </td>
             </tr>
@@ -1029,7 +1029,7 @@ function BomEditor({
       </table>
 
       {rollup && rollup.lineCount > 0 && (
-        <p className="text-[11px] text-zinc-500">{rollup.budgetTip}</p>
+        <p className="text-[11px] text-zinc-400">{rollup.budgetTip}</p>
       )}
 
       <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 space-y-2">
@@ -1138,7 +1138,7 @@ function ToolGate({
               </button>
             </span>
           ))}
-          {inventory.length === 0 && <span className="text-[11px] text-zinc-500">No tools added.</span>}
+          {inventory.length === 0 && <span className="text-[11px] text-zinc-400">No tools added.</span>}
         </div>
       </div>
 
@@ -1165,7 +1165,7 @@ function ToolGate({
                   <Circle className="h-3.5 w-3.5 text-red-400" />
                 )}
                 <span className="text-white">{c.tool}</span>
-                <span className="text-zinc-500">
+                <span className="text-zinc-400">
                   {c.owned ? `owned · ${c.condition}` : 'missing'}
                 </span>
               </li>
@@ -1275,7 +1275,7 @@ function CutListPanel({
               const usedPct = Math.max(0, Math.min(100, b.utilization));
               return (
                 <div key={b.board}>
-                  <div className="mb-0.5 flex justify-between text-[10px] text-zinc-500">
+                  <div className="mb-0.5 flex justify-between text-[10px] text-zinc-400">
                     <span>Board {b.board}</span>
                     <span>{usedPct}% used · {b.remaining}&quot; left</span>
                   </div>
@@ -1302,7 +1302,7 @@ function CutListPanel({
               );
             })}
           </div>
-          <p className="flex items-center gap-1 text-[11px] text-zinc-500">
+          <p className="flex items-center gap-1 text-[11px] text-zinc-400">
             <ExternalLink className="h-3 w-3" /> {result.wasteTip}
           </p>
         </div>

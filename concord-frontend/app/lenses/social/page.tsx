@@ -126,7 +126,7 @@ export default function SocialHubPage() {
             <div className="flex items-center gap-2">
               <Globe2 className="w-5 h-5 text-indigo-300" />
               <h1 className="text-base font-semibold">Social</h1>
-              <span className="text-[10px] text-zinc-500 font-mono">pan-social hub</span>
+              <span className="text-[10px] text-zinc-400 font-mono">pan-social hub</span>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <StreakIndicator userId={currentUserId} />
@@ -299,7 +299,7 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-4 py-8 text-sm text-zinc-500">
+      <div className="flex items-center gap-2 px-4 py-8 text-sm text-zinc-400">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading following timeline…
       </div>
     );
@@ -314,7 +314,7 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
         <h3 className="text-sm font-medium text-zinc-300 mb-1">
           {error ? 'Following timeline unavailable' : 'No activity yet'}
         </h3>
-        <p className="text-xs text-zinc-500 max-w-md mx-auto">
+        <p className="text-xs text-zinc-400 max-w-md mx-auto">
           {error
             ? 'The /api/social/following-activity endpoint is not reachable.'
             : 'Follow some creators — their DTUs, posts, and reactions will surface here in reverse-chronological order.'}
@@ -338,10 +338,10 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
               showFollow
               currentUserId={currentUserId}
             />
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+            <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
               {item.kind}
             </span>
-            <span className="text-[10px] text-zinc-500 ml-auto">
+            <span className="text-[10px] text-zinc-400 ml-auto">
               {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
             </span>
           </div>
@@ -373,12 +373,12 @@ function SocialPresenceRail() {
   const PALETTE = ['#06b6d4', '#8b5cf6', '#22c55e', '#f59e0b', '#ec4899'];
   return (
     <div className="p-3">
-      <div className="flex items-center gap-1.5 mb-2 text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
+      <div className="flex items-center gap-1.5 mb-2 text-[10px] uppercase tracking-wider text-zinc-400 font-mono">
         <Activity className="w-3 h-3 text-emerald-400" />
         Online now ({presenceUsers.length})
       </div>
       {presenceUsers.length === 0 ? (
-        <div className="text-xs text-zinc-500 italic">No one in the social lens right now.</div>
+        <div className="text-xs text-zinc-400 italic">No one in the social lens right now.</div>
       ) : (
         <PresenceIndicator
           users={presenceUsers.map((u, i) => ({

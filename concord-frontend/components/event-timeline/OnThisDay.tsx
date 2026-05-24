@@ -86,15 +86,15 @@ export function OnThisDay() {
       {data.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Events</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Events</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Span (yrs)</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Span (yrs)</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{span > 0 ? span.toLocaleString() : '—'}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Oldest</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Oldest</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{oldest || '—'}</div>
         </div>
       </div>
@@ -112,16 +112,16 @@ export function OnThisDay() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] text-zinc-100">{e.text}</p>
                 </div>
-                {url && <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />}
+                {url && <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />}
               </div>
             </Wrapper>
           );
         })}
         {list.length === 0 && !data.isPending && !data.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No entries for {month}/{day} ({category}).</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No entries for {month}/{day} ({category}).</div>
         )}
       </div>
-      {data.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling Wikipedia…</div>}
+      {data.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling Wikipedia…</div>}
     </div>
   );
 }

@@ -114,7 +114,7 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -136,7 +136,7 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
       </section>
 
       {parties.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No watch parties yet. Start one to screen a cut with collaborators.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No watch parties yet. Start one to screen a cut with collaborators.</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -158,8 +158,8 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
                 <Monitor className="w-4 h-4 text-fuchsia-400 shrink-0" />
                 <span className="text-xs font-semibold text-zinc-100 truncate">{state.title}</span>
                 <span className="text-[10px] font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">{state.code}</span>
-                <span className="text-[10px] text-zinc-500 ml-auto">{state.participantCount} watching</span>
-                <span className={cn('flex items-center gap-1 text-[10px]', state.playing ? 'text-emerald-400' : 'text-zinc-500')}>
+                <span className="text-[10px] text-zinc-400 ml-auto">{state.participantCount} watching</span>
+                <span className={cn('flex items-center gap-1 text-[10px]', state.playing ? 'text-emerald-400' : 'text-zinc-400')}>
                   <span className={cn('w-1.5 h-1.5 rounded-full', state.playing ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600')} />
                   {state.playing ? 'Live' : 'Paused'}
                 </span>
@@ -188,7 +188,7 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
                 </p>
                 <div className="max-h-48 overflow-y-auto space-y-1 mb-2">
                   {chat.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 italic py-2 text-center">No messages yet.</p>
+                    <p className="text-[11px] text-zinc-400 italic py-2 text-center">No messages yet.</p>
                   ) : chat.map((m) => (
                     <div key={m.id} className="flex items-start gap-2 text-[11px]">
                       <span className="font-mono text-fuchsia-400 shrink-0">{fmtTc(m.atSec)}</span>

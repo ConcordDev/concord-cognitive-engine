@@ -296,7 +296,7 @@ function OverviewTab({
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-white font-semibold truncate">{profile.displayName || profile.userId}</div>
-            <div className="text-xs text-gray-500 truncate">{profile.bio || 'No bio yet — set one in Profile.'}</div>
+            <div className="text-xs text-gray-400 truncate">{profile.bio || 'No bio yet — set one in Profile.'}</div>
           </div>
           <div className="flex items-center gap-3 text-xs text-gray-400">
             <span><span className="text-amber-300 font-mono">{profile.stats.followerCount}</span> followers</span>
@@ -322,7 +322,7 @@ function OverviewTab({
           </div>
         </section>
       ) : (
-        <div className={`${PANEL} mb-6 text-gray-500 italic`}>
+        <div className={`${PANEL} mb-6 text-gray-400 italic`}>
           {me?.error ? 'Sign in to see your dashboard.' : 'Loading your stats...'}
         </div>
       )}
@@ -338,7 +338,7 @@ function OverviewTab({
             <Trophy className="w-4 h-4" /> Top creators
           </h2>
           {leaderboard.length === 0 ? (
-            <div className="text-gray-500 italic">No data yet.</div>
+            <div className="text-gray-400 italic">No data yet.</div>
           ) : (
             <ol className="space-y-1 text-sm">
               {leaderboard.map((c, i) => (
@@ -357,13 +357,13 @@ function OverviewTab({
             <TrendingUp className="w-4 h-4" /> Trending citations (24h)
           </h2>
           {trending.length === 0 ? (
-            <div className="text-gray-500 italic">No surge.</div>
+            <div className="text-gray-400 italic">No surge.</div>
           ) : (
             <ul className="space-y-2 text-sm">
               {trending.slice(0, 8).map((t) => (
                 <li key={t.id} className="border-l-2 border-emerald-400/40 pl-3">
                   <div className="text-gray-100 font-medium truncate">{t.title}</div>
-                  <div className="text-xs text-gray-500">{t.domain} · +{t.newCitations24h} new citations</div>
+                  <div className="text-xs text-gray-400">{t.domain} · +{t.newCitations24h} new citations</div>
                 </li>
               ))}
             </ul>
@@ -375,10 +375,10 @@ function OverviewTab({
             <TrendingDown className="w-4 h-4" /> Influence drift (7d)
           </h2>
           {drift.length === 0 ? (
-            <div className="text-gray-500 italic">No significant drift.</div>
+            <div className="text-gray-400 italic">No significant drift.</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="text-gray-500 text-xs uppercase tracking-wider">
+              <thead className="text-gray-400 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="text-left py-1">Creator</th>
                   <th className="text-right py-1">Recent</th>
@@ -391,7 +391,7 @@ function OverviewTab({
                   <tr key={d.userId} className="border-t border-white/5">
                     <td className="py-1 text-gray-200 truncate">{d.userId}</td>
                     <td className="py-1 text-right text-gray-300">{d.recentCitations}</td>
-                    <td className="py-1 text-right text-gray-500">{d.priorCitations}</td>
+                    <td className="py-1 text-right text-gray-400">{d.priorCitations}</td>
                     <td className={`py-1 text-right font-mono ${
                       d.change > 0 ? 'text-emerald-400' : d.change < 0 ? 'text-rose-400' : 'text-gray-400'
                     }`}>
@@ -450,24 +450,24 @@ function WithdrawalSection({
         <h2 className="text-emerald-300 font-semibold inline-flex items-center gap-1.5">
           <Coins className="w-4 h-4" /> Earnings &amp; withdrawal
         </h2>
-        <span className="text-[11px] text-gray-500">
+        <span className="text-[11px] text-gray-400">
           {withdrawal.holdHours}h hold · min {withdrawal.minWithdraw} CC
         </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
         <div>
-          <div className="text-[10px] text-gray-500 uppercase tracking-wider">Total balance</div>
+          <div className="text-[10px] text-gray-400 uppercase tracking-wider">Total balance</div>
           <div className="text-2xl text-emerald-300 font-mono mt-1">{withdrawal.balance.toFixed(2)} CC</div>
         </div>
         <div>
-          <div className="text-[10px] text-gray-500 uppercase tracking-wider">Eligible to withdraw</div>
+          <div className="text-[10px] text-gray-400 uppercase tracking-wider">Eligible to withdraw</div>
           <div className="text-2xl text-emerald-200 font-mono mt-1">{withdrawal.eligibleAmount.toFixed(2)} CC</div>
         </div>
         <div>
-          <div className="text-[10px] text-gray-500 uppercase tracking-wider">In {withdrawal.holdHours}h hold</div>
+          <div className="text-[10px] text-gray-400 uppercase tracking-wider">In {withdrawal.holdHours}h hold</div>
           <div className="text-2xl text-amber-300 font-mono mt-1">{withdrawal.pendingHoldAmount.toFixed(2)} CC</div>
           {withdrawal.nextEligibleAt && (
-            <div className="text-[11px] text-gray-500 mt-1">
+            <div className="text-[11px] text-gray-400 mt-1">
               next unlock {new Date(withdrawal.nextEligibleAt).toLocaleString()}
             </div>
           )}
@@ -484,7 +484,7 @@ function WithdrawalSection({
         <button
           onClick={requestWithdrawal}
           disabled={withdrawing || withdrawal.eligibleAmount < withdrawal.minWithdraw}
-          className="px-4 py-2 text-sm font-medium bg-emerald-700 hover:bg-emerald-600 disabled:bg-stone-800 disabled:text-gray-500 rounded text-white"
+          className="px-4 py-2 text-sm font-medium bg-emerald-700 hover:bg-emerald-600 disabled:bg-stone-800 disabled:text-gray-400 rounded text-white"
         >
           {withdrawing ? 'Requesting…' : 'Request withdrawal'}
         </button>
@@ -494,11 +494,11 @@ function WithdrawalSection({
       )}
       {withdrawal.pendingWithdrawals.length > 0 && (
         <div className="mt-4 space-y-1.5">
-          <div className="text-[11px] text-gray-500 uppercase tracking-wider">In review</div>
+          <div className="text-[11px] text-gray-400 uppercase tracking-wider">In review</div>
           {withdrawal.pendingWithdrawals.map((w) => (
             <div key={w.id} className="flex items-center justify-between text-sm border-l-2 border-emerald-500/40 pl-3">
               <span className="text-gray-200 font-mono">{w.amount.toFixed(2)} CC</span>
-              <span className="text-gray-500 capitalize">{w.status}</span>
+              <span className="text-gray-400 capitalize">{w.status}</span>
               <span className="text-gray-600 text-xs">{new Date(w.createdAt).toLocaleDateString()}</span>
             </div>
           ))}
@@ -593,7 +593,7 @@ function ListingsTab({
         <h2 className="text-amber-200 font-semibold inline-flex items-center gap-1.5">
           <ListChecks className="w-4 h-4" /> Your listings
           {search && (
-            <span className="text-xs text-gray-500 font-normal ml-1">
+            <span className="text-xs text-gray-400 font-normal ml-1">
               ({visible.length} of {listings.length})
             </span>
           )}
@@ -651,7 +651,7 @@ function ListingsTab({
       )}
 
       {visible.length === 0 ? (
-        <div className="text-gray-500 italic">No listings match.</div>
+        <div className="text-gray-400 italic">No listings match.</div>
       ) : (
         <div className="space-y-2">
           {visible.map((l) => (
@@ -705,7 +705,7 @@ function ListingRow({ listing, onUpdate, onWithdraw, onRelist }: ListingRowProps
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px]">
             <div className="text-gray-100 font-medium truncate">{listing.title}</div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-400">
               {listing.price} CC · {listing.downloads} downloads · {listing.status}
               {listing.totalEarnings != null && (
                 <span className="text-amber-300/80"> · {listing.totalEarnings.toFixed(0)} CC earned</span>
@@ -838,7 +838,7 @@ function ProfileTab({
       </h2>
 
       {!profile && (
-        <div className="text-xs text-gray-500 italic mb-3">
+        <div className="text-xs text-gray-400 italic mb-3">
           You don&apos;t have a profile yet. Save below to create one — it&apos;s how
           followers see you across lenses.
         </div>
@@ -879,7 +879,7 @@ function ProfileTab({
 
       <div className="mt-4 flex items-center gap-3">
         <button onClick={save} disabled={saving}
-          className="px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 disabled:bg-stone-800 disabled:text-gray-500 rounded text-white inline-flex items-center gap-1">
+          className="px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 disabled:bg-stone-800 disabled:text-gray-400 rounded text-white inline-flex items-center gap-1">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save profile
         </button>
@@ -889,7 +889,7 @@ function ProfileTab({
 
       {broadcasts.data?.artifacts && broadcasts.data.artifacts.length > 0 && (
         <div className="mt-5 border-t border-white/10 pt-3">
-          <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5 inline-flex items-center gap-1">
+          <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5 inline-flex items-center gap-1">
             <MessageSquare className="w-3 h-3" /> Recent broadcasts
           </div>
           <ul className="space-y-1 text-xs">
@@ -911,7 +911,7 @@ function ProfileTab({
 function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
     <div className={className}>
-      <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{label}</div>
+      <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">{label}</div>
       {children}
     </div>
   );
@@ -966,7 +966,7 @@ function FollowersTab({ profile }: { profile: SocialProfile | null }) {
 
   if (!profile) {
     return (
-      <section className={`${PANEL} text-gray-500 italic`}>
+      <section className={`${PANEL} text-gray-400 italic`}>
         Set up a profile first to see your followers.
       </section>
     );
@@ -976,14 +976,14 @@ function FollowersTab({ profile }: { profile: SocialProfile | null }) {
     <div className={GRID}>
       <section className={PANEL}>
         <h2 className="text-emerald-300 font-semibold mb-3 inline-flex items-center gap-1.5">
-          <UserPlus className="w-4 h-4" /> Followers <span className="text-gray-500 text-xs">({followers.length})</span>
+          <UserPlus className="w-4 h-4" /> Followers <span className="text-gray-400 text-xs">({followers.length})</span>
         </h2>
         {loading ? (
-          <div className="text-gray-500 italic text-sm">Loading…</div>
+          <div className="text-gray-400 italic text-sm">Loading…</div>
         ) : error ? (
           <p className="text-xs text-rose-300">{error}</p>
         ) : followers.length === 0 ? (
-          <div className="text-gray-500 italic text-sm">No followers yet.</div>
+          <div className="text-gray-400 italic text-sm">No followers yet.</div>
         ) : (
           <ul className="space-y-1 text-sm">
             {followers.map((f) => (
@@ -1000,12 +1000,12 @@ function FollowersTab({ profile }: { profile: SocialProfile | null }) {
 
       <section className={PANEL}>
         <h2 className="text-violet-300 font-semibold mb-3 inline-flex items-center gap-1.5">
-          <Users className="w-4 h-4" /> Following <span className="text-gray-500 text-xs">({following.length})</span>
+          <Users className="w-4 h-4" /> Following <span className="text-gray-400 text-xs">({following.length})</span>
         </h2>
         {loading ? (
-          <div className="text-gray-500 italic text-sm">Loading…</div>
+          <div className="text-gray-400 italic text-sm">Loading…</div>
         ) : following.length === 0 ? (
-          <div className="text-gray-500 italic text-sm">Not following anyone yet.</div>
+          <div className="text-gray-400 italic text-sm">Not following anyone yet.</div>
         ) : (
           <ul className="space-y-1 text-sm">
             {following.map((f) => (
@@ -1082,7 +1082,7 @@ function CascadePanel({ topCited }: CascadePanelProps) {
 
   if (topCited.length === 0) {
     return (
-      <section className={`${PANEL} text-gray-500 italic`}>
+      <section className={`${PANEL} text-gray-400 italic`}>
         No top-cited DTUs yet. As your work earns citations, they appear here with the per-generation cascade.
       </section>
     );
@@ -1094,12 +1094,12 @@ function CascadePanel({ topCited }: CascadePanelProps) {
         <h2 className="text-amber-200 font-semibold inline-flex items-center gap-1.5">
           <GitBranch className="w-4 h-4" /> Royalty cascade
         </h2>
-        <span className="text-[11px] text-gray-500">
+        <span className="text-[11px] text-gray-400">
           downstream lineage · projected per-generation share
         </span>
       </div>
       <div className="mb-3">
-        <label className="block text-[11px] text-gray-500 mb-1">Top-cited DTU</label>
+        <label className="block text-[11px] text-gray-400 mb-1">Top-cited DTU</label>
         <select
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
@@ -1113,9 +1113,9 @@ function CascadePanel({ topCited }: CascadePanelProps) {
         </select>
       </div>
       {loading ? (
-        <div className="text-xs text-gray-500 italic">Walking lineage…</div>
+        <div className="text-xs text-gray-400 italic">Walking lineage…</div>
       ) : !tree?.ok || tree.generations.length === 0 ? (
-        <div className="text-xs text-gray-500 italic">
+        <div className="text-xs text-gray-400 italic">
           No downstream citations yet for this DTU. As other creators cite or remix
           your work, generations appear here — each one paying you a halving share
           forever (floor 0.05%).
@@ -1157,7 +1157,7 @@ function CascadePanel({ topCited }: CascadePanelProps) {
               );
             })}
           </ol>
-          <p className="text-[10px] text-gray-500 mt-2">
+          <p className="text-[10px] text-gray-400 mt-2">
             Projected share = count × generational-rate. Royalties halve per generation
             (initial 21%) with a 0.05% floor — so a 4-deep cascade with 10 / 25 / 60 / 140
             downstream DTUs still pays the original creator on every transaction.
@@ -1173,7 +1173,7 @@ function CascadePanel({ topCited }: CascadePanelProps) {
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div>
-      <div className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</div>
+      <div className="text-[10px] text-gray-400 uppercase tracking-wider">{label}</div>
       <div className="text-2xl text-amber-300 font-mono mt-1">{value}</div>
     </div>
   );

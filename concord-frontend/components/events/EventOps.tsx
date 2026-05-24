@@ -552,7 +552,7 @@ export function EventOps() {
                             </div>
                             <p className="text-xs text-gray-400">{t.sold} sold · {t.remaining} left</p>
                             <p className="text-xs text-green-400">{fmt(t.revenue)} revenue</p>
-                            {t.perks && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{t.perks}</p>}
+                            {t.perks && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{t.perks}</p>}
                             <button onClick={() => delTier(t.id)}
                               className={cn(ds.btnGhost, 'hover:text-red-400 mt-2 text-xs')}>
                               <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -610,7 +610,7 @@ export function EventOps() {
                     <div className={cn(ds.panel, 'overflow-x-auto')}>
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-gray-500 border-b border-lattice-border">
+                          <tr className="text-left text-gray-400 border-b border-lattice-border">
                             <th className="pb-2 pr-4">Name</th><th className="pb-2 pr-4">Email</th>
                             <th className="pb-2 pr-4">Tier</th><th className="pb-2 pr-4">Code</th>
                             <th className="pb-2 pr-4">Paid</th><th className="pb-2 pr-4">Status</th><th className="pb-2" />
@@ -720,7 +720,7 @@ export function EventOps() {
                     <div className={cn(ds.panel, 'overflow-x-auto')}>
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-gray-500 border-b border-lattice-border">
+                          <tr className="text-left text-gray-400 border-b border-lattice-border">
                             <th className="pb-2 pr-4">Line</th><th className="pb-2 pr-4">Category</th>
                             <th className="pb-2 pr-4">Kind</th><th className="pb-2 pr-4 text-right">Budgeted</th>
                             <th className="pb-2 pr-4 text-right">Actual</th><th className="pb-2" />
@@ -808,7 +808,7 @@ export function EventOps() {
                       <div className={cn(ds.panel, 'overflow-x-auto')}>
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-left text-gray-500 border-b border-lattice-border">
+                            <tr className="text-left text-gray-400 border-b border-lattice-border">
                               <th className="pb-2 pr-3">Day</th><th className="pb-2 pr-3">Start</th>
                               <th className="pb-2 pr-3">End</th><th className="pb-2 pr-3">Session</th>
                               <th className="pb-2 pr-3">Track</th><th className="pb-2 pr-3">Duration</th><th className="pb-2" />
@@ -819,7 +819,7 @@ export function EventOps() {
                               <tr key={a.id} className="text-gray-300">
                                 <td className="py-2 pr-3 font-mono text-xs">{a.day}</td>
                                 <td className="py-2 pr-3 font-mono text-neon-cyan">{a.startTime}</td>
-                                <td className="py-2 pr-3 font-mono text-gray-500">{a.endTime || '—'}</td>
+                                <td className="py-2 pr-3 font-mono text-gray-400">{a.endTime || '—'}</td>
                                 <td className="py-2 pr-3 font-medium">{a.title}</td>
                                 <td className="py-2 pr-3">{a.track}</td>
                                 <td className="py-2 pr-3">
@@ -876,7 +876,7 @@ export function EventOps() {
                     <div className={cn(ds.panel, 'overflow-x-auto')}>
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-gray-500 border-b border-lattice-border">
+                          <tr className="text-left text-gray-400 border-b border-lattice-border">
                             <th className="pb-2 pr-4">Name</th><th className="pb-2 pr-4">Code</th>
                             <th className="pb-2 pr-4">Status</th><th className="pb-2" />
                           </tr>
@@ -942,7 +942,7 @@ export function EventOps() {
                           <div className="min-w-0">
                             <p className="font-medium text-sm">{b.subject}</p>
                             <p className="text-xs text-gray-400 line-clamp-2">{b.body}</p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-400 mt-1">
                               {b.segment} · {b.recipientCount} recipient{b.recipientCount !== 1 ? 's' : ''} ·{' '}
                               {String(b.sentAt).slice(0, 16).replace('T', ' ')}
                             </p>
@@ -1023,7 +1023,7 @@ export function EventOps() {
 function Stat({ label, value, accent = 'white' }: { label: string; value: string | number; accent?: string }) {
   return (
     <div className={cn(ds.panel, 'py-2')}>
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-gray-400">{label}</p>
       <p className={cn('text-lg font-bold', `text-${accent}`)}>{value}</p>
     </div>
   );
@@ -1092,7 +1092,7 @@ function SeatTableCard({
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
-      <p className="text-xs text-gray-500 mb-2">
+      <p className="text-xs text-gray-400 mb-2">
         {table.shape} · {table.seats.length}/{table.capacity} seated
       </p>
       <div className="flex flex-wrap gap-1 mb-2">
@@ -1102,7 +1102,7 @@ function SeatTableCard({
             {s.guestName} <X className="w-3 h-3 inline" />
           </button>
         ))}
-        {table.seats.length === 0 && <span className="text-xs text-gray-600">No guests seated</span>}
+        {table.seats.length === 0 && <span className="text-xs text-gray-400">No guests seated</span>}
       </div>
       {table.seats.length < table.capacity && (
         <div className="flex gap-2">

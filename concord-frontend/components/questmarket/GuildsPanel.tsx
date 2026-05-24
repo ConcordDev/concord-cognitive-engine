@@ -126,11 +126,11 @@ export function GuildsPanel({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 py-6 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 py-6 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : guilds.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-400">
           No guilds yet. Create one to coordinate shared quests.
         </div>
       ) : (
@@ -142,13 +142,13 @@ export function GuildsPanel({ onChanged }: { onChanged?: () => void }) {
                 <div className="flex items-center justify-between gap-3 p-3">
                   <button onClick={() => openDetail(g.id)}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                    {open ? <ChevronDown className="h-4 w-4 shrink-0 text-zinc-500" />
-                      : <ChevronRight className="h-4 w-4 shrink-0 text-zinc-500" />}
+                    {open ? <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" />
+                      : <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />}
                     <Shield className="h-4 w-4 shrink-0 text-amber-400" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-white">{g.name}</p>
                       {g.description && (
-                        <p className="truncate text-[11px] text-zinc-500">{g.description}</p>
+                        <p className="truncate text-[11px] text-zinc-400">{g.description}</p>
                       )}
                     </div>
                   </button>
@@ -176,13 +176,13 @@ export function GuildsPanel({ onChanged }: { onChanged?: () => void }) {
                 {open && (
                   <div className="space-y-3 border-t border-zinc-800 p-3">
                     {!detail ? (
-                      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                      <div className="flex items-center gap-2 text-[11px] text-zinc-400">
                         <Loader2 className="h-3 w-3 animate-spin" /> Loading guild…
                       </div>
                     ) : (
                       <>
                         <div>
-                          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+                          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
                             Members ({detail.members.length})
                           </p>
                           <div className="space-y-1">
@@ -205,11 +205,11 @@ export function GuildsPanel({ onChanged }: { onChanged?: () => void }) {
                         </div>
 
                         <div>
-                          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+                          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
                             Shared Quests ({detail.sharedQuests.length})
                           </p>
                           {detail.sharedQuests.length === 0 ? (
-                            <p className="text-[11px] text-zinc-600">
+                            <p className="text-[11px] text-zinc-400">
                               No guild quests yet.
                               {g.isMember && ' Post one below to set a shared objective.'}
                             </p>
@@ -235,7 +235,7 @@ export function GuildsPanel({ onChanged }: { onChanged?: () => void }) {
 
                         {g.isMember && (
                           <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2.5">
-                            <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                            <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">
                               Post a guild quest
                             </p>
                             <QuestBoard kind="quest" guildId={g.id}

@@ -103,7 +103,7 @@ export function DTUPickerModal({
             ))}
           </div>
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -120,7 +120,7 @@ export function DTUPickerModal({
               <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-500">No DTUs found.</div>
+            <div className="py-8 text-center text-sm text-gray-400">No DTUs found.</div>
           ) : (
             filtered.map((dtu) => (
               <button
@@ -130,7 +130,7 @@ export function DTUPickerModal({
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{dtu.title}</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                  <p className="text-[10px] text-gray-400 mt-0.5 truncate">
                     {dtu.domain}
                     {dtu.timestamp ? ` · ${new Date(dtu.timestamp).toLocaleDateString()}` : ''}
                   </p>

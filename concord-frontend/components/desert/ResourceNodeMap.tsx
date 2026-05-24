@@ -266,7 +266,7 @@ export function ResourceNodeMap() {
             <NearCard title="Nearest water" node={near.nearestWater} />
             <NearCard title="Nearest shade" node={near.nearestShade} />
             <div className="rounded bg-zinc-950 border border-zinc-800 px-3 py-2">
-              <span className="text-[10px] uppercase tracking-wider text-zinc-500">Hazards in range</span>
+              <span className="text-[10px] uppercase tracking-wider text-zinc-400">Hazards in range</span>
               <div className="mt-1 font-mono text-sm text-red-400">{near.hazards.length}</div>
             </div>
           </div>
@@ -279,17 +279,17 @@ export function ResourceNodeMap() {
             <div className="flex items-center gap-2">
               <MapPin className={`h-4 w-4 ${KIND_COLOR[n.kind] || 'text-zinc-400'}`} />
               <span className="text-sm text-white">{n.name}</span>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-zinc-400">
                 {n.kind} · {n.reliability}
                 {n.severity ? ` · ${n.severity}` : ''}
               </span>
             </div>
-            <button onClick={() => remove(n.id)} className="p-1 text-zinc-500 hover:text-red-400" aria-label="Delete node">
+            <button onClick={() => remove(n.id)} className="p-1 text-zinc-400 hover:text-red-400" aria-label="Delete node">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
-        {nodes.length === 0 && <p className="text-center text-sm text-zinc-500 py-6">No resource nodes mapped.</p>}
+        {nodes.length === 0 && <p className="text-center text-sm text-zinc-400 py-6">No resource nodes mapped.</p>}
       </div>
     </div>
   );
@@ -298,7 +298,7 @@ export function ResourceNodeMap() {
 function NearCard({ title, node }: { title: string; node: Node | null }) {
   return (
     <div className="rounded bg-zinc-950 border border-zinc-800 px-3 py-2">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500">{title}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400">{title}</span>
       {node ? (
         <div className="mt-1">
           <div className="text-sm text-white">{node.name}</div>

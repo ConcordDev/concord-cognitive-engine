@@ -296,7 +296,7 @@ export function ArgumentWorkbench() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -363,7 +363,7 @@ export function ArgumentWorkbench() {
             </div>
             {mapResult.nodes?.slice(0, 8).map(n => (
               <div key={n.id} className="text-[11px] text-zinc-300 font-mono">
-                <span className="text-cyan-300">{n.id}</span>{n.role ? <span className="text-zinc-500"> [{n.role}]</span> : null}: {n.text.slice(0, 100)}
+                <span className="text-cyan-300">{n.id}</span>{n.role ? <span className="text-zinc-400"> [{n.role}]</span> : null}: {n.text.slice(0, 100)}
               </div>
             ))}
           </div>

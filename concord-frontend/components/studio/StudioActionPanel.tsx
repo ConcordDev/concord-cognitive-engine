@@ -277,7 +277,7 @@ export function StudioActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -288,7 +288,7 @@ export function StudioActionPanel() {
           <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5"><Headphones className="w-3 h-3" /> Render estimate</div>
             <div className="text-[11px] text-zinc-300 mt-1">~{renderResult.estimatedMinutes}min · {renderResult.sizeMb}MB · {renderResult.format}</div>
-            {renderResult.rationale && <p className="text-[10px] text-zinc-500 italic">{renderResult.rationale}</p>}
+            {renderResult.rationale && <p className="text-[10px] text-zinc-400 italic">{renderResult.rationale}</p>}
           </div>
         )}
         {timelineResult && (
@@ -297,7 +297,7 @@ export function StudioActionPanel() {
             {timelineResult.milestones?.map((m, i) => (
               <div key={i} className="text-[11px] text-zinc-300 flex items-center justify-between">
                 <span>{m.name}</span>
-                <span className="font-mono text-zinc-500">{m.targetDate} · {m.status}</span>
+                <span className="font-mono text-zinc-400">{m.targetDate} · {m.status}</span>
               </div>
             ))}
           </div>

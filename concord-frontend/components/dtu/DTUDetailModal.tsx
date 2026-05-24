@@ -61,7 +61,7 @@ export function DTUDetailModal({ dtu, isOpen, onClose, onNavigate }: DTUDetailMo
                 <TierBadge tier={dtu.tier} size="sm" />
                 <ProvenanceBadge source={dtu.source} model={dtu.meta?.model as string} authority={dtu.meta?.authority as string} />
               </h2>
-              <p className="text-xs text-gray-500 font-mono">{dtu.id}</p>
+              <p className="text-xs text-gray-400 font-mono">{dtu.id}</p>
             </div>
           </div>
           <button
@@ -193,7 +193,7 @@ export function DTUDetailModal({ dtu, isOpen, onClose, onNavigate }: DTUDetailMo
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No children DTUs</p>
+                  <p className="text-gray-400 text-sm">No children DTUs</p>
                 )}
               </div>
             </div>

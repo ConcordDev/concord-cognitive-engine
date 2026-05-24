@@ -38,8 +38,8 @@ interface LostCard {
 
 const STATUS_COLOR: Record<string, string> = {
   overdue: 'text-rose-400', due_soon: 'text-amber-400', scheduled: 'text-emerald-400',
-  completed: 'text-zinc-500', cancelled: 'text-zinc-500', no_show: 'text-rose-400',
-  lost: 'text-rose-400', found: 'text-amber-400', safe: 'text-emerald-400', none: 'text-zinc-500',
+  completed: 'text-zinc-400', cancelled: 'text-zinc-400', no_show: 'text-rose-400',
+  lost: 'text-rose-400', found: 'text-amber-400', safe: 'text-emerald-400', none: 'text-zinc-400',
 };
 
 const APPT_REASONS = ['checkup', 'vaccination', 'illness', 'surgery', 'dental', 'grooming', 'emergency', 'follow_up', 'other'];
@@ -227,7 +227,7 @@ export function PetRecordsPanel({
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -242,19 +242,19 @@ export function PetRecordsPanel({
             <CalendarClock className="w-3.5 h-3.5 text-teal-400" /> Vaccine due dates
           </h3>
           <button type="button" onClick={exportIcs} disabled={vaccineEvents.length === 0}
-            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-medium">
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-400 text-white font-medium">
             <Download className="w-3 h-3" /> Calendar (.ics)
           </button>
         </div>
         {vaccineEvents.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No due-dated vaccines yet. Add vaccine records with a next-due date.</p>
+          <p className="text-[11px] text-zinc-400 italic">No due-dated vaccines yet. Add vaccine records with a next-due date.</p>
         ) : (
           <ul className="space-y-1">
             {vaccineEvents.map((e, i) => (
               <li key={`${e.vaccine}-${e.dueDate}-${i}`} className="flex items-center gap-2 text-xs bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="flex-1 text-zinc-200">{e.vaccine}</span>
-                <span className={cn('text-[10px]', STATUS_COLOR[e.status] || 'text-zinc-500')}>{e.dueDate}</span>
-                <span className={cn('text-[10px] uppercase tracking-wide', STATUS_COLOR[e.status] || 'text-zinc-500')}>{e.status.replace(/_/g, ' ')}</span>
+                <span className={cn('text-[10px]', STATUS_COLOR[e.status] || 'text-zinc-400')}>{e.dueDate}</span>
+                <span className={cn('text-[10px] uppercase tracking-wide', STATUS_COLOR[e.status] || 'text-zinc-400')}>{e.status.replace(/_/g, ' ')}</span>
               </li>
             ))}
           </ul>
@@ -266,7 +266,7 @@ export function PetRecordsPanel({
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-1">
           <Share2 className="w-3.5 h-3.5 text-teal-400" /> Shareable health record
         </h3>
-        <p className="text-[11px] text-zinc-500 mb-2">
+        <p className="text-[11px] text-zinc-400 mb-2">
           Export a portable record (vaccines, medications, vet visits, weights, symptoms) for a vet or boarding facility.
         </p>
         <button type="button" onClick={exportRecord} disabled={busy === 'record'}
@@ -298,7 +298,7 @@ export function PetRecordsPanel({
           onChange={(e) => setGrantForm({ ...grantForm, displayName: e.target.value })}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 mb-2" />
         {grants.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No one else can see this pet&apos;s record yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No one else can see this pet&apos;s record yet.</p>
         ) : (
           <ul className="space-y-1">
             {grants.map((g) => (
@@ -318,7 +318,7 @@ export function PetRecordsPanel({
       <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
           <ImageIcon className="w-3.5 h-3.5 text-teal-400" /> Photo timeline
-          <span className="text-[10px] text-zinc-500">· {photoCount} photo{photoCount === 1 ? '' : 's'}</span>
+          <span className="text-[10px] text-zinc-400">· {photoCount} photo{photoCount === 1 ? '' : 's'}</span>
         </h3>
         <div className="grid grid-cols-4 gap-2 mb-2">
           <input placeholder="Photo URL" value={photoForm.url} onChange={(e) => setPhotoForm({ ...photoForm, url: e.target.value })}
@@ -340,12 +340,12 @@ export function PetRecordsPanel({
           </button>
         </div>
         {photoTimeline.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No photos yet. Add a photo URL to build a visual history.</p>
+          <p className="text-[11px] text-zinc-400 italic">No photos yet. Add a photo URL to build a visual history.</p>
         ) : (
           <div className="space-y-3">
             {photoTimeline.map((m) => (
               <div key={m.month}>
-                <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">{m.month}</p>
+                <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">{m.month}</p>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {m.photos.map((p) => (
                     <figure key={p.id} className="relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900 group">
@@ -399,14 +399,14 @@ export function PetRecordsPanel({
         <input placeholder="Notes (optional)" value={apptForm.notes} onChange={(e) => setApptForm({ ...apptForm, notes: e.target.value })}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 mb-2" />
         {appointments.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No appointments scheduled.</p>
+          <p className="text-[11px] text-zinc-400 italic">No appointments scheduled.</p>
         ) : (
           <ul className="space-y-1">
             {appointments.map((ap) => (
               <li key={ap.id} className="flex items-center gap-2 text-xs bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-zinc-200 capitalize">{ap.reason.replace(/_/g, ' ')}</span>
-                <span className="text-[10px] text-zinc-500">{ap.date}{ap.time ? ` ${ap.time}` : ''}{ap.clinic ? ` · ${ap.clinic}` : ''}</span>
-                <span className={cn('flex-1 text-right text-[10px] uppercase tracking-wide', STATUS_COLOR[ap.timing] || 'text-zinc-500')}>
+                <span className="text-[10px] text-zinc-400">{ap.date}{ap.time ? ` ${ap.time}` : ''}{ap.clinic ? ` · ${ap.clinic}` : ''}</span>
+                <span className={cn('flex-1 text-right text-[10px] uppercase tracking-wide', STATUS_COLOR[ap.timing] || 'text-zinc-400')}>
                   {ap.timing.replace(/_/g, ' ')}
                 </span>
                 {ap.status === 'scheduled' && (
@@ -430,12 +430,12 @@ export function PetRecordsPanel({
             <ShieldAlert className="w-3.5 h-3.5 text-teal-400" /> Breed-specific care guidance
           </h3>
           <button type="button" onClick={loadGuidance} disabled={busy === 'guidance' || !breed}
-            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-medium">
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-400 text-white font-medium">
             {busy === 'guidance' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Analyse
           </button>
         </div>
-        {!breed && <p className="text-[11px] text-zinc-500 italic">Set a breed on the pet profile to get tailored health-risk guidance.</p>}
-        {breed && !guidance && <p className="text-[11px] text-zinc-500 italic">Analyse {species} breed &quot;{breed}&quot; for health risks and care tips.</p>}
+        {!breed && <p className="text-[11px] text-zinc-400 italic">Set a breed on the pet profile to get tailored health-risk guidance.</p>}
+        {breed && !guidance && <p className="text-[11px] text-zinc-400 italic">Analyse {species} breed &quot;{breed}&quot; for health risks and care tips.</p>}
         {guidance && (
           <div className="space-y-2">
             <p className="text-[11px] text-zinc-400">
@@ -507,7 +507,7 @@ export function PetRecordsPanel({
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-[11px] text-zinc-500">Publish a shareable ID card if {petName} goes missing.</p>
+            <p className="text-[11px] text-zinc-400">Publish a shareable ID card if {petName} goes missing.</p>
             <div className="grid grid-cols-2 gap-2">
               <input placeholder="Contact name" value={lostForm.contactName}
                 onChange={(e) => setLostForm({ ...lostForm, contactName: e.target.value })}

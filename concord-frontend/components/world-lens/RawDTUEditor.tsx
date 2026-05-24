@@ -73,7 +73,7 @@ export default function RawDTUEditor({ materials, onPublish, onCancel }: RawDTUE
         <h3 className="text-sm font-semibold text-white">Raw DTU Editor</h3>
       </div>
 
-      <p className="text-[10px] text-gray-500">
+      <p className="text-[10px] text-gray-400">
         Full parametric access. Edit the JSON schema directly. Every field has inline documentation.
       </p>
 
@@ -84,7 +84,7 @@ export default function RawDTUEditor({ materials, onPublish, onCancel }: RawDTUE
         </summary>
         <div className="mt-1 max-h-24 overflow-y-auto space-y-0.5 pl-2">
           {materials.map(m => (
-            <div key={m.id} className="text-gray-500">
+            <div key={m.id} className="text-gray-400">
               <code className="text-orange-300">{m.id}</code> — {m.name}
             </div>
           ))}
@@ -123,7 +123,7 @@ export default function RawDTUEditor({ materials, onPublish, onCancel }: RawDTUE
         <summary className="text-gray-400 cursor-pointer hover:text-white">
           Schema Documentation
         </summary>
-        <div className="mt-1 space-y-1 pl-2 text-gray-500">
+        <div className="mt-1 space-y-1 pl-2 text-gray-400">
           <p><code className="text-orange-300">name</code> — Display name for the component (required)</p>
           <p><code className="text-orange-300">type</code> — beam, column, wall, floor, roof, foundation, brace (required)</p>
           <p><code className="text-orange-300">material.id</code> — Reference to material DTU ID</p>

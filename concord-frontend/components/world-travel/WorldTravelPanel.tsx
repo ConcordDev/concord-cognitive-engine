@@ -153,7 +153,7 @@ export function WorldTravelPanel({ myUserId: _myUserId }: { myUserId: string }) 
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {worlds.length === 0 ? (
-          <p className="py-8 text-center text-xs text-slate-500">No worlds registered.</p>
+          <p className="py-8 text-center text-xs text-slate-400">No worlds registered.</p>
         ) : worlds.map((w) => {
           const isCurrent = w.world_id === currentWorld;
           const isTraveling = traveling === w.world_id;
@@ -205,7 +205,7 @@ export function WorldTravelPanel({ myUserId: _myUserId }: { myUserId: string }) 
             </button>
           );
         })}
-        <p className="px-1 pt-3 text-center text-[10px] text-slate-500">
+        <p className="px-1 pt-3 text-center text-[10px] text-slate-400">
           Travel between worlds is free. The Concord Link costs sparks for cross-world messages.
         </p>
       </div>

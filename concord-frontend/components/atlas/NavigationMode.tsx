@@ -177,10 +177,10 @@ export function NavigationMode() {
               ))}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:outline-none" />
-              <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:outline-none" />
-              <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:outline-none" />
-              <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Start lat" value={startLat} onChange={(e) => setStartLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Start lng" value={startLng} onChange={(e) => setStartLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Dest lat" value={endLat} onChange={(e) => setEndLat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
+              <input type="number" step="any" placeholder="Dest lng" value={endLng} onChange={(e) => setEndLng(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-violet-500/40 focus:outline-none" />
             </div>
             <button
               type="button"
@@ -219,7 +219,7 @@ export function NavigationMode() {
           <div className="mb-2 rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!session && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
             No data yet. Enter a start and destination to begin a live navigation session.
             Device GPS feeds positions automatically; "Push position" sends the start coordinates manually.
           </div>
@@ -232,7 +232,7 @@ export function NavigationMode() {
               </div>
             ) : (
               <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">Next instruction</p>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400">Next instruction</p>
                 <p className="mt-1 text-sm capitalize text-white">
                   {lastUpdate?.nextStep?.instruction || session.steps[session.currentStepIndex]?.instruction || 'Proceed to route'}
                 </p>
@@ -245,7 +245,7 @@ export function NavigationMode() {
             )}
 
             <div>
-              <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-500">
+              <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-400">
                 <span>{fmtMeters(session.progressMeters)} done</span>
                 <span>{lastUpdate?.remainingText ? `${lastUpdate.remainingText} left` : `${fmtMeters(session.totalDistanceMeters)} total`}</span>
               </div>
@@ -257,15 +257,15 @@ export function NavigationMode() {
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                 <p className="font-mono text-sm text-white capitalize">{session.mode}</p>
-                <p className="text-[9px] text-zinc-500">Mode</p>
+                <p className="text-[9px] text-zinc-400">Mode</p>
               </div>
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                 <p className="font-mono text-sm text-white">{session.rerouteCount}</p>
-                <p className="text-[9px] text-zinc-500">Reroutes</p>
+                <p className="text-[9px] text-zinc-400">Reroutes</p>
               </div>
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                 <p className="font-mono text-sm text-white">{progressPct}%</p>
-                <p className="text-[9px] text-zinc-500">Progress</p>
+                <p className="text-[9px] text-zinc-400">Progress</p>
               </div>
             </div>
 
@@ -276,13 +276,13 @@ export function NavigationMode() {
             )}
 
             <div className="space-y-1">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Upcoming steps</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Upcoming steps</div>
               {session.steps.slice(session.currentStepIndex, session.currentStepIndex + 6).map((step, i) => (
                 <div key={i} className="flex items-start gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
                   <ChevronRight className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${i === 0 ? 'text-violet-400' : 'text-zinc-600'}`} />
                   <div className="flex-1 text-[11px]">
                     <div className="capitalize text-zinc-100">{step.instruction}</div>
-                    <div className="text-[10px] text-zinc-500">
+                    <div className="text-[10px] text-zinc-400">
                       {step.roadName && <span>{step.roadName} · </span>}{fmtMeters(step.distanceMeters)}
                     </div>
                   </div>

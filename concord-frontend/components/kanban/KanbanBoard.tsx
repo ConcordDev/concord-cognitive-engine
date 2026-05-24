@@ -250,7 +250,7 @@ export function KanbanBoard({
                     aria-label="Delete">
                       <Trash2 className="w-3 h-3" />
                     </button>
-                    <GripVertical className="w-3 h-3 text-gray-500 cursor-grab" />
+                    <GripVertical className="w-3 h-3 text-gray-400 cursor-grab" />
                   </div>
                 </div>
 
@@ -272,7 +272,7 @@ export function KanbanBoard({
                       </span>
                     ))}
                     {card.tags.length > 3 && (
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-[10px] text-gray-400">
                         +{card.tags.length - 3}
                       </span>
                     )}
@@ -283,13 +283,13 @@ export function KanbanBoard({
                 {(card.dueDate || card.assignee) && (
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-lattice-border/50">
                     {card.dueDate && (
-                      <span className="flex items-center gap-1 text-[10px] text-gray-500">
+                      <span className="flex items-center gap-1 text-[10px] text-gray-400">
                         <Clock className="w-3 h-3" />
                         {new Date(card.dueDate).toLocaleDateString()}
                       </span>
                     )}
                     {card.assignee && (
-                      <span className="flex items-center gap-1 text-[10px] text-gray-500">
+                      <span className="flex items-center gap-1 text-[10px] text-gray-400">
                         <User className="w-3 h-3" />
                         {card.assignee}
                       </span>
@@ -301,7 +301,7 @@ export function KanbanBoard({
 
             {column.cards.length === 0 && addingToColumn !== column.id && (
               <div className="py-8 text-center">
-                <p className="text-xs text-gray-500">No cards</p>
+                <p className="text-xs text-gray-400">No cards</p>
               </div>
             )}
           </div>

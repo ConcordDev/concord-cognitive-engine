@@ -97,15 +97,15 @@ export function AccountsPanel() {
 
       <div className="px-4 py-3 border-b border-white/10 grid grid-cols-3 gap-3">
         <div className="rounded-md bg-white/[0.03] border border-white/5 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Assets</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Assets</div>
           <div className="text-lg font-mono tabular-nums text-emerald-300">${totals.totalAssets.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
         </div>
         <div className="rounded-md bg-white/[0.03] border border-white/5 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Liabilities</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Liabilities</div>
           <div className="text-lg font-mono tabular-nums text-rose-300">${totals.totalLiabilities.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
         </div>
         <div className="rounded-md bg-white/[0.03] border border-white/5 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Net worth</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Net worth</div>
           <div className={cn('text-lg font-mono tabular-nums', totals.netWorth >= 0 ? 'text-cyan-300' : 'text-rose-300')}>${totals.netWorth.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
         </div>
       </div>
@@ -125,20 +125,20 @@ export function AccountsPanel() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : accounts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Building2 className="w-6 h-6 mx-auto mb-2 opacity-30" />No accounts linked. Click + to add one.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Building2 className="w-6 h-6 mx-auto mb-2 opacity-30" />No accounts linked. Click + to add one.</div>
         ) : (
           Object.entries(grouped).map(([kind, group]) => (
             <div key={kind} className="border-b border-white/5 last:border-b-0">
-              <div className="px-3 py-1.5 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-500">{KIND_LABELS[kind as Account['kind']]} · {group.length}</div>
+              <div className="px-3 py-1.5 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-400">{KIND_LABELS[kind as Account['kind']]} · {group.length}</div>
               <ul className="divide-y divide-white/5">
                 {group.map(a => (
                   <li key={a.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3 text-xs">
                     <span className={cn('text-[10px] uppercase px-1.5 py-0.5 rounded font-mono', KIND_COLORS[a.kind])}>{a.mask}</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate">{a.institution}</div>
-                      <div className="text-[10px] text-gray-500 truncate">{a.name}</div>
+                      <div className="text-[10px] text-gray-400 truncate">{a.name}</div>
                     </div>
                     {editing?.id === a.id ? (
                       <span className="inline-flex items-center gap-1">
@@ -152,7 +152,7 @@ export function AccountsPanel() {
                         <Edit3 className="w-2.5 h-2.5 inline ml-1 opacity-0 group-hover:opacity-100" />
                       </button>
                     )}
-                    <button onClick={() => unlink(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button onClick={() => unlink(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </li>
                 ))}
               </ul>

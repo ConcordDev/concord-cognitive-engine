@@ -159,12 +159,12 @@ export default function PresenceDashboard({
             Existential OS — Five Pillars
           </h3>
         </div>
-        <span className="text-xs text-zinc-500">{entityId}</span>
+        <span className="text-xs text-zinc-400">{entityId}</span>
       </div>
 
       {/* Original Four Pillars */}
       <div>
-        <div className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2">
+        <div className="text-[10px] text-zinc-400 uppercase tracking-wider mb-2">
           Digital Foundation
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -196,11 +196,11 @@ export default function PresenceDashboard({
       {/* Fifth Pillar: Presence */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <div className="text-[10px] text-zinc-600 uppercase tracking-wider">
+          <div className="text-[10px] text-zinc-400 uppercase tracking-wider">
             Physical Presence — Fifth Pillar
           </div>
           <div className={`text-xs font-mono ${
-            overallPresence > 0.5 ? 'text-neon-cyan' : 'text-zinc-500'
+            overallPresence > 0.5 ? 'text-neon-cyan' : 'text-zinc-400'
           }`}>
             {Math.round(overallPresence * 100)}%
           </div>
@@ -233,10 +233,10 @@ export default function PresenceDashboard({
 
                 <div className="flex items-center justify-between">
                   <span className={`text-[10px] ${strength.color}`}>{strength.label}</span>
-                  <span className="text-[10px] text-zinc-600 font-mono">{pct}%</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">{pct}%</span>
                 </div>
 
-                <div className="text-[9px] text-zinc-600 mt-0.5">{dim.description}</div>
+                <div className="text-[9px] text-zinc-400 mt-0.5">{dim.description}</div>
               </div>
             );
           })}
@@ -246,7 +246,7 @@ export default function PresenceDashboard({
       {/* Planetary Grounding Detail */}
       {planetary && (
         <div>
-          <div className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2">
+          <div className="text-[10px] text-zinc-400 uppercase tracking-wider mb-2">
             Planetary State
           </div>
           <div className="grid grid-cols-4 gap-2">
@@ -259,11 +259,11 @@ export default function PresenceDashboard({
               const PIcon = item.icon;
               return (
                 <div key={item.label} className="text-center">
-                  <PIcon className="w-3 h-3 text-zinc-500 mx-auto mb-1" />
+                  <PIcon className="w-3 h-3 text-zinc-400 mx-auto mb-1" />
                   <div className="text-xs font-mono text-zinc-300">
                     {Math.round(item.value * 100)}%
                   </div>
-                  <div className="text-[9px] text-zinc-600">{item.label}</div>
+                  <div className="text-[9px] text-zinc-400">{item.label}</div>
                 </div>
               );
             })}

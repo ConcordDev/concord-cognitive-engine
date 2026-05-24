@@ -85,13 +85,13 @@ function ChannelStrip({
       <div className="flex gap-1">
         <button
           onClick={e => { e.stopPropagation(); onUpdate({ mute: !track.mute }); }}
-          className={cn('px-1.5 py-0.5 text-[8px] rounded font-bold', track.mute ? 'bg-red-500/30 text-red-400' : 'bg-white/10 text-gray-500')}
+          className={cn('px-1.5 py-0.5 text-[8px] rounded font-bold', track.mute ? 'bg-red-500/30 text-red-400' : 'bg-white/10 text-gray-400')}
         >
           M
         </button>
         <button
           onClick={e => { e.stopPropagation(); onUpdate({ solo: !track.solo }); }}
-          className={cn('px-1.5 py-0.5 text-[8px] rounded font-bold', track.solo ? 'bg-yellow-500/30 text-yellow-400' : 'bg-white/10 text-gray-500')}
+          className={cn('px-1.5 py-0.5 text-[8px] rounded font-bold', track.solo ? 'bg-yellow-500/30 text-yellow-400' : 'bg-white/10 text-gray-400')}
         >
           S
         </button>
@@ -104,7 +104,7 @@ function ChannelStrip({
           style={{ transform: `rotate(${track.pan * 135}deg)` }}
         />
       </div>
-      <span className="text-[8px] text-gray-500">
+      <span className="text-[8px] text-gray-400">
         {track.pan > 0.01 ? `R${Math.round(track.pan * 100)}` : track.pan < -0.01 ? `L${Math.round(Math.abs(track.pan) * 100)}` : 'C'}
       </span>
 
@@ -141,7 +141,7 @@ function ChannelStrip({
         <div className="w-full space-y-0.5">
           {Object.entries(track.sendLevels).map(([busId, level]) => (
             <div key={busId} className="flex items-center gap-1">
-              <Send className="w-2 h-2 text-gray-500" />
+              <Send className="w-2 h-2 text-gray-400" />
               <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
                 <div className="h-full bg-neon-purple/60 rounded-full" style={{ width: `${((level + 60) / 66) * 100}%` }} />
               </div>
@@ -163,18 +163,18 @@ function ChannelStrip({
             <span className="flex-1 truncate">{fx.name}</span>
             <button
               onClick={e => { e.stopPropagation(); onRemoveEffect(fx.id); }}
-              className="opacity-0 group-hover/fx:opacity-100 p-0.5 text-gray-500 hover:text-red-400"
+              className="opacity-0 group-hover/fx:opacity-100 p-0.5 text-gray-400 hover:text-red-400"
             aria-label="Close">
               <X className="w-2 h-2" />
             </button>
           </div>
         ))}
         {track.effectChain.length > 4 && (
-          <span className="text-[8px] text-gray-500 block text-center">+{track.effectChain.length - 4} more</span>
+          <span className="text-[8px] text-gray-400 block text-center">+{track.effectChain.length - 4} more</span>
         )}
         <button
           onClick={e => { e.stopPropagation(); onAddEffect(); }}
-          className="w-full px-1 py-0.5 text-[8px] text-gray-500 hover:text-white bg-white/5 rounded"
+          className="w-full px-1 py-0.5 text-[8px] text-gray-400 hover:text-white bg-white/5 rounded"
         >
           + FX
         </button>
@@ -279,7 +279,7 @@ export function MixerView({
 
           {/* LUFS meter */}
           <div className="w-full mt-1 px-1">
-            <div className="text-[8px] text-gray-500 text-center">LUFS</div>
+            <div className="text-[8px] text-gray-400 text-center">LUFS</div>
             <div className="text-center font-mono text-[10px] text-neon-green">
               {(masterBus.metering?.lufs ?? -14).toFixed(1)}
             </div>

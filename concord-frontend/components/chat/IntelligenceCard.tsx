@@ -119,7 +119,7 @@ function OverviewView({ metrics }: { metrics: IntelMetrics }) {
 
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+        className="text-xs text-zinc-400 hover:text-zinc-300 flex items-center gap-1"
       >
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         {expanded ? 'Hide categories' : 'Show categories'}
@@ -131,7 +131,7 @@ function OverviewView({ metrics }: { metrics: IntelMetrics }) {
             <div key={cat} className="flex items-center gap-2 p-1.5 bg-zinc-800 rounded text-xs">
               <span className="text-zinc-400">{categoryIcons[cat] || <Eye size={14} />}</span>
               <span className="text-zinc-300 flex-1">{cat.replace(/_/g, ' ')}</span>
-              <span className="text-zinc-500">{count} DTUs</span>
+              <span className="text-zinc-400">{count} DTUs</span>
             </div>
           ))}
         </div>
@@ -154,7 +154,7 @@ function PublicDataView({ data }: { data: PublicIntelligence }) {
       </div>
 
       {data.count === 0 ? (
-        <div className="text-xs text-zinc-500 text-center py-3">No intelligence data yet</div>
+        <div className="text-xs text-zinc-400 text-center py-3">No intelligence data yet</div>
       ) : (
         <div className="space-y-1">
           {data.data.slice(0, 10).map(dtu => (
@@ -171,7 +171,7 @@ function PublicDataView({ data }: { data: PublicIntelligence }) {
                   {Math.round(dtu.confidence * 100)}%
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-zinc-500">
+              <div className="flex items-center gap-3 text-zinc-400">
                 <span>{dtu.sources} sources</span>
                 <span>{dtu.coverage_area.radius_km}km radius</span>
                 <span>{new Date(dtu.created).toLocaleTimeString()}</span>
@@ -181,7 +181,7 @@ function PublicDataView({ data }: { data: PublicIntelligence }) {
         </div>
       )}
 
-      <div className="text-xs text-zinc-600">
+      <div className="text-xs text-zinc-400">
         {data.total} total entries | Commercially licensable
       </div>
     </div>
@@ -232,16 +232,16 @@ function ClassifierView({ status }: { status: ClassifierStatus }) {
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Total Classified</div>
+          <div className="text-zinc-400">Total Classified</div>
           <div className="text-zinc-200 font-semibold">{status.stats.totalClassified}</div>
         </div>
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Ambiguous Upgraded</div>
+          <div className="text-zinc-400">Ambiguous Upgraded</div>
           <div className="text-zinc-200 font-semibold">{status.stats.ambiguousUpgraded}</div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-zinc-500">
+      <div className="flex items-center gap-4 text-xs text-zinc-400">
         <span>Sensitivity: {status.thresholds.sensitivity}</span>
         <span>Sovereign: {status.thresholds.sovereign}</span>
       </div>
@@ -262,20 +262,20 @@ function ResearchView({ metrics }: { metrics: IntelMetrics }) {
 
       <div className="grid grid-cols-3 gap-2 text-xs">
         <div className="bg-zinc-800 rounded p-2 text-center">
-          <div className="text-zinc-500">Entries</div>
+          <div className="text-zinc-400">Entries</div>
           <div className="text-zinc-200 font-semibold">{metrics.tiers.research.entries}</div>
         </div>
         <div className="bg-zinc-800 rounded p-2 text-center">
-          <div className="text-zinc-500">Active Grants</div>
+          <div className="text-zinc-400">Active Grants</div>
           <div className="text-zinc-200 font-semibold">{metrics.tiers.research.activeGrants}</div>
         </div>
         <div className="bg-zinc-800 rounded p-2 text-center">
-          <div className="text-zinc-500">Pending</div>
+          <div className="text-zinc-400">Pending</div>
           <div className="text-zinc-200 font-semibold">{metrics.tiers.research.pendingApplications}</div>
         </div>
       </div>
 
-      <div className="text-xs text-zinc-500">
+      <div className="text-xs text-zinc-400">
         Lineage tracking enforced | Transfer prohibited | Governance-approved access only
       </div>
     </div>

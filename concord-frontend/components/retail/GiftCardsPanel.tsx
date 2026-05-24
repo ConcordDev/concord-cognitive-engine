@@ -64,7 +64,7 @@ export function GiftCardsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Gift className="w-4 h-4 text-pink-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Gift cards</span>
-        <span className="ml-auto text-[10px] text-gray-500">{cards.length} issued</span>
+        <span className="ml-auto text-[10px] text-gray-400">{cards.length} issued</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
@@ -76,19 +76,19 @@ export function GiftCardsPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : cards.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Gift className="w-6 h-6 mx-auto mb-2 opacity-30" />No gift cards issued.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Gift className="w-6 h-6 mx-auto mb-2 opacity-30" />No gift cards issued.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {cards.map(c => (
               <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3">
                 <div className="font-mono text-sm text-white">{c.code}</div>
-                <button onClick={() => navigator.clipboard?.writeText(c.code)} className="text-gray-500 hover:text-cyan-300"><Copy className="w-3 h-3" /></button>
+                <button onClick={() => navigator.clipboard?.writeText(c.code)} className="text-gray-400 hover:text-cyan-300"><Copy className="w-3 h-3" /></button>
                 <div className="flex-1 text-[11px] text-gray-400">{c.recipientName || c.recipientEmail || '—'}</div>
                 <div className="text-right">
                   <div className="font-mono text-sm tabular-nums text-pink-300">${c.balance.toFixed(2)}</div>
-                  <div className="text-[10px] text-gray-500">of ${c.initialValue.toFixed(2)}</div>
+                  <div className="text-[10px] text-gray-400">of ${c.initialValue.toFixed(2)}</div>
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', c.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{c.status}</span>
               </li>

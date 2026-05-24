@@ -181,7 +181,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
           <div>
             <h3 className="text-sm font-semibold text-cyan-300 mb-2">Nearby players</h3>
             {filteredPlayers.length === 0 && (
-              <p className="text-xs text-gray-500 italic">No other players in range</p>
+              <p className="text-xs text-gray-400 italic">No other players in range</p>
             )}
             <ul className="space-y-1.5">
               {filteredPlayers.map((p) => (

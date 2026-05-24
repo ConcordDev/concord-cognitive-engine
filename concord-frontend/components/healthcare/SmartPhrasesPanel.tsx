@@ -46,7 +46,7 @@ export function SmartPhrasesPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <FileSearch className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">SmartPhrases</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <button onClick={() => setCreating(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New
         </button>
@@ -62,9 +62,9 @@ export function SmartPhrasesPanel() {
 
       <div className="max-h-[32rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><FileSearch className="w-6 h-6 mx-auto mb-2 opacity-30" />No SmartPhrases.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><FileSearch className="w-6 h-6 mx-auto mb-2 opacity-30" />No SmartPhrases.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(sp => (

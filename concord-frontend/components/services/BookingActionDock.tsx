@@ -317,7 +317,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
                 {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
               </div>
               <div className="text-sm font-semibold text-gray-100">{a.label}</div>
-              <div className="text-[11px] text-gray-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[11px] text-gray-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -518,7 +518,7 @@ export function EndOfDayClose({ representativeAppointmentId, tomorrowAppointment
               Pull today&apos;s close report
             </button>
             {!representativeAppointmentId && (
-              <p className="text-xs text-gray-500 mt-3">No appointments to close against today.</p>
+              <p className="text-xs text-gray-400 mt-3">No appointments to close against today.</p>
             )}
           </div>
         )}
@@ -669,7 +669,7 @@ function ActionRow({ label, desc, icon: Icon, accent, done, disabled, busy, onCl
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-gray-100">{label}</div>
-        <div className="text-xs text-gray-500 line-clamp-2">{desc}</div>
+        <div className="text-xs text-gray-400 line-clamp-2">{desc}</div>
       </div>
     </button>
   );

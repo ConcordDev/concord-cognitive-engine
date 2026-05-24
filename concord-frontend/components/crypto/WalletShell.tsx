@@ -70,12 +70,12 @@ export function WalletShell({
       {/* Big balance */}
       <header className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-gray-500">Portfolio value</span>
+          <span className="text-[11px] uppercase tracking-wider text-gray-400">Portfolio value</span>
           <button
             type="button"
             onClick={() => setHidden((v) => !v)}
             aria-pressed={hidden}
-            className="text-gray-500 hover:text-gray-300"
+            className="text-gray-400 hover:text-gray-300"
             title={hidden ? 'Show balance' : 'Hide balance'}
           >
             {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -89,7 +89,7 @@ export function WalletShell({
             <span
               className={cn(
                 'text-sm font-mono tabular-nums',
-                totalDeltaPct > 0 ? 'text-emerald-300' : totalDeltaPct < 0 ? 'text-rose-300' : 'text-gray-500'
+                totalDeltaPct > 0 ? 'text-emerald-300' : totalDeltaPct < 0 ? 'text-rose-300' : 'text-gray-400'
               )}
             >
               {totalDeltaPct > 0 ? '+' : ''}{totalDeltaPct.toFixed(2)}% 24h
@@ -107,7 +107,7 @@ export function WalletShell({
 
       {/* Assets */}
       <section>
-        <h2 className="text-xs uppercase tracking-wider text-gray-500 mb-2">Assets</h2>
+        <h2 className="text-xs uppercase tracking-wider text-gray-400 mb-2">Assets</h2>
         <ul className="space-y-1">
           {assets.map((a) => (
             <li key={a.id}>
@@ -121,7 +121,7 @@ export function WalletShell({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-white truncate">{a.name}</div>
-                  <div className="text-[11px] text-gray-500 font-mono">
+                  <div className="text-[11px] text-gray-400 font-mono">
                     {hidden ? '••••' : a.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })} {a.symbol}
                   </div>
                 </div>
@@ -133,7 +133,7 @@ export function WalletShell({
                     <div
                       className={cn(
                         'text-[11px] font-mono tabular-nums',
-                        a.changePct > 0 ? 'text-emerald-300' : a.changePct < 0 ? 'text-rose-300' : 'text-gray-500'
+                        a.changePct > 0 ? 'text-emerald-300' : a.changePct < 0 ? 'text-rose-300' : 'text-gray-400'
                       )}
                     >
                       {a.changePct > 0 ? '+' : ''}{a.changePct.toFixed(2)}%
@@ -149,9 +149,9 @@ export function WalletShell({
 
       {/* Transactions */}
       <section>
-        <h2 className="text-xs uppercase tracking-wider text-gray-500 mb-2">Recent activity</h2>
+        <h2 className="text-xs uppercase tracking-wider text-gray-400 mb-2">Recent activity</h2>
         {txs.length === 0 ? (
-          <p className="text-xs text-gray-500 italic">No transactions yet.</p>
+          <p className="text-xs text-gray-400 italic">No transactions yet.</p>
         ) : (
           <ul className="space-y-1">
             {txs.slice(0, 12).map((tx) => (
@@ -176,7 +176,7 @@ export function WalletShell({
                   <div className="text-sm font-medium text-white truncate capitalize">
                     {tx.kind} {tx.asset}
                   </div>
-                  <div className="text-[11px] text-gray-500 truncate">
+                  <div className="text-[11px] text-gray-400 truncate">
                     {tx.counterparty ?? '—'} · {new Date(tx.timestamp).toLocaleString()}
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export function WalletShell({
                     {tx.kind === 'send' || tx.kind === 'fee' ? '-' : '+'}{tx.amount}
                   </div>
                   {tx.fiatValue !== undefined && !hidden && (
-                    <div className="text-[11px] text-gray-500 font-mono">
+                    <div className="text-[11px] text-gray-400 font-mono">
                       {fmt(tx.fiatValue, fiatSymbol)}
                     </div>
                   )}

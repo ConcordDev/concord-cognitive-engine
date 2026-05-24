@@ -362,7 +362,7 @@ export default function NewsLensPage() {
       {/* Search + Filters */}
       <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={searchText}
@@ -373,7 +373,7 @@ export default function NewsLensPage() {
           {searchText && (
             <button
               onClick={() => setSearchText('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
             aria-label="Close">
               <X className="w-4 h-4" />
             </button>
@@ -383,7 +383,7 @@ export default function NewsLensPage() {
         {showFilters && (
           <div className="panel p-4 flex flex-wrap gap-4 items-center">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500">Sort:</label>
+              <label className="text-xs text-gray-400">Sort:</label>
               <select
                 value={sortMode}
                 onChange={(e) => setSortMode(e.target.value as SortMode)}
@@ -396,7 +396,7 @@ export default function NewsLensPage() {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500">Source:</label>
+              <label className="text-xs text-gray-400">Source:</label>
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
@@ -410,7 +410,7 @@ export default function NewsLensPage() {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500">View:</label>
+              <label className="text-xs text-gray-400">View:</label>
               <div className="flex gap-1">
                 {(['feed', 'compact', 'headlines'] as ViewMode[]).map((vm) => (
                   <button
@@ -427,7 +427,7 @@ export default function NewsLensPage() {
                 ))}
               </div>
             </div>
-            <div className="text-xs text-gray-500 ml-auto">
+            <div className="text-xs text-gray-400 ml-auto">
               {filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''}
               {searchText && ` matching "${searchText}"`}
             </div>
@@ -446,7 +446,7 @@ export default function NewsLensPage() {
           <Newspaper className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{articles.length}</p>
-            <p className="text-xs text-gray-500">Articles</p>
+            <p className="text-xs text-gray-400">Articles</p>
           </div>
         </motion.div>
         <motion.div
@@ -458,7 +458,7 @@ export default function NewsLensPage() {
           <Rss className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{sources.length - 1}</p>
-            <p className="text-xs text-gray-500">Sources</p>
+            <p className="text-xs text-gray-400">Sources</p>
           </div>
         </motion.div>
         <motion.div
@@ -470,7 +470,7 @@ export default function NewsLensPage() {
           <TrendingUp className="w-5 h-5 text-neon-pink" />
           <div>
             <p className="text-lg font-bold">{articles.filter((a) => a.trending).length}</p>
-            <p className="text-xs text-gray-500">Trending Topics</p>
+            <p className="text-xs text-gray-400">Trending Topics</p>
           </div>
         </motion.div>
         <motion.div
@@ -482,7 +482,7 @@ export default function NewsLensPage() {
           <Globe className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{0}</p>
-            <p className="text-xs text-gray-500">Today</p>
+            <p className="text-xs text-gray-400">Today</p>
           </div>
         </motion.div>
       </div>
@@ -512,7 +512,7 @@ export default function NewsLensPage() {
         {/* Main News Feed */}
         <div className="lg:col-span-2 space-y-4">
           {filteredArticles.length === 0 ? (
-            <div className="panel p-8 text-center text-gray-500">
+            <div className="panel p-8 text-center text-gray-400">
               <Newspaper className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No articles match your filters</p>
               {searchText && (
@@ -543,7 +543,7 @@ export default function NewsLensPage() {
                     </span>
                   )}
                   <span className="text-sm flex-1 truncate">{article.title}</span>
-                  <span className="text-xs text-gray-500 shrink-0">
+                  <span className="text-xs text-gray-400 shrink-0">
                     {formatRelativeTime(article.timestamp)}
                   </span>
                   <button
@@ -554,7 +554,7 @@ export default function NewsLensPage() {
                     className={
                       bookmarkedIds.has(article.id)
                         ? 'text-neon-yellow'
-                        : 'text-gray-500 hover:text-neon-yellow'
+                        : 'text-gray-400 hover:text-neon-yellow'
                     }
                   aria-label="Bookmark">
                     <Bookmark className="w-3 h-3" />
@@ -623,9 +623,9 @@ export default function NewsLensPage() {
                         <div className="flex items-center gap-1 shrink-0">
                           {article.trending && <TrendingUp className="w-4 h-4 text-neon-pink" />}
                           {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-gray-500" />
+                            <ChevronUp className="w-4 h-4 text-gray-400" />
                           ) : (
-                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
                           )}
                         </div>
                       </div>
@@ -635,7 +635,7 @@ export default function NewsLensPage() {
                       )}
 
                       <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <div className="flex items-center gap-3 text-xs text-gray-400">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {formatRelativeTime(article.timestamp)}
@@ -793,14 +793,14 @@ export default function NewsLensPage() {
                       key={topic.id}
                       className="flex items-center gap-3 p-2 rounded-lg hover:bg-lattice-elevated cursor-pointer transition-colors"
                       onClick={() => setSearchText(String(topicData.name ?? topic.title ?? ''))} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-                      <span className="text-gray-500 text-sm w-6 text-right font-mono">
+                      <span className="text-gray-400 text-sm w-6 text-right font-mono">
                         {index + 1}
                       </span>
                       <div className="flex-1">
                         <p className="font-medium text-sm">
                           {String(topicData.name ?? topic.title ?? '')}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           {String(topicData.count ?? 0)} mentions
                         </p>
                       </div>
@@ -809,7 +809,7 @@ export default function NewsLensPage() {
                   );
                 })
               ) : (
-                <p className="text-sm text-gray-500 text-center py-4">No trending topics</p>
+                <p className="text-sm text-gray-400 text-center py-4">No trending topics</p>
               )}
             </div>
           </div>
@@ -942,7 +942,7 @@ export default function NewsLensPage() {
                     Array.isArray(actionResult.sourceBiasProfiles) &&
                     actionResult.sourceBiasProfiles.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider">Sources</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Sources</p>
                         {(actionResult.sourceBiasProfiles as Array<Record<string, unknown>>)
                           .slice(0, 4)
                           .map((s, i) => (

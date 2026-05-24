@@ -421,15 +421,15 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
               <div key={kind} className="space-y-2">
                 <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-wide">{kind === 'todo' ? 'To-Dos' : `${kind}s`}</h3>
                 {tasks.filter((t) => t.kind === kind).length === 0 && (
-                  <p className="text-xs text-gray-600 italic">No {kind} tasks yet.</p>
+                  <p className="text-xs text-gray-400 italic">No {kind} tasks yet.</p>
                 )}
                 {tasks.filter((t) => t.kind === kind).map((t) => (
                   <div key={t.id} className={cn('lens-card p-3', t.completedToday && 'opacity-50')}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm text-white font-medium truncate">{t.title}</p>
-                        {t.notes && <p className="text-[11px] text-gray-500 truncate">{t.notes}</p>}
-                        <p className="text-[10px] text-gray-500 mt-1">
+                        {t.notes && <p className="text-[11px] text-gray-400 truncate">{t.notes}</p>}
+                        <p className="text-[10px] text-gray-400 mt-1">
                           {t.difficulty} · +{DIFFICULTY_XP[t.difficulty]} XP · streak {t.streak} · done {t.completions}×
                         </p>
                       </div>
@@ -487,12 +487,12 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                 {streaks.lossPenaltyHint}
               </p>
               <div className="space-y-2">
-                {streaks.chains.length === 0 && <p className="text-xs text-gray-600 italic">No active chains yet — complete a daily to start one.</p>}
+                {streaks.chains.length === 0 && <p className="text-xs text-gray-400 italic">No active chains yet — complete a daily to start one.</p>}
                 {streaks.chains.map((c) => (
                   <div key={c.id} className="lens-card p-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm text-white">{c.title}</p>
-                      <p className="text-[10px] text-gray-500">{c.kind} · best {c.longestStreak}d</p>
+                      <p className="text-[10px] text-gray-400">{c.kind} · best {c.longestStreak}d</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {c.atRisk && <span className="text-[10px] text-red-400 border border-red-500/40 rounded px-1.5 py-0.5">at risk</span>}
@@ -502,7 +502,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                 ))}
               </div>
             </>
-          ) : <p className="text-xs text-gray-500">Loading streaks…</p>}
+          ) : <p className="text-xs text-gray-400">Loading streaks…</p>}
         </div>
       )}
 
@@ -515,7 +515,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-white flex items-center gap-1"><Users className="w-4 h-4 text-neon-cyan" />{partyStatus.party.name}</p>
-                    {partyStatus.party.description && <p className="text-[11px] text-gray-500">{partyStatus.party.description}</p>}
+                    {partyStatus.party.description && <p className="text-[11px] text-gray-400">{partyStatus.party.description}</p>}
                   </div>
                   <button onClick={leaveParty} disabled={busy === 'leave-party'} className="text-xs text-red-400 border border-red-500/40 rounded px-3 py-1 hover:bg-red-500/10">Leave</button>
                 </div>
@@ -525,7 +525,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                       <p className="text-xs text-white truncate flex items-center justify-center gap-1">
                         {m.isLeader && <Crown className="w-3 h-3 text-neon-yellow" />}{m.userId}
                       </p>
-                      <p className="text-[10px] text-gray-500">Lv {m.level} · {m.streak}d streak</p>
+                      <p className="text-[10px] text-gray-400">Lv {m.level} · {m.streak}d streak</p>
                     </div>
                   ))}
                 </div>
@@ -534,7 +534,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
               {partyStatus.sharedQuest ? (
                 <div className="lens-card p-3">
                   <p className="text-sm font-semibold text-white">Shared Quest: {partyStatus.sharedQuest.title}</p>
-                  {partyStatus.sharedQuest.description && <p className="text-[11px] text-gray-500">{partyStatus.sharedQuest.description}</p>}
+                  {partyStatus.sharedQuest.description && <p className="text-[11px] text-gray-400">{partyStatus.sharedQuest.description}</p>}
                   <div className="h-2 bg-lattice-bg rounded-full overflow-hidden mt-2">
                     <div className="h-full bg-gradient-to-r from-neon-cyan to-neon-green" style={{ width: `${Math.min(100, (partyStatus.sharedQuest.progress / partyStatus.sharedQuest.goal) * 100)}%` }} />
                   </div>
@@ -571,12 +571,12 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
               </div>
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-300">Open Parties</p>
-                {partyList.length === 0 && <p className="text-xs text-gray-600 italic">No parties yet. Create the first one.</p>}
+                {partyList.length === 0 && <p className="text-xs text-gray-400 italic">No parties yet. Create the first one.</p>}
                 {partyList.map((p) => (
                   <div key={p.id} className="lens-card p-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm text-white">{p.name}</p>
-                      <p className="text-[10px] text-gray-500">{p.memberCount} member(s){p.hasSharedQuest ? ' · shared quest active' : ''}</p>
+                      <p className="text-[10px] text-gray-400">{p.memberCount} member(s){p.hasSharedQuest ? ' · shared quest active' : ''}</p>
                     </div>
                     <button onClick={() => joinParty(p.id)} disabled={busy === `join-${p.id}`} className="btn-neon text-xs py-1 px-3">Join</button>
                   </div>
@@ -599,7 +599,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                   <span className={cn('text-[10px] px-1.5 py-0.5 rounded border', RARITY[c.rarity])}>{c.rarity}</span>
                 </div>
                 <p className="text-sm text-white font-medium mt-1">{c.name}</p>
-                <p className="text-[10px] text-gray-500 capitalize">{c.slot} slot</p>
+                <p className="text-[10px] text-gray-400 capitalize">{c.slot} slot</p>
                 <div className="mt-2 pt-2 border-t border-lattice-border flex items-center justify-between">
                   <span className="text-xs text-amber-400">{c.cost} gold</span>
                   {!c.owned ? (
@@ -640,14 +640,14 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {rewards.length === 0 && <p className="text-xs text-gray-600 italic">No custom rewards yet. Define a reward to redeem with earned gold.</p>}
+            {rewards.length === 0 && <p className="text-xs text-gray-400 italic">No custom rewards yet. Define a reward to redeem with earned gold.</p>}
             {rewards.map((r) => (
               <div key={r.id} className="lens-card p-3 flex flex-col">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm text-white font-medium truncate">{r.title}</p>
-                    {r.notes && <p className="text-[11px] text-gray-500 truncate">{r.notes}</p>}
-                    <p className="text-[10px] text-gray-500 mt-1">redeemed {r.redemptions}×</p>
+                    {r.notes && <p className="text-[11px] text-gray-400 truncate">{r.notes}</p>}
+                    <p className="text-[10px] text-gray-400 mt-1">redeemed {r.redemptions}×</p>
                   </div>
                   <button onClick={() => deleteReward(r.id)} disabled={busy === `del-reward-${r.id}`} className="text-gray-600 hover:text-red-400" aria-label="Delete reward"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
@@ -685,7 +685,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                 <button
                   key={d}
                   onClick={() => setNewReminder((p) => ({ ...p, days: p.days.includes(d) ? p.days.filter((x) => x !== d) : [...p.days, d] }))}
-                  className={cn('text-[10px] uppercase px-2 py-1 rounded', newReminder.days.includes(d) ? 'bg-neon-purple/25 text-neon-purple' : 'bg-lattice-bg text-gray-500')}
+                  className={cn('text-[10px] uppercase px-2 py-1 rounded', newReminder.days.includes(d) ? 'bg-neon-purple/25 text-neon-purple' : 'bg-lattice-bg text-gray-400')}
                 >
                   {d}
                 </button>
@@ -693,7 +693,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
             </div>
           </div>
           <div className="space-y-2">
-            {reminders.length === 0 && <p className="text-xs text-gray-600 italic">No reminders scheduled.</p>}
+            {reminders.length === 0 && <p className="text-xs text-gray-400 italic">No reminders scheduled.</p>}
             {reminders.map((r) => (
               <div key={r.id} className="lens-card p-3 flex items-center justify-between">
                 <div>
@@ -702,10 +702,10 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                     {r.overdueToday && <span className="text-[10px] text-red-400 border border-red-500/40 rounded px-1.5">overdue</span>}
                     {!r.overdueToday && r.upcomingToday && <span className="text-[10px] text-neon-cyan border border-neon-cyan/40 rounded px-1.5">today</span>}
                   </p>
-                  <p className="text-[10px] text-gray-500 font-mono">{r.time} · {r.days.join(' ')}</p>
+                  <p className="text-[10px] text-gray-400 font-mono">{r.time} · {r.days.join(' ')}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => toggleReminder(r.id)} disabled={busy === `toggle-${r.id}`} className={cn('text-xs rounded px-2 py-1 border', r.enabled ? 'text-neon-green border-neon-green/40' : 'text-gray-500 border-gray-600')}>
+                  <button onClick={() => toggleReminder(r.id)} disabled={busy === `toggle-${r.id}`} className={cn('text-xs rounded px-2 py-1 border', r.enabled ? 'text-neon-green border-neon-green/40' : 'text-gray-400 border-gray-600')}>
                     {r.enabled ? 'On' : 'Off'}
                   </button>
                   <button onClick={() => deleteReminder(r.id)} disabled={busy === `del-rem-${r.id}`} className="text-gray-600 hover:text-red-400" aria-label="Delete reminder"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -753,14 +753,14 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
           </div>
 
           <div className="space-y-2">
-            {challenges.length === 0 && <p className="text-xs text-gray-600 italic">No challenges yet. Create one and invite others.</p>}
+            {challenges.length === 0 && <p className="text-xs text-gray-400 italic">No challenges yet. Create one and invite others.</p>}
             {challenges.map((c) => (
               <div key={c.id} className="lens-card p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm text-white font-medium">{c.title}</p>
-                    {c.description && <p className="text-[11px] text-gray-500">{c.description}</p>}
-                    <p className="text-[10px] text-gray-500 mt-1">
+                    {c.description && <p className="text-[11px] text-gray-400">{c.description}</p>}
+                    <p className="text-[10px] text-gray-400 mt-1">
                       metric: {c.metric} · goal {c.goal} · {c.participantCount} player(s) · prize {c.prize} XP
                       {c.winnerId && ` · winner: ${c.winnerId}`}
                       {c.expired && ' · ended'}
@@ -777,7 +777,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                 </div>
                 {openBoard?.id === c.id && (
                   <div className="mt-2 bg-lattice-bg rounded p-2 space-y-1">
-                    {openBoard.rows.length === 0 && <p className="text-[11px] text-gray-600">No participants yet.</p>}
+                    {openBoard.rows.length === 0 && <p className="text-[11px] text-gray-400">No participants yet.</p>}
                     {openBoard.rows.map((row) => (
                       <div key={row.userId} className={cn('flex items-center justify-between text-[11px]', row.isCurrentUser && 'text-neon-cyan')}>
                         <span className="flex items-center gap-1">

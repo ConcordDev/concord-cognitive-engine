@@ -67,7 +67,7 @@ export function DailyJournal() {
     setResults((r.data?.result?.entries as Entry[]) || []);
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   const shown = results ?? entries;
 
@@ -76,7 +76,7 @@ export function DailyJournal() {
       <div className="flex items-center gap-2 mb-3">
         <BookHeart className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">Journal</h3>
-        <span className="text-[11px] text-zinc-500">Day One shape</span>
+        <span className="text-[11px] text-zinc-400">Day One shape</span>
       </div>
 
       {dash && (
@@ -87,7 +87,7 @@ export function DailyJournal() {
               <p className="text-sm font-bold text-zinc-100 inline-flex items-center gap-1">
                 {i === 2 && v > 0 && <Flame className="w-3 h-3 text-orange-400" />}{v}
               </p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -132,23 +132,23 @@ export function DailyJournal() {
       {/* Search */}
       <div className="flex gap-1 mb-2">
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
           <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void runSearch(); }}
             placeholder="Search entries" className="w-full bg-zinc-950 border border-zinc-800 rounded pl-7 pr-2 py-1.5 text-xs text-zinc-200" />
         </div>
         {results && <button onClick={() => { setSearch(''); setResults(null); }} className="px-2 py-1 text-xs text-zinc-400">clear</button>}
-        {moodAvg != null && <span className="text-[11px] text-zinc-500 self-center">avg mood {MOODS[Math.round(moodAvg) - 1] || '–'}</span>}
+        {moodAvg != null && <span className="text-[11px] text-zinc-400 self-center">avg mood {MOODS[Math.round(moodAvg) - 1] || '–'}</span>}
       </div>
 
       {/* Timeline */}
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {shown.length === 0 ? (
-          <p className="text-xs text-zinc-500 italic text-center py-6">{results ? 'No matches.' : 'No entries yet — write your first above.'}</p>
+          <p className="text-xs text-zinc-400 italic text-center py-6">{results ? 'No matches.' : 'No entries yet — write your first above.'}</p>
         ) : shown.map(e => (
           <div key={e.id} className="group bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
             <div className="flex items-center gap-2 mb-1">
               {e.mood != null && <span className="text-base">{MOODS[e.mood - 1]}</span>}
-              <span className="text-[11px] font-mono text-zinc-500">{e.date}</span>
+              <span className="text-[11px] font-mono text-zinc-400">{e.date}</span>
               <div className="ml-auto flex items-center gap-1">
                 {e.tags.map(t => <span key={t} className="text-[9px] px-1 rounded bg-rose-900/40 text-rose-300">{t}</span>)}
                 <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>

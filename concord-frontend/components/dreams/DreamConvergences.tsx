@@ -60,11 +60,11 @@ export function DreamConvergences() {
       {(convergences.isError || counts.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Dream substrate unreachable.</div>}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Total dreams</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Total dreams</div>
           <div className="mt-0.5 font-mono text-lg text-purple-300">{k.dreams ?? '—'}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Convergences</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Convergences</div>
           <div className="mt-0.5 font-mono text-lg text-purple-300">{k.convergences ?? c.length}</div>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function DreamConvergences() {
               </span>
               {cv.strength != null && <span className="rounded bg-purple-500/20 px-1 font-mono text-[10px] text-purple-200">strength {cv.strength.toFixed?.(2) ?? cv.strength}</span>}
             </div>
-            <div className="mt-0.5 font-mono text-[10px] text-zinc-500">{cv.participants?.length ?? 0} dreamers{cv.convergedAt ? ` · converged ${new Date(cv.convergedAt).toLocaleString()}` : ''}</div>
+            <div className="mt-0.5 font-mono text-[10px] text-zinc-400">{cv.participants?.length ?? 0} dreamers{cv.convergedAt ? ` · converged ${new Date(cv.convergedAt).toLocaleString()}` : ''}</div>
             {cv.sharedFragments && cv.sharedFragments.length > 0 && (
               <div className="mt-0.5 flex flex-wrap gap-1">
                 {cv.sharedFragments.slice(0, 4).map((f) => <span key={f} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{f}</span>)}
@@ -87,10 +87,10 @@ export function DreamConvergences() {
           </div>
         ))}
         {c.length === 0 && !convergences.isPending && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No active convergences. Dreams synthesize independently.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No active convergences. Dreams synthesize independently.</div>
         )}
       </div>
-      {(convergences.isPending || counts.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling dream substrate…</div>}
+      {(convergences.isPending || counts.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling dream substrate…</div>}
     </div>
   );
 }

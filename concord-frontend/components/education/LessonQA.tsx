@@ -95,7 +95,7 @@ export function LessonQA() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] uppercase tracking-wider text-gray-500">Lesson ID</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Lesson ID</label>
           <input
             value={lessonId}
             onChange={e => setLessonId(e.target.value)}
@@ -115,7 +115,7 @@ export function LessonQA() {
       </div>
 
       {!activeLesson && (
-        <p className="text-sm text-gray-500 py-8 text-center">
+        <p className="text-sm text-gray-400 py-8 text-center">
           Enter a lesson ID to view and post timestamp-anchored questions.
         </p>
       )}
@@ -132,7 +132,7 @@ export function LessonQA() {
               className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white resize-none"
             />
             <div className="flex items-center gap-2">
-              <label className="text-[10px] text-gray-500 flex items-center gap-1">
+              <label className="text-[10px] text-gray-400 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> at
                 <input
                   type="number" min={0} value={askTime}
@@ -152,7 +152,7 @@ export function LessonQA() {
           </div>
 
           {threads.length === 0 ? (
-            <p className="text-sm text-gray-500 py-6 text-center">No questions on this lesson yet.</p>
+            <p className="text-sm text-gray-400 py-6 text-center">No questions on this lesson yet.</p>
           ) : (
             <div className="space-y-3">
               {threads.map(t => (
@@ -163,7 +163,7 @@ export function LessonQA() {
                   <div className="flex items-start gap-2">
                     <button
                       onClick={() => upvote(t.id)}
-                      className="flex flex-col items-center text-gray-500 hover:text-neon-cyan shrink-0"
+                      className="flex flex-col items-center text-gray-400 hover:text-neon-cyan shrink-0"
                     >
                       <ChevronUp className="w-4 h-4" />
                       <span className="text-[10px] font-bold">{t.upvotes}</span>
@@ -180,7 +180,7 @@ export function LessonQA() {
                         )}
                       </div>
                       <p className="text-sm text-gray-200 mt-1">{t.text}</p>
-                      <p className="text-[10px] text-gray-600">{t.author}</p>
+                      <p className="text-[10px] text-gray-400">{t.author}</p>
                     </div>
                   </div>
 
@@ -194,7 +194,7 @@ export function LessonQA() {
                           <div className="flex items-start gap-2">
                             <button
                               onClick={() => upvote(t.id, a.id)}
-                              className="flex flex-col items-center text-gray-500 hover:text-neon-cyan shrink-0"
+                              className="flex flex-col items-center text-gray-400 hover:text-neon-cyan shrink-0"
                             >
                               <ChevronUp className="w-3.5 h-3.5" />
                               <span className="text-[10px] font-bold">{a.upvotes}</span>
@@ -206,7 +206,7 @@ export function LessonQA() {
                                 </span>
                               )}
                               <p className="text-gray-200">{a.text}</p>
-                              <p className="text-[10px] text-gray-600">{a.author}</p>
+                              <p className="text-[10px] text-gray-400">{a.author}</p>
                             </div>
                             {!t.resolved && (
                               <button

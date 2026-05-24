@@ -102,7 +102,7 @@ export function NPCShopModalPanel() {
     const hint = (globalThis as { __CONCORD_LAST_NPC_ID__?: string }).__CONCORD_LAST_NPC_ID__;
     if (hint) setNpcId(hint);
   }, []);
-  if (!npcId) return <p className="text-xs text-zinc-500 italic">Click an NPC then re-open this panel to shop.</p>;
+  if (!npcId) return <p className="text-xs text-zinc-400 italic">Click an NPC then re-open this panel to shop.</p>;
   return <NPCShopModalImpl npcId={npcId} onClose={() => window.dispatchEvent(new CustomEvent('concordia:panel-close'))} />;
 }
 

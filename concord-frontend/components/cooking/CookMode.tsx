@@ -102,7 +102,7 @@ export function CookMode({ recipe, onClose }: CookModeProps) {
       <header className="flex items-center gap-3 border-b border-white/10 px-5 py-3">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-white">{recipe.title}</div>
-          <div className="text-[11px] text-gray-500">
+          <div className="text-[11px] text-gray-400">
             Cook mode · serves {recipe.servings} · step {stepIdx + 1} of {steps.length}
           </div>
         </div>
@@ -129,7 +129,7 @@ export function CookMode({ recipe, onClose }: CookModeProps) {
 
           {/* Per-step timer */}
           <div className="flex flex-col items-center gap-2 rounded-xl border border-orange-500/20 bg-black/40 px-6 py-4">
-            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-gray-500">
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-gray-400">
               <Timer className="w-3.5 h-3.5" /> Step timer
             </div>
             <div className={cn('font-mono text-4xl font-bold', timerDone ? 'animate-pulse text-rose-400' : 'text-white')}>
@@ -187,9 +187,9 @@ export function CookMode({ recipe, onClose }: CookModeProps) {
 
         {/* Ingredients sidebar */}
         <aside className="border-t border-white/10 bg-black/30 p-5 lg:w-72 lg:overflow-y-auto lg:border-l lg:border-t-0">
-          <div className="mb-2 text-[11px] uppercase tracking-wider text-gray-500">Ingredients</div>
+          <div className="mb-2 text-[11px] uppercase tracking-wider text-gray-400">Ingredients</div>
           {recipe.ingredients.length === 0 ? (
-            <p className="text-xs text-gray-600">No ingredients listed.</p>
+            <p className="text-xs text-gray-400">No ingredients listed.</p>
           ) : (
             <ul className="space-y-1.5">
               {recipe.ingredients.map((ing, i) => (

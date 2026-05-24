@@ -133,7 +133,7 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
         <header className="flex items-center gap-2 border-b border-lattice-border px-4 py-3">
           <Sparkles className="w-4 h-4 text-neon-cyan" />
           <span className="text-sm font-semibold text-white">Tool palette</span>
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[11px] text-gray-400">
             every tool Concord can run · {catalog.length} actions across {Object.keys(LENS_MANIFEST_INDEX).length} lenses
           </span>
           <button
@@ -147,7 +147,7 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
 
         <div className="border-b border-lattice-border px-3 py-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               ref={inputRef}
               value={query}
@@ -160,13 +160,13 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
 
         <div className="max-h-[60vh] overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-gray-500">
+            <div className="px-4 py-8 text-center text-sm text-gray-400">
               No tool matches.
             </div>
           ) : (
             grouped.map(([lensLabel, entries]) => (
               <div key={lensLabel} className="border-b border-lattice-border/50 last:border-0">
-                <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 bg-lattice-surface/20">
+                <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 bg-lattice-surface/20">
                   {lensLabel} · <span className="font-mono text-gray-600">{entries[0]?.domain}</span>
                 </div>
                 <ul>
@@ -189,14 +189,14 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
                             <span className="text-sm font-medium text-white">
                               {humanizeAction(entry.action)}
                             </span>
-                            <span className="ml-2 text-xs text-gray-500 font-mono">
+                            <span className="ml-2 text-xs text-gray-400 font-mono">
                               {entry.domain}.{entry.action}
                             </span>
                           </span>
                           {isRunning ? (
                             <Loader2 className="w-3.5 h-3.5 text-neon-cyan animate-spin" />
                           ) : (
-                            <Play className="w-3.5 h-3.5 text-gray-500" />
+                            <Play className="w-3.5 h-3.5 text-gray-400" />
                           )}
                         </button>
                       </li>
@@ -208,7 +208,7 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
           )}
         </div>
 
-        <footer className="border-t border-lattice-border px-4 py-2 flex items-center justify-between text-[11px] text-gray-500">
+        <footer className="border-t border-lattice-border px-4 py-2 flex items-center justify-between text-[11px] text-gray-400">
           <span>↵ run · esc close</span>
           <span>{filtered.length} of {catalog.length} shown</span>
         </footer>

@@ -348,7 +348,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
           <Bot className="w-5 h-5 text-amber-400" />
           <div>
             <h2 className="text-sm font-semibold text-zinc-100">Agent · {lensId}</h2>
-            <p className="text-[11px] text-zinc-500">Lens-aware assistant — 200+ apps, web, compute, citations</p>
+            <p className="text-[11px] text-zinc-400">Lens-aware assistant — 200+ apps, web, compute, citations</p>
           </div>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" aria-label="Close">
@@ -360,7 +360,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
         <button
           onClick={() => setTab('quick')}
           className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 ${
-            tab === 'quick' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+            tab === 'quick' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-400 hover:text-zinc-300'
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" /> Quick
@@ -368,7 +368,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
         <button
           onClick={() => setTab('marathon')}
           className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 ${
-            tab === 'marathon' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+            tab === 'marathon' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-400 hover:text-zinc-300'
           }`}
         >
           <Hammer className="w-3.5 h-3.5" /> Marathon
@@ -383,7 +383,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
         onDragOver={(e) => e.preventDefault()}
       >
         {conversation.length === 0 && (
-          <div className="text-center text-sm text-zinc-500 mt-12 px-4">
+          <div className="text-center text-sm text-zinc-400 mt-12 px-4">
             <p>
               Agent Mode for the <span className="font-mono text-amber-400">{lensId}</span> lens.
               It can call any of the 200+ lens domain actions, web search, compute, browse pages,
@@ -434,7 +434,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
                 </div>
               )}
               {badge && turn.agent.ok && (
-                <div className="flex items-center gap-2 text-[10px] text-zinc-500 px-1">
+                <div className="flex items-center gap-2 text-[10px] text-zinc-400 px-1">
                   <span className={`px-1.5 py-0.5 rounded ${badge.color}`}>{badge.label}</span>
                   {turn.agent.turns && turn.agent.turns > 1 && <span>{turn.agent.turns} turns</span>}
                 </div>
@@ -446,14 +446,14 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
           );
         })}
         {busy && (
-          <div className="flex items-center gap-2 text-xs text-zinc-500 px-1">
+          <div className="flex items-center gap-2 text-xs text-zinc-400 px-1">
             <Loader2 className="w-3.5 h-3.5 animate-spin" /> agent working…
           </div>
         )}
       </div>
 
       <footer className="border-t border-zinc-800 px-5 py-4 space-y-2">
-        <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+        <div className="flex items-center gap-2 text-[10px] text-zinc-400">
           <Cpu className="w-3 h-3" />
           <span>brain slot:</span>
           <select
@@ -485,7 +485,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
                 <Paperclip className="w-3 h-3" /> {a.name}
                 <button
                   onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                  className="text-zinc-500 hover:text-zinc-100 ml-1"
+                  className="text-zinc-400 hover:text-zinc-100 ml-1"
                 aria-label="Close"><X className="w-3 h-3" /></button>
               </span>
             ))}

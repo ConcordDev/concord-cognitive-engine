@@ -558,7 +558,7 @@ export default function ElectricalLensPage() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             className={cn(ds.input, 'pl-10')}
             placeholder="Search..."
@@ -746,7 +746,7 @@ export default function ElectricalLensPage() {
         ))}
       </nav>
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
-        <span className="px-2 text-[10px] uppercase tracking-wider text-gray-500">Trade Tools</span>
+        <span className="px-2 text-[10px] uppercase tracking-wider text-gray-400">Trade Tools</span>
         {TOOL_TABS.map((tab) => (
           <button
             key={tab.id}

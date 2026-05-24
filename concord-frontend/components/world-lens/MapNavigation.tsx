@@ -188,7 +188,7 @@ function Minimap({
         }}
       />
       {/* Mode hint */}
-      <div className="absolute bottom-1 right-1 text-[9px] text-gray-500">
+      <div className="absolute bottom-1 right-1 text-[9px] text-gray-400">
         <kbd className="px-1 py-0.5 rounded bg-white/10 text-gray-400">M</kbd> expand
       </div>
     </div>
@@ -243,7 +243,7 @@ function DistrictMap({
         aria-label="Zoom out">
           <ZoomOut className="w-4 h-4 text-gray-300" />
         </button>
-        <div className="text-[9px] text-gray-500 text-center">{Math.round(zoom * 100)}%</div>
+        <div className="text-[9px] text-gray-400 text-center">{Math.round(zoom * 100)}%</div>
       </div>
 
       <div
@@ -300,7 +300,7 @@ function DistrictMap({
             style={{ left: n.position.x * scale, top: n.position.y * scale }}
           >
             <div className="w-2 h-2 rounded-full bg-gray-500" />
-            <span className="text-[7px] text-gray-500 whitespace-nowrap">{n.name}</span>
+            <span className="text-[7px] text-gray-400 whitespace-nowrap">{n.name}</span>
           </div>
         ))}
 
@@ -479,13 +479,13 @@ export default function MapNavigation({
         >
           <Map className="w-3.5 h-3.5 text-cyan-400" />
           <span className="text-gray-300 capitalize">{mapMode}</span>
-          <kbd className="ml-1 px-1 py-0.5 rounded bg-white/10 text-[9px] text-gray-500">M</kbd>
+          <kbd className="ml-1 px-1 py-0.5 rounded bg-white/10 text-[9px] text-gray-400">M</kbd>
         </button>
 
         {/* Infrastructure toggles (district + world modes) */}
         {mapMode !== 'minimap' && (
           <div className="flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5 text-gray-500 mr-1" />
+            <Layers className="w-3.5 h-3.5 text-gray-400 mr-1" />
             {(Object.keys(infraColors) as InfraLayer[]).map((layer) => (
               <button
                 key={layer}
@@ -558,7 +558,7 @@ export default function MapNavigation({
             {waypoints.length} waypoint{waypoints.length > 1 ? 's' : ''} set
           </span>
           {waypoints[0] && (
-            <span className="text-gray-500 ml-auto">
+            <span className="text-gray-400 ml-auto">
               {Math.round(
                 Math.sqrt(
                   (waypoints[0].position.x - playerPosition.x) ** 2 +

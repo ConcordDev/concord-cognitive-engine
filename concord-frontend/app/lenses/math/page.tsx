@@ -577,7 +577,7 @@ export default function MathLensPage() {
                           )}
                           <div className="min-w-0">
                             <p className="text-sm font-mono truncate">{item.data.expression || item.title}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-400">
                               {item.data.evaluatedAt
                                 ? new Date(item.data.evaluatedAt).toLocaleString()
                                 : new Date(item.createdAt).toLocaleString()}
@@ -599,7 +599,7 @@ export default function MathLensPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+                <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                   <p>No expressions yet. Create mathematical expressions to see computation results.</p>
                 </div>
               )}
@@ -712,7 +712,7 @@ export default function MathLensPage() {
                       {/* Step-by-step */}
                       {solverSteps.length > 0 && (
                         <div className="p-3 bg-black/30 rounded-lg border border-white/5">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Step-by-step</p>
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Step-by-step</p>
                           <ol className="space-y-1.5">
                             {solverSteps.map((step, idx) => (
                               <li key={idx} className="flex items-start gap-2 text-sm">
@@ -843,7 +843,7 @@ export default function MathLensPage() {
                 )}
 
                 {formulaItems.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-400">
                     <Sigma className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p>No formulas saved yet. Add your first formula above.</p>
                   </div>

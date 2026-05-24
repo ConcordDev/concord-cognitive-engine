@@ -59,7 +59,7 @@ export function RxPricePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const drugs = [...new Set(prices.map((p) => p.drugName))];
@@ -117,7 +117,7 @@ export function RxPricePanel() {
                     <span>{q.rank}. {q.pharmacyName}</span>
                     <span className="font-mono">
                       ${q.effectivePrice}
-                      {q.couponPrice != null && <span className="text-zinc-500 ml-1 line-through">${q.cashPrice}</span>}
+                      {q.couponPrice != null && <span className="text-zinc-400 ml-1 line-through">${q.cashPrice}</span>}
                     </span>
                   </li>
                 ))}
@@ -133,14 +133,14 @@ export function RxPricePanel() {
           <Ticket className="w-3.5 h-3.5 text-amber-400" /> Saved coupons
         </h3>
         {coupons.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No coupons saved.</p>
+          <p className="text-[11px] text-zinc-400 italic">No coupons saved.</p>
         ) : (
           <ul className="space-y-1">
             {coupons.map((c) => (
               <li key={c.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{c.drugName}</p>
-                  <p className="text-[10px] text-zinc-500">{c.pharmacyName || 'Any pharmacy'}{c.code ? ` · ${c.code}` : ''}</p>
+                  <p className="text-[10px] text-zinc-400">{c.pharmacyName || 'Any pharmacy'}{c.code ? ` · ${c.code}` : ''}</p>
                 </div>
                 <span className="text-xs font-mono text-emerald-400">${c.discountedPrice}</span>
               </li>

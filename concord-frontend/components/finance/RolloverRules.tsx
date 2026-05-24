@@ -118,7 +118,7 @@ export function RolloverRules() {
         </button>
       </header>
 
-      <p className="px-4 py-2 text-[10px] text-gray-500 border-b border-white/5">
+      <p className="px-4 py-2 text-[10px] text-gray-400 border-b border-white/5">
         Attach a rollover rule to a budget envelope. At period close, leftover money
         carries forward per the rule — capped mode routes surplus into a savings goal.
       </p>
@@ -160,7 +160,7 @@ export function RolloverRules() {
             />
           </>
         ) : (
-          <div className="col-span-2 px-2 py-1.5 text-[10px] text-gray-500 flex items-center">
+          <div className="col-span-2 px-2 py-1.5 text-[10px] text-gray-400 flex items-center">
             {MODE_DESC[form.mode]}
           </div>
         )}
@@ -175,11 +175,11 @@ export function RolloverRules() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : rules.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">
+          <div className="px-3 py-8 text-center text-xs text-gray-400">
             <Recycle className="w-6 h-6 mx-auto mb-2 opacity-30" />
             {envelopes.length === 0
               ? 'No budget envelopes yet — create one in the Budget tab first.'
@@ -201,13 +201,13 @@ export function RolloverRules() {
                       {r.mode}
                     </span>
                   </div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">
+                  <div className="text-[10px] text-gray-400 mt-0.5">
                     {MODE_DESC[r.mode]}
                     {r.mode === 'capped' && r.cap > 0 && ` · cap $${r.cap}`}
                   </div>
                   {r.goalTarget > 0 && (
                     <div className="mt-1">
-                      <div className="flex items-center justify-between text-[10px] text-gray-500">
+                      <div className="flex items-center justify-between text-[10px] text-gray-400">
                         <span>Savings goal</span>
                         <span>${r.accumulatedGoal.toLocaleString()} / ${r.goalTarget.toLocaleString()}</span>
                       </div>
@@ -222,7 +222,7 @@ export function RolloverRules() {
                 </div>
                 <button
                   onClick={() => deleteRule(r.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
                   aria-label="Delete rule"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -235,14 +235,14 @@ export function RolloverRules() {
 
       {applied && applied.length > 0 && (
         <div className="px-4 py-3 border-t border-white/10">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">
             Last period close
           </div>
           <ul className="space-y-1">
             {applied.map((a) => (
               <li key={a.envelopeId} className="flex items-center gap-2 text-[11px]">
                 <span className="text-gray-400 w-24 truncate">{a.category}</span>
-                <span className="text-gray-500">leftover ${a.leftover.toLocaleString()}</span>
+                <span className="text-gray-400">leftover ${a.leftover.toLocaleString()}</span>
                 <span className="text-emerald-300">→ carried ${a.carried.toLocaleString()}</span>
                 {a.toGoal > 0 && <span className="text-cyan-300">→ goal ${a.toGoal.toLocaleString()}</span>}
               </li>

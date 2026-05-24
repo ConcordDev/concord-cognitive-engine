@@ -24,7 +24,7 @@ const PRIORITY_COLOR: Record<number, string> = {
   1: 'text-rose-400', 2: 'text-amber-400', 3: 'text-sky-400', 4: 'text-zinc-600',
 };
 const DUE_COLOR: Record<string, string> = {
-  overdue: 'text-rose-400', today: 'text-amber-400', upcoming: 'text-zinc-500', none: 'text-zinc-600',
+  overdue: 'text-rose-400', today: 'text-amber-400', upcoming: 'text-zinc-400', none: 'text-zinc-600',
 };
 
 export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
@@ -49,7 +49,7 @@ export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
       <div className="min-w-0 flex-1">
         <p className="text-xs text-zinc-200 truncate">{task.content}</p>
         {(task.dueDate || task.labels.length > 0) && (
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             {task.dueDate && <span className={DUE_COLOR[task.dueState || 'none']}>{task.dueDate}</span>}
             {task.labels.length > 0 && <span className="ml-1">{task.labels.map((l) => `#${l}`).join(' ')}</span>}
           </p>

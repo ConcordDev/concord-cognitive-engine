@@ -68,7 +68,7 @@ export function ThreadSidebar({
       </div>
 
       {threads.length === 0 ? (
-        <p className="text-[11px] text-zinc-600 px-1">
+        <p className="text-[11px] text-zinc-400 px-1">
           No threads yet. Ask a question to start one.
         </p>
       ) : (
@@ -98,7 +98,7 @@ export function ThreadSidebar({
                   >
                     {t.title}
                   </div>
-                  <div className="text-[10px] text-zinc-500">
+                  <div className="text-[10px] text-zinc-400">
                     {t.turnCount} turn{t.turnCount === 1 ? '' : 's'} · {t.focus}
                   </div>
                 </button>

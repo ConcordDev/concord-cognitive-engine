@@ -1071,7 +1071,7 @@ export default function PhysicsLensPage() {
             <s.icon className={`w-4 h-4 ${s.color}`} />
             <div>
               <p className="text-lg font-bold font-mono">{s.value}</p>
-              <p className="text-[10px] text-gray-500 uppercase">{s.label}</p>
+              <p className="text-[10px] text-gray-400 uppercase">{s.label}</p>
             </div>
           </motion.div>
         ))}
@@ -1084,7 +1084,7 @@ export default function PhysicsLensPage() {
         transition={{ delay: 0.3 }}
         className="flex items-center gap-4 px-4 py-2 bg-white/[0.02] border border-white/5 rounded-lg overflow-x-auto"
       >
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex-shrink-0">Constants</span>
+        <span className="text-[10px] text-gray-400 uppercase tracking-wider flex-shrink-0">Constants</span>
         {[
           { sym: 'g', val: `${settings.gravity.y.toFixed(1)} m/s\u00B2`, label: 'Gravity' },
           { sym: '\u03BC', val: settings.airFriction.toFixed(3), label: 'Air Friction' },
@@ -1099,7 +1099,7 @@ export default function PhysicsLensPage() {
         {/* Experiment status badge */}
         <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
           <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-400 animate-pulse' : 'bg-gray-600'}`} />
-          <span className={`text-xs font-medium ${isRunning ? 'text-green-400' : 'text-gray-500'}`}>
+          <span className={`text-xs font-medium ${isRunning ? 'text-green-400' : 'text-gray-400'}`}>
             {isRunning ? 'Simulating' : 'Paused'}
           </span>
         </div>
@@ -1546,13 +1546,13 @@ export default function PhysicsLensPage() {
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: body.color }} />
                     <span className="text-gray-300">{body.name}</span>
-                    {body.isStatic && <span className="text-xs text-gray-500">(static)</span>}
+                    {body.isStatic && <span className="text-xs text-gray-400">(static)</span>}
                   </div>
-                  <span className="text-xs text-gray-500">{body.mass.toFixed(1)} kg</span>
+                  <span className="text-xs text-gray-400">{body.mass.toFixed(1)} kg</span>
                 </div>
               ))}
               {bodies.length === 0 && (
-                <p className="text-gray-500 text-sm text-center py-4">
+                <p className="text-gray-400 text-sm text-center py-4">
                   No bodies. Click canvas to add or load a preset.
                 </p>
               )}
@@ -1593,7 +1593,7 @@ export default function PhysicsLensPage() {
                 </div>
               ))}
               {savedSims.length === 0 && (
-                <p className="text-gray-500 text-sm text-center py-4">
+                <p className="text-gray-400 text-sm text-center py-4">
                   No saved simulations yet.
                 </p>
               )}
@@ -1653,7 +1653,7 @@ export default function PhysicsLensPage() {
           <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
             {'bodies' in physicsActionResult && Array.isArray(physicsActionResult.bodies) && (
               <div className="space-y-2">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Bodies ({(physicsActionResult.bodies as unknown[]).length})</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider">Bodies ({(physicsActionResult.bodies as unknown[]).length})</p>
                 {(physicsActionResult.bodies as Array<Record<string, unknown>>).map((b, i) => (
                   <div key={i} className="bg-lattice-surface rounded px-2 py-1 text-xs">
                     <span className="text-gray-300">{String(b.name || `Body ${i + 1}`)}</span>

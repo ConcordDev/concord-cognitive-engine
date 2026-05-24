@@ -173,7 +173,7 @@ export function KnowledgeWorkbench({
         <h2 id="kw-heading" className="text-base font-semibold text-white">
           Knowledge Workbench
         </h2>
-        <span className="text-[11px] text-gray-500">
+        <span className="text-[11px] text-gray-400">
           {corpus.length} DTUs in scope · {selected.length} selected
         </span>
       </header>
@@ -254,14 +254,14 @@ export function KnowledgeWorkbench({
               {selected.length > 0 && (
                 <button
                   onClick={() => setSelected([])}
-                  className="text-[10px] text-gray-500 hover:text-white"
+                  className="text-[10px] text-gray-400 hover:text-white"
                 >
                   clear
                 </button>
               )}
             </div>
             {visibleRows.length === 0 ? (
-              <p className="text-[11px] text-gray-600">No DTUs in scope.</p>
+              <p className="text-[11px] text-gray-400">No DTUs in scope.</p>
             ) : (
               <ul className="max-h-[360px] space-y-1 overflow-auto">
                 {visibleRows.slice(0, 60).map((d) => {
@@ -270,7 +270,7 @@ export function KnowledgeWorkbench({
                     <li key={d.id} className="flex items-center gap-2">
                       <button
                         onClick={() => toggleSelect(d.id)}
-                        className="text-gray-500 hover:text-neon-green"
+                        className="text-gray-400 hover:text-neon-green"
                         aria-label={on ? 'Deselect DTU' : 'Select DTU'}
                       >
                         {on ? (
@@ -290,7 +290,7 @@ export function KnowledgeWorkbench({
                       >
                         {String(d.title || d.id)}
                       </button>
-                      <span className="rounded bg-lattice-surface px-1 py-0.5 text-[9px] uppercase text-gray-500">
+                      <span className="rounded bg-lattice-surface px-1 py-0.5 text-[9px] uppercase text-gray-400">
                         {String(d.tier || 'regular').slice(0, 3)}
                       </span>
                     </li>

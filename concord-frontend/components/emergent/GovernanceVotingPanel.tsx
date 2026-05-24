@@ -123,7 +123,7 @@ function GovernanceVotingPanel({ proposalId }: GovernanceVotingPanelProps) {
                       <span>{cfg.glyph}</span>
                       {cfg.label}
                     </span>
-                    <span className="text-xs text-gray-500 font-mono">
+                    <span className="text-xs text-gray-400 font-mono">
                       {count} ({pct}%)
                     </span>
                   </div>
@@ -137,7 +137,7 @@ function GovernanceVotingPanel({ proposalId }: GovernanceVotingPanelProps) {
               );
             }
           )}
-          <p className="text-xs text-gray-500 text-right">Total votes: {total}</p>
+          <p className="text-xs text-gray-400 text-right">Total votes: {total}</p>
         </div>
       )}
 

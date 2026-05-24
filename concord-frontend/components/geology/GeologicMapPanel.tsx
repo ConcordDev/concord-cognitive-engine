@@ -74,7 +74,7 @@ export function GeologicMapPanel() {
       <div className="flex items-center gap-2 mb-3">
         <Layers className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-bold text-zinc-100">Geologic Map &amp; Bedrock</h3>
-        <span className="text-[11px] text-zinc-500">Macrostrat</span>
+        <span className="text-[11px] text-zinc-400">Macrostrat</span>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
@@ -99,7 +99,7 @@ export function GeologicMapPanel() {
       {error && <p className="text-xs text-rose-400 mb-2">{error}</p>}
 
       {ran && !error && units.length === 0 && (
-        <p className="text-xs text-zinc-500 italic">No geologic-map units returned for this location yet.</p>
+        <p className="text-xs text-zinc-400 italic">No geologic-map units returned for this location yet.</p>
       )}
 
       {units.length > 0 && (
@@ -112,13 +112,13 @@ export function GeologicMapPanel() {
                 <span className="text-xs font-semibold text-zinc-100 flex-1">{u.name}</span>
                 {u.ageInterval && <span className="text-[10px] text-amber-300">{u.ageInterval}</span>}
               </div>
-              <p className="text-[11px] text-zinc-500 mt-0.5">
+              <p className="text-[11px] text-zinc-400 mt-0.5">
                 {u.lithology && <span>{u.lithology}</span>}
                 {u.ageTop != null && u.ageBottom != null && (
                   <span> · {u.ageBottom}–{u.ageTop} Ma</span>
                 )}
               </p>
-              {u.description && <p className="text-[11px] text-zinc-600 mt-0.5 line-clamp-2">{u.description}</p>}
+              {u.description && <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-2">{u.description}</p>}
             </div>
           ))}
         </div>
@@ -126,13 +126,13 @@ export function GeologicMapPanel() {
 
       {column.length > 0 && (
         <div>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Stratigraphic column here</p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">Stratigraphic column here</p>
           <div className="space-y-0.5">
             {column.map((c, i) => (
               <div key={`${c.unitName}-${i}`}
                 className="flex items-center justify-between bg-zinc-900/40 border border-zinc-800/60 rounded px-2 py-1">
                 <span className="text-[11px] text-zinc-200 truncate">{c.unitName}</span>
-                <span className="text-[10px] text-zinc-500 shrink-0 ml-2">
+                <span className="text-[10px] text-zinc-400 shrink-0 ml-2">
                   {c.ageInterval || (c.ageTop != null ? `${c.ageBottom}–${c.ageTop} Ma` : '')}
                   {c.maxThicknessM != null && ` · ${c.maxThicknessM} m`}
                 </span>

@@ -135,7 +135,7 @@ export function StripePaymentForm({
           <span className="text-lg font-semibold text-zinc-100">${amountUsd.toFixed(2)}</span>
         </div>
         <div ref={elementMountRef} aria-label="Stripe payment element" />
-        {status === 'loading' && <p className="mt-3 text-xs text-zinc-500">Loading secure payment form…</p>}
+        {status === 'loading' && <p className="mt-3 text-xs text-zinc-400">Loading secure payment form…</p>}
       </div>
       {errorMessage && (
         <div className="rounded-lg border border-rose-700/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">

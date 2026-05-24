@@ -171,12 +171,12 @@ function FirstWinWizard() {
           First Win
         </span>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-400">
             {resolved.completedCount}/{resolved.steps.length}
           </span>
           <button
             onClick={handleDismiss}
-            className="text-gray-500 hover:text-white"
+            className="text-gray-400 hover:text-white"
             aria-label="Dismiss wizard"
           >
             <X className="w-3.5 h-3.5" />
@@ -221,14 +221,14 @@ function FirstWinWizard() {
                 <div
                   className={cn(
                     'font-medium text-xs',
-                    step.completed ? 'text-gray-500 line-through' : 'text-white'
+                    step.completed ? 'text-gray-400 line-through' : 'text-white'
                   )}
                 >
                   {step.label}
                 </div>
                 {isCurrent && (
                   <>
-                    <p className="text-xs text-gray-500 mt-0.5">{STEP_DESCRIPTIONS[step.id]}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{STEP_DESCRIPTIONS[step.id]}</p>
                     {STEP_ROUTES[step.id] && (
                       <button
                         onClick={() => router.push(STEP_ROUTES[step.id])}

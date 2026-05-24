@@ -124,13 +124,13 @@ function BoardsTab() {
           </button>
         </div>
       )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        boards.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No boards. Create one or load a template.</p> :
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+        boards.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No boards. Create one or load a template.</p> :
         boards.map((b) => (
           <div key={b.id} className="rounded border border-white/10 bg-black/20 p-3 group flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-gray-100">{b.title}</p>
-              <p className="text-[10px] text-gray-500">{b.elementCount} elements · {new Date(b.updatedAt).toLocaleDateString()}</p>
+              <p className="text-[10px] text-gray-400">{b.elementCount} elements · {new Date(b.updatedAt).toLocaleDateString()}</p>
             </div>
             <button type="button" onClick={() => remove(b.id)}
               className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
@@ -168,12 +168,12 @@ function TemplatesTab() {
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[11px] text-gray-500">Click a template to create a new board.</p>
+      <p className="text-[11px] text-gray-400">Click a template to create a new board.</p>
       {templates.map((t) => (
         <button key={t.id} type="button" onClick={() => apply(t.id, t.name)}
           className="w-full text-left rounded border border-white/10 bg-black/20 p-3 hover:bg-white/5">
           <p className="text-sm font-medium text-gray-100">{t.name}</p>
-          <p className="text-[11px] text-gray-500">{t.elementCount} starter elements</p>
+          <p className="text-[11px] text-gray-400">{t.elementCount} starter elements</p>
         </button>
       ))}
     </div>
@@ -206,7 +206,7 @@ function VotingTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <p className="text-[11px] text-gray-500">Cast votes on board elements. Dedupes per voter per element.</p>
+      <p className="text-[11px] text-gray-400">Cast votes on board elements. Dedupes per voter per element.</p>
       <div className="grid grid-cols-2 gap-2">
         <input type="text" value={boardId} onChange={(e) => setBoardId(e.target.value)}
           placeholder="boardId" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -226,7 +226,7 @@ function VotingTab() {
 
       {tally.length > 0 && (
         <div className="rounded border border-sky-500/20 bg-sky-500/5 p-3">
-          <p className="text-[10px] uppercase text-gray-500 mb-2">{total} total votes</p>
+          <p className="text-[10px] uppercase text-gray-400 mb-2">{total} total votes</p>
           {tally.map((t) => (
             <div key={t.elementId} className="flex justify-between text-xs font-mono py-1 border-b border-white/5">
               <span className="text-gray-300 truncate">{t.elementId}</span>

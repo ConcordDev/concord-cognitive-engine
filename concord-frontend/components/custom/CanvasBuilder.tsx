@@ -357,8 +357,8 @@ export function CanvasBuilder() {
       <div className="grid grid-cols-12 gap-4">
         {/* ── Canvas list ──────────────────────────────────────────────────── */}
         <div className="col-span-12 lg:col-span-2 panel p-3 space-y-2">
-          <p className="text-xs uppercase tracking-wider text-gray-500">Canvases</p>
-          {canvases.length === 0 && <p className="text-xs text-gray-600">No canvases yet.</p>}
+          <p className="text-xs uppercase tracking-wider text-gray-400">Canvases</p>
+          {canvases.length === 0 && <p className="text-xs text-gray-400">No canvases yet.</p>}
           {canvases.map((c) => (
             <div key={c.id}
               className={`group flex items-center justify-between rounded px-2 py-1.5 text-sm cursor-pointer ${
@@ -369,7 +369,7 @@ export function CanvasBuilder() {
                 {c.name}
               </span>
               <button onClick={(e) => { e.stopPropagation(); deleteCanvas(c.id); }}
-                className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400">
+                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -380,7 +380,7 @@ export function CanvasBuilder() {
         <div className="col-span-12 lg:col-span-7 space-y-4">
           {/* Component palette */}
           <div className="panel p-3">
-            <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Component Palette</p>
+            <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">Component Palette</p>
             <div className="flex flex-wrap gap-2">
               {palette.map((c) => (
                 <button key={c.type}
@@ -397,7 +397,7 @@ export function CanvasBuilder() {
           {/* Widget canvas */}
           <div className="panel p-3">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs uppercase tracking-wider text-gray-500">
+              <p className="text-xs uppercase tracking-wider text-gray-400">
                 {active ? `${active.name} — ${widgets.length} widgets` : 'Canvas'}
               </p>
               {active && (
@@ -453,7 +453,7 @@ export function CanvasBuilder() {
                           <X className="w-3 h-3" />
                         </button>
                       </div>
-                      <p className="text-[10px] text-gray-600 mt-1">
+                      <p className="text-[10px] text-gray-400 mt-1">
                         {w.type} · {w.w}×{w.h}
                         {def?.binds && (bound
                           ? <span className="text-emerald-500"> · {bound.name}</span>
@@ -470,7 +470,7 @@ export function CanvasBuilder() {
           {preview && (
             <div className="panel p-3">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs uppercase tracking-wider text-gray-500 flex items-center gap-1">
+                <p className="text-xs uppercase tracking-wider text-gray-400 flex items-center gap-1">
                   <Eye className="w-3.5 h-3.5" /> Live Preview
                 </p>
                 <button onClick={() => setPreview(null)} className="text-gray-600 hover:text-white">
@@ -491,7 +491,7 @@ export function CanvasBuilder() {
                     <p className="text-xs flex items-center gap-1">{pw.icon} {String(pw.props.title || pw.label)}</p>
                     {pw.type === 'metric' && (
                       <p className="text-2xl font-bold text-neon-cyan mt-1">
-                        — <span className="text-xs text-gray-500">{String(pw.props.unit || '')}</span>
+                        — <span className="text-xs text-gray-400">{String(pw.props.unit || '')}</span>
                       </p>
                     )}
                     {pw.type === 'chart' && (
@@ -503,14 +503,14 @@ export function CanvasBuilder() {
                         showLegend={false} showGrid={false} />
                     )}
                     {pw.type === 'table' && (
-                      <p className="text-[10px] text-gray-500 mt-1">
+                      <p className="text-[10px] text-gray-400 mt-1">
                         cols: {(pw.props.columns as string[] || []).join(', ')}
                       </p>
                     )}
                     {pw.type === 'text' && (
                       <p className="text-[10px] text-gray-400 mt-1">{String(pw.props.content || '')}</p>
                     )}
-                    <p className="text-[9px] text-gray-600 mt-1">
+                    <p className="text-[9px] text-gray-400 mt-1">
                       {pw.binding ? `← ${pw.binding.name}` : pw.renderable ? 'static' : pw.issues.join('; ')}
                     </p>
                   </div>
@@ -524,9 +524,9 @@ export function CanvasBuilder() {
         <div className="col-span-12 lg:col-span-3 space-y-4">
           {/* Property panel */}
           <div className="panel p-3">
-            <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Properties</p>
+            <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">Properties</p>
             {!sel ? (
-              <p className="text-xs text-gray-600">Select a widget to edit its props.</p>
+              <p className="text-xs text-gray-400">Select a widget to edit its props.</p>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-gray-400">{selDef?.icon} {selDef?.label} · {sel.id.slice(-6)}</p>
@@ -537,7 +537,7 @@ export function CanvasBuilder() {
                     const opts = p.type.replace('enum:', '').split('|');
                     return (
                       <label key={p.key} className="block text-xs">
-                        <span className="text-gray-500">{p.key}</span>
+                        <span className="text-gray-400">{p.key}</span>
                         <select value={String(val ?? '')}
                           onChange={(e) => updateWidgetProp(sel.id, p.key, e.target.value)}
                           className="input-lattice w-full mt-0.5 text-xs">
@@ -549,7 +549,7 @@ export function CanvasBuilder() {
                   if (p.type === 'number') {
                     return (
                       <label key={p.key} className="block text-xs">
-                        <span className="text-gray-500">{p.key}</span>
+                        <span className="text-gray-400">{p.key}</span>
                         <input type="number" value={Number(val ?? 0)}
                           onChange={(e) => updateWidgetProp(sel.id, p.key, Number(e.target.value))}
                           className="input-lattice w-full mt-0.5 text-xs" />
@@ -559,7 +559,7 @@ export function CanvasBuilder() {
                   if (p.type === 'string[]' || p.type === 'field[]') {
                     return (
                       <label key={p.key} className="block text-xs">
-                        <span className="text-gray-500">{p.key} (comma-sep)</span>
+                        <span className="text-gray-400">{p.key} (comma-sep)</span>
                         <input type="text"
                           value={Array.isArray(val) ? val.map((x) => typeof x === 'object' ? JSON.stringify(x) : x).join(',') : String(val ?? '')}
                           onChange={(e) => updateWidgetProp(sel.id, p.key, e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
@@ -569,7 +569,7 @@ export function CanvasBuilder() {
                   }
                   return (
                     <label key={p.key} className="block text-xs">
-                      <span className="text-gray-500">{p.key}</span>
+                      <span className="text-gray-400">{p.key}</span>
                       <input type="text" value={String(val ?? '')}
                         onChange={(e) => updateWidgetProp(sel.id, p.key, e.target.value)}
                         className="input-lattice w-full mt-0.5 text-xs" />
@@ -579,14 +579,14 @@ export function CanvasBuilder() {
 
                 {/* size controls */}
                 <div className="flex items-center gap-1 pt-1">
-                  <span className="text-[10px] text-gray-500">size</span>
+                  <span className="text-[10px] text-gray-400">size</span>
                   <button onClick={() => resizeWidget(sel.id, -1, 0)} className="btn-neon text-[10px] px-1.5">W-</button>
                   <button onClick={() => resizeWidget(sel.id, 1, 0)} className="btn-neon text-[10px] px-1.5">W+</button>
                   <button onClick={() => resizeWidget(sel.id, 0, -1)} className="btn-neon text-[10px] px-1.5">H-</button>
                   <button onClick={() => resizeWidget(sel.id, 0, 1)} className="btn-neon text-[10px] px-1.5">H+</button>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-gray-500">move</span>
+                  <span className="text-[10px] text-gray-400">move</span>
                   <button onClick={() => moveWidget(sel.id, -1, 0)} className="btn-neon text-[10px] px-1.5">←</button>
                   <button onClick={() => moveWidget(sel.id, 1, 0)} className="btn-neon text-[10px] px-1.5">→</button>
                   <button onClick={() => moveWidget(sel.id, 0, -1)} className="btn-neon text-[10px] px-1.5">↑</button>
@@ -596,7 +596,7 @@ export function CanvasBuilder() {
                 {/* data-source binding */}
                 {selDef?.binds && (
                   <label className="block text-xs pt-1">
-                    <span className="text-gray-500">data source</span>
+                    <span className="text-gray-400">data source</span>
                     <select value={sel.bindingId || ''}
                       onChange={(e) => setWidgetBinding(sel.id, e.target.value || null)}
                       className="input-lattice w-full mt-0.5 text-xs">
@@ -620,12 +620,12 @@ export function CanvasBuilder() {
           {/* Data sources */}
           <div className="panel p-3">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs uppercase tracking-wider text-gray-500">Data Sources</p>
+              <p className="text-xs uppercase tracking-wider text-gray-400">Data Sources</p>
               <button onClick={createBinding} className="text-neon-purple hover:text-white">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
-            {bindings.length === 0 && <p className="text-xs text-gray-600">No bindings yet.</p>}
+            {bindings.length === 0 && <p className="text-xs text-gray-400">No bindings yet.</p>}
             {bindings.map((b) => (
               <div key={b.id} className="group flex items-center justify-between text-xs py-1">
                 <span className="truncate">
@@ -633,10 +633,10 @@ export function CanvasBuilder() {
                   <span className="text-gray-600"> · {b.kind}</span>
                 </span>
                 <span className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                  <button onClick={() => testBinding(b.id)} className="text-gray-500 hover:text-neon-cyan">
+                  <button onClick={() => testBinding(b.id)} className="text-gray-400 hover:text-neon-cyan">
                     <RefreshCw className="w-3 h-3" />
                   </button>
-                  <button onClick={() => deleteBinding(b.id)} className="text-gray-500 hover:text-red-400">
+                  <button onClick={() => deleteBinding(b.id)} className="text-gray-400 hover:text-red-400">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </span>
@@ -647,8 +647,8 @@ export function CanvasBuilder() {
           {/* Event wirings */}
           {active && (
             <div className="panel p-3">
-              <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Event Wirings</p>
-              {wirings.length === 0 && <p className="text-xs text-gray-600">No wirings on this canvas.</p>}
+              <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">Event Wirings</p>
+              {wirings.length === 0 && <p className="text-xs text-gray-400">No wirings on this canvas.</p>}
               {wirings.map((wr) => (
                 <div key={wr.id} className="group flex items-center justify-between text-xs py-1">
                   <span className="truncate">
@@ -657,7 +657,7 @@ export function CanvasBuilder() {
                     {wr.refreshWidgetId && <span className="text-gray-600"> ↻</span>}
                   </span>
                   <button onClick={() => deleteWiring(wr.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400">
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -667,17 +667,17 @@ export function CanvasBuilder() {
 
           {/* Published lenses */}
           <div className="panel p-3">
-            <p className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1">
+            <p className="text-xs uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
               <Rocket className="w-3.5 h-3.5" /> In Navigation
             </p>
-            {published.length === 0 && <p className="text-xs text-gray-600">Nothing published.</p>}
+            {published.length === 0 && <p className="text-xs text-gray-400">Nothing published.</p>}
             {published.map((p) => (
               <div key={String(p.canvasId)} className="group flex items-center justify-between text-xs py-1">
                 <span className="truncate">{String(p.icon)} {String(p.navLabel)}
                   <span className="text-gray-600"> /{String(p.slug)}</span>
                 </span>
                 <button onClick={() => unpublishCanvas(String(p.canvasId))}
-                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400">
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
                   <X className="w-3 h-3" />
                 </button>
               </div>

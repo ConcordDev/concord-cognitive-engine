@@ -68,7 +68,7 @@ export function RxHealthLogPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const isBP = kind === 'blood_pressure';
@@ -107,12 +107,12 @@ export function RxHealthLogPanel() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-[11px] text-zinc-500 italic py-6 text-center">
+            <p className="text-[11px] text-zinc-400 italic py-6 text-center">
               Log at least two {kind.replace(/_/g, ' ')} readings to see a trend.
             </p>
           )}
           {trend !== 'no_data' && (
-            <p className="text-[10px] text-zinc-500 mt-1">Recent trend: <span className="text-zinc-300 capitalize">{trend}</span></p>
+            <p className="text-[10px] text-zinc-400 mt-1">Recent trend: <span className="text-zinc-300 capitalize">{trend}</span></p>
           )}
           <div className="grid grid-cols-3 gap-2 mt-2">
             <input placeholder={isBP ? 'Systolic' : 'Value'} inputMode="decimal" value={mForm.value}
@@ -152,17 +152,17 @@ export function RxHealthLogPanel() {
           </button>
         </div>
         {journal.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No journal entries.</p>
+          <p className="text-[11px] text-zinc-400 italic">No journal entries.</p>
         ) : (
           <ul className="space-y-1">
             {journal.slice(0, 8).map((j) => (
               <li key={j.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-zinc-200">{j.note}</span>
-                  <span className="text-[10px] text-zinc-500">{j.date}</span>
+                  <span className="text-[10px] text-zinc-400">{j.date}</span>
                 </div>
                 {(j.mood || j.symptoms.length > 0) && (
-                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
                     {j.mood ? `Mood: ${j.mood}` : ''}
                     {j.symptoms.length > 0 ? `${j.mood ? ' · ' : ''}${j.symptoms.join(', ')}` : ''}
                   </p>

@@ -57,7 +57,7 @@ export function MemberNotifications() {
     await refresh(filterRecipient, unreadOnly);
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
@@ -98,7 +98,7 @@ export function MemberNotifications() {
       </div>
 
       {notifs.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No data yet — send a notification to a household member above.</p>
+        <p className="text-xs text-zinc-400 italic">No data yet — send a notification to a household member above.</p>
       ) : (
         <ul className="space-y-1">
           {notifs.map(n => (
@@ -107,7 +107,7 @@ export function MemberNotifications() {
               <span className={cn('text-[9px] uppercase font-bold w-12 shrink-0', KIND_COLOR[n.kind])}>{n.kind}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-zinc-100 truncate">{n.message}</p>
-                <p className="text-[10px] text-zinc-500">to {n.recipient} · {new Date(n.createdAt).toLocaleString()}</p>
+                <p className="text-[10px] text-zinc-400">to {n.recipient} · {new Date(n.createdAt).toLocaleString()}</p>
               </div>
               {!n.read && (
                 <button onClick={() => markRead(n.id)} title="Mark read"

@@ -51,7 +51,7 @@ const tierConfig = {
   regular: { color: 'bg-gray-500', label: 'Regular', textColor: 'text-gray-400' },
   mega: { color: 'bg-neon-cyan', label: 'MEGA', textColor: 'text-neon-cyan' },
   hyper: { color: 'bg-neon-purple', label: 'HYPER', textColor: 'text-neon-purple' },
-  shadow: { color: 'bg-gray-700', label: 'Shadow', textColor: 'text-gray-500' }
+  shadow: { color: 'bg-gray-700', label: 'Shadow', textColor: 'text-gray-400' }
 };
 
 type SortField = 'createdAt' | 'updatedAt' | 'title' | 'resonance';
@@ -172,7 +172,7 @@ export function VirtualDTUList({
             </div>
 
             {dtu.excerpt && (
-              <p className="text-sm text-gray-500 truncate mt-0.5">
+              <p className="text-sm text-gray-400 truncate mt-0.5">
                 {dtu.excerpt}
               </p>
             )}
@@ -182,12 +182,12 @@ export function VirtualDTUList({
               {dtu.tags.length > 0 && (
                 <div className="flex items-center gap-1">
                   {dtu.tags.slice(0, 2).map(tag => (
-                    <span key={tag} className="text-xs text-gray-500">
+                    <span key={tag} className="text-xs text-gray-400">
                       #{tag}
                     </span>
                   ))}
                   {dtu.tags.length > 2 && (
-                    <span className="text-xs text-gray-600">
+                    <span className="text-xs text-gray-400">
                       +{dtu.tags.length - 2}
                     </span>
                   )}
@@ -195,7 +195,7 @@ export function VirtualDTUList({
               )}
 
               {/* Metadata */}
-              <div className="flex items-center gap-2 text-xs text-gray-600">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
                 {dtu.connectionCount !== undefined && dtu.connectionCount > 0 && (
                   <span className="flex items-center gap-0.5">
                     <GitBranch className="w-3 h-3" />
@@ -243,7 +243,7 @@ export function VirtualDTUList({
         <div className="px-4 py-3 border-b border-lattice-border space-y-3">
           {/* Search */}
           <div className="flex items-center gap-2 px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg">
-            <Search className="w-4 h-4 text-gray-500" />
+            <Search className="w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
@@ -254,7 +254,7 @@ export function VirtualDTUList({
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="text-gray-500 hover:text-white"
+                className="text-gray-400 hover:text-white"
               >
                 ×
               </button>
@@ -409,7 +409,7 @@ export function VirtualDTUList({
       </AnimatePresence>
 
       {/* Footer */}
-      <div className="px-4 py-2 border-t border-lattice-border bg-lattice-surface/50 text-xs text-gray-500">
+      <div className="px-4 py-2 border-t border-lattice-border bg-lattice-surface/50 text-xs text-gray-400">
         {filteredDTUs.length} of {dtus.length} DTUs
       </div>
     </div>

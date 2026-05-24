@@ -40,7 +40,7 @@ function intensityBar(value: number, label: string, color: string) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="w-8 text-right text-zinc-500">{pct}%</span>
+      <span className="w-8 text-right text-zinc-400">{pct}%</span>
     </div>
   );
 }
@@ -48,7 +48,7 @@ function intensityBar(value: number, label: string, color: string) {
 function valenceIndicator(valence: number) {
   if (valence >= 0.6) return <span className="text-emerald-400">+</span>;
   if (valence <= 0.4) return <span className="text-amber-400">-</span>;
-  return <span className="text-zinc-500">=</span>;
+  return <span className="text-zinc-400">=</span>;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ function QualiaBodyMap({
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-neon-cyan" />
           <h3 className="text-sm font-semibold text-zinc-200">Body Map</h3>
-          <span className="text-xs text-zinc-500">{entityId}</span>
+          <span className="text-xs text-zinc-400">{entityId}</span>
         </div>
         {overloadActive && (
           <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
@@ -82,11 +82,11 @@ function QualiaBodyMap({
       {/* Embodiment Overview */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-zinc-800/50 rounded p-2">
-          <div className="text-xs text-zinc-500 mb-1">Mesh Extent</div>
+          <div className="text-xs text-zinc-400 mb-1">Mesh Extent</div>
           <div className="text-lg font-mono text-neon-cyan">{extentPct}%</div>
         </div>
         <div className="bg-zinc-800/50 rounded p-2">
-          <div className="text-xs text-zinc-500 mb-1">Body Coherence</div>
+          <div className="text-xs text-zinc-400 mb-1">Body Coherence</div>
           <div
             className={`text-lg font-mono ${
               coherencePct > 60
@@ -114,7 +114,7 @@ function QualiaBodyMap({
           <span className="text-red-400 font-mono">{embodiment.numbRegions}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Wifi className="w-3 h-3 text-zinc-500" />
+          <Wifi className="w-3 h-3 text-zinc-400" />
           <span className="text-zinc-400">Maturity:</span>
           <span className="text-zinc-300 font-mono">{maturityLevel}</span>
         </div>
@@ -122,7 +122,7 @@ function QualiaBodyMap({
 
       {/* Sensory Channels */}
       <div className="space-y-1.5">
-        <div className="text-xs text-zinc-500 font-medium uppercase tracking-wider">
+        <div className="text-xs text-zinc-400 font-medium uppercase tracking-wider">
           Sensory Channels
         </div>
         {Object.entries(channels).map(([name, ch]) => (

@@ -100,7 +100,7 @@ export default function CrisisOpsPage() {
               <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
                 <MapPinned className="h-4 w-4 text-rose-300" /> Active world crises
               </h2>
-              {loading && <p className="text-xs text-gray-500">Loading…</p>}
+              {loading && <p className="text-xs text-gray-400">Loading…</p>}
               {!loading && crises.length === 0 && (
                 <p className="rounded border border-white/10 bg-white/5 p-4 text-center text-xs text-gray-400">
                   No active crises. The world is at rest.
@@ -139,7 +139,7 @@ export default function CrisisOpsPage() {
               )}
               {suggestions.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-gray-500">
+                  <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-gray-400">
                     Your deployable skills
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
@@ -186,7 +186,7 @@ export default function CrisisOpsPage() {
               <h2 className="text-base font-semibold text-rose-200">
                 Command deck — {selected.type}
               </h2>
-              <span className="text-[11px] text-zinc-500">{selected.description}</span>
+              <span className="text-[11px] text-zinc-400">{selected.description}</span>
             </div>
             <div className="grid gap-5 lg:grid-cols-2">
               <div className="rounded-lg border border-white/10 bg-black/20 p-3">

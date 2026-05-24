@@ -71,7 +71,7 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
               <span className="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 text-gray-400">{data.status.replace('_', ' ')}</span>
             </div>
             <div className="text-sm text-gray-300">{data.address}</div>
-            <div className="text-xs text-gray-500">{data.city}{data.state ? `, ${data.state}` : ''} {data.zip}</div>
+            <div className="text-xs text-gray-400">{data.city}{data.state ? `, ${data.state}` : ''} {data.zip}</div>
           </div>
 
           <div className="grid grid-cols-4 gap-2 text-center">
@@ -92,14 +92,14 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
 
           {data.description && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">Description</h3>
+              <h3 className="text-xs uppercase tracking-wider text-gray-400 mb-1.5">Description</h3>
               <p className="text-xs text-gray-200 leading-relaxed">{data.description}</p>
             </div>
           )}
 
           {data.priceHistory && data.priceHistory.length > 0 && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">Price history</h3>
+              <h3 className="text-xs uppercase tracking-wider text-gray-400 mb-1.5">Price history</h3>
               <ul className="divide-y divide-white/5 rounded border border-white/10">
                 {data.priceHistory.slice().reverse().map((p, i) => (
                   <li key={i} className="px-3 py-1.5 flex items-center gap-3 text-xs">
@@ -121,7 +121,7 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
               <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div className={cn('h-full transition-all', hot.score >= 65 ? 'bg-rose-500' : hot.score >= 45 ? 'bg-amber-500' : 'bg-cyan-500')} style={{ width: `${hot.score}%` }} />
               </div>
-              <div className="mt-1 text-[10px] text-gray-500">{hot.daysOnMarket}d on market · {hot.tourCount} tour{hot.tourCount === 1 ? '' : 's'} requested</div>
+              <div className="mt-1 text-[10px] text-gray-400">{hot.daysOnMarket}d on market · {hot.tourCount} tour{hot.tourCount === 1 ? '' : 's'} requested</div>
             </div>
           )}
         </div>
@@ -134,7 +134,7 @@ function Tile({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
   return (
     <div className="rounded-md border border-white/10 bg-white/[0.03] py-2">
       <Icon className="w-4 h-4 text-cyan-300 mx-auto mb-0.5" />
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-sm font-mono tabular-nums text-white">{value}</div>
     </div>
   );

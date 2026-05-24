@@ -89,7 +89,7 @@ export default function CapturePage() {
             <Brain className="w-6 h-6 text-neon-cyan" />
             <span className="text-lg font-semibold text-white">Quick Capture</span>
           </Link>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-400 text-sm">
             Type anything. We&apos;ll handle the rest.
           </p>
         </div>

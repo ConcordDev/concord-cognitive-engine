@@ -318,7 +318,7 @@ export function GeometryEditor({
               <PartMesh mesh={mesh} />
             </Canvas>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               {computing ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
@@ -331,23 +331,23 @@ export function GeometryEditor({
         {geom && (
           <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
             <div className="bg-black/20 rounded p-2">
-              <p className="text-gray-500">Volume</p>
+              <p className="text-gray-400">Volume</p>
               <p className="font-mono text-neon-cyan">
                 {(geom.volume * 1e6).toFixed(1)} cm³
               </p>
             </div>
             <div className="bg-black/20 rounded p-2">
-              <p className="text-gray-500">Mass</p>
+              <p className="text-gray-400">Mass</p>
               <p className="font-mono text-yellow-400">{geom.mass.toFixed(3)} kg</p>
             </div>
             <div className="bg-black/20 rounded p-2">
-              <p className="text-gray-500">Surface Area</p>
+              <p className="text-gray-400">Surface Area</p>
               <p className="font-mono text-purple-400">
                 {(geom.surfaceArea * 1e4).toFixed(1)} cm²
               </p>
             </div>
             <div className="bg-black/20 rounded p-2">
-              <p className="text-gray-500">Bounding Box</p>
+              <p className="text-gray-400">Bounding Box</p>
               <p className="font-mono text-gray-300">
                 {geom.boundingBox.x.toFixed(2)}×{geom.boundingBox.y.toFixed(2)}×
                 {geom.boundingBox.z.toFixed(2)}
@@ -355,7 +355,7 @@ export function GeometryEditor({
             </div>
             {geom.section && (
               <div className="bg-black/20 rounded p-2 col-span-2">
-                <p className="text-gray-500">Section · A / Ix / Iy</p>
+                <p className="text-gray-400">Section · A / Ix / Iy</p>
                 <p className="font-mono text-green-400">
                   {(geom.section.area * 1e4).toFixed(2)} cm² /{' '}
                   {(geom.section.Ix * 1e8).toFixed(2)} /{' '}
@@ -373,7 +373,7 @@ export function GeometryEditor({
           <Plus className="w-4 h-4 text-purple-400" /> Saved Parts ({parts.length})
         </h3>
         {parts.length === 0 && (
-          <p className="text-xs text-gray-500 py-4 text-center">
+          <p className="text-xs text-gray-400 py-4 text-center">
             No saved parts. Define geometry and click Save Part.
           </p>
         )}
@@ -388,7 +388,7 @@ export function GeometryEditor({
                 className="text-left flex-1 min-w-0"
               >
                 <p className="text-sm truncate">{p.name}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {p.kind} · {p.geometry?.mass?.toFixed(2) ?? '?'} kg
                 </p>
               </button>

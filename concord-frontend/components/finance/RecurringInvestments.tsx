@@ -72,7 +72,7 @@ export function RecurringInvestments() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Repeat className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Recurring investments</span>
-        <span className="ml-auto text-[10px] text-gray-500 font-mono">${monthlyTotal.toFixed(0)}/mo deployed</span>
+        <span className="ml-auto text-[10px] text-gray-400 font-mono">${monthlyTotal.toFixed(0)}/mo deployed</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
@@ -91,9 +91,9 @@ export function RecurringInvestments() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : plans.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Repeat className="w-6 h-6 mx-auto mb-2 opacity-30" />No DCA plans. Start auto-investing.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Repeat className="w-6 h-6 mx-auto mb-2 opacity-30" />No DCA plans. Start auto-investing.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {plans.map(p => (
@@ -104,11 +104,11 @@ export function RecurringInvestments() {
                     {p.symbol}
                     <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', p.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{p.status}</span>
                   </div>
-                  <div className="text-[10px] text-gray-500 font-mono">{p.executedCount} buys · avg ${p.averagePrice?.toFixed(2) || '—'}</div>
+                  <div className="text-[10px] text-gray-400 font-mono">{p.executedCount} buys · avg ${p.averagePrice?.toFixed(2) || '—'}</div>
                 </div>
                 <span className="text-right">
                   <div className="font-mono text-sm text-white tabular-nums">${p.amount.toFixed(0)}</div>
-                  <div className="text-[10px] text-gray-500">{p.cadence}</div>
+                  <div className="text-[10px] text-gray-400">{p.cadence}</div>
                 </span>
                 <button onClick={() => togglePause(p.id)} className="p-1.5 rounded hover:bg-white/10 text-gray-400" title={p.status === 'active' ? 'Pause' : 'Resume'}>
                   {p.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}

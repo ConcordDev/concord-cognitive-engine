@@ -142,7 +142,7 @@ function DTUIntegrityBadgeInner({
             {config.label}
           </span>
           {verifiedAt && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               {formatTimeAgo(verifiedAt)}
             </span>
           )}
@@ -158,9 +158,9 @@ function DTUIntegrityBadgeInner({
           )}
 
           {expanded ? (
-            <ChevronUp className="w-4 h-4 text-gray-500" />
+            <ChevronUp className="w-4 h-4 text-gray-400" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-gray-500" />
+            <ChevronDown className="w-4 h-4 text-gray-400" />
           )}
         </div>
       </button>
@@ -174,7 +174,7 @@ function DTUIntegrityBadgeInner({
           {/* Content hash */}
           {contentHash && (
             <div className="space-y-1">
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-gray-400">
                 <FileCheck className="w-3 h-3" />
                 <span>Content Hash (SHA-256)</span>
               </div>
@@ -187,32 +187,32 @@ function DTUIntegrityBadgeInner({
           {/* Compression details */}
           {(compressionAlgorithm || storageSaved !== null) && (
             <div className="space-y-1">
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-gray-400">
                 <Archive className="w-3 h-3" />
                 <span>Compression</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {compressionAlgorithm && (
                   <div className="bg-black/20 px-2 py-1 rounded">
-                    <span className="text-gray-500">Algorithm: </span>
+                    <span className="text-gray-400">Algorithm: </span>
                     <span className="text-gray-300">{compressionAlgorithm.toUpperCase()}</span>
                   </div>
                 )}
                 {compressionRatio !== undefined && (
                   <div className="bg-black/20 px-2 py-1 rounded">
-                    <span className="text-gray-500">Ratio: </span>
+                    <span className="text-gray-400">Ratio: </span>
                     <span className="text-gray-300">{(compressionRatio * 100).toFixed(1)}%</span>
                   </div>
                 )}
                 {originalSize !== undefined && (
                   <div className="bg-black/20 px-2 py-1 rounded">
-                    <span className="text-gray-500">Original: </span>
+                    <span className="text-gray-400">Original: </span>
                     <span className="text-gray-300">{formatBytes(originalSize)}</span>
                   </div>
                 )}
                 {compressedSize !== undefined && (
                   <div className="bg-black/20 px-2 py-1 rounded">
-                    <span className="text-gray-500">Stored: </span>
+                    <span className="text-gray-400">Stored: </span>
                     <span className="text-gray-300">{formatBytes(compressedSize)}</span>
                   </div>
                 )}
@@ -228,11 +228,11 @@ function DTUIntegrityBadgeInner({
           {/* Integrity report details */}
           {integrityReport && (
             <div className="space-y-1">
-              <div className="text-xs text-gray-500">Layer Checksums</div>
+              <div className="text-xs text-gray-400">Layer Checksums</div>
               <div className="space-y-1">
                 {Object.entries(integrityReport.layerChecksums).map(([layer, checksum]) => (
                   <div key={layer} className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-500 w-20 truncate">{layer}:</span>
+                    <span className="text-gray-400 w-20 truncate">{layer}:</span>
                     <code className="text-gray-400 font-mono truncate flex-1">
                       {checksum.slice(0, 16)}...
                     </code>
@@ -244,7 +244,7 @@ function DTUIntegrityBadgeInner({
                 <div className="text-xs text-gray-400 pt-1">
                   Signed by: <span className="text-gray-300">{integrityReport.signedBy}</span>
                   {integrityReport.signedAt && (
-                    <span className="text-gray-500"> ({formatTimeAgo(integrityReport.signedAt)})</span>
+                    <span className="text-gray-400"> ({formatTimeAgo(integrityReport.signedAt)})</span>
                   )}
                 </div>
               )}

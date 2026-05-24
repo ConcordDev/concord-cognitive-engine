@@ -56,9 +56,9 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
             className={`w-full text-left panel p-3 transition-colors ${selected?.id === t.id ? 'border-neon-purple' : ''}`}>
             <div className="flex items-center justify-between mb-1">
               <span className="font-medium text-sm">{t.title}</span>
-              <ChevronRight className="w-4 h-4 text-gray-500" />
+              <ChevronRight className="w-4 h-4 text-gray-400" />
             </div>
-            <p className="text-xs text-gray-500 line-clamp-2">{t.description}</p>
+            <p className="text-xs text-gray-400 line-clamp-2">{t.description}</p>
             <div className="flex items-center gap-1 text-xs text-neon-cyan mt-1.5">
               <Clock className="w-3 h-3" />{t.estimatedTime}
             </div>
@@ -80,7 +80,7 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
               </div>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Pipeline Steps</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Pipeline Steps</p>
               <ol className="space-y-2">
                 {selected.steps.map((step, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm">
@@ -93,7 +93,7 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
               </ol>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Recommended Models</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Recommended Models</p>
               <div className="flex flex-wrap gap-2">
                 {selected.recommendedModels.map((m) => (
                   <button key={m} onClick={() => onUseModel?.(m)}
@@ -105,7 +105,7 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
             </div>
           </div>
         ) : (
-          <div className="panel p-12 text-center text-gray-500">
+          <div className="panel p-12 text-center text-gray-400">
             <Wand2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p>Select a template to view the guided pipeline</p>
           </div>

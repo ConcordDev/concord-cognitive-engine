@@ -80,7 +80,7 @@ export function PipelineProgress({
         <Layers className="w-4 h-4" />
         {description}
       </h3>
-      <p className="text-xs text-zinc-500 mb-3">Pipeline: {pipelineId}</p>
+      <p className="text-xs text-zinc-400 mb-3">Pipeline: {pipelineId}</p>
       <div className="space-y-2">
         {steps.map((step) => {
           const status = stepStatuses.get(step.order);
@@ -103,7 +103,7 @@ export function PipelineProgress({
                 'text-sm',
                 isRunning ? 'text-blue-300' :
                 isCompleted ? 'text-zinc-200' :
-                'text-zinc-500',
+                'text-zinc-400',
               )}>
                 {step.lens}: {step.action.replace(/-/g, ' ')}
               </span>

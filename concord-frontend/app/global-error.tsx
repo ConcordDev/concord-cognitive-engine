@@ -25,7 +25,7 @@ export default function GlobalError({
             A critical error occurred in the application.
           </p>
           {error.digest && (
-            <p className="text-gray-500 text-xs mb-6 font-mono">
+            <p className="text-gray-400 text-xs mb-6 font-mono">
               Error ID: {error.digest}
             </p>
           )}

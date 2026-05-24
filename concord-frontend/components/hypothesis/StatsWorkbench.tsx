@@ -611,7 +611,7 @@ function DatasetPanel() {
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-zinc-300">Imported datasets</h4>
           {datasets.length === 0 && (
-            <p className="text-xs text-zinc-500">No datasets yet — import CSV text or a file.</p>
+            <p className="text-xs text-zinc-400">No datasets yet — import CSV text or a file.</p>
           )}
           <div className="max-h-64 space-y-1.5 overflow-y-auto">
             {datasets.map((d) => (
@@ -623,13 +623,13 @@ function DatasetPanel() {
               >
                 <button onClick={() => openDataset(d)} className="text-left">
                   <p className="text-xs font-medium text-zinc-100">{d.name}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {d.rowCount} rows × {d.columnCount} cols
                   </p>
                 </button>
                 <button
                   onClick={() => remove(d.id)}
-                  className="rounded p-1 text-zinc-500 hover:bg-rose-500/15 hover:text-rose-300"
+                  className="rounded p-1 text-zinc-400 hover:bg-rose-500/15 hover:text-rose-300"
                   aria-label="Delete dataset"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -936,7 +936,7 @@ function CorrectionPanel() {
 
 function Cell({ p, reject }: { p: number; reject: boolean }) {
   return (
-    <td className={`py-1.5 pr-3 font-mono ${reject ? 'text-emerald-300' : 'text-zinc-500'}`}>
+    <td className={`py-1.5 pr-3 font-mono ${reject ? 'text-emerald-300' : 'text-zinc-400'}`}>
       {p}
       {reject && <span className="ml-1 text-[10px]">★</span>}
     </td>
@@ -1091,7 +1091,7 @@ function RegistryPanel() {
 
       <div className="space-y-2">
         {items.length === 0 && (
-          <p className="text-xs text-zinc-500">No pre-registered hypotheses yet.</p>
+          <p className="text-xs text-zinc-400">No pre-registered hypotheses yet.</p>
         )}
         {items.map((p) => (
           <PreRegCard key={p.id} prereg={p} onChanged={refresh} onDelete={() => remove(p.id)} />
@@ -1143,7 +1143,7 @@ function PreRegCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-zinc-100">{prereg.statement}</p>
-          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-zinc-500">
+          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-zinc-400">
             <span>{prereg.plannedTest || 'no test'}</span>
             <span>α={prereg.alpha}</span>
             <span>{prereg.predictedDirection}</span>
@@ -1156,7 +1156,7 @@ function PreRegCard({
           </span>
           <button
             onClick={onDelete}
-            className="rounded p-1 text-zinc-500 hover:bg-rose-500/15 hover:text-rose-300"
+            className="rounded p-1 text-zinc-400 hover:bg-rose-500/15 hover:text-rose-300"
             aria-label="Delete pre-registration"
           >
             <Trash2 className="h-3.5 w-3.5" />

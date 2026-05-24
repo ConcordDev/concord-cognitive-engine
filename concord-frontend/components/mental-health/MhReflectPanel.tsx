@@ -54,7 +54,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -72,7 +72,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
               <span className="text-xs text-zinc-300">
                 {goal.todayMinutes} / {goal.dailyMinutes} min today
               </span>
-              <span className={goal.met ? 'text-[11px] text-emerald-400' : 'text-[11px] text-zinc-500'}>
+              <span className={goal.met ? 'text-[11px] text-emerald-400' : 'text-[11px] text-zinc-400'}>
                 {goal.met ? 'Goal met' : `${goal.pct}%`}
               </span>
             </div>
@@ -111,12 +111,12 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
         </div>
 
         {entries.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic mt-2">No gratitude entries yet. A few lines a day builds the habit.</p>
+          <p className="text-[11px] text-zinc-400 italic mt-2">No gratitude entries yet. A few lines a day builds the habit.</p>
         ) : (
           <ul className="space-y-1.5 mt-2">
             {entries.map((e) => (
               <li key={e.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <p className="text-[10px] text-zinc-500 mb-1">{e.date}</p>
+                <p className="text-[10px] text-zinc-400 mb-1">{e.date}</p>
                 <ul className="space-y-0.5">
                   {e.items.map((it, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-xs text-zinc-200">

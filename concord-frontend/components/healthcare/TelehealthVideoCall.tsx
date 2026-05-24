@@ -224,7 +224,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
             className="w-full h-full object-cover"
           />
           {!remoteStream && (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-500 text-xs">
+            <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Waiting for other party…
             </div>
           )}
@@ -241,7 +241,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
             className="w-full h-full object-cover"
           />
           {!localStream && (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-500 text-xs">
+            <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
               {status === 'connecting' ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Requesting camera…</> : '—'}
             </div>
           )}

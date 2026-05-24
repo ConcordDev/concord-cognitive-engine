@@ -78,7 +78,7 @@ export function LightroomDarkroomPanel({ onChange }: { onChange: () => void }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10 text-zinc-500">
+      <div className="flex items-center justify-center py-10 text-zinc-400">
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
     );
@@ -86,7 +86,7 @@ export function LightroomDarkroomPanel({ onChange }: { onChange: () => void }) {
 
   if (photos.length === 0) {
     return (
-      <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+      <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
         Import photos in the Library tab first.
       </div>
     );
@@ -262,7 +262,7 @@ function RawDevelopTab({ photos, onChange }: { photos: Photo[]; onChange: () => 
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-2 py-1.5">
-      <p className="text-[9px] uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="text-[9px] uppercase tracking-wide text-zinc-400">{label}</p>
       <p className="text-zinc-200 truncate">{value}</p>
     </div>
   );
@@ -573,14 +573,14 @@ function MaskingTab({ photos, onChange }: { photos: Photo[]; onChange: () => voi
       </div>
 
       {masks.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No masks on this photo yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No masks on this photo yet.</p>
       ) : (
         <ul className="space-y-2">
           {masks.map((m) => (
             <li key={m.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-zinc-200">
-                  {m.name} <span className="text-[10px] text-zinc-500">· {m.kind}</span>
+                  {m.name} <span className="text-[10px] text-zinc-400">· {m.kind}</span>
                 </p>
                 <button type="button" onClick={() => deleteMask(m.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
@@ -684,14 +684,14 @@ function CullFilterTab() {
 
       {result && (
         <div>
-          <p className="text-[11px] text-zinc-500 mb-1">{result.length} photo(s) match</p>
+          <p className="text-[11px] text-zinc-400 mb-1">{result.length} photo(s) match</p>
           <ul className="space-y-1">
             {result.map((p) => (
               <li key={p.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
                 {p.colorLabel && <span className="w-2.5 h-2.5 rounded-full" style={{ background: COLOR_HEX[p.colorLabel] }} />}
                 <span className="text-xs text-zinc-200">{p.title}</span>
                 <span className="text-[10px] text-amber-400 ml-auto">{'★'.repeat(p.rating)}</span>
-                <span className="text-[10px] text-zinc-500">{p.flag}</span>
+                <span className="text-[10px] text-zinc-400">{p.flag}</span>
               </li>
             ))}
           </ul>
@@ -843,7 +843,7 @@ function SmartCollectionsTab({ photos, onChange }: { photos: Photo[]; onChange: 
           {collections.map((c) => (
             <li key={c.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
               <span className="text-xs text-zinc-200">{c.name}</span>
-              <span className="text-[10px] text-zinc-500">{c.matchCount ?? 0} match</span>
+              <span className="text-[10px] text-zinc-400">{c.matchCount ?? 0} match</span>
               <button type="button" onClick={() => evalCollection(c.id)}
                 className="ml-auto text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded">
                 evaluate
@@ -922,7 +922,7 @@ function BatchSyncTab({ photos, presets, onChange }: { photos: Photo[]; presets:
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
         {mode === 'preset' ? (
           presets.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">No presets — create one in the Develop tab.</p>
+            <p className="text-[11px] text-zinc-400 italic">No presets — create one in the Develop tab.</p>
           ) : (
             <select value={presetId} onChange={(e) => setPresetId(e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
@@ -950,7 +950,7 @@ function BatchSyncTab({ photos, presets, onChange }: { photos: Photo[]; presets:
           {photos.filter((p) => mode === 'preset' || p.id !== sourceId).map((p) => (
             <label key={p.id} className="flex items-center gap-2 text-xs text-zinc-200 cursor-pointer">
               <input type="checkbox" checked={targets.includes(p.id)} onChange={() => toggleTarget(p.id)} />
-              {p.title} <span className="text-[10px] text-zinc-500">{p.filename}</span>
+              {p.title} <span className="text-[10px] text-zinc-400">{p.filename}</span>
             </label>
           ))}
         </div>

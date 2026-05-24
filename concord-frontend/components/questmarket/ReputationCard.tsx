@@ -35,7 +35,7 @@ export function ReputationCard({ refreshKey }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 text-xs text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading reputation…
       </div>
     );
@@ -55,7 +55,7 @@ export function ReputationCard({ refreshKey }: { refreshKey?: number }) {
           <Award className="h-5 w-5 text-amber-400" />
           <div>
             <p className="text-base font-bold text-white">{rep.rank}</p>
-            <p className="text-[10px] text-zinc-500">{rep.xp.toLocaleString()} XP</p>
+            <p className="text-[10px] text-zinc-400">{rep.xp.toLocaleString()} XP</p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
@@ -63,26 +63,26 @@ export function ReputationCard({ refreshKey }: { refreshKey?: number }) {
             <p className="flex items-center justify-center gap-0.5 text-sm font-bold text-emerald-300">
               <CheckCircle2 className="h-3 w-3" />{rep.completed}
             </p>
-            <p className="text-[9px] uppercase tracking-wider text-zinc-500">done</p>
+            <p className="text-[9px] uppercase tracking-wider text-zinc-400">done</p>
           </div>
           <div>
             <p className="flex items-center justify-center gap-0.5 text-sm font-bold text-sky-300">
               <Upload className="h-3 w-3" />{rep.posted}
             </p>
-            <p className="text-[9px] uppercase tracking-wider text-zinc-500">posted</p>
+            <p className="text-[9px] uppercase tracking-wider text-zinc-400">posted</p>
           </div>
           <div>
             <p className="flex items-center justify-center gap-0.5 text-sm font-bold text-orange-300">
               <Flame className="h-3 w-3" />{rep.streak}
             </p>
-            <p className="text-[9px] uppercase tracking-wider text-zinc-500">streak</p>
+            <p className="text-[9px] uppercase tracking-wider text-zinc-400">streak</p>
           </div>
         </div>
       </div>
 
       {rep.nextRank && (
         <div className="mt-3">
-          <div className="flex items-center justify-between text-[10px] text-zinc-500">
+          <div className="flex items-center justify-between text-[10px] text-zinc-400">
             <span>{rep.rank}</span>
             <span>{rep.xpToNextRank.toLocaleString()} XP to {rep.nextRank}</span>
           </div>

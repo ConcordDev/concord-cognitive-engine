@@ -58,7 +58,7 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const chartData = samples.map((s) => ({
@@ -72,16 +72,16 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
 
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-lime-400">{current.toLocaleString()}<span className="text-xs text-zinc-500"> W</span></p>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Now</p>
+          <p className="text-2xl font-bold text-lime-400">{current.toLocaleString()}<span className="text-xs text-zinc-400"> W</span></p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Now</p>
         </div>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-amber-400">{peak.toLocaleString()}<span className="text-xs text-zinc-500"> W</span></p>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Peak</p>
+          <p className="text-2xl font-bold text-amber-400">{peak.toLocaleString()}<span className="text-xs text-zinc-400"> W</span></p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Peak</p>
         </div>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-zinc-100">{avgWatts.toLocaleString()}<span className="text-xs text-zinc-500"> W</span></p>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Average</p>
+          <p className="text-2xl font-bold text-zinc-100">{avgWatts.toLocaleString()}<span className="text-xs text-zinc-400"> W</span></p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Average</p>
         </div>
       </div>
 
@@ -107,7 +107,7 @@ export function EnergyLivePanel({ onChange }: { onChange: () => void }) {
           <ChartKit kind="area" data={chartData} xKey="t" height={170}
             series={[{ key: 'watts', label: 'Watts', color: '#a3e635' }]} showLegend={false} />
         ) : (
-          <p className="flex items-center gap-1 text-[11px] text-zinc-500 italic py-8 justify-center">
+          <p className="flex items-center gap-1 text-[11px] text-zinc-400 italic py-8 justify-center">
             <Zap className="w-3.5 h-3.5" /> No live samples yet. Submit wattage readings to see the live stream.
           </p>
         )}

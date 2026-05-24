@@ -107,13 +107,13 @@ export function BankAggregation() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
           Bank aggregation
         </span>
-        <span className="ml-auto text-[10px] text-gray-500">{accounts.length} synced</span>
+        <span className="ml-auto text-[10px] text-gray-400">{accounts.length} synced</span>
         <button onClick={() => setLinking((v) => !v)} className="p-1 text-gray-400 hover:text-white" aria-label="Link bank">
           <Link2 className="w-4 h-4" />
         </button>
       </header>
 
-      <p className="px-4 py-2 text-[10px] text-gray-500 border-b border-white/5">
+      <p className="px-4 py-2 text-[10px] text-gray-400 border-b border-white/5">
         Connect an institution, then sync transactions by pasting an exported CSV
         (date,description,amount). Each row is auto-categorised at ingest and deduped
         on re-sync — the same pipeline a Plaid/MX feed would drive.
@@ -176,11 +176,11 @@ export function BankAggregation() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : accounts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">
+          <div className="px-3 py-10 text-center text-xs text-gray-400">
             <Landmark className="w-6 h-6 mx-auto mb-2 opacity-30" />
             No synced institutions. Click the link icon to connect one.
           </div>
@@ -194,7 +194,7 @@ export function BankAggregation() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate">{a.institution} · {a.name}</div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-[10px] text-gray-400">
                       {a.kind} ••{a.mask}
                       {a.lastSyncedAt && ` · last sync ${new Date(a.lastSyncedAt).toLocaleString()}`}
                     </div>

@@ -170,7 +170,7 @@ export function PjTaskDetail({
             {TYPES.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
           <span className="flex-1" />
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200">
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -237,7 +237,7 @@ export function PjTaskDetail({
           {/* Labels */}
           {labels.length > 0 && (
             <div>
-              <p className="text-[10px] text-zinc-500 uppercase mb-1">Labels</p>
+              <p className="text-[10px] text-zinc-400 uppercase mb-1">Labels</p>
               <div className="flex flex-wrap gap-1">
                 {labels.map((l) => {
                   const on = t.labels.includes(l.name);
@@ -281,9 +281,9 @@ export function PjTaskDetail({
             <ul className="space-y-1 mb-1.5">
               {detail.subtasks.map((st) => (
                 <li key={st.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
-                  <span className="font-mono text-zinc-500">{st.ref}</span>
+                  <span className="font-mono text-zinc-400">{st.ref}</span>
                   <span className="flex-1 truncate">{st.title}</span>
-                  <span className="text-zinc-500">{st.status.replace(/_/g, ' ')}</span>
+                  <span className="text-zinc-400">{st.status.replace(/_/g, ' ')}</span>
                 </li>
               ))}
             </ul>
@@ -330,7 +330,7 @@ export function PjTaskDetail({
                       <FileDown className="w-3 h-3 text-emerald-400 shrink-0" />
                       <button type="button" onClick={() => downloadAttachment(a.id, a.fileName || a.name)}
                         className="flex-1 truncate text-emerald-400 hover:underline text-left">{a.name}</button>
-                      <span className="text-[9px] text-zinc-600">{fmtBytes(a.bytes || 0)}</span>
+                      <span className="text-[9px] text-zinc-400">{fmtBytes(a.bytes || 0)}</span>
                     </>
                   ) : (
                     <>
@@ -343,7 +343,7 @@ export function PjTaskDetail({
                 </li>
               ))}
               {detail.attachments.length === 0 && (
-                <li className="text-[10px] text-zinc-600 italic">No attachments yet.</li>
+                <li className="text-[10px] text-zinc-400 italic">No attachments yet.</li>
               )}
             </ul>
             <div className="flex items-center gap-2 mb-1.5">
@@ -361,7 +361,7 @@ export function PjTaskDetail({
                 {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                 {uploading ? 'Uploading…' : 'Upload file'}
               </button>
-              <span className="text-[9px] text-zinc-600">Binary files up to 5 MB</span>
+              <span className="text-[9px] text-zinc-400">Binary files up to 5 MB</span>
             </div>
             {uploadError && <p className="text-[10px] text-rose-400 mt-1">{uploadError}</p>}
           </Section>
@@ -372,7 +372,7 @@ export function PjTaskDetail({
               {detail.comments.map((c) => (
                 <li key={c.id} className={cn('text-[11px] bg-zinc-900 rounded px-2 py-1.5', c.parentCommentId && 'ml-4')}>
                   <p className="text-zinc-200">{c.body}</p>
-                  <p className="text-[9px] text-zinc-500">
+                  <p className="text-[9px] text-zinc-400">
                     {c.author}
                     <button type="button" onClick={() => setReplyTo(c.id)} className="ml-2 hover:text-indigo-300">reply</button>
                   </p>
@@ -384,7 +384,7 @@ export function PjTaskDetail({
                 onChange={(e) => setComment(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void addComment(); }}
                 className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
-              {replyTo && <button type="button" onClick={() => setReplyTo(null)} className="text-[10px] text-zinc-500">cancel</button>}
+              {replyTo && <button type="button" onClick={() => setReplyTo(null)} className="text-[10px] text-zinc-400">cancel</button>}
               <button type="button" onClick={addComment} className="text-[11px] px-2 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white">Post</button>
             </div>
           </Section>
@@ -393,7 +393,7 @@ export function PjTaskDetail({
           <Section icon={History} title="Activity">
             <ul className="space-y-0.5">
               {detail.activity.map((a) => (
-                <li key={a.id} className="text-[10px] text-zinc-500">
+                <li key={a.id} className="text-[10px] text-zinc-400">
                   <span className="text-zinc-400">{a.action}</span>{a.detail ? ` — ${a.detail}` : ''}
                 </li>
               ))}
@@ -431,7 +431,7 @@ function cssColor(c: string): string {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[9px] text-zinc-500 uppercase mb-0.5">{label}</span>
+      <span className="block text-[9px] text-zinc-400 uppercase mb-0.5">{label}</span>
       {children}
     </label>
   );

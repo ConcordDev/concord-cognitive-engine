@@ -164,13 +164,13 @@ function SyllableRhymePanel({ content, form }: { content: string; form: string }
           <Hash className="w-4 h-4 text-rose-400" />
           <span className="text-sm font-medium">Analysis</span>
         </div>
-        <span className="text-xs text-gray-500">{totalSyllables} total syllables</span>
+        <span className="text-xs text-gray-400">{totalSyllables} total syllables</span>
       </div>
 
       {/* Per-line syllable breakdown */}
       {lines.length > 0 && lines.some(l => l.trim()) && (
         <div className="space-y-1">
-          <p className="text-xs text-gray-500 mb-2">Syllables per line:</p>
+          <p className="text-xs text-gray-400 mb-2">Syllables per line:</p>
           {lines.map((line, i) => {
             if (!line.trim()) return null;
             const count = syllableCounts[i];
@@ -178,7 +178,7 @@ function SyllableRhymePanel({ content, form }: { content: string; form: string }
             const target = form === 'haiku' ? [5, 7, 5][nonEmptyLines.indexOf(line)] : null;
             return (
               <div key={i} className={cn("flex items-center gap-2", isHaikuTarget && "bg-rose-500/5 rounded px-1 -mx-1")}>
-                <span className="text-xs text-gray-600 w-16 truncate">{line.slice(0, 12)}…</span>
+                <span className="text-xs text-gray-400 w-16 truncate">{line.slice(0, 12)}…</span>
                 <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                   <div className={cn('h-full rounded-full transition-all', count > 0 ? 'bg-rose-400/60' : '')}
                     style={{ width: `${Math.min(100, count * 6)}%` }} />
@@ -187,7 +187,7 @@ function SyllableRhymePanel({ content, form }: { content: string; form: string }
                   target !== null ? (count === target ? 'text-green-400' : 'text-red-400') : 'text-gray-400')}>
                   {count}
                 </span>
-                {target !== null && <span className="text-xs text-gray-600">/{target}</span>}
+                {target !== null && <span className="text-xs text-gray-400">/{target}</span>}
               </div>
             );
           })}
@@ -197,7 +197,7 @@ function SyllableRhymePanel({ content, form }: { content: string; form: string }
       {/* Rhyme scheme */}
       {nonEmptyLines.length >= 2 && (
         <div>
-          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Music className="w-3 h-3" /> Rhyme Scheme:</p>
+          <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Music className="w-3 h-3" /> Rhyme Scheme:</p>
           <div className="flex flex-wrap gap-1">
             {rhymeScheme.split('').map((letter, i) => (
               <span key={i} className={cn('w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
@@ -492,7 +492,7 @@ export default function PoetryPage() {
                   <div className="flex gap-4 flex-wrap">
                     <span className="text-gray-400">Scheme: <span className="text-rose-300 font-mono text-sm tracking-widest">{String(actionResult.scheme ?? '')}</span></span>
                     <span className="text-gray-400">Form: <span className="text-white">{String(actionResult.form ?? '')}</span></span>
-                    <span className={`${actionResult.rhyming ? 'text-green-400' : 'text-gray-500'}`}>{actionResult.rhyming ? 'Rhymes detected' : 'No rhymes'}</span>
+                    <span className={`${actionResult.rhyming ? 'text-green-400' : 'text-gray-400'}`}>{actionResult.rhyming ? 'Rhymes detected' : 'No rhymes'}</span>
                   </div>
                 </div>
               )}
@@ -505,7 +505,7 @@ export default function PoetryPage() {
                     <span className="text-gray-400 col-span-2">Rhyme: <span className="text-rose-300">{String(actionResult.rhyme ?? '')}</span></span>
                     <span className="text-gray-400 col-span-2">Structure: <span className="text-gray-200">{String(actionResult.structure ?? '')}</span></span>
                   </div>
-                  {!!actionResult.tip && <p className="text-gray-500 italic">{String(actionResult.tip)}</p>}
+                  {!!actionResult.tip && <p className="text-gray-400 italic">{String(actionResult.tip)}</p>}
                 </div>
               )}
               {actionResult.action === 'wordFrequency' && (
@@ -518,7 +518,7 @@ export default function PoetryPage() {
                   {Array.isArray(actionResult.topWords) && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {(actionResult.topWords as {word:string;count:number}[]).slice(0,8).map(({word,count}) => (
-                        <span key={word} className="px-2 py-0.5 bg-rose-500/10 rounded text-rose-300 font-mono">{word} <span className="text-gray-500">×{count}</span></span>
+                        <span key={word} className="px-2 py-0.5 bg-rose-500/10 rounded text-rose-300 font-mono">{word} <span className="text-gray-400">×{count}</span></span>
                       ))}
                     </div>
                   )}
@@ -545,7 +545,7 @@ export default function PoetryPage() {
           <div className="space-y-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search poems..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-rose-500/50" />
               </div>
@@ -555,7 +555,7 @@ export default function PoetryPage() {
               </select>
             </div>
             {filteredPoems.length === 0 ? (
-              <div className="text-center py-16 text-gray-500">
+              <div className="text-center py-16 text-gray-400">
                 <Feather className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No poems yet. Begin composing.</p>
                 <button onClick={startNew} className="mt-3 px-4 py-2 text-xs bg-rose-500/20 rounded-lg hover:bg-rose-500/30">Compose</button>
@@ -567,7 +567,7 @@ export default function PoetryPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-medium text-sm italic">{poem.title}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                           <span>{poem.form || 'free-verse'}</span>
                           <span>{poem.lineCount || 0} lines</span>
                           <span>{poem.wordCount || 0} words</span>
@@ -580,7 +580,7 @@ export default function PoetryPage() {
                       </div>
                     </div>
                     {poem.content && (
-                      <pre className="text-xs text-gray-500 mt-2 font-serif whitespace-pre-wrap line-clamp-4">{poem.content.slice(0, 300)}</pre>
+                      <pre className="text-xs text-gray-400 mt-2 font-serif whitespace-pre-wrap line-clamp-4">{poem.content.slice(0, 300)}</pre>
                     )}
                   </motion.div>
                 ))}
@@ -604,7 +604,7 @@ export default function PoetryPage() {
                 </select>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-500">{lineCount} lines / {wordCount} words</span>
+                <span className="text-xs text-gray-400">{lineCount} lines / {wordCount} words</span>
                 <button onClick={() => setShowAnalysis(a => !a)}
                   className={cn('px-2 py-1.5 text-xs rounded-lg flex items-center gap-1', showAnalysis ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25' : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10')}>
                   <Hash className="w-3 h-3" /> Analysis
@@ -630,7 +630,7 @@ export default function PoetryPage() {
 
             {/* Template hint */}
             {POEM_TEMPLATES[compForm] && (
-              <p className="text-xs text-gray-600 italic px-1">{POEM_TEMPLATES[compForm].hint}</p>
+              <p className="text-xs text-gray-400 italic px-1">{POEM_TEMPLATES[compForm].hint}</p>
             )}
 
             <div className={cn('grid gap-4', showAnalysis ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1')}>
@@ -666,7 +666,7 @@ export default function PoetryPage() {
               {POEM_FORMS.map(form => (
                 <div key={form.id} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-rose-500/30 transition-colors">
                   <h3 className="font-medium text-sm">{form.label}</h3>
-                  <p className="text-xs text-gray-500 mt-1">{form.description}</p>
+                  <p className="text-xs text-gray-400 mt-1">{form.description}</p>
                   <button onClick={() => { setCompForm(form.id); setCompTitle(''); setCompContent(''); setComposingPoem(null); setTab('compose'); }} className="mt-2 text-xs text-rose-400 hover:text-rose-300">
                     Try this form
                   </button>
@@ -686,7 +686,7 @@ export default function PoetryPage() {
         {tab === 'workshop' && (
           <div className="space-y-3">
             <PoetryWorkshop />
-            <p className="text-xs text-gray-600">Poetry DTUs in context: {contextDTUs.length}</p>
+            <p className="text-xs text-gray-400">Poetry DTUs in context: {contextDTUs.length}</p>
           </div>
         )}
       </div>

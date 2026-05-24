@@ -439,7 +439,7 @@ export function FractalRenderer() {
 
   // --- UI ------------------------------------------------------------------
   const panel = 'rounded-xl border border-zinc-800 bg-zinc-950/60 p-4';
-  const lbl = 'text-[10px] uppercase tracking-wider text-zinc-500';
+  const lbl = 'text-[10px] uppercase tracking-wider text-zinc-400';
   const inputCls = 'w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white';
   const btn = 'flex items-center justify-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-200 hover:border-fuchsia-500/50 hover:text-white disabled:opacity-40';
 
@@ -455,7 +455,7 @@ export function FractalRenderer() {
                 <span className="text-sm font-semibold text-white">Escape-time Renderer</span>
                 {isRendering && <Loader2 className="h-3.5 w-3.5 animate-spin text-fuchsia-400" />}
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-zinc-500">
+              <div className="flex items-center gap-3 text-[10px] text-zinc-400">
                 <span>zoom {zoomLevel.toExponential(2)}×</span>
                 <span>{renderMs} ms</span>
                 <button onClick={resetView} className="flex items-center gap-1 text-zinc-400 hover:text-white">
@@ -475,7 +475,7 @@ export function FractalRenderer() {
               className="w-full cursor-crosshair rounded-lg bg-black"
               style={{ height: '460px' }}
             />
-            <p className="mt-1.5 text-[10px] text-zinc-600">
+            <p className="mt-1.5 text-[10px] text-zinc-400">
               click / scroll to zoom · drag to pan · right-click zoom out · double-click to inspect orbit
             </p>
           </div>
@@ -489,7 +489,7 @@ export function FractalRenderer() {
                   {orbit.inSet ? 'in set' : 'escaped'} · {orbit.iterations} iters
                 </span>
               </div>
-              <p className="font-mono text-[10px] text-zinc-500">
+              <p className="font-mono text-[10px] text-zinc-400">
                 c = ({orbit.point[0].toFixed(6)}, {orbit.point[1].toFixed(6)})
               </p>
               <OrbitPlot orbit={orbit.orbit} />
@@ -509,7 +509,7 @@ export function FractalRenderer() {
               </button>
             </div>
             <canvas ref={bulbCanvasRef} width={320} height={320} className="mx-auto rounded-lg bg-[#05060a]" />
-            <p className="mt-1.5 text-center text-[10px] text-zinc-600">
+            <p className="mt-1.5 text-center text-[10px] text-zinc-400">
               depth-composited z-slices with diffuse lighting (power {view.power < 3 ? 8 : view.power})
             </p>
           </div>
@@ -630,7 +630,7 @@ export function FractalRenderer() {
             </div>
             <div className="mt-2 max-h-44 space-y-1 overflow-y-auto">
               {presets.length === 0 && (
-                <p className="py-2 text-center text-[10px] text-zinc-600">no presets yet</p>
+                <p className="py-2 text-center text-[10px] text-zinc-400">no presets yet</p>
               )}
               {presets.map(p => (
                 <div key={p.id} className="flex items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1">
@@ -640,12 +640,12 @@ export function FractalRenderer() {
                     title={p.name}
                   >
                     {p.imported && <span className="text-cyan-400">↓ </span>}{p.name}
-                    <span className="ml-1 text-[9px] text-zinc-600">{p.config.type}</span>
+                    <span className="ml-1 text-[9px] text-zinc-400">{p.config.type}</span>
                   </button>
-                  <button onClick={() => exportPreset(p.id)} className="text-zinc-500 hover:text-cyan-400" title="Export">
+                  <button onClick={() => exportPreset(p.id)} className="text-zinc-400 hover:text-cyan-400" title="Export">
                     <Download className="h-3 w-3" />
                   </button>
-                  <button onClick={() => deletePreset(p.id)} disabled={busy === p.id} className="text-zinc-500 hover:text-red-400" title="Delete">
+                  <button onClick={() => deletePreset(p.id)} disabled={busy === p.id} className="text-zinc-400 hover:text-red-400" title="Delete">
                     <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
@@ -671,7 +671,7 @@ export function FractalRenderer() {
             <span className="text-sm font-semibold text-white">Export History</span>
             <div className="mt-2 max-h-32 space-y-1 overflow-y-auto">
               {renders.length === 0 && (
-                <p className="py-2 text-center text-[10px] text-zinc-600">no exports yet</p>
+                <p className="py-2 text-center text-[10px] text-zinc-400">no exports yet</p>
               )}
               {renders.map(r => (
                 <div key={r.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[10px]">

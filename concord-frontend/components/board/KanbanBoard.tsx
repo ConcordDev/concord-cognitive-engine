@@ -83,14 +83,14 @@ export function KanbanBoard() {
     await reload();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Kanban className="w-4 h-4 text-purple-400" />
         <h3 className="text-sm font-bold text-zinc-100">Kanban Boards</h3>
-        <span className="text-[11px] text-zinc-500">Trello / Asana shape</span>
+        <span className="text-[11px] text-zinc-400">Trello / Asana shape</span>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
@@ -125,13 +125,13 @@ export function KanbanBoard() {
                         </div>
                       )}
                       <div className="flex items-center gap-1 mt-1">
-                        {card.dueDate && <span className={cn('text-[9px]', new Date(card.dueDate).getTime() < Date.now() ? 'text-rose-400' : 'text-zinc-500')}>{card.dueDate}</span>}
+                        {card.dueDate && <span className={cn('text-[9px]', new Date(card.dueDate).getTime() < Date.now() ? 'text-rose-400' : 'text-zinc-400')}>{card.dueDate}</span>}
                         {card.checklist.length > 0 && (
-                          <span className="text-[9px] text-zinc-500">☑ {card.checklist.filter(i => i.done).length}/{card.checklist.length}</span>
+                          <span className="text-[9px] text-zinc-400">☑ {card.checklist.filter(i => i.done).length}/{card.checklist.length}</span>
                         )}
                         <div className="ml-auto flex opacity-0 group-hover:opacity-100">
-                          <button onClick={() => moveCard(card.id, -1)} disabled={ci === 0} className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30"><ChevronLeft className="w-3 h-3" /></button>
-                          <button onClick={() => moveCard(card.id, 1)} disabled={ci === active.columns.length - 1} className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30"><ChevronRight className="w-3 h-3" /></button>
+                          <button onClick={() => moveCard(card.id, -1)} disabled={ci === 0} className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"><ChevronLeft className="w-3 h-3" /></button>
+                          <button onClick={() => moveCard(card.id, 1)} disabled={ci === active.columns.length - 1} className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"><ChevronRight className="w-3 h-3" /></button>
                           <button onClick={() => deleteCard(card.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </div>
@@ -147,12 +147,12 @@ export function KanbanBoard() {
               </div>
             );
           })}
-          <button onClick={addColumn} className="w-32 shrink-0 h-9 rounded-lg border border-dashed border-zinc-700 text-xs text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 inline-flex items-center justify-center gap-1">
+          <button onClick={addColumn} className="w-32 shrink-0 h-9 rounded-lg border border-dashed border-zinc-700 text-xs text-zinc-400 hover:text-zinc-300 hover:border-zinc-600 inline-flex items-center justify-center gap-1">
             <Plus className="w-3 h-3" />Column
           </button>
         </div>
       ) : (
-        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[120px]">
+        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">
           Select or create a board.
         </div>
       )}

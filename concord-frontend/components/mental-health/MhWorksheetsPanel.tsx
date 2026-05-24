@@ -56,7 +56,7 @@ export function MhWorksheetsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -76,7 +76,7 @@ export function MhWorksheetsPanel() {
                   <span className="text-xs font-semibold text-zinc-100">{t.title}</span>
                   <span className="text-[10px] font-mono rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">{t.modality}</span>
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">{t.fieldCount} steps</p>
+                <p className="text-[10px] text-zinc-400 mt-1">{t.fieldCount} steps</p>
               </button>
             ))}
           </div>
@@ -85,7 +85,7 @@ export function MhWorksheetsPanel() {
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-100">{tpl.title}</span>
               <button type="button" onClick={() => { setActiveTpl(null); setResponses({}); }}
-                className="text-[11px] text-zinc-500 hover:text-zinc-300">Cancel</button>
+                className="text-[11px] text-zinc-400 hover:text-zinc-300">Cancel</button>
             </div>
             {tpl.fields.map((f) => (
               <label key={f.key} className="block">
@@ -107,7 +107,7 @@ export function MhWorksheetsPanel() {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Completed ({worksheets.length})</h3>
         {worksheets.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No worksheets completed yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No worksheets completed yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {worksheets.map((w) => {
@@ -117,12 +117,12 @@ export function MhWorksheetsPanel() {
                   <div className="flex items-center gap-2 px-3 py-2">
                     <button type="button" onClick={() => setOpenWs(open ? null : w.id)}
                       className="flex items-center gap-2 flex-1 text-left">
-                      <ChevronDown className={cn('w-3.5 h-3.5 text-zinc-500 transition-transform', open && 'rotate-180')} />
+                      <ChevronDown className={cn('w-3.5 h-3.5 text-zinc-400 transition-transform', open && 'rotate-180')} />
                       <span className="text-xs text-zinc-200">{w.title}</span>
-                      <span className="text-[10px] text-zinc-500">{w.date}</span>
-                      <span className="text-[10px] text-zinc-500">{w.answered}/{w.totalFields}</span>
+                      <span className="text-[10px] text-zinc-400">{w.date}</span>
+                      <span className="text-[10px] text-zinc-400">{w.answered}/{w.totalFields}</span>
                     </button>
-                    <button type="button" onClick={() => del(w.id)} className="text-zinc-500 hover:text-rose-400" aria-label="Delete worksheet">
+                    <button type="button" onClick={() => del(w.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete worksheet">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -130,7 +130,7 @@ export function MhWorksheetsPanel() {
                     <div className="px-3 pb-3 space-y-1.5 border-t border-zinc-800 pt-2">
                       {Object.entries(w.responses).filter(([, v]) => v).map(([k, v]) => (
                         <div key={k}>
-                          <p className="text-[10px] text-zinc-500 uppercase">{k}</p>
+                          <p className="text-[10px] text-zinc-400 uppercase">{k}</p>
                           <p className="text-xs text-zinc-200">{v}</p>
                         </div>
                       ))}

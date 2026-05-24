@@ -82,14 +82,14 @@ export function ChoreBoard() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Home className="w-4 h-4 text-teal-400" />
         <h3 className="text-sm font-bold text-zinc-100">Chore Board</h3>
-        <span className="text-[11px] text-zinc-500">Tody shape</span>
+        <span className="text-[11px] text-zinc-400">Tody shape</span>
         <button onClick={toggleVacation}
           className={cn('ml-auto px-2.5 py-1 text-xs rounded-lg inline-flex items-center gap-1',
             dash?.paused ? 'bg-amber-600 text-white' : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800')}>
@@ -102,7 +102,7 @@ export function ChoreBoard() {
           {([['Clean', `${dash.cleanlinessPct}%`], ['Rooms', dash.rooms], ['Chores', dash.tasks], ['Urgent', dash.needsAttention]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -144,7 +144,7 @@ export function ChoreBoard() {
         {/* Prioritised board */}
         <div>
           {board.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic">No chores yet — add rooms and chores above.</p>
+            <p className="text-xs text-zinc-400 italic">No chores yet — add rooms and chores above.</p>
           ) : (
             <ul className="space-y-1">
               {board.map(t => (
@@ -152,7 +152,7 @@ export function ChoreBoard() {
                   <span className={cn('w-2 h-2 rounded-full shrink-0', STATE_COLOR[t.condition.state])} />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-zinc-100 truncate">{t.name}</p>
-                    <p className="text-[10px] text-zinc-500">
+                    <p className="text-[10px] text-zinc-400">
                       {t.room}{t.assignee ? ` · ${t.assignee}` : ''} · {t.effort}
                       {t.condition.daysOverdue > 0 && <span className="text-rose-400"> · {t.condition.daysOverdue}d overdue</span>}
                     </p>
@@ -171,9 +171,9 @@ export function ChoreBoard() {
         {/* Leaderboard + rooms */}
         <div className="space-y-3">
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2">
-            <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1 inline-flex items-center gap-1"><Trophy className="w-3 h-3 text-amber-400" />Leaderboard</p>
+            <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1 inline-flex items-center gap-1"><Trophy className="w-3 h-3 text-amber-400" />Leaderboard</p>
             {leaders.length === 0 ? (
-              <p className="text-[11px] text-zinc-600 italic">No chores logged.</p>
+              <p className="text-[11px] text-zinc-400 italic">No chores logged.</p>
             ) : leaders.map((l, i) => (
               <div key={l.person} className="flex items-center gap-1 text-xs text-zinc-300">
                 <span className="text-zinc-600 w-4">{i + 1}.</span>
@@ -183,7 +183,7 @@ export function ChoreBoard() {
             ))}
           </div>
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2">
-            <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Rooms</p>
+            <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Rooms</p>
             {rooms.map(r => (
               <div key={r.id} className="group flex items-center gap-1 text-xs text-zinc-300">
                 <span className="flex-1 truncate">{r.name}</span>

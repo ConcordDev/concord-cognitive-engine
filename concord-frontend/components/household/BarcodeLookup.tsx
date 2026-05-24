@@ -71,7 +71,7 @@ export function BarcodeLookup() {
               <img src={product.imageUrl} alt={product.name} className="h-24 w-24 shrink-0 rounded object-cover" />
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-zinc-500">{product.brand}</p>
+              <p className="text-[10px] text-zinc-400">{product.brand}</p>
               <h3 className="text-lg font-semibold text-white">{product.name || product.barcode}</h3>
               {product.quantity && <p className="text-[11px] text-zinc-400">{product.quantity}</p>}
               <div className="mt-2 flex items-center gap-1.5">
@@ -108,7 +108,7 @@ export function BarcodeLookup() {
           )}
           {product.ingredients && (
             <details className="mt-3">
-              <summary className="cursor-pointer text-[11px] text-zinc-500 hover:text-zinc-300">Ingredients</summary>
+              <summary className="cursor-pointer text-[11px] text-zinc-400 hover:text-zinc-300">Ingredients</summary>
               <p className="mt-1 text-[11px] text-zinc-400">{product.ingredients}</p>
             </details>
           )}
@@ -116,7 +116,7 @@ export function BarcodeLookup() {
             <div className="mt-3 grid grid-cols-3 gap-1 text-[10px] sm:grid-cols-6">
               {Object.entries(product.nutrition).filter(([, v]) => v != null).map(([k, v]) => (
                 <div key={k} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-center">
-                  <div className="text-zinc-500">{k.replace('100g', '/100g').replace('Kcal', ' kcal')}</div>
+                  <div className="text-zinc-400">{k.replace('100g', '/100g').replace('Kcal', ' kcal')}</div>
                   <div className="font-mono text-cyan-300">{v?.toFixed?.(1) ?? v}</div>
                 </div>
               ))}

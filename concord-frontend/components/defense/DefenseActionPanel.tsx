@@ -211,7 +211,7 @@ export function DefenseActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -221,7 +221,7 @@ export function DefenseActionPanel() {
         {threatResult && (
           <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">Threats · {threatResult.critical} critical · {threatResult.overallThreatLevel.toUpperCase()}</div>
-            {threatResult.threats.slice(0, 6).map((t, i) => <div key={i} className={cn('text-[11px] mt-1', SEV_COLOR[t.severity])}><div className="flex items-center gap-2"><strong>{t.threat}</strong> <span className="font-mono text-[10px]">{t.riskScore}</span></div><div className="text-[10px] text-zinc-400">L {t.likelihood}% × I {t.impact}% · {t.category}</div><div className="text-[10px] text-zinc-500 italic">→ {t.mitigation}</div></div>)}
+            {threatResult.threats.slice(0, 6).map((t, i) => <div key={i} className={cn('text-[11px] mt-1', SEV_COLOR[t.severity])}><div className="flex items-center gap-2"><strong>{t.threat}</strong> <span className="font-mono text-[10px]">{t.riskScore}</span></div><div className="text-[10px] text-zinc-400">L {t.likelihood}% × I {t.impact}% · {t.category}</div><div className="text-[10px] text-zinc-400 italic">→ {t.mitigation}</div></div>)}
           </div>
         )}
         {readyResult && (
@@ -241,14 +241,14 @@ export function DefenseActionPanel() {
           <div className={cn('rounded-md border p-2.5', SEV_COLOR[incResult.severity ?? 'medium'] === 'text-red-300' ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Incident · {incResult.severity}</div>
             <div className="text-[12px] font-semibold text-zinc-200">{incResult.incidentType}</div>
-            <div className="text-[10px] text-zinc-500">response {incResult.responseTime} · escalate to {incResult.escalationLevel}</div>
+            <div className="text-[10px] text-zinc-400">response {incResult.responseTime} · escalate to {incResult.escalationLevel}</div>
             {(incResult.immediateActions ?? []).slice(0, 5).map((a, i) => <div key={i} className="text-[10px] text-amber-200 mt-0.5">→ {a}</div>)}
           </div>
         )}
         {spendResult?.results && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">DoD contracts · {contractKeyword}</div>
-            {spendResult.results.slice(0, 5).map((a, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1 pb-1 border-b border-zinc-800 last:border-0"><strong className="text-blue-200">{a.recipient}</strong> · <span className="font-mono text-emerald-300">${a.amount?.toLocaleString()}</span><div className="text-zinc-500 line-clamp-1">{a.description}</div><div className="text-zinc-500">{a.agency} · {a.placeOfPerformance}</div></div>)}
+            {spendResult.results.slice(0, 5).map((a, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1 pb-1 border-b border-zinc-800 last:border-0"><strong className="text-blue-200">{a.recipient}</strong> · <span className="font-mono text-emerald-300">${a.amount?.toLocaleString()}</span><div className="text-zinc-400 line-clamp-1">{a.description}</div><div className="text-zinc-400">{a.agency} · {a.placeOfPerformance}</div></div>)}
           </div>
         )}
       </div>

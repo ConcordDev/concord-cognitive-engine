@@ -124,7 +124,7 @@ export function CalendarPanel() {
               <div className="col-span-12 mt-1 rounded border border-emerald-500/30 bg-emerald-500/[0.05] p-3 text-xs">
                 <div className="text-emerald-200 font-semibold">Deadline: {calcResult.adjustedDeadline}</div>
                 <div className="text-gray-400 mt-1">{calcResult.ruleName}</div>
-                <div className="text-[10px] text-gray-500 mt-1">
+                <div className="text-[10px] text-gray-400 mt-1">
                   {calcResult.days} days from {calc.triggerDate}.
                   {calcResult.rolledForward && ` Raw was ${calcResult.rawDeadline}; rolled forward to next business day per FRCP 6(a)(1)(C).`}
                 </div>
@@ -140,7 +140,7 @@ export function CalendarPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Calendar className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Calendar</span>
-          <span className="text-[10px] text-gray-500">{upcoming.length} upcoming</span>
+          <span className="text-[10px] text-gray-400">{upcoming.length} upcoming</span>
           <button onClick={() => setShowCreate(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-amber-500 text-black font-semibold hover:bg-amber-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />New event
           </button>
@@ -166,9 +166,9 @@ export function CalendarPanel() {
 
         <div className="max-h-[28rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : list.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No events scheduled.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No events scheduled.</div>
           ) : (
             <>
               {upcoming.length > 0 && (
@@ -179,7 +179,7 @@ export function CalendarPanel() {
               )}
               {past.length > 0 && (
                 <>
-                  <div className="px-4 py-1 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Past</div>
+                  <div className="px-4 py-1 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Past</div>
                   <EventList events={past.slice(-15).reverse()} muted />
                 </>
               )}
@@ -199,11 +199,11 @@ function EventList({ events, muted }: { events: CalEvent[]; muted?: boolean }) {
         return (
           <li key={e.id} className={cn('px-4 py-2 flex items-center gap-3', muted && 'opacity-60')}>
             <Icon className={cn('w-3.5 h-3.5', e.kind === 'deadline' ? 'text-rose-400' : e.kind === 'hearing' ? 'text-amber-400' : 'text-cyan-400')} />
-            <span className="font-mono text-[10px] text-gray-500 w-20">{e.date}</span>
-            {e.time && <span className="font-mono text-[10px] text-gray-500">{e.time}</span>}
+            <span className="font-mono text-[10px] text-gray-400 w-20">{e.date}</span>
+            {e.time && <span className="font-mono text-[10px] text-gray-400">{e.time}</span>}
             <div className="flex-1 min-w-0">
               <div className="text-xs text-white truncate">{e.title}</div>
-              {(e.location || e.description) && <div className="text-[10px] text-gray-500 truncate">{e.location} {e.description && `· ${e.description}`}</div>}
+              {(e.location || e.description) && <div className="text-[10px] text-gray-400 truncate">{e.location} {e.description && `· ${e.description}`}</div>}
               {e.sourceRule && <div className="text-[9px] text-amber-300 font-mono">{e.sourceRule}</div>}
             </div>
             <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{e.kind}</span>

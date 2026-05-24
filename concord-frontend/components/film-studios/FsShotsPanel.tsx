@@ -85,11 +85,11 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (scenes.length === 0) {
-    return <p className="text-[11px] text-zinc-500 italic py-8 text-center">Add scenes in the Script tab before building shot lists.</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-8 text-center">Add scenes in the Script tab before building shot lists.</p>;
   }
 
   return (
@@ -143,7 +143,7 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
       {/* Shot list */}
       {view === 'list' && (
         shots.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">No shots in this scene yet.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No shots in this scene yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {shots.map((sh) => (
@@ -182,7 +182,7 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
                       await loadShots();
                     }
                   }}
-                  className="text-zinc-500 hover:text-fuchsia-300 shrink-0" title="Set storyboard frame">
+                  className="text-zinc-400 hover:text-fuchsia-300 shrink-0" title="Set storyboard frame">
                   <Camera className="w-3.5 h-3.5" />
                 </button>
                 <button type="button" onClick={() => delShot(sh.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
@@ -197,7 +197,7 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
       {/* Storyboard — drag-link reorder of thumbnail frames */}
       {view === 'board' && (
         board.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">No shots to board. Add shots in the list view first.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No shots to board. Add shots in the list view first.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {board.map((f, idx) => (
@@ -217,7 +217,7 @@ export function FsShotsPanel({ projectId }: { projectId: string }) {
                   <p className="text-[11px] text-zinc-100 truncate">
                     <span className="font-semibold">{f.size}</span> · {f.movement}
                   </p>
-                  {f.description && <p className="text-[10px] text-zinc-500 truncate">{f.description}</p>}
+                  {f.description && <p className="text-[10px] text-zinc-400 truncate">{f.description}</p>}
                   <div className="flex items-center gap-1 mt-1">
                     <button type="button" onClick={() => moveBoardFrame(idx, -1)} disabled={idx === 0}
                       className="flex-1 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 rounded py-0.5">

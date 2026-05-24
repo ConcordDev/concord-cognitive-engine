@@ -117,10 +117,10 @@ export function LivePosTerminal() {
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
           <div className="mb-2 flex items-center justify-between text-xs font-semibold text-zinc-200">
             <span>Catalog ({products.length})</span>
-            <span className="text-[10px] text-zinc-500">click to add</span>
+            <span className="text-[10px] text-zinc-400">click to add</span>
           </div>
           {products.length === 0 ? (
-            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No products yet — add some via the workbench above.</div>
+            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No products yet — add some via the workbench above.</div>
           ) : (
             <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto">
               {products.map((p) => (
@@ -128,7 +128,7 @@ export function LivePosTerminal() {
                   <div className="line-clamp-1 text-[11px] text-zinc-200">{p.name}</div>
                   <div className="mt-0.5 flex items-baseline justify-between">
                     <span className="font-mono text-xs text-cyan-300">${p.price.toFixed(2)}</span>
-                    <span className="text-[10px] text-zinc-500">stock {p.stock}</span>
+                    <span className="text-[10px] text-zinc-400">stock {p.stock}</span>
                   </div>
                 </button>
               ))}
@@ -139,10 +139,10 @@ export function LivePosTerminal() {
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
           <div className="mb-2 flex items-center justify-between text-xs font-semibold text-zinc-200">
             <span>Cart {cart ? `#${cart.id.slice(-6)}` : ''}</span>
-            {cart && <span className="text-[10px] text-zinc-500">{cart.lines.length} line{cart.lines.length === 1 ? '' : 's'}</span>}
+            {cart && <span className="text-[10px] text-zinc-400">{cart.lines.length} line{cart.lines.length === 1 ? '' : 's'}</span>}
           </div>
           {!cart ? (
-            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Start a new cart to ring up an order.</div>
+            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Start a new cart to ring up an order.</div>
           ) : (
             <>
               <div className="space-y-1 max-h-44 overflow-y-auto">
@@ -150,12 +150,12 @@ export function LivePosTerminal() {
                   <div key={l.sku} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 p-1.5 text-[11px]">
                     <div className="flex-1">
                       <div className="line-clamp-1 text-zinc-200">{l.name}</div>
-                      <div className="font-mono text-[10px] text-zinc-500">{l.qty} × ${l.unitPrice.toFixed(2)}</div>
+                      <div className="font-mono text-[10px] text-zinc-400">{l.qty} × ${l.unitPrice.toFixed(2)}</div>
                     </div>
                     <span className="font-mono text-xs text-cyan-300">${(l.qty * l.unitPrice).toFixed(2)}</span>
                   </div>
                 ))}
-                {cart.lines.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">Tap a catalog tile to add it.</div>}
+                {cart.lines.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">Tap a catalog tile to add it.</div>}
               </div>
               {total && (
                 <div className="mt-2 rounded-md border border-cyan-500/20 bg-cyan-500/5 p-2 text-[11px]">
@@ -200,7 +200,7 @@ export function LivePosTerminal() {
           )}
         </div>
         {orders.length === 0 ? (
-          <div className="text-[11px] text-zinc-500">No orders yet — ring one up to see it here.</div>
+          <div className="text-[11px] text-zinc-400">No orders yet — ring one up to see it here.</div>
         ) : (
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 max-h-44 overflow-y-auto">
             {orders.slice(0, 12).map((o) => (
@@ -209,7 +209,7 @@ export function LivePosTerminal() {
                   <span className="font-mono text-cyan-300">#{o.id.slice(-6)}</span>
                   <span className="font-mono text-zinc-200">${o.total?.toFixed(2)}</span>
                 </div>
-                <div className="text-zinc-500">{o.lines.length} line{o.lines.length === 1 ? '' : 's'} · {o.tenders?.map(t => t.kind).join(' + ') || '—'}</div>
+                <div className="text-zinc-400">{o.lines.length} line{o.lines.length === 1 ? '' : 's'} · {o.tenders?.map(t => t.kind).join(' + ') || '—'}</div>
                 {o.stripe?.paymentIntentId && <div className="font-mono text-violet-300/70">{o.stripe.paymentIntentId.slice(0, 18)}…</div>}
               </div>
             ))}

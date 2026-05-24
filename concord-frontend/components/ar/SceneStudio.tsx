@@ -530,7 +530,7 @@ export function SceneStudio() {
           <div className="flex items-center gap-2">
             <button onClick={addObject} className={ds.btnSecondary}><Plus className="w-4 h-4" /> Object</button>
             <button onClick={addAudio} className={ds.btnSecondary}><Play className="w-4 h-4" /> Audio Source</button>
-            <span className="text-xs text-gray-500 ml-auto">Click an object to select &middot; click empty space to deselect</span>
+            <span className="text-xs text-gray-400 ml-auto">Click an object to select &middot; click empty space to deselect</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {scene.objects.map((o) => (
@@ -774,7 +774,7 @@ export function SceneStudio() {
                     <p key={i} className="text-gray-400 mt-0.5">[{iss.severity}] {iss.message}</p>
                   ))}
                   {validation.inertObjects?.length > 0 && (
-                    <p className="text-gray-500 mt-1">{validation.inertObjects.length} object(s) with no behavior.</p>
+                    <p className="text-gray-400 mt-1">{validation.inertObjects.length} object(s) with no behavior.</p>
                   )}
                 </div>
               )}
@@ -799,7 +799,7 @@ export function SceneStudio() {
                   {timeline.hasOverlaps && <p className="text-amber-400">Overlapping tracks detected.</p>}
                   {timeline.tracks?.map((t: any, i: number) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="text-gray-500 w-16 truncate">{t.property}</span>
+                      <span className="text-gray-400 w-16 truncate">{t.property}</span>
                       <div className="flex-1 h-2 bg-lattice-surface rounded relative">
                         {t.keyframes?.map((k: any, j: number) => (
                           <span
@@ -809,7 +809,7 @@ export function SceneStudio() {
                           />
                         ))}
                       </div>
-                      <span className="text-gray-500">{t.keyframeCount}kf</span>
+                      <span className="text-gray-400">{t.keyframeCount}kf</span>
                     </div>
                   ))}
                 </div>
@@ -840,7 +840,7 @@ export function SceneStudio() {
                       t.rating === 'excellent' || t.rating === 'good' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300',
                     )}>{t.rating} {(t.trackabilityScore * 100).toFixed(0)}%</span>
                   </div>
-                  <p className="text-gray-500 mt-0.5">{t.physical.widthCm}×{t.physical.heightCm}cm</p>
+                  <p className="text-gray-400 mt-0.5">{t.physical.widthCm}×{t.physical.heightCm}cm</p>
                   {t.warnings.map((w, i) => <p key={i} className="text-amber-400 mt-0.5">{w}</p>)}
                 </div>
               ))}
@@ -858,9 +858,9 @@ export function SceneStudio() {
                 {webxr && (
                   <div className="text-xs mt-2 space-y-1">
                     <p className="text-gray-300">{webxr.sessionMode} &middot; fallback: {webxr.fallback}</p>
-                    <p className="text-gray-500">required: {webxr.requiredFeatures.join(', ')}</p>
-                    <p className="text-gray-500">optional: {webxr.optionalFeatures.join(', ')}</p>
-                    <p className="text-gray-500">~{webxr.estimatedDrawCalls} draw calls, {webxr.objectCount} objects</p>
+                    <p className="text-gray-400">required: {webxr.requiredFeatures.join(', ')}</p>
+                    <p className="text-gray-400">optional: {webxr.optionalFeatures.join(', ')}</p>
+                    <p className="text-gray-400">~{webxr.estimatedDrawCalls} draw calls, {webxr.objectCount} objects</p>
                   </div>
                 )}
               </div>
@@ -888,8 +888,8 @@ export function SceneStudio() {
                         <a href={publishRec.url} target="_blank" rel="noreferrer" className="text-neon-cyan break-all hover:underline">
                           {publishRec.url}
                         </a>
-                        <p className="text-gray-500">expires {new Date(publishRec.expiresAt).toLocaleDateString()}</p>
-                        {publishRec.requiresWebXR && <p className="text-gray-500">requires WebXR-capable device</p>}
+                        <p className="text-gray-400">expires {new Date(publishRec.expiresAt).toLocaleDateString()}</p>
+                        {publishRec.requiresWebXR && <p className="text-gray-400">requires WebXR-capable device</p>}
                       </div>
                     </div>
                   </div>

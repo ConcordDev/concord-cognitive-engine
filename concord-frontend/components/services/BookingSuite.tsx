@@ -192,11 +192,11 @@ function BookingGrid() {
           <table className="text-xs border-collapse w-full min-w-[480px]">
             <thead>
               <tr>
-                <th className="p-1.5 text-left text-gray-500 sticky left-0 bg-lattice-surface">Time</th>
+                <th className="p-1.5 text-left text-gray-400 sticky left-0 bg-lattice-surface">Time</th>
                 {laneList.map(s => (
                   <th key={s} className="p-1.5 text-center text-gray-300">
                     {s}
-                    <span className="block text-[10px] text-gray-500">{Math.round((util[s] || 0) / 6) / 10}h booked</span>
+                    <span className="block text-[10px] text-gray-400">{Math.round((util[s] || 0) / 6) / 10}h booked</span>
                   </th>
                 ))}
               </tr>
@@ -204,7 +204,7 @@ function BookingGrid() {
             <tbody>
               {slots.map(t => (
                 <tr key={t} className="border-t border-lattice-border/40">
-                  <td className="p-1.5 text-gray-500 sticky left-0 bg-lattice-surface">{fmt(t)}</td>
+                  <td className="p-1.5 text-gray-400 sticky left-0 bg-lattice-surface">{fmt(t)}</td>
                   {laneList.map(s => {
                     const b = bookings.find(x => x.staff === s && x.status !== 'cancelled' &&
                       (() => { const [h, m] = x.time.split(':').map(Number); return h * 60 + m === t; })());
@@ -370,7 +370,7 @@ function POSPayments() {
             <input className={ds.input} placeholder="Card last4" maxLength={4} value={form.cardLast4} onChange={e => setForm({ ...form, cardLast4: e.target.value })} />
           )}
         </div>
-        <p className="text-[11px] text-gray-500">Card auth is simulated — last4 of <code>0000</code> declines.</p>
+        <p className="text-[11px] text-gray-400">Card auth is simulated — last4 of <code>0000</code> declines.</p>
         <button onClick={capture} className={ds.btnPrimary}><CreditCard className="w-4 h-4" /> Charge</button>
         {err && <p className="text-xs text-red-400"><AlertTriangle className="w-3 h-3 inline mr-1" />{err}</p>}
         {msg && <p className="text-xs text-green-400"><Check className="w-3 h-3 inline mr-1" />{msg}</p>}
@@ -663,10 +663,10 @@ function ClientProfiles() {
             <button onClick={() => setHistory(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-            <div className="p-2 bg-lattice-surface rounded"><p className="text-lg font-bold text-white">{history.visits}</p><p className="text-[10px] text-gray-500">Visits</p></div>
-            <div className="p-2 bg-lattice-surface rounded"><p className="text-lg font-bold text-green-400">${history.totalSpend}</p><p className="text-[10px] text-gray-500">Total spend</p></div>
-            <div className="p-2 bg-lattice-surface rounded"><p className="text-lg font-bold text-red-400">{history.noShows}</p><p className="text-[10px] text-gray-500">No-shows</p></div>
-            <div className="p-2 bg-lattice-surface rounded"><p className="text-xs font-bold text-cyan-400 truncate">{history.favoriteService || '—'}</p><p className="text-[10px] text-gray-500">Favorite</p></div>
+            <div className="p-2 bg-lattice-surface rounded"><p className="text-lg font-bold text-white">{history.visits}</p><p className="text-[10px] text-gray-400">Visits</p></div>
+            <div className="p-2 bg-lattice-surface rounded"><p className="text-lg font-bold text-green-400">${history.totalSpend}</p><p className="text-[10px] text-gray-400">Total spend</p></div>
+            <div className="p-2 bg-lattice-surface rounded"><p className="text-lg font-bold text-red-400">{history.noShows}</p><p className="text-[10px] text-gray-400">No-shows</p></div>
+            <div className="p-2 bg-lattice-surface rounded"><p className="text-xs font-bold text-cyan-400 truncate">{history.favoriteService || '—'}</p><p className="text-[10px] text-gray-400">Favorite</p></div>
           </div>
           {history.rebookSuggestion && (
             <p className="text-sm text-pink-300"><Repeat className="w-4 h-4 inline mr-1" />{history.rebookSuggestion}</p>

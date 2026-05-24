@@ -1473,7 +1473,7 @@ export default function SimLensPage() {
                             >
                               {v.sensitive
                                 ? <ToggleRight className="w-5 h-5 text-purple-400" />
-                                : <ToggleLeft className="w-5 h-5 text-gray-500" />
+                                : <ToggleLeft className="w-5 h-5 text-gray-400" />
                               }
                             </button>
                             <button
@@ -1510,7 +1510,7 @@ export default function SimLensPage() {
                         className="flex items-center gap-2 bg-lattice-surface/50 rounded-lg p-2 cursor-move"
                       >
                         <GripVertical className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                        <span className="text-xs text-gray-500 w-5">{ai + 1}</span>
+                        <span className="text-xs text-gray-400 w-5">{ai + 1}</span>
                         <input
                           className={cn(ds.input, 'flex-1 text-sm')}
                           value={a.text}
@@ -1530,7 +1530,7 @@ export default function SimLensPage() {
                           }}
                           className={cn(ds.btnGhost, 'p-1')}
                         >
-                          <X className="w-3 h-3 text-gray-500" />
+                          <X className="w-3 h-3 text-gray-400" />
                         </button>
                       </div>
                     ))}
@@ -1606,11 +1606,11 @@ export default function SimLensPage() {
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-500">Steps Run</p>
+                      <p className="text-xs text-gray-400">Steps Run</p>
                       <p className="text-lg font-bold text-neon-cyan">{String(scenarioRunResult.stepsRun ?? 0)}</p>
                     </div>
                     <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-500">Variables</p>
+                      <p className="text-xs text-gray-400">Variables</p>
                       <p className="text-lg font-bold text-white">
                         {scenarioRunResult.initialState && typeof scenarioRunResult.initialState === 'object'
                           ? Object.keys(scenarioRunResult.initialState as object).length
@@ -1620,14 +1620,14 @@ export default function SimLensPage() {
                   </div>
                   {'deltas' in scenarioRunResult && typeof scenarioRunResult.deltas === 'object' && scenarioRunResult.deltas !== null && (
                     <div className="space-y-2">
-                      <p className="text-xs text-gray-500 font-medium">State Changes</p>
+                      <p className="text-xs text-gray-400 font-medium">State Changes</p>
                       {Object.entries(scenarioRunResult.deltas as Record<string, Record<string, unknown>>).map(([key, delta]) => (
                         <div key={key} className="flex items-center gap-2 text-xs">
                           <span className="text-gray-400 flex-1 font-mono">{key}</span>
-                          <span className="text-gray-500">{String(delta.start)}</span>
+                          <span className="text-gray-400">{String(delta.start)}</span>
                           <span className="text-gray-600">→</span>
                           <span className="text-white font-mono">{String(delta.end)}</span>
-                          <span className={`font-mono ${Number(delta.change) > 0 ? 'text-green-400' : Number(delta.change) < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                          <span className={`font-mono ${Number(delta.change) > 0 ? 'text-green-400' : Number(delta.change) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                             ({Number(delta.change) > 0 ? '+' : ''}{String(delta.change)})
                           </span>
                         </div>
@@ -1649,7 +1649,7 @@ export default function SimLensPage() {
                 <p className="text-xs text-gray-400">{String(paramSweepResult.message)}</p>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                  <div className="flex flex-wrap gap-2 text-xs text-gray-400">
                     {'parameter' in paramSweepResult && <span>Param: <span className="text-white font-mono">{String(paramSweepResult.parameter)}</span></span>}
                     {'runsCompleted' in paramSweepResult && <span>{String(paramSweepResult.runsCompleted)} runs</span>}
                     {'stepsPerRun' in paramSweepResult && <span>{String(paramSweepResult.stepsPerRun)} steps/run</span>}
@@ -1661,7 +1661,7 @@ export default function SimLensPage() {
                     const maxOutcome = Math.max(...results.map(r => Number(r[outcomeKey]) || 0));
                     return (
                       <div className="space-y-1.5">
-                        <p className="text-xs text-gray-500 font-medium">Sweep Results</p>
+                        <p className="text-xs text-gray-400 font-medium">Sweep Results</p>
                         {results.slice(0, 10).map((r, i) => {
                           const pct = maxOutcome > 0 ? (Number(r[outcomeKey]) / maxOutcome) * 100 : 0;
                           return (
@@ -1697,7 +1697,7 @@ export default function SimLensPage() {
                   <Shuffle className="w-3.5 h-3.5" /> Monte Carlo
                 </span>
                 {'trials' in monteCarloResult && (
-                  <span className="text-xs text-gray-500">{String(monteCarloResult.trials)} trials</span>
+                  <span className="text-xs text-gray-400">{String(monteCarloResult.trials)} trials</span>
                 )}
               </div>
               {'message' in monteCarloResult ? (
@@ -1711,14 +1711,14 @@ export default function SimLensPage() {
                       { label: 'Formula', value: String(monteCarloResult.formula ?? '—'), color: 'text-gray-300' },
                     ].map(({ label, value, color }) => (
                       <div key={label} className={cn(ds.panel, 'text-center')}>
-                        <p className="text-xs text-gray-500">{label}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
                         <p className={cn('text-sm font-bold font-mono', color)}>{value}</p>
                       </div>
                     ))}
                   </div>
                   {'percentiles' in monteCarloResult && typeof monteCarloResult.percentiles === 'object' && monteCarloResult.percentiles !== null && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-2">Percentile Distribution</p>
+                      <p className="text-xs text-gray-400 font-medium mb-2">Percentile Distribution</p>
                       <div className="space-y-1.5">
                         {[
                           { key: 'p5', label: 'P5 (5%)', color: 'bg-red-500/60' },
@@ -1732,7 +1732,7 @@ export default function SimLensPage() {
                           const barWidth = maxVal > 0 ? Math.min((Math.abs(pcts[key] || 0) / maxVal) * 100, 100) : 0;
                           return (
                             <div key={key} className="flex items-center gap-2">
-                              <span className="text-[10px] text-gray-500 w-24 shrink-0">{label}</span>
+                              <span className="text-[10px] text-gray-400 w-24 shrink-0">{label}</span>
                               <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
                                 <motion.div initial={{ width: 0 }} animate={{ width: `${barWidth}%` }} transition={{ duration: 0.4 }} className={`h-full rounded-full ${color}`} />
                               </div>
@@ -1745,7 +1745,7 @@ export default function SimLensPage() {
                   )}
                   {'confidenceInterval90' in monteCarloResult && typeof monteCarloResult.confidenceInterval90 === 'object' && monteCarloResult.confidenceInterval90 !== null && (
                     <div className="flex items-center gap-2 text-xs bg-black/20 rounded p-2">
-                      <span className="text-gray-500">90% CI:</span>
+                      <span className="text-gray-400">90% CI:</span>
                       <span className="font-mono text-orange-300">
                         [{String((monteCarloResult.confidenceInterval90 as Record<string, unknown>).lower)} — {String((monteCarloResult.confidenceInterval90 as Record<string, unknown>).upper)}]
                       </span>
@@ -1766,7 +1766,7 @@ export default function SimLensPage() {
                 <p className="text-xs text-gray-400">{String(sensitivityResult.message)}</p>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                  <div className="flex flex-wrap gap-2 text-xs text-gray-400">
                     {'outputField' in sensitivityResult && (
                       <span>Output: <span className="text-white font-mono">{String(sensitivityResult.outputField)}</span></span>
                     )}
@@ -1779,7 +1779,7 @@ export default function SimLensPage() {
                   </div>
                   {Array.isArray(sensitivityResult.sensitivity) && (
                     <div className="space-y-2">
-                      <p className="text-xs text-gray-500 font-medium">Parameter Sensitivity Ranking</p>
+                      <p className="text-xs text-gray-400 font-medium">Parameter Sensitivity Ranking</p>
                       {(sensitivityResult.sensitivity as Array<Record<string, unknown>>).map((item, i) => {
                         const maxSens = Math.max(...(sensitivityResult.sensitivity as Array<Record<string, unknown>>).map(x => Number(x.sensitivity) || 0), 1);
                         const barPct = (Number(item.sensitivity) / maxSens) * 100;
@@ -1992,7 +1992,7 @@ function ScenariosTab({
           ))}
         </>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           <p>No backend simulations found. Create a simulation to get started.</p>
         </div>
       )}
@@ -2075,7 +2075,7 @@ function ParametersTab({
 
             {/* Slider visualization */}
             <div className="relative mt-3">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
                 <span>{v.min}</span>
                 <span className="text-white font-medium">{v.defaultValue}</span>
                 <span>{v.max}</span>
@@ -2163,7 +2163,7 @@ function RunsTab({
           </div>
         </div>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           <p>No active simulations running. Start a simulation to see live results.</p>
         </div>
       )}
@@ -2514,7 +2514,7 @@ function ComparisonTab({
                 <span className={cn(ds.textMono, 'text-xs text-gray-400')}>{o.label}</span>
                 {results.map((r, ri) => (
                   <div key={ri} className="flex items-center gap-2">
-                    <span className="w-6 text-xs text-gray-500">{ri + 1}</span>
+                    <span className="w-6 text-xs text-gray-400">{ri + 1}</span>
                     <div className="flex-1 h-4 bg-lattice-surface rounded overflow-hidden">
                       <div
                         className={cn(

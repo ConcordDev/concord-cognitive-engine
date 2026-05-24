@@ -61,7 +61,7 @@ function toneFromDelta(deltaPct: number | undefined, override?: KPI['tone']): KP
 const TONE_CLASSES: Record<NonNullable<KPI['tone']>, { delta: string; arrow: string }> = {
   positive: { delta: 'text-emerald-300', arrow: 'text-emerald-300' },
   negative: { delta: 'text-rose-300', arrow: 'text-rose-300' },
-  neutral:  { delta: 'text-gray-400',   arrow: 'text-gray-500' },
+  neutral:  { delta: 'text-gray-400',   arrow: 'text-gray-400' },
 };
 
 export function KPIStrip({ kpis, periodLabel, className }: KPIStripProps) {
@@ -70,7 +70,7 @@ export function KPIStrip({ kpis, periodLabel, className }: KPIStripProps) {
     <div className={cn('flex flex-col gap-2', className)}>
       {periodLabel && (
         <div className="flex items-center justify-end">
-          <span className="text-[11px] uppercase tracking-wider text-gray-500 font-mono">
+          <span className="text-[11px] uppercase tracking-wider text-gray-400 font-mono">
             {periodLabel}
           </span>
         </div>
@@ -95,7 +95,7 @@ export function KPIStrip({ kpis, periodLabel, className }: KPIStripProps) {
                 kpi.onClick && 'hover:border-amber-500/40 hover:bg-amber-500/5 focus:outline-none focus:ring-2 focus:ring-amber-500/40'
               )}
             >
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 truncate">
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 truncate">
                 {kpi.label}
               </div>
               <div className="text-2xl font-mono font-semibold text-amber-200 tabular-nums">
@@ -111,7 +111,7 @@ export function KPIStrip({ kpis, periodLabel, className }: KPIStripProps) {
                   </>
                 )}
                 {kpi.caption && (
-                  <span className="text-gray-500 truncate">{kpi.caption}</span>
+                  <span className="text-gray-400 truncate">{kpi.caption}</span>
                 )}
               </div>
             </Tile>

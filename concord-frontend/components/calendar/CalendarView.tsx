@@ -160,7 +160,7 @@ export function CalendarView({
                 e.stopPropagation();
                 onCreateEvent(dateStr);
               }}
-              className="p-1 text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              className="p-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
               aria-label={`Add event on ${dateStr}`}
             >
               <Plus className="w-3 h-3" />
@@ -187,7 +187,7 @@ export function CalendarView({
             </button>
           ))}
           {dayEvents.length > 3 && (
-            <span className="text-xs text-gray-500 px-1">
+            <span className="text-xs text-gray-400 px-1">
               +{dayEvents.length - 3} more
             </span>
           )}
@@ -259,7 +259,7 @@ export function CalendarView({
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
           <div
             key={day}
-            className="px-2 py-2 text-xs text-gray-500 text-center font-medium"
+            className="px-2 py-2 text-xs text-gray-400 text-center font-medium"
           >
             {day}
           </div>
@@ -323,7 +323,7 @@ export function CalendarView({
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate">{event.title}</div>
                       {event.time && (
-                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                        <div className="text-xs text-gray-400 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {event.time}
                         </div>
@@ -332,7 +332,7 @@ export function CalendarView({
                   </button>
                 ))}
                 {(eventsByDate.get(selectedDate) || []).length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-2">
+                  <p className="text-sm text-gray-400 text-center py-2">
                     No events for this day
                   </p>
                 )}
@@ -375,7 +375,7 @@ function DayView({
           key={hour}
           className="flex border-b border-lattice-border/50 min-h-[60px]"
         >
-          <div className="w-16 py-2 px-2 text-xs text-gray-500 flex-shrink-0">
+          <div className="w-16 py-2 px-2 text-xs text-gray-400 flex-shrink-0">
             {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
           </div>
           <div className="flex-1 py-1 px-2 space-y-1">

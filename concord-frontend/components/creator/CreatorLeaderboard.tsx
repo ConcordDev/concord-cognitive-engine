@@ -72,7 +72,7 @@ export function CreatorLeaderboard() {
                 </div>
               </div>
             ))}
-            {top.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">No leaderboard data.</div>}
+            {top.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No leaderboard data.</div>}
           </div>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
@@ -84,14 +84,14 @@ export function CreatorLeaderboard() {
                   <span className="line-clamp-1 text-white">{d.title || `DTU ${d.dtuId?.slice(0, 8)}`}</span>
                   <span className="font-mono text-cyan-300">{d.citationCount ?? 0}↗</span>
                 </div>
-                {d.creator && <div className="text-[10px] text-zinc-500">by {d.creator}</div>}
+                {d.creator && <div className="text-[10px] text-zinc-400">by {d.creator}</div>}
               </div>
             ))}
-            {tr.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">No trending citations.</div>}
+            {tr.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No trending citations.</div>}
           </div>
         </div>
       </div>
-      {(lb.isPending || trending.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
+      {(lb.isPending || trending.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
     </div>
   );
 }

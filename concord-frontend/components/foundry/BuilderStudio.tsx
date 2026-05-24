@@ -163,7 +163,7 @@ export function BuilderStudio() {
       {tab === 'marketplace'
         ? <MarketplaceTab ok={ok} err={err} />
         : !worldId
-          ? <p className="py-8 text-center text-[12px] text-zinc-500">Pick a game above to use this tab.</p>
+          ? <p className="py-8 text-center text-[12px] text-zinc-400">Pick a game above to use this tab.</p>
           : (
             <>
               {tab === 'scripting' && <ScriptingTab worldId={worldId} ok={ok} err={err} />}
@@ -270,18 +270,18 @@ function ScriptingTab({ worldId, ok, err }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5">
-        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
           Graph — {nodes.length} nodes · {edges.length} edges
         </div>
         {nodes.length === 0
-          ? <p className="py-3 text-center text-[11px] text-zinc-600">No nodes yet.</p>
+          ? <p className="py-3 text-center text-[11px] text-zinc-400">No nodes yet.</p>
           : (
             <ul className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
               {nodes.map((n) => (
                 <li key={n.id} className="flex items-center justify-between gap-2 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5">
                   <div className="min-w-0">
                     <div className="truncate text-[11px] font-medium text-zinc-100">{n.label}</div>
-                    <div className="text-[10px] text-zinc-500">{n.kind}{n.type ? ` · ${n.type}` : ''}</div>
+                    <div className="text-[10px] text-zinc-400">{n.kind}{n.type ? ` · ${n.type}` : ''}</div>
                   </div>
                   <button type="button" onClick={() => removeNode(n.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Remove node">
                     <Trash2 className="h-3 w-3" />
@@ -318,7 +318,7 @@ function ScriptingTab({ worldId, ok, err }: TabProps) {
               <li key={e.id} className="flex items-center gap-1.5 rounded bg-zinc-800/60 px-2 py-0.5 text-[10px] text-zinc-300">
                 {fn} → {tn}
                 <button type="button" onClick={() => setEdges((c) => c.filter((x) => x.id !== e.id))}
-                  className="text-zinc-500 hover:text-rose-400" aria-label="Remove edge">×</button>
+                  className="text-zinc-400 hover:text-rose-400" aria-label="Remove edge">×</button>
               </li>
             );
           })}
@@ -401,7 +401,7 @@ function PlaytestTab({ worldId, ok, err }: TabProps) {
               End session
             </button>
           </div>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Edit the worldspec in the canvas above, then Hot-reload to recompile onto the live preview world without a restart.
           </p>
         </>
@@ -471,14 +471,14 @@ function AssetsTab({ worldId, ok, err }: TabProps) {
       </button>
 
       {assets.length === 0
-        ? <p className="py-4 text-center text-[11px] text-zinc-600">No assets imported.</p>
+        ? <p className="py-4 text-center text-[11px] text-zinc-400">No assets imported.</p>
         : (
           <ul className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
             {assets.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-2 rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
                 <div className="min-w-0">
                   <div className="truncate text-[11px] font-medium text-zinc-100">{a.name}</div>
-                  <div className="truncate text-[10px] text-zinc-500">{a.kind} · {a.url}</div>
+                  <div className="truncate text-[10px] text-zinc-400">{a.kind} · {a.url}</div>
                 </div>
                 <button type="button" onClick={() => remove(a.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Remove asset">
                   <Trash2 className="h-3.5 w-3.5" />
@@ -522,7 +522,7 @@ function MultiplayerTab({ worldId, ok, err }: TabProps) {
     setBusy(false);
   }
 
-  if (!cfg) return <p className="py-6 text-center text-[11px] text-zinc-500">Loading config…</p>;
+  if (!cfg) return <p className="py-6 text-center text-[11px] text-zinc-400">Loading config…</p>;
 
   return (
     <div className="space-y-3">
@@ -535,7 +535,7 @@ function MultiplayerTab({ worldId, ok, err }: TabProps) {
         <NumField label="Max players" value={cfg.maxPlayers} min={1} max={256} onChange={(v) => patch({ maxPlayers: v })} />
         <NumField label="Lobby countdown (s)" value={cfg.lobbyCountdownSec} min={0} max={600} onChange={(v) => patch({ lobbyCountdownSec: v })} />
         <NumField label="Team count" value={cfg.teamCount} min={0} max={16} onChange={(v) => patch({ teamCount: v })} />
-        <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-500">
+        <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
           Matchmaking
           <select value={cfg.matchmaking} onChange={(e) => patch({ matchmaking: e.target.value })}
             className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] normal-case text-white">
@@ -559,7 +559,7 @@ function NumField({ label, value, min, max, onChange }: {
   label: string; value: number; min: number; max: number; onChange: (v: number) => void;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-500">
+    <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
       {label}
       <input type="number" value={value} min={min} max={max}
         onChange={(e) => onChange(Number(e.target.value))}
@@ -605,9 +605,9 @@ function MarketplaceTab({ ok, err }: { ok: (t: string) => void; err: (t: string)
       </div>
 
       {loading
-        ? <p className="py-6 text-center text-[11px] text-zinc-500"><Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />Loading…</p>
+        ? <p className="py-6 text-center text-[11px] text-zinc-400"><Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />Loading…</p>
         : games.length === 0
-          ? <p className="py-6 text-center text-[11px] text-zinc-600">No published games match.</p>
+          ? <p className="py-6 text-center text-[11px] text-zinc-400">No published games match.</p>
           : (
             <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {games.map((g) => (
@@ -615,13 +615,13 @@ function MarketplaceTab({ ok, err }: { ok: (t: string) => void; err: (t: string)
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate text-[12px] font-semibold text-zinc-100">{g.name}</div>
-                      <div className="line-clamp-2 text-[10px] text-zinc-500">{g.description || 'No description.'}</div>
+                      <div className="line-clamp-2 text-[10px] text-zinc-400">{g.description || 'No description.'}</div>
                     </div>
                     <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-amber-300">
                       <Star className="h-3 w-3 fill-amber-300" /> {g.avgRating || '—'}
                     </span>
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-zinc-500">
+                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-zinc-400">
                     <span>{g.plays} plays · {g.ratingCount} ratings</span>
                     <button type="button" onClick={() => setOpenGame(openGame === g.id ? null : g.id)}
                       className="text-sky-400 hover:text-sky-300">
@@ -731,8 +731,8 @@ function AnalyticsTab({ worldId, ok, err }: TabProps) {
     else err(r.error ?? 'tracking failed');
   }
 
-  if (loading) return <p className="py-6 text-center text-[11px] text-zinc-500"><Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />Loading…</p>;
-  if (!summary) return <p className="py-6 text-center text-[11px] text-zinc-600">No analytics yet.</p>;
+  if (loading) return <p className="py-6 text-center text-[11px] text-zinc-400"><Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />Loading…</p>;
+  if (!summary) return <p className="py-6 text-center text-[11px] text-zinc-400">No analytics yet.</p>;
 
   const stats = [
     { label: 'Total plays', value: summary.totalPlays },
@@ -748,20 +748,20 @@ function AnalyticsTab({ worldId, ok, err }: TabProps) {
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {stats.map((s) => (
           <div key={s.label} className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">{s.label}</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">{s.label}</div>
             <div className="mt-0.5 text-lg font-semibold text-sky-200">{s.value}</div>
           </div>
         ))}
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5">
-        <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Plays — last 7 days</div>
+        <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Plays — last 7 days</div>
         <ChartKit kind="bar" data={summary.playsByDay} xKey="day"
           series={[{ key: 'plays', label: 'Plays', color: '#0ea5e9' }]} height={180} showLegend={false} />
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <span className="self-center text-[10px] uppercase tracking-wider text-zinc-600">Simulate event:</span>
+        <span className="self-center text-[10px] uppercase tracking-wider text-zinc-400">Simulate event:</span>
         <button type="button" onClick={() => track('play')}
           className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800">
           + Play
@@ -775,7 +775,7 @@ function AnalyticsTab({ worldId, ok, err }: TabProps) {
           + Session
         </button>
       </div>
-      <p className="text-[10px] text-zinc-600">
+      <p className="text-[10px] text-zinc-400">
         The world runtime fires track_play automatically when players enter, finish, or leave a published game.
       </p>
     </div>
@@ -854,7 +854,7 @@ function CollabTab({ worldId, ok, err }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5">
-        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Roster</div>
+        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Roster</div>
         <ul className="space-y-1">
           <li className="flex items-center gap-2 rounded bg-zinc-900 px-2 py-1.5 text-[11px]">
             <span className="font-medium text-zinc-100">{owner.slice(0, 16) || '—'}…</span>
@@ -872,10 +872,10 @@ function CollabTab({ worldId, ok, err }: TabProps) {
               </button>
             </li>
           ))}
-          {collaborators.length === 0 && <li className="px-2 py-1 text-[10px] text-zinc-600">No collaborators yet.</li>}
+          {collaborators.length === 0 && <li className="px-2 py-1 text-[10px] text-zinc-400">No collaborators yet.</li>}
         </ul>
       </div>
-      <p className="text-[10px] text-zinc-600">
+      <p className="text-[10px] text-zinc-400">
         {online.length} builder(s) editing now. Presence refreshes every 30s.
       </p>
     </div>

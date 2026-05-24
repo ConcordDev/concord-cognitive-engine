@@ -22,7 +22,7 @@ const TYPES = ['arm', 'mobile', 'drone', 'humanoid', 'swarm', 'custom'];
 const STATUSES = ['idle', 'running', 'error', 'maintenance', 'offline'];
 const STATUS_COLOR: Record<string, string> = {
   idle: 'text-blue-400', running: 'text-green-400', error: 'text-red-400',
-  maintenance: 'text-yellow-400', offline: 'text-gray-500',
+  maintenance: 'text-yellow-400', offline: 'text-gray-400',
 };
 
 /**
@@ -132,7 +132,7 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
       {loading ? (
         <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /></div>
       ) : robots.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-4">No robots registered. Add one above.</p>
+        <p className="text-gray-400 text-sm text-center py-4">No robots registered. Add one above.</p>
       ) : (
         <div className="space-y-2">
           {robots.map(robot => (
@@ -161,7 +161,7 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <button onClick={() => remove(robot.id)} disabled={busy === robot.id}
-                  className="text-gray-500 hover:text-red-400" aria-label="Remove robot">
+                  className="text-gray-400 hover:text-red-400" aria-label="Remove robot">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

@@ -230,7 +230,7 @@ export default function CRILensPage() {
         <div className="text-center py-16">
           <BarChart3 className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-400">No DTUs with CRETI scores yet.</p>
-          <p className="text-xs text-gray-500 mt-1">Create DTUs in the Chat lens to see score distribution here.</p>
+          <p className="text-xs text-gray-400 mt-1">Create DTUs in the Chat lens to see score distribution here.</p>
         </div>
       ) : (
         <>
@@ -284,7 +284,7 @@ export default function CRILensPage() {
                 );
               })}
             </div>
-            <div className="flex items-center justify-between mt-2 text-[10px] text-gray-500">
+            <div className="flex items-center justify-between mt-2 text-[10px] text-gray-400">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-500/50" /> Critical</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-orange-500/50" /> Low</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400/50" /> Medium</span>
@@ -313,7 +313,7 @@ export default function CRILensPage() {
                 <div key={stage.stage} className="flex items-center gap-2 flex-1">
                   <div className="flex-1 bg-lattice-deep rounded-lg p-3 text-center border border-white/5">
                     <p className={`text-xl font-bold font-mono ${stage.textColor}`}>{stage.count}</p>
-                    <p className="text-xs text-gray-500">{stage.stage}</p>
+                    <p className="text-xs text-gray-400">{stage.stage}</p>
                     <div className={`h-1 rounded-full mt-2 ${stage.color}/30`}>
                       <div className={`h-full rounded-full ${stage.color}`} style={{ width: `${dtus.length > 0 ? (stage.count / dtus.length) * 100 : 0}%` }} />
                     </div>
@@ -336,12 +336,12 @@ export default function CRILensPage() {
                 const height = (count / maxBucket) * 100;
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-gray-500">{count}</span>
+                    <span className="text-[10px] text-gray-400">{count}</span>
                     <div
                       className="w-full bg-neon-cyan/30 rounded-t transition-all"
                       style={{ height: `${height}%`, minHeight: count > 0 ? '4px' : '0' }}
                     />
-                    <span className="text-[10px] text-gray-600">{i * 10}-{(i + 1) * 10}%</span>
+                    <span className="text-[10px] text-gray-400">{i * 10}-{(i + 1) * 10}%</span>
                   </div>
                 );
               })}
@@ -414,7 +414,7 @@ export default function CRILensPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-white">All DTU Scores</h2>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Min score:</span>
+                <span className="text-xs text-gray-400">Min score:</span>
                 <input
                   type="range"
                   min="0"
@@ -437,7 +437,7 @@ export default function CRILensPage() {
                           onClick={() => toggleSort(key)}
                           className={cn(
                             'flex items-center gap-1 ml-auto capitalize',
-                            sortKey === key ? 'text-neon-cyan' : 'text-gray-500 hover:text-gray-300'
+                            sortKey === key ? 'text-neon-cyan' : 'text-gray-400 hover:text-gray-300'
                           )}
                         >
                           {key.slice(0, 4)}
@@ -476,7 +476,7 @@ export default function CRILensPage() {
                 </tbody>
               </table>
               {sortedDtus.length > 50 && (
-                <p className="text-xs text-gray-500 text-center py-2">Showing 50 of {sortedDtus.length} DTUs</p>
+                <p className="text-xs text-gray-400 text-center py-2">Showing 50 of {sortedDtus.length} DTUs</p>
               )}
             </div>
           </div>
@@ -524,7 +524,7 @@ export default function CRILensPage() {
       <div className="panel p-4 space-y-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-neon-cyan" /> CRI Actions
-          {!selectedDtu && <span className="text-[11px] text-gray-500 font-normal ml-1">(select a DTU above to enable)</span>}
+          {!selectedDtu && <span className="text-[11px] text-gray-400 font-normal ml-1">(select a DTU above to enable)</span>}
         </h3>
         <div className="flex flex-wrap gap-2">
           {[
@@ -557,7 +557,7 @@ export default function CRILensPage() {
             <div className="rounded-lg bg-lattice-deep border border-neon-cyan/20 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-neon-cyan font-medium capitalize text-xs">{String(actionResult.action)}</span>
-                <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300" aria-label="Xcircle">
+                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-gray-300" aria-label="Xcircle">
                   <XCircle className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -570,13 +570,13 @@ export default function CRILensPage() {
                       <p className={`text-2xl font-bold font-mono ${(r.severityScore as number) >= 80 ? 'text-red-400' : (r.severityScore as number) >= 60 ? 'text-orange-400' : (r.severityScore as number) >= 40 ? 'text-amber-400' : (r.severityScore as number) >= 20 ? 'text-blue-400' : 'text-neon-green'}`}>
                         {r.severityScore as number}
                       </p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Severity Score</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Severity Score</p>
                     </div>
                     <div className="bg-lattice-surface rounded-lg p-2 text-center">
                       <p className={`text-sm font-bold capitalize ${(r.severityScore as number) >= 80 ? 'text-red-400' : (r.severityScore as number) >= 60 ? 'text-orange-400' : (r.severityScore as number) >= 40 ? 'text-amber-400' : (r.severityScore as number) >= 20 ? 'text-blue-400' : 'text-neon-green'}`}>
                         {r.severityLevel as string}
                       </p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Level</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Level</p>
                     </div>
                   </div>
                   <div className="w-full h-2 bg-lattice-surface rounded-full overflow-hidden">
@@ -593,27 +593,27 @@ export default function CRILensPage() {
                         <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
                           <div className="h-full bg-neon-cyan/50 rounded-full" style={{ width: `${(val.score / 5) * 100}%` }} />
                         </div>
-                        <p className="text-[10px] text-gray-600 mt-0.5 capitalize">{val.label}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5 capitalize">{val.label}</p>
                       </div>
                     ))}
                   </div>
                   <div className="bg-lattice-surface rounded p-2 text-[11px] space-y-1">
-                    <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Response Protocol</p>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Response Protocol</p>
                     <p className="text-gray-300 leading-relaxed">{r.responseProtocol as string}</p>
                   </div>
                   {(r.escalationModifiers as { casualties: number; financialExposure: number; affectedSystemCount: number; totalModifier: number }).totalModifier > 0 && (
                     <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
                       <div className="bg-lattice-surface rounded p-2">
                         <p className="font-bold text-red-400">{(r.escalationModifiers as { casualties: number }).casualties}</p>
-                        <p className="text-gray-500">Casualties</p>
+                        <p className="text-gray-400">Casualties</p>
                       </div>
                       <div className="bg-lattice-surface rounded p-2">
                         <p className="font-bold text-orange-400">{(r.escalationModifiers as { affectedSystemCount: number }).affectedSystemCount}</p>
-                        <p className="text-gray-500">Systems</p>
+                        <p className="text-gray-400">Systems</p>
                       </div>
                       <div className="bg-lattice-surface rounded p-2">
                         <p className="font-bold text-amber-400">+{(r.escalationModifiers as { totalModifier: number }).totalModifier}</p>
-                        <p className="text-gray-500">Escalation</p>
+                        <p className="text-gray-400">Escalation</p>
                       </div>
                     </div>
                   )}
@@ -626,22 +626,22 @@ export default function CRILensPage() {
                   <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
                     <div className="bg-lattice-surface rounded p-2">
                       <p className="font-bold text-neon-cyan">{r.totalDurationMinutes as number}m</p>
-                      <p className="text-gray-500">Total Duration</p>
+                      <p className="text-gray-400">Total Duration</p>
                     </div>
                     <div className="bg-lattice-surface rounded p-2">
                       <p className="font-bold text-neon-purple">{r.criticalPathLength as number}</p>
-                      <p className="text-gray-500">Critical Steps</p>
+                      <p className="text-gray-400">Critical Steps</p>
                     </div>
                     <div className="bg-lattice-surface rounded p-2">
                       <p className={`font-bold ${(r.sla as { breaches: number }).breaches > 0 ? 'text-red-400' : 'text-neon-green'}`}>
                         {(r.sla as { breaches: number }).breaches === 0 ? 'OK' : `${(r.sla as { breaches: number }).breaches} breach${(r.sla as { breaches: number }).breaches !== 1 ? 'es' : ''}`}
                       </p>
-                      <p className="text-gray-500">SLA</p>
+                      <p className="text-gray-400">SLA</p>
                     </div>
                   </div>
                   {(r.criticalPath as string[]).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Critical Path</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Critical Path</p>
                       <div className="flex flex-wrap gap-1">
                         {(r.criticalPath as string[]).map((step, i) => (
                           <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400">{step}</span>
@@ -650,11 +650,11 @@ export default function CRILensPage() {
                     </div>
                   )}
                   <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                    <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Timeline</p>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Timeline</p>
                     {(r.timeline as { name: string; duration: number; startMinute: number; isCritical: boolean; slaStatus: string }[]).map((step, i) => (
                       <div key={i} className={`flex items-center gap-2 text-[11px] bg-lattice-surface rounded px-2 py-1 ${step.isCritical ? 'border-l-2 border-red-500/50' : ''}`}>
                         <span className="text-gray-300 flex-1 truncate">{step.name}</span>
-                        <span className="text-gray-500 font-mono shrink-0">t+{step.startMinute}m</span>
+                        <span className="text-gray-400 font-mono shrink-0">t+{step.startMinute}m</span>
                         <span className="text-neon-cyan font-mono shrink-0">{step.duration}m</span>
                         {step.slaStatus === 'sla_breach' && <span className="text-[9px] px-1 rounded bg-red-500/20 text-red-400 shrink-0">SLA!</span>}
                       </div>
@@ -662,7 +662,7 @@ export default function CRILensPage() {
                   </div>
                   {Object.keys(r.resourceAllocation as Record<string, unknown>).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Resource Allocation</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Resource Allocation</p>
                       <div className="space-y-1">
                         {Object.entries(r.resourceAllocation as Record<string, { totalMinutes: number; steps: string[] }>).map(([res, data]) => (
                           <div key={res} className="flex items-center gap-2 text-[11px]">
@@ -683,26 +683,26 @@ export default function CRILensPage() {
                   <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
                     <div className="bg-lattice-surface rounded p-2">
                       <p className="font-bold text-neon-cyan">{(r.metrics as { totalStakeholders: number }).totalStakeholders}</p>
-                      <p className="text-gray-500">Stakeholders</p>
+                      <p className="text-gray-400">Stakeholders</p>
                     </div>
                     <div className="bg-lattice-surface rounded p-2">
                       <p className="font-bold text-amber-400">{(r.metrics as { avgImpactScore: number }).avgImpactScore.toFixed(1)}</p>
-                      <p className="text-gray-500">Avg Impact</p>
+                      <p className="text-gray-400">Avg Impact</p>
                     </div>
                     <div className="bg-lattice-surface rounded p-2">
                       <p className="font-bold text-red-400">{(r.metrics as { tier1Count: number }).tier1Count}</p>
-                      <p className="text-gray-500">Tier 1 Notify</p>
+                      <p className="text-gray-400">Tier 1 Notify</p>
                     </div>
                   </div>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                    <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Communication Priority</p>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Communication Priority</p>
                     {(r.communicationPriority as { name: string; type: string; impactScore: number; communicationTier: number; communicationTimeframe: string; quadrant: string }[]).map((sh, i) => (
                       <div key={i} className="flex items-center gap-2 text-[11px] bg-lattice-surface rounded px-2 py-1.5">
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${sh.communicationTier === 1 ? 'bg-red-500/20 text-red-400' : sh.communicationTier === 2 ? 'bg-orange-500/20 text-orange-400' : sh.communicationTier === 3 ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-500/20 text-gray-400'}`}>
                           T{sh.communicationTier}
                         </span>
                         <span className="text-gray-200 flex-1 truncate">{sh.name}</span>
-                        <span className="text-[10px] text-gray-500 capitalize shrink-0">{sh.type}</span>
+                        <span className="text-[10px] text-gray-400 capitalize shrink-0">{sh.type}</span>
                         <span className="text-neon-cyan font-mono shrink-0">{sh.impactScore.toFixed(1)}</span>
                       </div>
                     ))}
@@ -712,7 +712,7 @@ export default function CRILensPage() {
                       {Object.entries(r.quadrantAnalysis as Record<string, { count: number; stakeholders: string[] }>).map(([quad, data]) => (
                         <div key={quad} className="bg-lattice-surface rounded p-2">
                           <p className="text-neon-purple font-bold">{data.count}</p>
-                          <p className="text-gray-500 capitalize">{quad.replace(/_/g, ' ')}</p>
+                          <p className="text-gray-400 capitalize">{quad.replace(/_/g, ' ')}</p>
                         </div>
                       ))}
                     </div>

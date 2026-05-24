@@ -123,7 +123,7 @@ export function LockDashboard({ status, compact = false }: LockDashboardProps) {
                 {getStatusIcon(inv.status)}
                 <div>
                   <p className="text-sm font-mono">{inv.name}</p>
-                  <p className="text-xs text-gray-500">{inv.description}</p>
+                  <p className="text-xs text-gray-400">{inv.description}</p>
                 </div>
               </div>
               <span
@@ -138,7 +138,7 @@ export function LockDashboard({ status, compact = false }: LockDashboardProps) {
 
       {/* Last Audit */}
       {status?.lastAudit && (
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-xs text-gray-400 text-center">
           Last audit: {new Date(status.lastAudit).toLocaleString()}
         </p>
       )}

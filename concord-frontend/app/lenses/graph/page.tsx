@@ -1135,7 +1135,7 @@ export default function GraphLensPage() {
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${s.bg} border border-white/5 flex-shrink-0`}
           >
             <span className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</span>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider">{s.label}</span>
+            <span className="text-[10px] text-gray-400 uppercase tracking-wider">{s.label}</span>
           </motion.div>
         ))}
         {/* Connection visualization mini-graph */}
@@ -1314,7 +1314,7 @@ export default function GraphLensPage() {
                 <span className="text-xs text-gray-400">BPM</span>
                 <input type="number" value={bpmRange[0]} onChange={e => setBpmRange([+e.target.value, bpmRange[1]])}
                   className="w-12 bg-transparent text-xs text-white text-center focus:outline-none" placeholder="0" />
-                <span className="text-xs text-gray-500">-</span>
+                <span className="text-xs text-gray-400">-</span>
                 <input type="number" value={bpmRange[1]} onChange={e => setBpmRange([bpmRange[0], +e.target.value])}
                   className="w-12 bg-transparent text-xs text-white text-center focus:outline-none" placeholder="300" />
               </div>
@@ -1325,17 +1325,17 @@ export default function GraphLensPage() {
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => setShowAutogen(!showAutogen)}
               className={cn('px-2 py-1 rounded-md text-xs font-medium transition-colors border',
-                showAutogen ? 'bg-lattice-bg text-white border-neon-cyan/40' : 'text-gray-500 border-lattice-border hover:text-gray-300')}>
+                showAutogen ? 'bg-lattice-bg text-white border-neon-cyan/40' : 'text-gray-400 border-lattice-border hover:text-gray-300')}>
               {showAutogen ? 'Hide' : 'Show'} autogen
             </button>
             <button onClick={() => setShowIsolated(!showIsolated)}
               className={cn('px-2 py-1 rounded-md text-xs font-medium transition-colors border',
-                showIsolated ? 'bg-lattice-bg text-white border-neon-cyan/40' : 'text-gray-500 border-lattice-border hover:text-gray-300')}>
+                showIsolated ? 'bg-lattice-bg text-white border-neon-cyan/40' : 'text-gray-400 border-lattice-border hover:text-gray-300')}>
               {showIsolated ? 'Hide' : 'Show'} isolated
             </button>
             <button onClick={() => setNodeLimit(prev => Math.min(prev + 100, 500))}
               disabled={nodeLimit >= 500}
-              className="px-2 py-1 rounded-md text-xs font-medium text-gray-500 border border-lattice-border hover:text-gray-300 disabled:opacity-30">
+              className="px-2 py-1 rounded-md text-xs font-medium text-gray-400 border border-lattice-border hover:text-gray-300 disabled:opacity-30">
               Load more ({nodeLimit}/{(dtus?.dtus || []).length})
             </button>
           </div>
@@ -1347,7 +1347,7 @@ export default function GraphLensPage() {
               .map(([tier, colors]) => (
                 <button key={tier} onClick={() => toggleTier(tier)}
                   className={cn('flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors',
-                    filterTiers.has(tier) ? 'bg-lattice-bg text-white' : 'text-gray-500 hover:text-gray-300')}>
+                    filterTiers.has(tier) ? 'bg-lattice-bg text-white' : 'text-gray-400 hover:text-gray-300')}>
                   <Circle className="w-2.5 h-2.5" fill={filterTiers.has(tier) ? colors.fill : 'transparent'} stroke={colors.fill} />
                   {colors.name}
                 </button>
@@ -1392,7 +1392,7 @@ export default function GraphLensPage() {
             <RotateCcw className="w-5 h-5 text-cyan-300" />
           </button>
           <button onClick={() => setShowLabels(!showLabels)} className="p-2.5 bg-[#0d1117]/90 backdrop-blur-md border border-cyan-900/20 rounded-xl hover:bg-cyan-900/20 shadow-lg shadow-cyan-900/10" title="Toggle Labels">
-            {showLabels ? <Eye className="w-5 h-5 text-cyan-400" /> : <EyeOff className="w-5 h-5 text-gray-500" />}
+            {showLabels ? <Eye className="w-5 h-5 text-cyan-400" /> : <EyeOff className="w-5 h-5 text-gray-400" />}
           </button>
           <button onClick={() => setIsSimulating(!isSimulating)} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', isSimulating ? 'bg-neon-green/20 text-neon-green' : 'bg-lattice-surface/90 text-gray-400')} title="Toggle Simulation">
             {isSimulating ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
@@ -1545,7 +1545,7 @@ export default function GraphLensPage() {
             <div className="bg-lattice-surface/90 backdrop-blur border border-neon-cyan/20 rounded-lg p-4 text-center">
               <Share2 className="w-6 h-6 text-neon-cyan/50 mx-auto mb-2" />
               <p className="text-sm text-gray-300">No connections yet</p>
-              <p className="text-xs text-gray-500 mt-1">As DTUs reference each other, the graph will grow. Toggle &quot;Show isolated&quot; to see all nodes.</p>
+              <p className="text-xs text-gray-400 mt-1">As DTUs reference each other, the graph will grow. Toggle &quot;Show isolated&quot; to see all nodes.</p>
             </div>
           )}
 
@@ -1699,11 +1699,11 @@ export default function GraphLensPage() {
                 <div className="p-3 bg-lattice-bg rounded-lg space-y-2">
                   <p className="text-xs font-semibold text-cyan-400 uppercase">Track Info</p>
                   <div className="grid grid-cols-3 gap-2">
-                    <div><p className="text-xs text-gray-500">BPM</p><p className="text-sm font-medium text-white">{selectedNode.bpm || '--'}</p></div>
-                    <div><p className="text-xs text-gray-500">Key</p><p className="text-sm font-medium text-white">{selectedNode.key || '--'}</p></div>
-                    <div><p className="text-xs text-gray-500">Plays</p><p className="text-sm font-medium text-white">{selectedNode.playCount?.toLocaleString() || '--'}</p></div>
+                    <div><p className="text-xs text-gray-400">BPM</p><p className="text-sm font-medium text-white">{selectedNode.bpm || '--'}</p></div>
+                    <div><p className="text-xs text-gray-400">Key</p><p className="text-sm font-medium text-white">{selectedNode.key || '--'}</p></div>
+                    <div><p className="text-xs text-gray-400">Plays</p><p className="text-sm font-medium text-white">{selectedNode.playCount?.toLocaleString() || '--'}</p></div>
                   </div>
-                  {selectedNode.genre && <div><p className="text-xs text-gray-500">Genre</p><p className="text-sm text-white">{selectedNode.genre}</p></div>}
+                  {selectedNode.genre && <div><p className="text-xs text-gray-400">Genre</p><p className="text-sm text-white">{selectedNode.genre}</p></div>}
                   {/* Mini waveform visualization */}
                   <div className="flex items-end gap-px h-8 mt-1">
                     {Array.from({ length: 32 }).map((_, i) => {
@@ -1719,10 +1719,10 @@ export default function GraphLensPage() {
                 <div className="p-3 bg-lattice-bg rounded-lg space-y-2">
                   <p className="text-xs font-semibold text-violet-400 uppercase">Artist Info</p>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><p className="text-xs text-gray-500">Collabs</p><p className="text-sm font-medium text-white">{selectedNode.collabCount || connectedEdgesForSelected.filter(e => e.type === 'collaborated_with').length}</p></div>
-                    <div><p className="text-xs text-gray-500">Rating</p><p className="text-sm font-medium text-white">{selectedNode.rating ? `${selectedNode.rating}/5` : '--'}</p></div>
+                    <div><p className="text-xs text-gray-400">Collabs</p><p className="text-sm font-medium text-white">{selectedNode.collabCount || connectedEdgesForSelected.filter(e => e.type === 'collaborated_with').length}</p></div>
+                    <div><p className="text-xs text-gray-400">Rating</p><p className="text-sm font-medium text-white">{selectedNode.rating ? `${selectedNode.rating}/5` : '--'}</p></div>
                   </div>
-                  {selectedNode.genre && <div><p className="text-xs text-gray-500">Genres</p><p className="text-sm text-white">{selectedNode.genre}</p></div>}
+                  {selectedNode.genre && <div><p className="text-xs text-gray-400">Genres</p><p className="text-sm text-white">{selectedNode.genre}</p></div>}
                 </div>
               )}
 
@@ -1730,16 +1730,16 @@ export default function GraphLensPage() {
               {selectedNode.tier === 'sample' && (
                 <div className="p-3 bg-lattice-bg rounded-lg space-y-2">
                   <p className="text-xs font-semibold text-green-400 uppercase">Sample Info</p>
-                  {selectedNode.originalSource && <div><p className="text-xs text-gray-500">Original Source</p><p className="text-sm text-white">{selectedNode.originalSource}</p></div>}
+                  {selectedNode.originalSource && <div><p className="text-xs text-gray-400">Original Source</p><p className="text-sm text-white">{selectedNode.originalSource}</p></div>}
                   <div>
-                    <p className="text-xs text-gray-500">Used By</p>
+                    <p className="text-xs text-gray-400">Used By</p>
                     <div className="space-y-1 mt-1">
                       {connectedEdgesForSelected.filter(e => e.type === 'sampled_from').slice(0, 5).map(e => {
                         const otherId = e.source === selectedNode.id ? e.target : e.source;
                         const other = nodesRef.current.find(n => n.id === otherId);
                         return other ? <p key={otherId} className="text-xs text-gray-300">{other.label}</p> : null;
                       })}
-                      {connectedEdgesForSelected.filter(e => e.type === 'sampled_from').length === 0 && <p className="text-xs text-gray-500 italic">No sample links yet</p>}
+                      {connectedEdgesForSelected.filter(e => e.type === 'sampled_from').length === 0 && <p className="text-xs text-gray-400 italic">No sample links yet</p>}
                     </div>
                   </div>
                 </div>
@@ -1749,10 +1749,10 @@ export default function GraphLensPage() {
               {selectedNode.tier === 'release' && (
                 <div className="p-3 bg-lattice-bg rounded-lg space-y-2">
                   <p className="text-xs font-semibold text-pink-400 uppercase">Release Info</p>
-                  {selectedNode.releaseDate && <div><p className="text-xs text-gray-500">Release Date</p><p className="text-sm text-white">{selectedNode.releaseDate}</p></div>}
-                  {selectedNode.platform && <div><p className="text-xs text-gray-500">Platform</p><p className="text-sm text-white">{selectedNode.platform}</p></div>}
+                  {selectedNode.releaseDate && <div><p className="text-xs text-gray-400">Release Date</p><p className="text-sm text-white">{selectedNode.releaseDate}</p></div>}
+                  {selectedNode.platform && <div><p className="text-xs text-gray-400">Platform</p><p className="text-sm text-white">{selectedNode.platform}</p></div>}
                   <div>
-                    <p className="text-xs text-gray-500">Tracks</p>
+                    <p className="text-xs text-gray-400">Tracks</p>
                     <div className="space-y-1 mt-1">
                       {selectedNode.trackList?.map((t, i) => (
                         <p key={i} className="text-xs text-gray-300">{i + 1}. {t}</p>
@@ -1805,8 +1805,8 @@ export default function GraphLensPage() {
                         className="w-full flex items-center gap-2 p-2 bg-lattice-bg rounded text-left hover:bg-lattice-elevated">
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: (NODE_COLORS[other.tier] || NODE_COLORS.regular).fill }} />
                         <span className="text-sm text-gray-300 truncate flex-1">{other.label}</span>
-                        {e.type && <span className="text-xs px-1.5 py-0.5 rounded bg-lattice-surface text-gray-500">{EDGE_LABELS[e.type as EdgeType] || e.type}</span>}
-                        <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        {e.type && <span className="text-xs px-1.5 py-0.5 rounded bg-lattice-surface text-gray-400">{EDGE_LABELS[e.type as EdgeType] || e.type}</span>}
+                        <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       </button>
                     );
                   })}
@@ -1885,12 +1885,12 @@ export default function GraphLensPage() {
                 {runGraphAction.isPending ? <Loader2 className={`w-4 h-4 text-${color} animate-spin`} /> : <Icon className={`w-4 h-4 text-${color}`} />}
                 <span className="text-xs font-semibold text-white">{label}</span>
               </div>
-              <p className="text-xs text-gray-500">{desc}</p>
+              <p className="text-xs text-gray-400">{desc}</p>
             </button>
           ))}
         </div>
         {!graphArtifacts[0]?.id && (
-          <p className="text-xs text-gray-500 text-center">Create a graph-data artifact to run graph analytics.</p>
+          <p className="text-xs text-gray-400 text-center">Create a graph-data artifact to run graph analytics.</p>
         )}
 
         {runGraphAction.isPending && (
@@ -1916,7 +1916,7 @@ export default function GraphLensPage() {
                 {!!summary?.mostConnected && <div className="lens-card flex justify-between text-sm"><span className="text-gray-400">Most Connected</span><span className="text-neon-cyan font-mono">{summary.mostConnected as string}</span></div>}
                 {nodes.slice(0, 5).length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Top Nodes by Centrality</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Top Nodes by Centrality</p>
                     {nodes.slice(0, 5).map((n) => (
                       <div key={n.id} className="lens-card flex items-center justify-between text-xs">
                         <span className="text-white font-mono">{n.id}</span>
@@ -1945,7 +1945,7 @@ export default function GraphLensPage() {
                     {path.map((node, i) => (
                       <span key={i} className="flex items-center gap-1">
                         <span className="text-xs px-2 py-1 rounded bg-neon-cyan/10 text-neon-cyan font-mono">{node}</span>
-                        {i < path.length - 1 && <span className="text-gray-500 text-xs">→</span>}
+                        {i < path.length - 1 && <span className="text-gray-400 text-xs">→</span>}
                       </span>
                     ))}
                   </div>
@@ -1977,7 +1977,7 @@ export default function GraphLensPage() {
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {c.nodes.slice(0, 6).map((n) => <span key={n} className="text-xs px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan font-mono">{n}</span>)}
-                      {c.nodes.length > 6 && <span className="text-xs text-gray-500">+{c.nodes.length - 6}</span>}
+                      {c.nodes.length > 6 && <span className="text-xs text-gray-400">+{c.nodes.length - 6}</span>}
                     </div>
                   </div>
                 ))}

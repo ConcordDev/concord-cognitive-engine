@@ -91,7 +91,7 @@ export function RxAdherencePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -123,7 +123,7 @@ export function RxAdherencePanel() {
           </div>
         )}
         {streak?.nextMilestone != null && (
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             {streak.nextMilestone - streak.currentStreak} day{streak.nextMilestone - streak.currentStreak === 1 ? '' : 's'} to your next badge.
           </p>
         )}
@@ -133,7 +133,7 @@ export function RxAdherencePanel() {
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <CalendarDays className="w-3.5 h-3.5 text-amber-400" /> Adherence calendar
-          {calendar?.overallPct != null && <span className="text-[10px] text-zinc-500">· {calendar.overallPct}% over {calendar.days} days</span>}
+          {calendar?.overallPct != null && <span className="text-[10px] text-zinc-400">· {calendar.overallPct}% over {calendar.days} days</span>}
         </h3>
         {calendar && calendar.cells.length > 0 ? (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
@@ -144,7 +144,7 @@ export function RxAdherencePanel() {
                   className={cn('aspect-square rounded-sm', CELL_COLOR[c.status] || 'bg-zinc-800')} />
               ))}
             </div>
-            <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-500">
+            <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-400">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500" /> Perfect</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-500" /> Partial</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-600" /> Missed</span>
@@ -152,7 +152,7 @@ export function RxAdherencePanel() {
             </div>
           </div>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic">Log doses on scheduled medications to build your calendar.</p>
+          <p className="text-[11px] text-zinc-400 italic">Log doses on scheduled medications to build your calendar.</p>
         )}
       </section>
 
@@ -169,7 +169,7 @@ export function RxAdherencePanel() {
         </div>
         {reorderMsg && <p className="text-[11px] text-emerald-400 mb-2">{reorderMsg}</p>}
         {meds.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Add a medication first to set auto-reorder.</p>
+          <p className="text-[11px] text-zinc-400 italic">Add a medication first to set auto-reorder.</p>
         ) : (
           <div className="grid grid-cols-3 gap-2 mb-2">
             <select value={reorderForm.medId} onChange={(e) => setReorderForm({ ...reorderForm, medId: e.target.value })}
@@ -190,14 +190,14 @@ export function RxAdherencePanel() {
           </div>
         )}
         {configs.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No auto-reorder rules configured.</p>
+          <p className="text-[11px] text-zinc-400 italic">No auto-reorder rules configured.</p>
         ) : (
           <ul className="space-y-1">
             {configs.map((c) => (
               <li key={c.medId} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{c.medName}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     Reorders at ≤{c.thresholdDays} days supply{c.pharmacy ? ` · ${c.pharmacy}` : ''}
                   </p>
                 </div>
@@ -230,7 +230,7 @@ export function RxAdherencePanel() {
         {gradeResult && (
           <div className="mt-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
             {gradeResult.interactions.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">{gradeResult.note || 'No graded interactions found.'}</p>
+              <p className="text-[11px] text-zinc-400 italic">{gradeResult.note || 'No graded interactions found.'}</p>
             ) : (
               <>
                 <p className="text-[11px] text-zinc-400 mb-1.5">
@@ -250,14 +250,14 @@ export function RxAdherencePanel() {
                           {ix.severity}
                         </span>
                       </div>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">{ix.description}</p>
-                      <p className="text-[10px] text-zinc-600">Source: {ix.source}</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">{ix.description}</p>
+                      <p className="text-[10px] text-zinc-400">Source: {ix.source}</p>
                     </li>
                   ))}
                 </ul>
               </>
             )}
-            {gradeResult.disclaimer && <p className="text-[10px] text-zinc-600 italic mt-1.5">{gradeResult.disclaimer}</p>}
+            {gradeResult.disclaimer && <p className="text-[10px] text-zinc-400 italic mt-1.5">{gradeResult.disclaimer}</p>}
           </div>
         )}
       </section>
@@ -269,7 +269,7 @@ function Stat({ label, value, highlight }: { label: string; value: string | numb
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-2 py-2 text-center">
       <p className={cn('text-lg font-bold', highlight ? 'text-amber-300' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

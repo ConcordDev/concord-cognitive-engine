@@ -202,7 +202,7 @@ export function CouponsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Ticket className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Coupons &amp; sales events</span>
-          <span className="text-[10px] text-gray-500">{coupons.length}</span>
+          <span className="text-[10px] text-gray-400">{coupons.length}</span>
           <button
             onClick={() => setCreating((v) => !v)}
             className="ml-auto px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 inline-flex items-center gap-1"
@@ -263,7 +263,7 @@ export function CouponsPanel() {
 
             {draft.kind === 'tiered' && (
               <div className="space-y-1.5">
-                <div className="text-[10px] uppercase text-gray-500">Spend tiers</div>
+                <div className="text-[10px] uppercase text-gray-400">Spend tiers</div>
                 {tiers.map((t, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2">
                     <input
@@ -351,11 +351,11 @@ export function CouponsPanel() {
         {/* Coupon list */}
         <div className="max-h-[20rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
             </div>
           ) : coupons.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500">
+            <div className="px-3 py-10 text-center text-xs text-gray-400">
               <Ticket className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No coupons yet.
             </div>
@@ -378,9 +378,9 @@ export function CouponsPanel() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white flex items-center gap-2">
                       <span className="font-mono text-orange-300">{c.code}</span>
-                      <span className="text-[10px] text-gray-500">{KIND_LABEL[c.kind]}</span>
+                      <span className="text-[10px] text-gray-400">{KIND_LABEL[c.kind]}</span>
                     </div>
-                    <div className="text-[10px] text-gray-500 truncate">
+                    <div className="text-[10px] text-gray-400 truncate">
                       {summary(c)}
                       {c.minOrderUsd > 0 && ` · min $${c.minOrderUsd}`}
                       {c.maxRedemptions > 0 &&

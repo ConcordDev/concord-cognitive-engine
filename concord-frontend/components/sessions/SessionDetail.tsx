@@ -165,7 +165,7 @@ export function SessionDetail({
               {session?.title || (session ? `Untitled session in ${session.lensId}` : 'Session')}
             </h2>
             {session && (
-              <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
                 {session.lensId} · {session.status} · started {fmtTime(session.createdAt)}
               </p>
             )}
@@ -175,7 +175,7 @@ export function SessionDetail({
               type="button"
               onClick={() => void load()}
               disabled={loading}
-              className="p-2 text-zinc-500 hover:text-zinc-200 rounded border border-zinc-800"
+              className="p-2 text-zinc-400 hover:text-zinc-200 rounded border border-zinc-800"
               aria-label="Refresh session"
             >
               <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
@@ -183,7 +183,7 @@ export function SessionDetail({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-zinc-500 hover:text-zinc-200 rounded border border-zinc-800"
+              className="p-2 text-zinc-400 hover:text-zinc-200 rounded border border-zinc-800"
               aria-label="Close detail"
             >
               <X className="w-4 h-4" />
@@ -199,7 +199,7 @@ export function SessionDetail({
           )}
 
           {loading && !session && (
-            <p className="text-xs text-zinc-500 py-8 text-center">Loading session…</p>
+            <p className="text-xs text-zinc-400 py-8 text-center">Loading session…</p>
           )}
 
           {session && (
@@ -289,7 +289,7 @@ export function SessionDetail({
                   Progress breadcrumb · {session.stepCount} transition{session.stepCount === 1 ? '' : 's'}
                 </h3>
                 {breadcrumb.length === 0 ? (
-                  <p className="text-[11px] text-zinc-600">No steps recorded yet.</p>
+                  <p className="text-[11px] text-zinc-400">No steps recorded yet.</p>
                 ) : (
                   <div className="flex flex-wrap items-center gap-1">
                     {breadcrumb.map((b, i) => (
@@ -342,7 +342,7 @@ export function SessionDetail({
               <section>
                 <h3 className="text-xs font-medium text-zinc-400 mb-2">Event log · {events.length}</h3>
                 {events.length === 0 ? (
-                  <p className="text-[11px] text-zinc-600">No events yet.</p>
+                  <p className="text-[11px] text-zinc-400">No events yet.</p>
                 ) : (
                   <ul className="space-y-1 max-h-72 overflow-y-auto">
                     {[...events]
@@ -365,7 +365,7 @@ export function SessionDetail({
                           </span>
                           <span className="flex-1 min-w-0 text-zinc-400">
                             {e.fromStep || e.toStep ? (
-                              <span className="font-mono text-zinc-500">
+                              <span className="font-mono text-zinc-400">
                                 {e.fromStep || '∅'} → {e.toStep || '∅'}
                               </span>
                             ) : null}

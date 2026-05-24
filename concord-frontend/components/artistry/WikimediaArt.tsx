@@ -71,7 +71,7 @@ export function WikimediaArt() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search art (e.g. Hokusai, art nouveau, watercolor)…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -91,8 +91,8 @@ export function WikimediaArt() {
             )}
             <div className="px-2 py-1.5">
               <div className="line-clamp-1 text-[11px] text-white group-hover:text-cyan-300">{h.title.replace(/^File:|\.(jpg|jpeg|png|gif|webp)$/gi, '')}</div>
-              <div className="line-clamp-1 text-[10px] text-zinc-500">{meta(h, 'Artist') || meta(h, 'Credit') || ''}</div>
-              <div className="mt-0.5 flex items-center justify-between font-mono text-[9px] text-zinc-500">
+              <div className="line-clamp-1 text-[10px] text-zinc-400">{meta(h, 'Artist') || meta(h, 'Credit') || ''}</div>
+              <div className="mt-0.5 flex items-center justify-between font-mono text-[9px] text-zinc-400">
                 <span>{meta(h, 'LicenseShortName') || ''}</span>
                 <ExternalLink className="h-2.5 w-2.5" />
               </div>
@@ -100,7 +100,7 @@ export function WikimediaArt() {
           </a>
         ))}
         {hits.length === 0 && !search.isPending && !error && (
-          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Search the public Wikimedia Commons art collection.</div>
+          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Search the public Wikimedia Commons art collection.</div>
         )}
       </div>
     </div>

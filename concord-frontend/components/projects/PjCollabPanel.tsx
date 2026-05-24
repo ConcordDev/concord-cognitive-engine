@@ -202,7 +202,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -211,7 +211,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
       <section>
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
           <Radio className="w-3.5 h-3.5 text-emerald-400" /> Live collaborators
-          <span className="text-[10px] text-zinc-500 font-normal">— real-time presence, idle &gt;45s drops off</span>
+          <span className="text-[10px] text-zinc-400 font-normal">— real-time presence, idle &gt;45s drops off</span>
         </h3>
         {presence.length === 0 ? (
           <Empty text="No collaborators active right now." />
@@ -221,7 +221,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
               <span key={c.id} className="flex items-center gap-1.5 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1">
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: cssColor(c.color) }} />
                 <span className="text-[11px] text-zinc-200">{c.collaborator}</span>
-                <span className="text-[10px] text-zinc-500">viewing {c.viewing}</span>
+                <span className="text-[10px] text-zinc-400">viewing {c.viewing}</span>
               </span>
             ))}
           </div>
@@ -256,9 +256,9 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                 <span className={cn('mt-1 w-1.5 h-1.5 rounded-full shrink-0', n.read ? 'bg-zinc-600' : 'bg-indigo-400')} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] text-zinc-200">{n.title}</p>
-                  {n.detail && <p className="text-[10px] text-zinc-500 truncate">{n.detail}</p>}
+                  {n.detail && <p className="text-[10px] text-zinc-400 truncate">{n.detail}</p>}
                 </div>
-                <span className="text-[9px] text-zinc-600 shrink-0">{n.kind}</span>
+                <span className="text-[9px] text-zinc-400 shrink-0">{n.kind}</span>
                 {!n.read && (
                   <button type="button" onClick={() => markRead(n.id)} className="text-[10px] text-indigo-400 hover:text-indigo-300 shrink-0">
                     read
@@ -294,11 +294,11 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                 <li key={i.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                   <Icon className="w-3.5 h-3.5 text-zinc-400" />
                   <span className="text-xs text-zinc-200">{i.target}</span>
-                  <span className="text-[10px] text-zinc-500">{i.linkCount} link{i.linkCount === 1 ? '' : 's'}</span>
+                  <span className="text-[10px] text-zinc-400">{i.linkCount} link{i.linkCount === 1 ? '' : 's'}</span>
                   <span className="flex-1" />
                   <button type="button"
                     onClick={() => lensRun('projects', 'integration-toggle', { id: i.id, enabled: !i.enabled }).then(refresh)}
-                    className={cn('text-[10px] px-1.5 py-0.5 rounded', i.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-500')}>
+                    className={cn('text-[10px] px-1.5 py-0.5 rounded', i.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-400')}>
                     {i.enabled ? 'on' : 'off'}
                   </button>
                   <button type="button" onClick={() => lensRun('projects', 'integration-delete', { id: i.id }).then(refresh)}
@@ -308,7 +308,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
             })}
           </ul>
         )}
-        <p className="text-[10px] text-zinc-600 mt-1.5">
+        <p className="text-[10px] text-zinc-400 mt-1.5">
           Link a PR, CI run or Slack thread to any issue from its detail view. A passing CI link auto-advances an in-review issue to done.
         </p>
       </section>
@@ -317,7 +317,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
       <section>
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
           <Inbox className="w-3.5 h-3.5 text-amber-400" /> Triage inbox
-          <span className="text-[10px] text-zinc-500 font-normal">— incoming issues before the backlog</span>
+          <span className="text-[10px] text-zinc-400 font-normal">— incoming issues before the backlog</span>
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 mb-2">
           <input placeholder="Incoming issue title" value={triageForm.title}
@@ -338,7 +338,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono text-amber-400">{t.ref}</span>
                   <span className="text-xs text-zinc-200 flex-1 truncate">{t.title}</span>
-                  <span className="text-[9px] text-zinc-500">{t.type} · {t.triageSource}</span>
+                  <span className="text-[9px] text-zinc-400">{t.type} · {t.triageSource}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <TriageAccept onAccept={(p, st) => acceptTriage(t.id, p, st)} />
@@ -394,13 +394,13 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                 Breached ({slaResult.breachedCount}) · {slaResult.escalated} escalated
               </p>
               {slaResult.breached.length === 0 ? (
-                <p className="text-[10px] text-zinc-500">No breaches.</p>
+                <p className="text-[10px] text-zinc-400">No breaches.</p>
               ) : (
                 <ul className="space-y-0.5">
                   {slaResult.breached.slice(0, 6).map((b) => (
                     <li key={b.id} className="text-[10px] text-zinc-300 flex items-center gap-1.5">
                       <XCircle className="w-3 h-3 text-rose-400 shrink-0" />
-                      <span className="font-mono text-zinc-500">{b.ref}</span>
+                      <span className="font-mono text-zinc-400">{b.ref}</span>
                       <span className="truncate flex-1">{b.title}</span>
                       <span className="text-rose-400">{b.overdueDays}d over</span>
                     </li>
@@ -413,13 +413,13 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                 At risk ({slaResult.atRiskCount})
               </p>
               {slaResult.atRisk.length === 0 ? (
-                <p className="text-[10px] text-zinc-500">Nothing due soon.</p>
+                <p className="text-[10px] text-zinc-400">Nothing due soon.</p>
               ) : (
                 <ul className="space-y-0.5">
                   {slaResult.atRisk.slice(0, 6).map((a) => (
                     <li key={a.id} className="text-[10px] text-zinc-300 flex items-center gap-1.5">
                       <Timer className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="font-mono text-zinc-500">{a.ref}</span>
+                      <span className="font-mono text-zinc-400">{a.ref}</span>
                       <span className="truncate flex-1">{a.title}</span>
                       <span className="text-amber-400">{a.hoursLeft}h left</span>
                     </li>
@@ -455,7 +455,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
               <input ref={cmdInputRef} value={cmdQuery} onChange={(e) => setCmdQuery(e.target.value)}
                 placeholder="Type to search or create…"
                 className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none" />
-              <kbd className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded border border-zinc-700 text-zinc-500">ESC</kbd>
+              <kbd className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded border border-zinc-700 text-zinc-400">ESC</kbd>
             </div>
             <div className="max-h-80 overflow-y-auto p-2">
               {(cmdResult?.commands || []).map((c) => (
@@ -477,14 +477,14 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
               {(cmdResult?.results || []).map((r) => (
                 <div key={`${r.kind}-${r.id}`}
                   className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-zinc-900 text-left">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                  <ArrowUpRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                   <span className="text-[12px] text-zinc-200 flex-1 truncate">{r.label}</span>
-                  <span className="text-[10px] font-mono text-zinc-600">{r.sub}</span>
-                  {r.status && <span className="text-[9px] text-zinc-500">{r.status.replace(/_/g, ' ')}</span>}
+                  <span className="text-[10px] font-mono text-zinc-400">{r.sub}</span>
+                  {r.status && <span className="text-[9px] text-zinc-400">{r.status.replace(/_/g, ' ')}</span>}
                 </div>
               ))}
               {cmdResult && cmdResult.results.length === 0 && cmdResult.commands.length === 0 && (
-                <p className="text-[11px] text-zinc-500 italic px-2.5 py-3">Type to search projects and issues.</p>
+                <p className="text-[11px] text-zinc-400 italic px-2.5 py-3">Type to search projects and issues.</p>
               )}
             </div>
           </div>
@@ -492,7 +492,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
       )}
 
       {members.length === 0 && (
-        <p className="text-[10px] text-zinc-600 italic">
+        <p className="text-[10px] text-zinc-400 italic">
           Add members in the Team tab to assign triaged issues during acceptance.
         </p>
       )}
@@ -524,7 +524,7 @@ const btn = 'flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indig
 const ghostBtn = 'text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded';
 
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-500 italic">{text}</p>;
+  return <p className="text-[11px] text-zinc-400 italic">{text}</p>;
 }
 
 function cssColor(c: string): string {

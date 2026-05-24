@@ -61,7 +61,7 @@ export function MeditationStudio() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   const shown = library.filter(s => s.category === cat);
 
@@ -70,7 +70,7 @@ export function MeditationStudio() {
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-4 h-4 text-indigo-300" />
         <h3 className="text-sm font-bold text-zinc-100">Meditation Studio</h3>
-        <span className="text-[11px] text-zinc-500">Calm / Headspace shape</span>
+        <span className="text-[11px] text-zinc-400">Calm / Headspace shape</span>
       </div>
 
       {dash && (
@@ -78,7 +78,7 @@ export function MeditationStudio() {
           {([['Sessions', dash.totalSessions], ['Minutes', dash.totalMinutes], ['Streak', `${dash.currentStreak}🔥`]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -123,9 +123,9 @@ export function MeditationStudio() {
                 : s.category === 'sos' ? <Flame className="w-3.5 h-3.5 text-rose-400" />
                 : <Play className="w-3.5 h-3.5 text-indigo-400" />}
               <span className="text-xs font-semibold text-zinc-100 flex-1 truncate">{s.title}</span>
-              <span className="text-[10px] text-zinc-500">{s.durationMin}m</span>
+              <span className="text-[10px] text-zinc-400">{s.durationMin}m</span>
             </div>
-            <p className="text-[10px] text-zinc-500 mt-0.5">{s.narrator || s.goal}</p>
+            <p className="text-[10px] text-zinc-400 mt-0.5">{s.narrator || s.goal}</p>
           </button>
         ))}
       </div>

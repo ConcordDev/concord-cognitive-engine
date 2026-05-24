@@ -87,12 +87,12 @@ export function ChannelExtrasBar({ channelId, pinNonce }: { channelId: string; p
         <div className="absolute left-4 top-full mt-1 z-20 w-80 bg-[#0a0c10] border border-white/10 rounded shadow-lg p-2 max-h-72 overflow-y-auto">
           <div className="text-[10px] uppercase tracking-wider text-amber-300 mb-1 flex items-center gap-1"><Pin className="w-3 h-3" />Pinned messages</div>
           {pins.length === 0 ? (
-            <div className="text-[11px] text-gray-500 italic py-2">No pinned messages. Hover a message and pick Pin.</div>
+            <div className="text-[11px] text-gray-400 italic py-2">No pinned messages. Hover a message and pick Pin.</div>
           ) : pins.map(p => (
             <div key={p.messageId} className="group rounded p-1.5 text-[11px] bg-amber-500/[0.05] mb-1">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-amber-100">{p.senderName}</span>
-                <span className="text-[9px] text-gray-500 font-mono">{p.pinnedAt.slice(0, 16).replace('T', ' ')}</span>
+                <span className="text-[9px] text-gray-400 font-mono">{p.pinnedAt.slice(0, 16).replace('T', ' ')}</span>
                 <button onClick={() => unpin(p.messageId)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-200">unpin</button>
               </div>
               <div className="text-gray-200">{p.body}</div>

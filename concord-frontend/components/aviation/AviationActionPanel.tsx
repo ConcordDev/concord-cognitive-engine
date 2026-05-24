@@ -196,7 +196,7 @@ export function AviationActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -213,7 +213,7 @@ export function AviationActionPanel() {
             <div className="mt-1.5 flex flex-wrap gap-1">
               {aptResult.airport.runways.slice(0, 6).map((r, i) => <div key={i} className="text-[10px] bg-blue-500/10 text-blue-200 px-1.5 py-0.5 rounded font-mono">RW {r.id} · {r.length}ft · {r.surface}</div>)}
             </div>
-            {aptResult.airport.fuel.length > 0 && <div className="text-[10px] text-zinc-500 mt-1">fuel: {aptResult.airport.fuel.join(' · ')}</div>}
+            {aptResult.airport.fuel.length > 0 && <div className="text-[10px] text-zinc-400 mt-1">fuel: {aptResult.airport.fuel.join(' · ')}</div>}
           </div>
         )}
         {wxResult && wxResult.reports.map((m, i) => (
@@ -227,15 +227,15 @@ export function AviationActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Takeoff</div>
             <div className="text-2xl font-bold text-green-300">{toResult.groundRoll_ft} <span className="text-xs text-zinc-400">ft roll</span></div>
-            <div className="text-[10px] text-zinc-500">over 50 ft: {toResult.over50ft_ft} ft</div>
-            <div className="text-[10px] text-zinc-500">ISA temp at alt: {toResult.inputs.isaTemp}°C</div>
+            <div className="text-[10px] text-zinc-400">over 50 ft: {toResult.over50ft_ft} ft</div>
+            <div className="text-[10px] text-zinc-400">ISA temp at alt: {toResult.inputs.isaTemp}°C</div>
           </div>
         )}
         {ldgResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Landing</div>
             <div className="text-2xl font-bold text-amber-300">{ldgResult.groundRoll_ft} <span className="text-xs text-zinc-400">ft roll</span></div>
-            <div className="text-[10px] text-zinc-500">over 50 ft: {ldgResult.over50ft_ft} ft</div>
+            <div className="text-[10px] text-zinc-400">over 50 ft: {ldgResult.over50ft_ft} ft</div>
           </div>
         )}
       </div>

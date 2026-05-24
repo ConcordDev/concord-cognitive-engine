@@ -197,7 +197,7 @@ export function FoodActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -214,13 +214,13 @@ export function FoodActionPanel() {
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Cost</div>
             <div className="text-2xl font-bold text-emerald-300">${costResult.perPlate?.toFixed(2)}<span className="text-xs text-zinc-400 ml-1">/plate</span></div>
-            <div className="text-[10px] text-zinc-500">total ${costResult.totalCost?.toFixed(2)}</div>
+            <div className="text-[10px] text-zinc-400">total ${costResult.totalCost?.toFixed(2)}</div>
           </div>
         )}
         {suggestResult?.meals && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Suggested ({suggestResult.matched})</div>
-            {suggestResult.meals.slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-zinc-300">{m.name}{m.cuisine && <span className="text-zinc-500"> · {m.cuisine}</span>}{m.matchScore != null && <span className="text-purple-300 ml-1 font-mono">{Math.round(m.matchScore * 100)}%</span>}</div>)}
+            {suggestResult.meals.slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-zinc-300">{m.name}{m.cuisine && <span className="text-zinc-400"> · {m.cuisine}</span>}{m.matchScore != null && <span className="text-purple-300 ml-1 font-mono">{Math.round(m.matchScore * 100)}%</span>}</div>)}
           </div>
         )}
         {wasteResult && (

@@ -70,7 +70,7 @@ export function MapView({
         })}
       </svg>
       {markers.length === 0 && (
-        <p className="py-2 text-center text-[11px] text-zinc-600">No mapped points yet.</p>
+        <p className="py-2 text-center text-[11px] text-zinc-400">No mapped points yet.</p>
       )}
       {active && (() => {
         const m = markers.find((x) => x.id === active);

@@ -81,9 +81,9 @@ export function ResultsReleasePanel({ patientId }: { patientId: string }) {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : shown.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">
+        <div className="px-3 py-10 text-center text-xs text-gray-400">
           <FlaskConical className="w-6 h-6 mx-auto mb-2 opacity-30" />
           {view === 'portal' ? 'No results released to the patient yet.' : 'No lab results recorded for this patient.'}
         </div>
@@ -98,9 +98,9 @@ export function ResultsReleasePanel({ patientId }: { patientId: string }) {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate">
                       {l.test} <span className={cn('font-bold', abnormal ? 'text-rose-300' : 'text-emerald-300')}>{l.value} {l.unit}</span>
-                      {(l.refLow != null || l.refHigh != null) && <span className="text-[10px] text-gray-500"> ref {l.refLow ?? '–'}–{l.refHigh ?? '–'}</span>}
+                      {(l.refLow != null || l.refHigh != null) && <span className="text-[10px] text-gray-400"> ref {l.refLow ?? '–'}–{l.refHigh ?? '–'}</span>}
                     </div>
-                    <div className="text-[10px] text-gray-500 truncate">
+                    <div className="text-[10px] text-gray-400 truncate">
                       collected {l.collectedAt.slice(0, 10)}
                       {l.released ? ` · released ${(l.releasedAt || '').slice(0, 10)}` : view === 'clinician' ? ' · not released' : ''}
                     </div>

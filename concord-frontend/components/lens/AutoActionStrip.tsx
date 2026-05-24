@@ -196,7 +196,7 @@ export function AutoActionStrip({
 
   if (isLoading) {
     return (
-      <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-500 flex items-center gap-2', className)}>
+      <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-400 flex items-center gap-2', className)}>
         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Discovering {domain} actions...
       </section>
     );
@@ -209,7 +209,7 @@ export function AutoActionStrip({
     if (group.length === 0) return null;
     return (
       <div className="mb-2 last:mb-0">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 font-mono">{rowLabel}</div>
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1 font-mono">{rowLabel}</div>
         <div className="flex flex-wrap gap-1.5">
           {group.map(a => {
             const { icon: Icon, tint } = classifyAction(a);
@@ -257,12 +257,12 @@ export function AutoActionStrip({
         <Code2 className="w-4 h-4 text-zinc-400" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">
           {title}
-          <span className="ml-2 text-[10px] text-zinc-500 font-mono">{visible.length} / {data?.total || 0}</span>
+          <span className="ml-2 text-[10px] text-zinc-400 font-mono">{visible.length} / {data?.total || 0}</span>
         </h3>
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
-          className="text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -270,7 +270,7 @@ export function AutoActionStrip({
         <button
           type="button"
           onClick={() => void refetch()}
-          className="text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -288,11 +288,11 @@ export function AutoActionStrip({
       {paramOpen && (
         <div className="border-t border-zinc-800/40 px-3 py-2 bg-zinc-900/30">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">Input JSON for {paramOpen}</span>
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">Input JSON for {paramOpen}</span>
             <button
               type="button"
               onClick={() => { setParamOpen(null); setParamText(''); }}
-              className="ml-auto text-[10px] text-zinc-500 hover:text-zinc-200"
+              className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200"
             >close</button>
           </div>
           <textarea
@@ -312,7 +312,7 @@ export function AutoActionStrip({
             >
               {runAction.isPending && activeAction === paramOpen ? 'Running…' : `Run ${prettyLabel(paramOpen)}`}
             </button>
-            <span className="text-[10px] text-zinc-500 italic">Edit JSON above, then submit. Empty JSON = same as click-the-button default.</span>
+            <span className="text-[10px] text-zinc-400 italic">Edit JSON above, then submit. Empty JSON = same as click-the-button default.</span>
           </div>
         </div>
       )}
@@ -329,7 +329,7 @@ export function AutoActionStrip({
             <button
               type="button"
               onClick={() => { setResult(null); setError(null); setActiveAction(null); }}
-              className="ml-auto text-[10px] text-zinc-500 hover:text-zinc-200"
+              className="ml-auto text-[10px] text-zinc-400 hover:text-zinc-200"
             >
               clear
             </button>
@@ -345,7 +345,7 @@ export function AutoActionStrip({
         </div>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Auto-discovered from /api/lens-actions/{domain}
       </footer>
     </section>

@@ -506,7 +506,7 @@ export default function VoiceLensPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold">Recording Booth</h1>
-            <p className="text-xs text-gray-500">Voice capture and processing studio</p>
+            <p className="text-xs text-gray-400">Voice capture and processing studio</p>
           </div>
 
       {/* Real-time Enhancement Toolbar */}
@@ -579,7 +579,7 @@ export default function VoiceLensPage() {
                       <button onClick={confirmRename} className="text-neon-cyan" aria-label="Confirm">
                         <Check className="w-3 h-3" />
                       </button>
-                      <button onClick={() => setRenamingId(null)} className="text-gray-500" aria-label="Close">
+                      <button onClick={() => setRenamingId(null)} className="text-gray-400" aria-label="Close">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -621,7 +621,7 @@ export default function VoiceLensPage() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
+                <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-2">
                   <span>{formatTime(take.duration)}</span>
                   <span>{formatTimestamp(take.timestamp)}</span>
                 </div>
@@ -712,7 +712,7 @@ export default function VoiceLensPage() {
             {status === 'recording' ? (
               <span className="text-red-400">{formatTime(recordingTime)}</span>
             ) : (
-              <span className="text-gray-500">{formatTime(activeTake?.duration || 0)}</span>
+              <span className="text-gray-400">{formatTime(activeTake?.duration || 0)}</span>
             )}
           </div>
 
@@ -734,7 +734,7 @@ export default function VoiceLensPage() {
 
           {/* Level meters */}
           <div className="flex items-center gap-4 mb-6">
-            <span className="text-[10px] text-gray-500 font-mono w-4 text-right">L</span>
+            <span className="text-[10px] text-gray-400 font-mono w-4 text-right">L</span>
             <div className="w-48 h-3 bg-white/5 rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple"
@@ -749,7 +749,7 @@ export default function VoiceLensPage() {
                 transition={{ duration: 0.06 }}
               />
             </div>
-            <span className="text-[10px] text-gray-500 font-mono w-4">R</span>
+            <span className="text-[10px] text-gray-400 font-mono w-4">R</span>
           </div>
 
           {/* Transport controls */}
@@ -824,7 +824,7 @@ export default function VoiceLensPage() {
 
           {/* Presets */}
           <div className="px-4 py-3 border-b border-white/5">
-            <label className="text-[10px] text-gray-500 uppercase tracking-wider block mb-2">Preset</label>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-2">Preset</label>
             <div className="grid grid-cols-2 gap-1.5">
               {(['raw', 'podcast', 'vocal', 'broadcast'] as ProcessingPreset[]).map((preset) => (
                 <button
@@ -849,7 +849,7 @@ export default function VoiceLensPage() {
               <div key={fx.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-600 font-mono">{idx + 1}</span>
+                    <span className="text-[10px] text-gray-400 font-mono">{idx + 1}</span>
                     <span className="text-sm font-medium">{fx.name}</span>
                   </div>
                   <button
@@ -877,7 +877,7 @@ export default function VoiceLensPage() {
                       className="overflow-hidden"
                     >
                       <div className="pt-1">
-                        <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
+                        <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
                           <span>{fx.paramLabel}</span>
                           <span className="font-mono">
                             {fx.paramValue}{fx.paramUnit}
@@ -951,10 +951,10 @@ export default function VoiceLensPage() {
               ) : activeTake.transcript ? (
                 <p className="text-xs text-gray-400 line-clamp-3">{activeTake.transcript}</p>
               ) : (
-                <p className="text-xs text-gray-600 italic">No transcript available. Process take to generate.</p>
+                <p className="text-xs text-gray-400 italic">No transcript available. Process take to generate.</p>
               )
             ) : (
-              <p className="text-xs text-gray-600 italic">Select a take to view its transcription.</p>
+              <p className="text-xs text-gray-400 italic">Select a take to view its transcription.</p>
             )}
           </div>
 
@@ -975,7 +975,7 @@ export default function VoiceLensPage() {
             </button>
             <div className="h-8 w-px bg-white/10" />
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-gray-500 mr-1">Export:</span>
+              <span className="text-[10px] text-gray-400 mr-1">Export:</span>
               {(['wav', 'mp3', 'flac'] as ExportFormat[]).map((fmt) => (
                 <button
                   key={fmt}
@@ -1077,7 +1077,7 @@ export default function VoiceLensPage() {
       </div>
 
       {/* Stats bar */}
-      <div className="flex items-center justify-between px-6 py-2 border-t border-lattice-border bg-black/60 text-[11px] text-gray-500">
+      <div className="flex items-center justify-between px-6 py-2 border-t border-lattice-border bg-black/60 text-[11px] text-gray-400">
         <div className="flex items-center gap-6">
           <span className="flex items-center gap-1.5">
             <Radio className="w-3 h-3" />

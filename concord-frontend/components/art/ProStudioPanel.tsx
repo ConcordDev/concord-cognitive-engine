@@ -259,7 +259,7 @@ export function ProStudioPanel({
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-violet-400" />
         <h3 className="text-xs font-bold text-zinc-100">Pro Studio</h3>
-        <span className="text-[10px] text-zinc-500">Procreate / Krita parity tools</span>
+        <span className="text-[10px] text-zinc-400">Procreate / Krita parity tools</span>
       </div>
 
       <nav className="flex flex-wrap gap-1">
@@ -283,7 +283,7 @@ export function ProStudioPanel({
       {/* ── Raster filters ── */}
       {tab === 'filters' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Non-destructive filter stack on the active layer. Replays on rasterisation.
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -310,7 +310,7 @@ export function ProStudioPanel({
               {filters.map((f) => (
                 <li key={f.id} className="flex items-center justify-between text-[11px] text-zinc-300 bg-zinc-950/70 rounded px-2 py-1">
                   <span className="capitalize">{f.kind.replace(/-/g, ' ')}</span>
-                  <span className="text-zinc-500">amt {f.amount}</span>
+                  <span className="text-zinc-400">amt {f.amount}</span>
                 </li>
               ))}
               <li>
@@ -320,7 +320,7 @@ export function ProStudioPanel({
               </li>
             </ul>
           ) : (
-            <p className="text-[10px] text-zinc-600 italic">No filters on this layer yet.</p>
+            <p className="text-[10px] text-zinc-400 italic">No filters on this layer yet.</p>
           )}
         </div>
       )}
@@ -328,7 +328,7 @@ export function ProStudioPanel({
       {/* ── Pressure dynamics ── */}
       {tab === 'dynamics' && dynamics && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Maps stylus / pointer pressure onto stroke width &amp; opacity for variable-width ribbons.
           </p>
           <div className="flex flex-wrap gap-3">
@@ -365,7 +365,7 @@ export function ProStudioPanel({
       {/* ── Free-angle rotation ── */}
       {tab === 'rotate' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Rotate the active layer {selectedIds.length ? `(${selectedIds.length} selected)` : ''} by any angle
             about the canvas centre.
           </p>
@@ -392,7 +392,7 @@ export function ProStudioPanel({
       {/* ── Selection refinement ── */}
       {tab === 'select' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Magic-wand by perceptual ΔE colour distance, plus selection feathering.
             Freehand lasso is drawn directly on the canvas.
           </p>
@@ -439,7 +439,7 @@ export function ProStudioPanel({
       {/* ── Symmetry & perspective guides ── */}
       {tab === 'guides' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Drawing guides — symmetry mirrors and 1/2-point perspective vanishing lines.
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -471,7 +471,7 @@ export function ProStudioPanel({
       {/* ── Timelapse recording ── */}
       {tab === 'timelapse' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Record the drawing session as scrubbable frames; play it back below.
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -508,12 +508,12 @@ export function ProStudioPanel({
                   {Math.min(tlIndex, tlFrames.length - 1) + 1}/{tlFrames.length}
                 </span>
               </label>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 {tlFrames[Math.min(tlIndex, tlFrames.length - 1)].strokeCount} strokes at this frame
               </p>
             </div>
           ) : (
-            <p className="text-[10px] text-zinc-600 italic">No timelapse frames captured yet.</p>
+            <p className="text-[10px] text-zinc-400 italic">No timelapse frames captured yet.</p>
           )}
         </div>
       )}

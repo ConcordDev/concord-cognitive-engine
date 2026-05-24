@@ -402,7 +402,7 @@ export function UndergroundExchange() {
       <header className="flex items-center justify-between gap-3 border-b border-rose-500/20 pb-3">
         <div>
           <h2 className="text-sm font-semibold text-rose-200">Underground Exchange</h2>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-slate-400">
             Player auctions, haggling, resale, watchlists and shadow-tier decryption. Sparks only.
           </p>
         </div>
@@ -448,13 +448,13 @@ export function UndergroundExchange() {
         </div>
       )}
 
-      {loading && <p className="text-xs text-slate-500">Loading the exchange…</p>}
+      {loading && <p className="text-xs text-slate-400">Loading the exchange…</p>}
 
       {/* ── AUCTIONS ───────────────────────────────────────────────── */}
       {!loading && tab === 'auctions' && (
         <div className="space-y-4">
           <section className="rounded border border-slate-800 bg-slate-900/40 p-3">
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
               List an intercept for auction
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -529,7 +529,7 @@ export function UndergroundExchange() {
           )}
 
           {auctions.length === 0 ? (
-            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-xs text-slate-500">
+            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-xs text-slate-400">
               No open auctions yet. List an intercept above to start one.
             </p>
           ) : (
@@ -566,7 +566,7 @@ export function UndergroundExchange() {
                         >
                           {busy === `bid-${a.id}` ? 'Bidding…' : 'Bid'}
                         </button>
-                        <span className="text-slate-500">·</span>
+                        <span className="text-slate-400">·</span>
                         <input
                           type="number"
                           min={1}
@@ -623,21 +623,21 @@ export function UndergroundExchange() {
       {!loading && tab === 'rep' && (
         <div className="space-y-3">
           {!rep ? (
-            <p className="text-xs text-slate-500">No reputation data yet.</p>
+            <p className="text-xs text-slate-400">No reputation data yet.</p>
           ) : (
             <>
               <div className="rounded border border-slate-800 bg-slate-900/40 p-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-2xl font-semibold text-rose-200">{rep.score}</span>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-slate-400">
                     {rep.purchases} trade{rep.purchases === 1 ? '' : 's'} ·
                     {' '}{rep.lastTradeAt ? `last ${fmtAgo(rep.lastTradeAt)}` : 'no trades yet'}
                   </span>
                 </div>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">fence reputation</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">fence reputation</p>
               </div>
               <div className="rounded border border-slate-800 bg-slate-900/40 p-3">
-                <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+                <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
                   Encryption tiers
                 </p>
                 <div className="space-y-1.5">
@@ -675,11 +675,11 @@ export function UndergroundExchange() {
       {!loading && tab === 'owned' && (
         <div className="space-y-4">
           <section>
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
               Your intercepts
             </p>
             {owned.length === 0 ? (
-              <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-xs text-slate-500">
+              <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-xs text-slate-400">
                 No owned intercepts yet. Win an auction or buy a resale.
               </p>
             ) : (
@@ -726,11 +726,11 @@ export function UndergroundExchange() {
           </section>
 
           <section>
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
               Resale market
             </p>
             {resaleMarket.length === 0 ? (
-              <p className="rounded border border-slate-800 bg-slate-900/40 p-3 text-center text-xs text-slate-500">
+              <p className="rounded border border-slate-800 bg-slate-900/40 p-3 text-center text-xs text-slate-400">
                 No resale listings from other players right now.
               </p>
             ) : (
@@ -758,14 +758,14 @@ export function UndergroundExchange() {
 
           {resaleMine.length > 0 && (
             <section>
-              <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+              <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
                 Your resale listings
               </p>
               <div className="space-y-1.5">
                 {resaleMine.map((r) => (
                   <div key={r.id} className="flex items-center justify-between rounded border border-slate-800 bg-slate-950/50 px-2.5 py-1.5 text-xs text-slate-300">
                     <span>{r.title}</span>
-                    <span className="text-slate-500">{r.price}✦ · {r.encryptionLevel}</span>
+                    <span className="text-slate-400">{r.price}✦ · {r.encryptionLevel}</span>
                   </div>
                 ))}
               </div>
@@ -778,7 +778,7 @@ export function UndergroundExchange() {
       {!loading && tab === 'watch' && (
         <div className="space-y-4">
           <section className="rounded border border-slate-800 bg-slate-900/40 p-3">
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
               New saved search
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -819,11 +819,11 @@ export function UndergroundExchange() {
           </section>
 
           <section>
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
               Live alerts ({alerts.length})
             </p>
             {alerts.length === 0 ? (
-              <p className="rounded border border-slate-800 bg-slate-900/40 p-3 text-center text-xs text-slate-500">
+              <p className="rounded border border-slate-800 bg-slate-900/40 p-3 text-center text-xs text-slate-400">
                 No matches yet. Alerts appear when a live auction or resale matches a saved search.
               </p>
             ) : (
@@ -848,7 +848,7 @@ export function UndergroundExchange() {
 
           {watches.length > 0 && (
             <section>
-              <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+              <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
                 Saved searches
               </p>
               <div className="space-y-1.5">
@@ -859,13 +859,13 @@ export function UndergroundExchange() {
                   >
                     <span>
                       &ldquo;{w.keyword}&rdquo;
-                      {w.maxPrice != null && <span className="text-slate-500"> · ≤{w.maxPrice}✦</span>}
-                      {w.tier && <span className="text-slate-500"> · {w.tier}</span>}
+                      {w.maxPrice != null && <span className="text-slate-400"> · ≤{w.maxPrice}✦</span>}
+                      {w.tier && <span className="text-slate-400"> · {w.tier}</span>}
                     </span>
                     <button
                       onClick={() => void removeWatch(w)}
                       disabled={busy === `rm-watch-${w.id}`}
-                      className="text-slate-500 hover:text-rose-300 disabled:opacity-50"
+                      className="text-slate-400 hover:text-rose-300 disabled:opacity-50"
                     >
                       remove
                     </button>
@@ -880,12 +880,12 @@ export function UndergroundExchange() {
       {/* ── DECRYPT ────────────────────────────────────────────────── */}
       {!loading && tab === 'decrypt' && (
         <div className="space-y-3">
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-slate-400">
             Shadow-tier intercepts ship encrypted. Guess the Caesar shift (1–25) to crack the
             payload. Fewer attempts earn more reputation.
           </p>
           {shadowOwned.length === 0 ? (
-            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-xs text-slate-500">
+            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-xs text-slate-400">
               You own no shadow-tier intercepts. Win one at auction to play the decryption game.
             </p>
           ) : (

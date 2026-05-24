@@ -188,26 +188,26 @@ export function IssueInbox() {
         <div className="grid grid-cols-4 gap-2">
           <div className="p-2 bg-lattice-deep rounded text-center">
             <p className="text-lg font-bold text-red-400">{summary.open}</p>
-            <p className="text-[10px] text-gray-500">Open</p>
+            <p className="text-[10px] text-gray-400">Open</p>
           </div>
           <div className="p-2 bg-lattice-deep rounded text-center">
             <p className="text-lg font-bold text-neon-green">{summary.resolved}</p>
-            <p className="text-[10px] text-gray-500">Resolved</p>
+            <p className="text-[10px] text-gray-400">Resolved</p>
           </div>
           <div className="p-2 bg-lattice-deep rounded text-center">
             <p className="text-lg font-bold text-gray-400">{summary.ignored}</p>
-            <p className="text-[10px] text-gray-500">Ignored</p>
+            <p className="text-[10px] text-gray-400">Ignored</p>
           </div>
           <div className="p-2 bg-lattice-deep rounded text-center">
             <p className="text-lg font-bold text-neon-purple">{summary.totalOccurrences}</p>
-            <p className="text-[10px] text-gray-500">Occurrences</p>
+            <p className="text-[10px] text-gray-400">Occurrences</p>
           </div>
         </div>
       )}
 
       {/* Quick ingest */}
       <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border space-y-2">
-        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Report Exception</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Report Exception</p>
         <div className="grid grid-cols-2 gap-2">
           <input
             value={form.type}
@@ -285,11 +285,11 @@ export function IssueInbox() {
 
       {/* Issue list */}
       {loading ? (
-        <div className="text-center py-8 text-gray-500 text-sm flex items-center justify-center gap-2">
+        <div className="text-center py-8 text-gray-400 text-sm flex items-center justify-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading issues...
         </div>
       ) : issues.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-gray-400 text-sm">
           <Bug className="w-7 h-7 mx-auto mb-2 opacity-40" />
           No issues match this filter
         </div>
@@ -323,9 +323,9 @@ export function IssueInbox() {
                   </div>
                   <p className="text-xs text-gray-400 truncate mt-0.5">{issue.message}</p>
                   {issue.culprit && (
-                    <p className="text-[10px] text-gray-600 font-mono truncate">{issue.culprit}</p>
+                    <p className="text-[10px] text-gray-400 font-mono truncate">{issue.culprit}</p>
                   )}
-                  <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+                  <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                     <span className="text-neon-purple font-bold">{issue.count}×</span>
                     <span>last {new Date(issue.lastSeen).toLocaleTimeString()}</span>
                     {issue.assignee && (
@@ -392,15 +392,15 @@ export function IssueInbox() {
 
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div className="p-2 bg-lattice-deep rounded">
-                <p className="text-gray-500 text-[10px]">Occurrences</p>
+                <p className="text-gray-400 text-[10px]">Occurrences</p>
                 <p className="text-neon-purple font-bold">{selected.count}</p>
               </div>
               <div className="p-2 bg-lattice-deep rounded">
-                <p className="text-gray-500 text-[10px]">Status</p>
+                <p className="text-gray-400 text-[10px]">Status</p>
                 <p className="text-gray-200">{selected.status}</p>
               </div>
               <div className="p-2 bg-lattice-deep rounded">
-                <p className="text-gray-500 text-[10px]">First Seen</p>
+                <p className="text-gray-400 text-[10px]">First Seen</p>
                 <p className="text-gray-200">
                   {new Date(selected.firstSeen).toLocaleDateString()}
                 </p>
@@ -410,7 +410,7 @@ export function IssueInbox() {
             {/* Occurrence sparkline (24h) */}
             {sparkline.length > 0 && (
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                   Occurrences — last 24h
                 </p>
                 <ChartKit
@@ -439,13 +439,13 @@ export function IssueInbox() {
                 }}
                 className="flex-1 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
               />
-              <span className="text-[10px] text-gray-600">↵ to assign</span>
+              <span className="text-[10px] text-gray-400">↵ to assign</span>
             </div>
 
             {/* Breadcrumbs */}
             {selected.breadcrumbs?.length > 0 && (
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                   Breadcrumbs
                 </p>
                 <div className="space-y-1">
@@ -462,7 +462,7 @@ export function IssueInbox() {
                             ? 'text-red-400'
                             : b.level === 'warning'
                               ? 'text-yellow-400'
-                              : 'text-gray-500'
+                              : 'text-gray-400'
                         }`}
                       >
                         {b.level}
@@ -476,7 +476,7 @@ export function IssueInbox() {
             {/* Stack */}
             {selected.stack && (
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                   Stack Trace
                 </p>
                 <pre className="bg-lattice-deep p-2 rounded text-[10px] text-gray-400 overflow-auto max-h-40 font-mono">

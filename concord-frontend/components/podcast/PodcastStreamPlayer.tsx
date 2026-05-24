@@ -173,7 +173,7 @@ export function PodcastStreamPlayer({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-violet-500/20 bg-zinc-950/70 p-6 flex items-center justify-center text-zinc-500">
+      <div className="rounded-xl border border-violet-500/20 bg-zinc-950/70 p-6 flex items-center justify-center text-zinc-400">
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
     );
@@ -197,7 +197,7 @@ export function PodcastStreamPlayer({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-zinc-100 truncate">{descriptor.title}</p>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             Streaming enclosure
             {introSkipped && <span className="ml-1 text-violet-400">· intro skipped ({descriptor.skipIntroSec}s)</span>}
             {descriptor.trimSilence && <span className="ml-1 text-emerald-400">· trim silence on</span>}
@@ -240,7 +240,7 @@ export function PodcastStreamPlayer({
             />
           ))}
         </div>
-        <div className="flex justify-between text-[10px] text-zinc-500 mt-1 font-mono">
+        <div className="flex justify-between text-[10px] text-zinc-400 mt-1 font-mono">
           <span>{fmtClock(position)}</span>
           <span>{fmtClock(duration || descriptor.durationSec)}</span>
         </div>
@@ -294,7 +294,7 @@ export function PodcastStreamPlayer({
       {/* Chapters */}
       {descriptor.chapters.length > 0 && (
         <div className="border-t border-zinc-800 pt-2">
-          <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-zinc-500 mb-1">
+          <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-zinc-400 mb-1">
             <ListTree className="w-3 h-3" /> Chapters ({descriptor.chapters.length})
           </p>
           <ul className="space-y-0.5 max-h-40 overflow-y-auto">
@@ -314,7 +314,7 @@ export function PodcastStreamPlayer({
         </div>
       )}
       {descriptor.chapters.length === 0 && (
-        <p className="flex items-center gap-1 text-[11px] text-zinc-600 border-t border-zinc-800 pt-2">
+        <p className="flex items-center gap-1 text-[11px] text-zinc-400 border-t border-zinc-800 pt-2">
           <Scissors className="w-3 h-3" /> No chapter markers in this episode&apos;s feed.
         </p>
       )}

@@ -187,7 +187,7 @@ const AchievementCard = React.memo(function AchievementCard({ achievement }: { a
           <Icon
             className={cn(
               'w-6 h-6',
-              isUnlocked ? achievement.iconColor : 'text-gray-500'
+              isUnlocked ? achievement.iconColor : 'text-gray-400'
             )}
           />
         </div>
@@ -203,13 +203,13 @@ const AchievementCard = React.memo(function AchievementCard({ achievement }: { a
               {achievement.rarity}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+          <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
             {achievement.description}
           </p>
 
           {hasProgress && !isUnlocked && (
             <div className="mt-2">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
                 <span>Progress</span>
                 <span>{achievement.progress}/{achievement.maxProgress}</span>
               </div>
@@ -227,7 +227,7 @@ const AchievementCard = React.memo(function AchievementCard({ achievement }: { a
           {isUnlocked && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-neon-cyan">+{achievement.xpReward} XP</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {achievement.unlockedAt?.toLocaleDateString()}
               </span>
             </div>
@@ -376,7 +376,7 @@ export function DailyChallenges({ challenges, timeRemaining, className }: DailyC
                     <span className="text-xs text-green-400">✓</span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">{challenge.description}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{challenge.description}</p>
               </div>
               <span className="text-sm text-neon-cyan font-medium">
                 +{challenge.xpReward} XP
@@ -385,7 +385,7 @@ export function DailyChallenges({ challenges, timeRemaining, className }: DailyC
 
             {!challenge.completed && (
               <div className="mt-2">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
                   <span>{challenge.progress}/{challenge.maxProgress}</span>
                 </div>
                 <div className="h-1.5 bg-lattice-border rounded-full overflow-hidden">

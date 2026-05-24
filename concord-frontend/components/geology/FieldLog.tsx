@@ -57,14 +57,14 @@ export function FieldLog() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Mountain className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-bold text-zinc-100">Field Observation Log</h3>
-        <span className="text-[11px] text-zinc-500">Mindat shape</span>
+        <span className="text-[11px] text-zinc-400">Mindat shape</span>
       </div>
 
       {dash && (
@@ -72,7 +72,7 @@ export function FieldLog() {
           {([['Observations', dash.totalObservations], ['Geotagged', dash.geotagged], ['Formations', dash.formations]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -111,7 +111,7 @@ export function FieldLog() {
       </div>
 
       {obs.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No observations logged yet.</p>
+        <p className="text-xs text-zinc-400 italic">No observations logged yet.</p>
       ) : (
         <ul className="space-y-1 max-h-72 overflow-y-auto">
           {obs.map(o => (
@@ -119,11 +119,11 @@ export function FieldLog() {
               <div className="flex items-center gap-2">
                 <span className={cn('text-[9px] px-1.5 py-0.5 rounded capitalize', KIND_COLOR[o.kind] || KIND_COLOR.other)}>{o.kind}</span>
                 <span className="text-xs font-semibold text-zinc-100 flex-1 truncate">{o.name}</span>
-                <span className="text-[10px] text-zinc-500">{o.collectedAt}</span>
+                <span className="text-[10px] text-zinc-400">{o.collectedAt}</span>
                 <button onClick={() => del(o.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
               {(o.locationName || o.formation || o.notes) && (
-                <p className="text-[11px] text-zinc-500 mt-0.5">
+                <p className="text-[11px] text-zinc-400 mt-0.5">
                   {o.locationName && <span className="inline-flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{o.locationName} · </span>}
                   {o.formation && <span>{o.formation} · </span>}
                   {o.notes}

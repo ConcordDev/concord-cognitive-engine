@@ -177,7 +177,7 @@ export function JournalStudio() {
       <div className="flex items-center gap-2 mb-3">
         <BookHeart className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">Journal studio</h3>
-        <span className="text-[11px] text-zinc-500">Day One + Reflectly shape</span>
+        <span className="text-[11px] text-zinc-400">Day One + Reflectly shape</span>
         {unlocked && (
           <div className="ml-auto flex gap-1">
             {tabs.map((t) => (
@@ -199,7 +199,7 @@ export function JournalStudio() {
       )}
 
       {unlocked && loading && (
-        <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       )}
 
       {unlocked && !loading && tab === 'streaks' && <EntryHeatmap refreshKey={refreshKey} />}
@@ -215,7 +215,7 @@ export function JournalStudio() {
                   <p className="text-sm font-bold text-zinc-100 inline-flex items-center gap-1">
                     {i === 2 && v > 0 && <Flame className="w-3 h-3 text-orange-400" />}{v}
                   </p>
-                  <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+                  <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
                 </div>
               ))}
             </div>
@@ -224,7 +224,7 @@ export function JournalStudio() {
           {/* Templates */}
           {templates.length > 0 && (
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-              <LayoutTemplate className="w-3.5 h-3.5 text-zinc-500" />
+              <LayoutTemplate className="w-3.5 h-3.5 text-zinc-400" />
               {templates.map((tpl) => (
                 <button key={tpl.id} onClick={() => applyTemplate(tpl)} title={tpl.description}
                   className={cn('px-2 py-0.5 text-[11px] rounded border',
@@ -236,7 +236,7 @@ export function JournalStudio() {
               ))}
               {activeTemplate && (
                 <button onClick={() => { setActiveTemplate(null); setDraft((d) => ({ ...d, body: '', tags: '' })); }}
-                  className="text-[11px] text-zinc-500 hover:text-zinc-300">clear</button>
+                  className="text-[11px] text-zinc-400 hover:text-zinc-300">clear</button>
               )}
             </div>
           )}
@@ -265,7 +265,7 @@ export function JournalStudio() {
                       <img src={m.url} alt={m.caption || 'attachment'} className="w-16 h-16 object-cover rounded border border-zinc-700" />
                     ) : (
                       <div className="w-16 h-16 rounded border border-zinc-700 bg-zinc-950 flex items-center justify-center p-1">
-                        <FileText className="w-5 h-5 text-zinc-500" />
+                        <FileText className="w-5 h-5 text-zinc-400" />
                       </div>
                     )}
                     <button onClick={() => setMedia((arr) => arr.filter((_, j) => j !== i))}
@@ -323,7 +323,7 @@ export function JournalStudio() {
           {/* Tag filter chips */}
           {tagCounts.length > 0 && (
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-              <TagIcon className="w-3.5 h-3.5 text-zinc-500" />
+              <TagIcon className="w-3.5 h-3.5 text-zinc-400" />
               {tagCounts.slice(0, 16).map((t) => (
                 <button key={t.tag} onClick={() => setTagFilter((cur) => (cur === t.tag ? null : t.tag))}
                   className={cn('px-1.5 py-0.5 text-[10px] rounded',
@@ -331,20 +331,20 @@ export function JournalStudio() {
                   {t.tag} <span className="opacity-60">{t.count}</span>
                 </button>
               ))}
-              {tagFilter && <button onClick={() => setTagFilter(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300">clear filter</button>}
+              {tagFilter && <button onClick={() => setTagFilter(null)} className="text-[10px] text-zinc-400 hover:text-zinc-300">clear filter</button>}
             </div>
           )}
 
           {/* Search + export */}
           <div className="flex gap-1 mb-2">
             <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
               <input value={search} onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void runSearch(); }}
                 placeholder="Search entries" className="w-full bg-zinc-950 border border-zinc-800 rounded pl-7 pr-2 py-1.5 text-xs text-zinc-200" />
             </div>
             {results && <button onClick={() => { setSearch(''); setResults(null); }} className="px-2 py-1 text-xs text-zinc-400">clear</button>}
-            {moodAvg != null && <span className="text-[11px] text-zinc-500 self-center">avg mood {MOODS[Math.round(moodAvg) - 1] || '–'}</span>}
+            {moodAvg != null && <span className="text-[11px] text-zinc-400 self-center">avg mood {MOODS[Math.round(moodAvg) - 1] || '–'}</span>}
             <button onClick={exportArchive} disabled={exporting || entries.length === 0}
               className="px-2 py-1.5 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 inline-flex items-center gap-1 disabled:opacity-40">
               {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Export
@@ -354,14 +354,14 @@ export function JournalStudio() {
           {/* Timeline */}
           <div className="space-y-2 max-h-[28rem] overflow-y-auto">
             {shown.length === 0 ? (
-              <p className="text-xs text-zinc-500 italic text-center py-6">
+              <p className="text-xs text-zinc-400 italic text-center py-6">
                 {results ? 'No matches.' : tagFilter ? `No entries tagged "${tagFilter}".` : 'No entries yet — write your first above.'}
               </p>
             ) : shown.map((e) => (
               <div key={e.id} className="group bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
                 <div className="flex items-center gap-2 mb-1">
                   {e.mood != null && <span className="text-base">{MOODS[e.mood - 1]}</span>}
-                  <span className="text-[11px] font-mono text-zinc-500">{e.date}</span>
+                  <span className="text-[11px] font-mono text-zinc-400">{e.date}</span>
                   {e.template && <span className="text-[9px] px-1 rounded bg-zinc-800 text-zinc-400">{e.template}</span>}
                   <div className="ml-auto flex items-center gap-1">
                     {(e.tags || []).map((t) => <span key={t} className="text-[9px] px-1 rounded bg-rose-900/40 text-rose-300">{t}</span>)}

@@ -52,7 +52,7 @@ export function FoundryRulesPanel({ foundryWorldId, rules, onRulesChange }: Foun
 
   return (
     <div className="mt-6 border-t border-slate-800 pt-3">
-      <h3 className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <h3 className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         <Wand2 className="h-3 w-3" /> Rules
       </h3>
 
@@ -63,7 +63,7 @@ export function FoundryRulesPanel({ foundryWorldId, rules, onRulesChange }: Foun
           onKeyDown={(e) => { if (e.key === 'Enter' && !busy) add(); }}
           placeholder="e.g. when a player enters the boss arena, lock the doors"
           maxLength={500}
-          className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
         <button
           type="button"
@@ -85,7 +85,7 @@ export function FoundryRulesPanel({ foundryWorldId, rules, onRulesChange }: Foun
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs text-slate-200">{rule.source}</p>
-                <p className="mt-0.5 text-[10px] text-slate-500">
+                <p className="mt-0.5 text-[10px] text-slate-400">
                   <span className="text-sky-400">{rule.trigger.kind}</span>
                   {rule.trigger.target ? ` (${rule.trigger.target})` : ''}
                   {' → '}
@@ -100,7 +100,7 @@ export function FoundryRulesPanel({ foundryWorldId, rules, onRulesChange }: Foun
                 type="button"
                 onClick={() => remove(rule.id)}
                 aria-label="Remove rule"
-                className="rounded p-0.5 text-slate-500 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="rounded p-0.5 text-slate-400 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <Trash2 className="h-3 w-3" />
               </button>

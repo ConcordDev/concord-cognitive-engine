@@ -40,7 +40,7 @@ function WebSearchResult({ result }: { result: unknown }) {
   if (!r) return null;
   return (
     <div className="space-y-1">
-      {r.source && <p className="text-xs text-gray-500 font-mono">{r.source}</p>}
+      {r.source && <p className="text-xs text-gray-400 font-mono">{r.source}</p>}
       {r.result && <p className="text-xs text-gray-300 leading-relaxed line-clamp-3">{r.result}</p>}
     </div>
   );
@@ -65,7 +65,7 @@ function ComputeResult({ call }: { call: ToolCall }) {
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
           {entries.map(([k, v]) => (
             <div key={k} className="flex items-baseline gap-1.5">
-              <span className="text-[10px] text-gray-500 shrink-0">{k}</span>
+              <span className="text-[10px] text-gray-400 shrink-0">{k}</span>
               <span className="text-xs font-mono text-green-300 truncate">
                 {typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(4)) : String(v)}
               </span>
@@ -146,7 +146,7 @@ export function ToolCallCard({ call }: ToolCallCardProps) {
       >
         <Icon className={`w-3.5 h-3.5 shrink-0 ${meta.color}`} />
         <span className={`text-xs font-medium ${meta.color}`}>{meta.label}</span>
-        <span className="text-xs text-gray-500 truncate flex-1">
+        <span className="text-xs text-gray-400 truncate flex-1">
           {call.tool === 'web_search' && String(call.params?.query || '')}
           {call.tool === 'run_compute' && String(call.key || call.params?.key || '')}
           {call.tool === 'browse_url' && String(call.url || call.params?.url || '')}
@@ -161,9 +161,9 @@ export function ToolCallCard({ call }: ToolCallCardProps) {
           )}
           {hasContent &&
             (expanded ? (
-              <ChevronDown className="w-3 h-3 text-gray-500" />
+              <ChevronDown className="w-3 h-3 text-gray-400" />
             ) : (
-              <ChevronRight className="w-3 h-3 text-gray-500" />
+              <ChevronRight className="w-3 h-3 text-gray-400" />
             ))}
         </div>
       </button>

@@ -74,7 +74,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
   }
 
   if (loading || !prefs) {
-    return <div className="p-4 text-xs text-gray-500 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading preferences…</div>;
+    return <div className="p-4 text-xs text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading preferences…</div>;
   }
 
   return (
@@ -83,7 +83,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
         <Bell className="w-4 h-4 text-amber-400" />
         <h2 className="text-sm font-semibold text-gray-200">Notification preferences</h2>
         {dndActive && <span className="text-[10px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded px-1.5 py-0.5 inline-flex items-center gap-1"><Moon className="w-3 h-3" /> DND active</span>}
-        {saving && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
+        {saving && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
       </div>
 
       {error && <div className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded px-2 py-1">{error}</div>}
@@ -145,7 +145,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
           </button>
         </div>
         {prefs.keywords.length === 0 ? (
-          <p className="text-[11px] text-gray-600">No keyword alerts yet.</p>
+          <p className="text-[11px] text-gray-400">No keyword alerts yet.</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {prefs.keywords.map((kw) => (
@@ -161,7 +161,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2">
         <div className="text-xs font-semibold text-gray-300">Per-channel mute</div>
         {channels.length === 0 ? (
-          <p className="text-[11px] text-gray-600">No channels yet.</p>
+          <p className="text-[11px] text-gray-400">No channels yet.</p>
         ) : (
           <div className="space-y-1">
             {channels.map((c) => {
@@ -173,7 +173,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
                     <button
                       key={lvl}
                       onClick={() => setChannelLevel(c.id, lvl)}
-                      className={`px-1.5 py-0.5 text-[10px] rounded border capitalize ${level === lvl ? 'bg-amber-500/15 border-amber-500/40 text-amber-200' : 'border-white/10 text-gray-500 hover:text-white'}`}
+                      className={`px-1.5 py-0.5 text-[10px] rounded border capitalize ${level === lvl ? 'bg-amber-500/15 border-amber-500/40 text-amber-200' : 'border-white/10 text-gray-400 hover:text-white'}`}
                     >
                       {lvl === 'muted' ? <BellOff className="w-3 h-3" /> : lvl}
                     </button>

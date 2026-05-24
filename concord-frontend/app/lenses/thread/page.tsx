@@ -279,7 +279,7 @@ export default function ThreadLensPage() {
               <span className="font-medium text-sm">
                 {node.author === 'user' ? 'You' : 'Concord'}
               </span>
-              <span className="text-xs text-gray-500">{formatTime(node.timestamp)}</span>
+              <span className="text-xs text-gray-400">{formatTime(node.timestamp)}</span>
               {node.branchName && (
                 <span className="text-xs bg-neon-purple/20 text-neon-purple px-2 py-0.5 rounded-full flex items-center gap-1">
                   <GitBranch className="w-3 h-3" />
@@ -411,12 +411,12 @@ export default function ThreadLensPage() {
 
           <div className="flex-1 overflow-y-auto">
             <div className="px-3 py-2">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
                 Recent Threads
               </p>
               <div className="space-y-1">
                 {threads.length === 0 && (
-                  <p className="text-center py-4 text-gray-500 text-sm">No conversation threads yet</p>
+                  <p className="text-center py-4 text-gray-400 text-sm">No conversation threads yet</p>
                 )}
                 {threads.map((thread) => (
                   <button
@@ -433,9 +433,9 @@ export default function ThreadLensPage() {
                   >
                     <div className="flex items-start justify-between">
                       <span className="font-medium text-sm truncate">{thread.name}</span>
-                      <span className="text-xs text-gray-500">{formatTime(thread.updatedAt)}</span>
+                      <span className="text-xs text-gray-400">{formatTime(thread.updatedAt)}</span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                       <span className="flex items-center gap-1">
                         <MessageSquare className="w-3 h-3" />
                         {thread.messageCount}
@@ -452,7 +452,7 @@ export default function ThreadLensPage() {
           </div>
 
           <div className="p-3 border-t border-lattice-border">
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs text-gray-400 space-y-1">
               <p>Session: {sessions?.sessionId || 'default'}</p>
               <p>Total Threads: {threads.length}</p>
             </div>
@@ -470,7 +470,7 @@ export default function ThreadLensPage() {
                     <GitBranch className="w-5 h-5 text-neon-purple" />
                     <div>
                       <h2 className="font-semibold">{selectedThread.name}</h2>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {selectedThread.messageCount} messages · {selectedThread.branchCount} branches
                       </p>
                     </div>
@@ -511,7 +511,7 @@ export default function ThreadLensPage() {
                               <span className="font-medium text-sm">
                                 {node.author === 'user' ? 'You' : 'Concord'}
                               </span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-400">
                                 {node.timestamp.toLocaleString()}
                               </span>
                             </div>
@@ -539,7 +539,7 @@ export default function ThreadLensPage() {
                           }`}
                         >
                           <p className="text-sm">{node.content}</p>
-                          <p className="text-xs text-gray-500 mt-1">{formatTime(node.timestamp)}</p>
+                          <p className="text-xs text-gray-400 mt-1">{formatTime(node.timestamp)}</p>
                         </div>
                       </div>
                     ))}
@@ -548,7 +548,7 @@ export default function ThreadLensPage() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <MessageSquare className="w-16 h-16 mx-auto mb-4 text-neon-purple/30" />
                 <p className="text-lg font-medium mb-2">No thread selected</p>
@@ -580,7 +580,7 @@ export default function ThreadLensPage() {
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Author</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Author</p>
                     <div className="flex items-center gap-2">
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -602,7 +602,7 @@ export default function ThreadLensPage() {
                   </div>
 
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Timestamp</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Timestamp</p>
                     <p className="text-sm flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-400" />
                       {selectedNode.timestamp.toLocaleString()}
@@ -610,7 +610,7 @@ export default function ThreadLensPage() {
                   </div>
 
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Content</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Content</p>
                     <div className="panel p-3">
                       <p className="text-sm text-gray-300">{selectedNode.content}</p>
                     </div>
@@ -618,7 +618,7 @@ export default function ThreadLensPage() {
 
                   {selectedNode.branchName && (
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Branch</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Branch</p>
                       <span className="inline-flex items-center gap-1 text-sm bg-neon-purple/20 text-neon-purple px-3 py-1 rounded-full">
                         <GitBranch className="w-4 h-4" />
                         {selectedNode.branchName}
@@ -627,7 +627,7 @@ export default function ThreadLensPage() {
                   )}
 
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Lineage</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Lineage</p>
                     <div className="text-sm space-y-1">
                       <p className="flex items-center gap-2">
                         <ArrowUp className="w-4 h-4 text-gray-400" />

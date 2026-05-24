@@ -77,13 +77,13 @@ export function SaveItemForm({ folders, onSave }: SaveItemFormProps) {
     <div className="rounded-lg border border-amber-500/30 bg-zinc-950/80 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-amber-200">Save an item</h3>
-        <button type="button" onClick={() => { reset(); setOpen(false); }} aria-label="Close" className="text-zinc-500 hover:text-zinc-200">
+        <button type="button" onClick={() => { reset(); setOpen(false); }} aria-label="Close" className="text-zinc-400 hover:text-zinc-200">
           <X className="w-4 h-4" />
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-[10px] uppercase text-zinc-500 col-span-2 -mb-1">Kind</label>
+        <label className="text-[10px] uppercase text-zinc-400 col-span-2 -mb-1">Kind</label>
         <select
           value={kind}
           onChange={(e) => setKind(e.target.value as SavedKind)}

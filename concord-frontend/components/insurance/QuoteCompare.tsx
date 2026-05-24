@@ -67,9 +67,9 @@ export function QuoteCompare() {
       )}
       <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">
         {loading ? (
-          <li className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Polling carriers…</li>
+          <li className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Polling carriers…</li>
         ) : sorted.length === 0 ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-500">Click Compare to see quotes.</li>
+          <li className="px-3 py-8 text-center text-xs text-gray-400">Click Compare to see quotes.</li>
         ) : (
           sorted.map((q, i) => (
             <li key={q.carrier} className={cn('px-3 py-2', i === 0 && 'bg-green-500/5')}>
@@ -77,11 +77,11 @@ export function QuoteCompare() {
                 <span className="text-sm text-white font-medium">{q.carrier}</span>
                 {i === 0 && <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 font-bold">best price</span>}
                 <span className="ml-auto text-right">
-                  <div className="text-lg font-bold text-cyan-300 tabular-nums">${q.annualPremium.toFixed(0)}<span className="text-[10px] text-gray-500">/yr</span></div>
-                  <div className="text-[10px] text-gray-500">${q.deductible.toFixed(0)} deductible</div>
+                  <div className="text-lg font-bold text-cyan-300 tabular-nums">${q.annualPremium.toFixed(0)}<span className="text-[10px] text-gray-400">/yr</span></div>
+                  <div className="text-[10px] text-gray-400">${q.deductible.toFixed(0)} deductible</div>
                 </span>
               </div>
-              <div className="text-[10px] text-gray-500 mt-1 flex items-center gap-3">
+              <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-3">
                 <span className="inline-flex items-center gap-0.5"><Star className="w-3 h-3 text-yellow-400" /> {q.rating.toFixed(1)}</span>
                 <span>Claims sat: {q.claimsSatisfaction}/10</span>
                 <span>Coverage score: {q.coverageScore}/100</span>

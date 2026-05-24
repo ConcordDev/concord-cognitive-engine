@@ -78,7 +78,7 @@ function CreateGroupModal({
             <Users className="w-4 h-4 text-neon-cyan" />
             <h2 className="text-sm font-semibold text-white">Create Group</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -108,7 +108,7 @@ function CreateGroupModal({
               placeholder="What is this group about?"
               maxLength={500}
             />
-            <span className="text-[10px] text-gray-600 float-right">
+            <span className="text-[10px] text-gray-400 float-right">
               {description.length}/500
             </span>
           </div>
@@ -142,7 +142,7 @@ function CreateGroupModal({
                   <Hash className="w-2.5 h-2.5" /> {tag}
                   <button
                     onClick={() => setTags(tags.filter((t) => t !== tag))}
-                    className="text-gray-500 hover:text-white ml-0.5"
+                    className="text-gray-400 hover:text-white ml-0.5"
                   aria-label="Close">
                     <X className="w-2 h-2" />
                   </button>
@@ -240,7 +240,7 @@ export default function GroupsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Groups</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-400 mt-1">
               Discover and join communities around shared interests
             </p>
           </div>
@@ -255,7 +255,7 @@ export default function GroupsPage() {
 
         {/* Search */}
         <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             value={searchInput}
@@ -272,7 +272,7 @@ export default function GroupsPage() {
                 setSearchInput('');
                 setSearchQuery('');
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
             aria-label="Close">
               <X className="w-4 h-4" />
             </button>

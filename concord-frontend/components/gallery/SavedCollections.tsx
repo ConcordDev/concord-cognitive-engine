@@ -59,14 +59,14 @@ export function SavedCollections() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <FolderHeart className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">My Collections</h3>
-        {dash && <span className="ml-auto text-[10px] text-zinc-500">{dash.savedArtworks} artworks · {dash.artists} artists</span>}
+        {dash && <span className="ml-auto text-[10px] text-zinc-400">{dash.savedArtworks} artworks · {dash.artists} artists</span>}
       </div>
 
       <div className="flex gap-1.5 mb-3">
@@ -86,7 +86,7 @@ export function SavedCollections() {
               <button onClick={() => open(c.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === c.id ? 'bg-rose-600/15 border-rose-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.name}</p>
-                <p className="text-[10px] text-zinc-500">{c.artworkCount} artworks</p>
+                <p className="text-[10px] text-zinc-400">{c.artworkCount} artworks</p>
               </button>
               <button onClick={() => del(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -97,7 +97,7 @@ export function SavedCollections() {
           <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-3">
             <h4 className="text-sm font-bold text-zinc-100 mb-2">{active.name}</h4>
             {active.artworks.length === 0 ? (
-              <p className="text-xs text-zinc-500 italic">No artworks yet — save pieces from the museum browser above.</p>
+              <p className="text-xs text-zinc-400 italic">No artworks yet — save pieces from the museum browser above.</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {active.artworks.map(a => (
@@ -110,7 +110,7 @@ export function SavedCollections() {
                     )}
                     <div className="p-1.5">
                       <p className="text-[11px] font-semibold text-zinc-100 truncate">{a.title}</p>
-                      <p className="text-[9px] text-zinc-500 truncate">{a.artist}{a.date ? ` · ${a.date}` : ''}</p>
+                      <p className="text-[9px] text-zinc-400 truncate">{a.artist}{a.date ? ` · ${a.date}` : ''}</p>
                     </div>
                     <button onClick={() => removeArtwork(a.id)}
                       className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded bg-black/60 text-rose-300">
@@ -122,7 +122,7 @@ export function SavedCollections() {
             )}
           </div>
         ) : (
-          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[120px]">
+          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">
             Select a collection.
           </div>
         )}

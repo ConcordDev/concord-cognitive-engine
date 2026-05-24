@@ -168,7 +168,7 @@ function StatusDot({ status }: { status: string }) {
 
 function Spinner({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 py-8 text-xs text-zinc-500">
+    <div className="flex items-center gap-2 py-8 text-xs text-zinc-400">
       <Loader2 className="h-4 w-4 animate-spin" /> {label}
     </div>
   );
@@ -182,7 +182,7 @@ function ErrorLine({ msg }: { msg: string }) {
 
 function Empty({ msg }: { msg: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-600">{msg}</div>
+    <div className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-400">{msg}</div>
   );
 }
 
@@ -361,27 +361,27 @@ function ServiceCatalogPanel() {
           <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
             <div className="rounded border border-zinc-800 bg-zinc-950 p-2 text-center">
               <p className="text-lg font-bold text-white">{data.total}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Services</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Services</p>
             </div>
             <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-2 text-center">
               <p className="text-lg font-bold text-emerald-300">{data.byStatus.green || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Green</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Green</p>
             </div>
             <div className="rounded border border-amber-500/20 bg-amber-500/5 p-2 text-center">
               <p className="text-lg font-bold text-amber-300">{data.byStatus.yellow || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Yellow</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Yellow</p>
             </div>
             <div className="rounded border border-rose-500/20 bg-rose-500/5 p-2 text-center">
               <p className="text-lg font-bold text-rose-300">{data.byStatus.red || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Red</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Red</p>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950 p-2 text-center">
               <p className="text-lg font-bold text-white">{Object.keys(data.byKind).length}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Kinds</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Kinds</p>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950 p-2 text-center">
               <p className="text-lg font-bold text-white">{data.owners.length}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Owners</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Owners</p>
             </div>
           </div>
 
@@ -408,7 +408,7 @@ function ServiceCatalogPanel() {
                           T{svc.tier}
                         </span>
                       </p>
-                      <p className="truncate text-xs text-zinc-500">
+                      <p className="truncate text-xs text-zinc-400">
                         {svc.owner} · {svc.description || 'no description'}
                         {svc.dependsOn.length > 0 && ` · depends: ${svc.dependsOn.join(', ')}`}
                       </p>
@@ -489,7 +489,7 @@ function DependencyGraphPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-zinc-500">Dependency network over the service catalog.</p>
+        <p className="text-xs text-zinc-400">Dependency network over the service catalog.</p>
         <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
@@ -511,7 +511,7 @@ function DependencyGraphPanel() {
             ].map(([label, val, cls]) => (
               <div key={String(label)} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-center">
                 <p className={`text-lg font-bold ${cls}`}>{val}</p>
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</p>
               </div>
             ))}
           </div>
@@ -649,7 +649,7 @@ function MetricsDashboardPanel() {
         <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
-        {data && <span className="text-xs text-zinc-500">{data.totalSamples} samples total</span>}
+        {data && <span className="text-xs text-zinc-400">{data.totalSamples} samples total</span>}
       </div>
 
       {err && <ErrorLine msg={err} />}
@@ -723,7 +723,7 @@ function HealthRollupPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-zinc-500">Green / yellow / red roll-up per subsystem kind. Worst child wins.</p>
+        <p className="text-xs text-zinc-400">Green / yellow / red roll-up per subsystem kind. Worst child wins.</p>
         <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
@@ -737,7 +737,7 @@ function HealthRollupPanel() {
           <div
             className={`rounded-lg border p-4 text-center ${ROLLUP_CLR[data.overall] || ROLLUP_CLR.unknown}`}
           >
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Overall platform health</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400">Overall platform health</p>
             <p className="mt-1 text-3xl font-bold uppercase">{data.overall}</p>
             <p className="mt-1 text-xs">
               {data.serviceCount} services · {data.subsystemCount} subsystems · {data.openAlertCount} open alert
@@ -919,19 +919,19 @@ function DeployTimelinePanel() {
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <div className="rounded border border-zinc-800 bg-zinc-950 p-2 text-center">
               <p className="text-lg font-bold text-white">{data.total}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Changes</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Changes</p>
             </div>
             <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-2 text-center">
               <p className="text-lg font-bold text-emerald-300">{data.byOutcome.success || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Success</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Success</p>
             </div>
             <div className="rounded border border-rose-500/20 bg-rose-500/5 p-2 text-center">
               <p className="text-lg font-bold text-rose-300">{data.byOutcome.failed || 0}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Failed</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Failed</p>
             </div>
             <div className="rounded border border-amber-500/20 bg-amber-500/5 p-2 text-center">
               <p className="text-lg font-bold text-amber-300">{data.failureRate}%</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Failure rate</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Failure rate</p>
             </div>
           </div>
 
@@ -956,7 +956,7 @@ function DeployTimelinePanel() {
                           {d.kind}
                         </span>
                       </p>
-                      <p className="truncate text-xs text-zinc-500">
+                      <p className="truncate text-xs text-zinc-400">
                         {new Date(d.at).toLocaleString()}
                         {d.service && ` · ${d.service}`}
                         {d.version && ` · ${d.version}`}
@@ -1137,19 +1137,19 @@ function AlertSurfacePanel() {
               }`}
             >
               <p className="text-sm font-bold uppercase">{data.worst}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Worst</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Worst</p>
             </div>
             <div className="rounded border border-rose-500/20 bg-rose-500/5 p-2 text-center">
               <p className="text-lg font-bold text-rose-300">{data.tally.critical}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Critical</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Critical</p>
             </div>
             <div className="rounded border border-amber-500/20 bg-amber-500/5 p-2 text-center">
               <p className="text-lg font-bold text-amber-300">{data.tally.warning}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Warning</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Warning</p>
             </div>
             <div className="rounded border border-sky-500/20 bg-sky-500/5 p-2 text-center">
               <p className="text-lg font-bold text-sky-300">{data.tally.info}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Info</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Info</p>
             </div>
           </div>
 
@@ -1171,7 +1171,7 @@ function AlertSurfacePanel() {
                         {a.severity}
                       </span>
                     </p>
-                    <p className="truncate text-xs text-zinc-500">
+                    <p className="truncate text-xs text-zinc-400">
                       {a.source}
                       {a.service && ` · ${a.service}`} · {new Date(a.raisedAt).toLocaleString()}
                       {a.description && ` · ${a.description}`}
@@ -1279,7 +1279,7 @@ function MacroExplorerPanel() {
 
       {!loading && data && data.available && (
         <>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             {data.total} of {data.totalAll} macros across {data.domains.length} domains
           </p>
           <div className="grid gap-3 md:grid-cols-2">
@@ -1309,7 +1309,7 @@ function MacroExplorerPanel() {
                 <Terminal className="h-3.5 w-3.5" /> Try it now
               </p>
               {!tryMacro ? (
-                <p className="py-8 text-center text-xs text-zinc-600">Select a macro from the list to invoke it.</p>
+                <p className="py-8 text-center text-xs text-zinc-400">Select a macro from the list to invoke it.</p>
               ) : (
                 <div className="space-y-2">
                   <p className="font-mono text-sm text-neon-purple">{tryMacro.key}</p>
@@ -1370,7 +1370,7 @@ export function DevPortal() {
           <Server className="h-4 w-4 text-neon-purple" />
           Developer Portal &amp; Observability
         </h2>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           Backstage-style service catalog, dependency graph, live metrics, health roll-up, change timeline,
           alert surface, and macro explorer.
         </p>

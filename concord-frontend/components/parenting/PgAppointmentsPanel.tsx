@@ -85,7 +85,7 @@ export function PgAppointmentsPanel({ childId }: { childId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -155,7 +155,7 @@ export function PgAppointmentsPanel({ childId }: { childId: string }) {
           )}
         </div>
         {!data || data.appointments.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">No appointments scheduled.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No appointments scheduled.</p>
         ) : (
           <ul className="space-y-1.5">
             {data.appointments.map((a) => {
@@ -165,10 +165,10 @@ export function PgAppointmentsPanel({ childId }: { childId: string }) {
                 <li key={a.id} className={cn('flex items-start gap-2 rounded-lg border px-3 py-2',
                   a.done ? 'border-zinc-800 bg-zinc-900/40 opacity-60'
                     : overdue ? 'border-amber-900/50 bg-amber-950/20' : 'border-zinc-800 bg-zinc-900/70')}>
-                  <Icon className="w-3.5 h-3.5 text-zinc-500 mt-0.5 shrink-0" />
+                  <Icon className="w-3.5 h-3.5 text-zinc-400 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className={cn('text-xs text-zinc-200', a.done && 'line-through')}>{a.title}</p>
-                    <p className="text-[10px] text-zinc-500">
+                    <p className="text-[10px] text-zinc-400">
                       {a.date}{a.time ? ` · ${a.time}` : ''}
                       {a.provider ? ` · ${a.provider}` : ''}
                       {a.location ? ` · ${a.location}` : ''}
@@ -182,7 +182,7 @@ export function PgAppointmentsPanel({ childId }: { childId: string }) {
                     {a.done && <Check className="w-3 h-3 text-white" />}
                   </button>
                   <button type="button" onClick={() => remove(a.id)}
-                    className="text-zinc-500 hover:text-rose-300 shrink-0" aria-label="Delete appointment">
+                    className="text-zinc-400 hover:text-rose-300 shrink-0" aria-label="Delete appointment">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </li>
@@ -190,7 +190,7 @@ export function PgAppointmentsPanel({ childId }: { childId: string }) {
             })}
           </ul>
         )}
-        <p className="text-[10px] text-zinc-500 mt-2">Exported events include a 24-hour reminder alarm.</p>
+        <p className="text-[10px] text-zinc-400 mt-2">Exported events include a 24-hour reminder alarm.</p>
       </section>
     </div>
   );

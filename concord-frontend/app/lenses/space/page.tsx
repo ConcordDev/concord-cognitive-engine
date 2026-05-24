@@ -104,7 +104,7 @@ const STATUS_COLORS: Record<string, string> = {
   reentry: 'text-orange-400 bg-orange-400/10', completed: 'text-gray-400 bg-gray-400/10',
   aborted: 'text-red-400 bg-red-400/10', operational: 'text-green-400 bg-green-400/10',
   standby: 'text-yellow-400 bg-yellow-400/10', degraded: 'text-orange-400 bg-orange-400/10',
-  decommissioned: 'text-gray-500 bg-gray-500/10',
+  decommissioned: 'text-gray-400 bg-gray-500/10',
 };
 
 const STATUS_DOT_COLORS: Record<string, string> = {
@@ -319,7 +319,7 @@ export default function SpaceLensPage() {
         {MODE_TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setActiveMode(key)}
             className={cn('flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300')}>
+              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300')}>
             <Icon className="w-4 h-4" /> {label}
           </button>
         ))}
@@ -328,7 +328,7 @@ export default function SpaceLensPage() {
       {/* ── Search / Create bar ── */}
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder={`Search ${currentType.toLowerCase()}s...`}
@@ -362,7 +362,7 @@ export default function SpaceLensPage() {
                   <p className={`text-2xl font-bold text-${s.color}-400`}>{s.value}</p>
                   <p className="text-xs text-gray-400">{s.label}</p>
                   {s.total > 0 && s.label !== 'Telemetry Feeds' && (
-                    <p className="text-xs text-gray-600">of {s.total} total</p>
+                    <p className="text-xs text-gray-400">of {s.total} total</p>
                   )}
                 </motion.div>
               ))}
@@ -377,7 +377,7 @@ export default function SpaceLensPage() {
                   <Timer className="w-4 h-4 text-indigo-400" /> Mission Timeline
                 </h2>
                 {sortedMissions.length === 0 ? (
-                  <p className="text-xs text-gray-500">No missions with launch dates.</p>
+                  <p className="text-xs text-gray-400">No missions with launch dates.</p>
                 ) : (
                   <ol className="relative space-y-0">
                     {sortedMissions.map((m, idx) => {
@@ -393,7 +393,7 @@ export default function SpaceLensPage() {
                           {/* Status dot */}
                           <span className={cn('absolute left-0 top-1 w-3.5 h-3.5 rounded-full border-2 border-zinc-900', dotColor)} />
                           <p className="text-xs font-medium text-white leading-tight">{m.title}</p>
-                          <p className="text-[11px] text-gray-500 mt-0.5">
+                          <p className="text-[11px] text-gray-400 mt-0.5">
                             {d.launchDate ? new Date(d.launchDate).toLocaleDateString() : '—'}
                             {' · '}
                             <span className={cn('font-medium', STATUS_COLORS[d.status]?.split(' ')[0])}>
@@ -415,11 +415,11 @@ export default function SpaceLensPage() {
                 {/* ASCII-style orbit diagram */}
                 <div className="font-mono text-[11px] text-gray-400 leading-relaxed space-y-1 mb-4 select-none">
                   <p className="text-center text-gray-600">· · · · · GEO · · · · ·</p>
-                  <p className="text-center text-gray-500">· · MEO · · · MEO · ·</p>
+                  <p className="text-center text-gray-400">· · MEO · · · MEO · ·</p>
                   <p className="text-center text-cyan-500/70">·  LEO  ·  LEO  ·</p>
                   <p className="text-center text-indigo-400 font-bold">[ EARTH ]</p>
                   <p className="text-center text-cyan-500/70">·  LEO  ·  LEO  ·</p>
-                  <p className="text-center text-gray-500">· · MEO · · · MEO · ·</p>
+                  <p className="text-center text-gray-400">· · MEO · · · MEO · ·</p>
                   <p className="text-center text-gray-600">· · · · · GEO · · · · ·</p>
                 </div>
                 <div className="space-y-2">
@@ -470,11 +470,11 @@ export default function SpaceLensPage() {
               <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">Next Launch</p>
               <p className="text-sm font-semibold text-white truncate">{nextPrelaunchMission.title}</p>
               {(nextPrelaunchMission.data as MissionData).launchVehicle && (
-                <p className="text-xs text-gray-500">{(nextPrelaunchMission.data as MissionData).launchVehicle}</p>
+                <p className="text-xs text-gray-400">{(nextPrelaunchMission.data as MissionData).launchVehicle}</p>
               )}
             </div>
             <div className="text-right shrink-0">
-              <p className="text-xs text-gray-500 mb-0.5">Countdown</p>
+              <p className="text-xs text-gray-400 mb-0.5">Countdown</p>
               <p className="text-xl font-mono font-bold text-yellow-400 tabular-nums">
                 {/* tick is used to trigger re-render every second */}
                 {tick >= 0 && formatCountdown((nextPrelaunchMission.data as MissionData).launchDate)}
@@ -519,7 +519,7 @@ export default function SpaceLensPage() {
             </div>
           </motion.div>
         ) : (
-          <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+          <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
             <p>No telemetry data yet. Add telemetry records to see spacecraft data.</p>
           </div>
         ))}
@@ -553,10 +553,10 @@ export default function SpaceLensPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => handleAction('analyze', item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan" aria-label="Activate">
+                    <button onClick={() => handleAction('analyze', item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-neon-cyan" aria-label="Activate">
                       <Zap className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400" aria-label="Delete">
+                    <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-red-400" aria-label="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -564,7 +564,7 @@ export default function SpaceLensPage() {
 
                 {/* Objective / description */}
                 {!!d.objective && (
-                  <p className="text-xs text-gray-500 mt-2">{String(d.objective)}</p>
+                  <p className="text-xs text-gray-400 mt-2">{String(d.objective)}</p>
                 )}
 
                 {/* Mission badges */}
@@ -614,7 +614,7 @@ export default function SpaceLensPage() {
                   <div className="flex flex-wrap items-center gap-3 mt-2">
                     {typeof d.signalStrength === 'number' && (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-gray-500">Signal</span>
+                        <span className="text-[11px] text-gray-400">Signal</span>
                         <SignalBar strength={d.signalStrength} />
                         <span className={cn(
                           'text-[11px] tabular-nums font-medium',
@@ -632,7 +632,7 @@ export default function SpaceLensPage() {
                     {Array.isArray(d.anomalies) && (
                       <span className={cn(
                         'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full',
-                        d.anomalies.length > 0 ? 'bg-red-500/10 text-red-400' : 'bg-zinc-800 text-gray-500',
+                        d.anomalies.length > 0 ? 'bg-red-500/10 text-red-400' : 'bg-zinc-800 text-gray-400',
                       )}>
                         <AlertTriangle className="w-3 h-3" /> {d.anomalies.length} anomal{d.anomalies.length === 1 ? 'y' : 'ies'}
                       </span>
@@ -645,7 +645,7 @@ export default function SpaceLensPage() {
         </AnimatePresence>
 
         {items.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-400">
             <Rocket className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p>No {currentType.toLowerCase()}s found</p>
           </div>

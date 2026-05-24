@@ -76,7 +76,7 @@ export function PubChemPanel({ className }: PubChemPanelProps) {
           type="button"
           onClick={() => void fetchData(query)}
           disabled={loading || !query.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -84,7 +84,7 @@ export function PubChemPanel({ className }: PubChemPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -102,13 +102,13 @@ export function PubChemPanel({ className }: PubChemPanelProps) {
       )}
 
       {!error && !loading && compounds.length === 0 && query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
           No PubChem records for that name.
         </div>
       )}
 
       {!error && !query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
           Type a compound name to look it up.
         </div>
       )}
@@ -126,10 +126,10 @@ export function PubChemPanel({ className }: PubChemPanelProps) {
                   >
                     {c.iupacName || `CID ${c.cid}`}
                   </a>
-                  <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                  <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     Formula: {c.molecularFormula} · MW: {c.molecularWeight} · CID:{c.cid}
                   </div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5 font-mono break-all">
+                  <div className="text-[10px] text-zinc-400 mt-0.5 font-mono break-all">
                     InChIKey: {c.inchiKey}
                   </div>
                   <details className="mt-1">
@@ -140,7 +140,7 @@ export function PubChemPanel({ className }: PubChemPanelProps) {
                 <a
                   href={c.pubchemUrl}
                   target="_blank" rel="noopener noreferrer"
-                  className="text-zinc-500 hover:text-cyan-300 shrink-0 text-[10px] flex items-center gap-0.5 mt-0.5"
+                  className="text-zinc-400 hover:text-cyan-300 shrink-0 text-[10px] flex items-center gap-0.5 mt-0.5"
                   aria-label="Open PubChem page"
                 >
                   PubChem<ExternalLink className="w-2.5 h-2.5" />
@@ -151,7 +151,7 @@ export function PubChemPanel({ className }: PubChemPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: PubChem (NIH) · {updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

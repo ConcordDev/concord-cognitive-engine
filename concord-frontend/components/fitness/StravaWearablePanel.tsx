@@ -105,7 +105,7 @@ export function StravaWearablePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const linkedIds = new Set(links.map((l) => l.provider));
@@ -165,7 +165,7 @@ export function StravaWearablePanel() {
         {links.length > 0 && (
           <ul className="space-y-1">
             {links.map((l) => (
-              <li key={l.provider} className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+              <li key={l.provider} className="text-[11px] text-zinc-400 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                 <span className="text-zinc-300">{providerLabel(l.provider)}</span>
                 {l.deviceName && <span>· {l.deviceName}</span>}
@@ -183,7 +183,7 @@ export function StravaWearablePanel() {
           <h3 className="text-sm font-semibold text-zinc-100">Sync a daily reading</h3>
         </div>
         {links.length === 0 ? (
-          <p className="text-xs text-zinc-500 italic">Link a device above before syncing readings.</p>
+          <p className="text-xs text-zinc-400 italic">Link a device above before syncing readings.</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">
@@ -232,7 +232,7 @@ export function StravaWearablePanel() {
                 Sync reading
               </button>
             </div>
-            <p className="text-[11px] text-zinc-500 flex items-center gap-2">
+            <p className="text-[11px] text-zinc-400 flex items-center gap-2">
               <Moon className="w-3 h-3" /> Recovery metrics feed HRV + readiness.
               <Footprints className="w-3 h-3" /> Steps + calories feed activity rings.
             </p>

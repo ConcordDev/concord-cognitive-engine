@@ -86,7 +86,7 @@ export function AcBudgetsPanel() {
                 onChange={(e) => setLine({ ...line, annualAmount: e.target.value })} className={inp} />
               <button type="button" onClick={setBudgetLine} className={btn}>Set</button>
               <button type="button" onClick={() => lensRun({ domain: 'accounting', action: 'budget-delete', input: { id: active } }).then(refresh)}
-                className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /> Delete budget</button>
+                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /> Delete budget</button>
             </div>
           </section>
 
@@ -100,7 +100,7 @@ export function AcBudgetsPanel() {
                   {bva.rows.map((r) => (
                     <li key={r.accountId} className="flex items-center gap-2 text-xs bg-black/20 border border-white/10 rounded px-2 py-1.5">
                       <span className="flex-1 text-gray-200">{r.account}</span>
-                      <span className="text-gray-500">budget ${r.budgeted.toLocaleString()}</span>
+                      <span className="text-gray-400">budget ${r.budgeted.toLocaleString()}</span>
                       <span className="text-gray-300">actual ${r.actual.toLocaleString()}</span>
                       <span className={r.variance >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                         {r.variance >= 0 ? '+' : ''}{r.variance.toLocaleString()}
@@ -120,5 +120,5 @@ export function AcBudgetsPanel() {
 
 const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded px-3 py-1.5';
-function Spin() { return <div className="flex items-center justify-center py-10 text-gray-500"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-500 italic">{text}</p>; }
+function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
+function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }

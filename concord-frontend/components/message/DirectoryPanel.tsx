@@ -74,7 +74,7 @@ export function DirectoryPanel() {
     if (!editing) return null;
     return (
       <label className="block">
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
         <input
           value={editing[key]}
           onChange={(e) => setEditing({ ...editing, [key]: e.target.value })}
@@ -101,7 +101,7 @@ export function DirectoryPanel() {
       {error && <div className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded px-2 py-1">{error}</div>}
 
       <div className="flex items-center gap-1.5">
-        <Search className="w-3.5 h-3.5 text-gray-500" />
+        <Search className="w-3.5 h-3.5 text-gray-400" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -123,7 +123,7 @@ export function DirectoryPanel() {
             {field('Email', 'email')}
           </div>
           <label className="block">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500">Bio</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400">Bio</span>
             <textarea
               value={editing.bio}
               onChange={(e) => setEditing({ ...editing, bio: e.target.value })}
@@ -141,9 +141,9 @@ export function DirectoryPanel() {
       )}
 
       {loading ? (
-        <p className="text-xs text-gray-500 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+        <p className="text-xs text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
       ) : members.length === 0 ? (
-        <p className="text-xs text-gray-600">No members yet. Add a profile to populate the directory.</p>
+        <p className="text-xs text-gray-400">No members yet. Add a profile to populate the directory.</p>
       ) : (
         <div className="space-y-1">
           {members.map((m) => (
@@ -155,7 +155,7 @@ export function DirectoryPanel() {
               <span className="text-lg">{m.avatarEmoji || '👤'}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-gray-200 truncate">{m.displayName || m.memberId}</div>
-                <div className="text-[10px] text-gray-500 truncate">{m.title || m.memberId}</div>
+                <div className="text-[10px] text-gray-400 truncate">{m.title || m.memberId}</div>
               </div>
             </button>
           ))}
@@ -168,7 +168,7 @@ export function DirectoryPanel() {
             <span className="text-2xl">{selected.avatarEmoji || '👤'}</span>
             <div>
               <div className="text-sm font-semibold text-gray-100">{selected.displayName || selected.memberId}</div>
-              {selected.pronouns && <div className="text-[10px] text-gray-500">{selected.pronouns}</div>}
+              {selected.pronouns && <div className="text-[10px] text-gray-400">{selected.pronouns}</div>}
             </div>
             <button
               onClick={() => { setEditing({ ...selected }); setSelected(null); }}
@@ -178,8 +178,8 @@ export function DirectoryPanel() {
             </button>
           </div>
           {selected.title && <div className="text-[11px] text-gray-300">{selected.title}</div>}
-          {selected.timezone && <div className="text-[11px] text-gray-500">🕓 {selected.timezone}</div>}
-          {selected.email && <div className="text-[11px] text-gray-500">✉ {selected.email}</div>}
+          {selected.timezone && <div className="text-[11px] text-gray-400">🕓 {selected.timezone}</div>}
+          {selected.email && <div className="text-[11px] text-gray-400">✉ {selected.email}</div>}
           {selected.bio && <div className="text-[11px] text-gray-400 whitespace-pre-wrap pt-1">{selected.bio}</div>}
         </div>
       )}

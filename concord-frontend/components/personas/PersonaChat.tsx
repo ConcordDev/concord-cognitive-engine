@@ -74,7 +74,7 @@ export function PersonaChat({
         )}
         <div>
           <div className="text-sm font-semibold text-zinc-100">{personaName}</div>
-          <div className="text-[10px] text-zinc-500">Chat preview</div>
+          <div className="text-[10px] text-zinc-400">Chat preview</div>
         </div>
       </div>
 
@@ -90,14 +90,14 @@ export function PersonaChat({
             >
               {t.text}
               {t.role === 'persona' && t.basis && (
-                <div className="mt-1 text-[9px] uppercase tracking-wider text-zinc-500">
+                <div className="mt-1 text-[9px] uppercase tracking-wider text-zinc-400">
                   {t.basis.replace(/_/g, ' ')}
                 </div>
               )}
             </div>
           </div>
         ))}
-        {busy && <div className="text-[11px] text-zinc-500 italic">{personaName} is typing…</div>}
+        {busy && <div className="text-[11px] text-zinc-400 italic">{personaName} is typing…</div>}
       </div>
 
       {err && (

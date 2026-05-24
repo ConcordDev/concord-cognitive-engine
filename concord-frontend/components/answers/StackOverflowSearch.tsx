@@ -74,7 +74,7 @@ export function StackOverflowSearch() {
           {SITES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ask anything…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -92,7 +92,7 @@ export function StackOverflowSearch() {
                   <span className="line-clamp-1 text-sm text-white">{q.title}</span>
                   {q.is_answered && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
                 </div>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-zinc-500">
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
                   <span className="flex items-center gap-0.5"><ThumbsUp className="h-3 w-3" />{q.score}</span>
                   <span>{q.answer_count} answers</span>
                   <span>{q.view_count.toLocaleString()} views</span>
@@ -102,12 +102,12 @@ export function StackOverflowSearch() {
                   {q.tags.slice(0, 6).map((t) => <span key={t} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-cyan-300">{t}</span>)}
                 </div>
               </div>
-              <ExternalLink className="h-3 w-3 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 text-zinc-400" />
             </div>
           </a>
         ))}
         {hits.length === 0 && !search.isPending && !error && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Search Stack Exchange for real answers.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Search Stack Exchange for real answers.</div>
         )}
       </div>
     </div>

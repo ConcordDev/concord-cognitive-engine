@@ -1120,7 +1120,7 @@ export default function CouncilLensPage() {
         <div className={ds.sectionHeader}>
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -1193,7 +1193,7 @@ export default function CouncilLensPage() {
                     </div>
                     <h3 className={cn(ds.heading3, 'mb-1')}>{p.title}</h3>
                     <p className={cn(ds.textMuted, 'line-clamp-2')}>{p.description}</p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                       <span>Sponsor: {stakeholderName(p.sponsor)}</span>
                       {p.coSponsors.length > 0 && (
                         <span>
@@ -1265,7 +1265,7 @@ export default function CouncilLensPage() {
             <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-lattice-elevated text-gray-300 capitalize">
               {p.type}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               Method: {VOTING_METHODS.find((v) => v.value === p.votingMethod)?.label}
             </span>
             {p.votingDeadline && p.status === 'voting' && (
@@ -1386,7 +1386,7 @@ export default function CouncilLensPage() {
 
           {!anonymousVoting && voteTotal > 0 && (
             <div className="mt-3 pt-3 border-t border-lattice-border">
-              <p className="text-xs text-gray-500 mb-2">Individual votes:</p>
+              <p className="text-xs text-gray-400 mb-2">Individual votes:</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(p.votes).map(([sid, choice]) => {
                   const opt = VOTE_OPTIONS.find((v) => v.value === choice);
@@ -1480,7 +1480,7 @@ export default function CouncilLensPage() {
                   )}
                 </div>
                 <p className="text-xs text-gray-400">{a.description}</p>
-                <p className="text-[10px] text-gray-600 mt-1">
+                <p className="text-[10px] text-gray-400 mt-1">
                   By {stakeholderName(a.author)} on {formatDate(a.createdAt)}
                 </p>
               </div>
@@ -1504,7 +1504,7 @@ export default function CouncilLensPage() {
                   <span className="text-xs font-semibold text-neon-cyan">
                     {stakeholderName(c.author)}
                   </span>
-                  <span className="text-[10px] text-gray-600">{formatDateTime(c.createdAt)}</span>
+                  <span className="text-[10px] text-gray-400">{formatDateTime(c.createdAt)}</span>
                   {c.type !== 'comment' && (
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-purple-500/20 text-purple-400">
                       {c.type}
@@ -1669,7 +1669,7 @@ export default function CouncilLensPage() {
                     </span>
                   </div>
                   <h3 className="text-sm font-semibold text-white">{p.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     {Object.keys(p.votes).length} votes cast | Decided: {formatDate(p.updatedAt)}
                   </p>
                 </div>
@@ -1747,8 +1747,8 @@ export default function CouncilLensPage() {
                   >
                     {d.status}
                   </span>
-                  <span className="text-xs text-gray-500">{formatDateTime(d.createdAt)}</span>
-                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <span className="text-xs text-gray-400">{formatDateTime(d.createdAt)}</span>
+                  <span className="text-xs text-gray-400 flex items-center gap-1">
                     <Timer className="w-3 h-3" />
                     {Math.floor(d.timePerSpeaker / 60)}m per speaker
                   </span>
@@ -1989,11 +1989,11 @@ export default function CouncilLensPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] bg-lattice-surface text-gray-400">
                         {b.category}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-lattice-surface text-gray-500">
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-lattice-surface text-gray-400">
                         {b.scenario}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{b.justification}</p>
+                    <p className="text-xs text-gray-400 mt-1">{b.justification}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-green-400 font-bold">+{formatCurrency(b.amount)}</span>
@@ -2067,11 +2067,11 @@ export default function CouncilLensPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] bg-lattice-surface text-gray-400">
                         {b.category}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-lattice-surface text-gray-500">
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-lattice-surface text-gray-400">
                         {b.scenario}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{b.justification}</p>
+                    <p className="text-xs text-gray-400 mt-1">{b.justification}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-red-400 font-bold">-{formatCurrency(b.amount)}</span>
@@ -2241,23 +2241,23 @@ export default function CouncilLensPage() {
                   <CircleDot
                     className={cn(
                       'w-3 h-3 mt-1 flex-shrink-0',
-                      catColors[entry.category] || 'text-gray-500'
+                      catColors[entry.category] || 'text-gray-400'
                     )}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white">
                       <span className="font-medium text-neon-cyan">{entry.actor}</span>{' '}
                       <span className="text-gray-400">{entry.action}</span>{' '}
-                      <span className={cn(ds.textMono, 'text-gray-500')}>{entry.target}</span>
+                      <span className={cn(ds.textMono, 'text-gray-400')}>{entry.target}</span>
                     </p>
                     {entry.details && (
-                      <p className="text-xs text-gray-500 mt-0.5">{entry.details}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{entry.details}</p>
                     )}
                   </div>
                   <span
                     className={cn(
                       'px-1.5 py-0.5 rounded text-[9px] capitalize',
-                      catColors[entry.category] || 'text-gray-500',
+                      catColors[entry.category] || 'text-gray-400',
                       'bg-lattice-surface flex-shrink-0'
                     )}
                   >
@@ -2424,7 +2424,7 @@ export default function CouncilLensPage() {
                 )}
               </div>
               <div className="flex items-center justify-between mt-2">
-                <p className="text-[10px] text-gray-600">Joined: {formatDate(s.joinedAt)}</p>
+                <p className="text-[10px] text-gray-400">Joined: {formatDate(s.joinedAt)}</p>
                 <button
                   onClick={() => removeStakeholderItem(s.id)}
                   className="text-red-400 hover:text-red-300 text-[10px] flex items-center gap-0.5"
@@ -2480,7 +2480,7 @@ export default function CouncilLensPage() {
                         >,
                       })
                     }
-                    className="text-gray-500 hover:text-white text-[10px]"
+                    className="text-gray-400 hover:text-white text-[10px]"
                   >
                     <PenLine className="w-3 h-3" />
                   </button>
@@ -2617,7 +2617,7 @@ export default function CouncilLensPage() {
             <FileText className="w-4 h-4 text-blue-400" />
           </div>
           <p className="text-3xl font-bold text-white">{dashboardStats.active}</p>
-          <p className="text-xs text-gray-500 mt-1">In discussion or voting</p>
+          <p className="text-xs text-gray-400 mt-1">In discussion or voting</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-1">
@@ -2625,7 +2625,7 @@ export default function CouncilLensPage() {
             <Vote className="w-4 h-4 text-yellow-400" />
           </div>
           <p className="text-3xl font-bold text-white">{dashboardStats.pendingVotes}</p>
-          <p className="text-xs text-gray-500 mt-1">Awaiting stakeholder votes</p>
+          <p className="text-xs text-gray-400 mt-1">Awaiting stakeholder votes</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-1">
@@ -2640,7 +2640,7 @@ export default function CouncilLensPage() {
           >
             {dashboardStats.quorumMet ? 'Met' : 'Needed'}
           </p>
-          <p className="text-xs text-gray-500 mt-1">{dashboardStats.totalVoters} eligible voters</p>
+          <p className="text-xs text-gray-400 mt-1">{dashboardStats.totalVoters} eligible voters</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center justify-between mb-1">
@@ -2648,7 +2648,7 @@ export default function CouncilLensPage() {
             <CheckCircle2 className="w-4 h-4 text-neon-cyan" />
           </div>
           <p className="text-3xl font-bold text-white">{dashboardStats.decided}</p>
-          <p className="text-xs text-gray-500 mt-1">Decided, implemented, or rejected</p>
+          <p className="text-xs text-gray-400 mt-1">Decided, implemented, or rejected</p>
         </div>
       </div>
 
@@ -3012,7 +3012,7 @@ export default function CouncilLensPage() {
                     }
                     className={ds.input}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     {Math.floor(newDebate.timePerSpeaker / 60)} minutes per speaker
                   </p>
                 </div>
@@ -3042,7 +3042,7 @@ export default function CouncilLensPage() {
             <div className="flex items-center gap-2 mb-1">
               <Gavel className="w-4 h-4 text-neon-purple" />
               <h2 className="font-semibold text-sm">Council Analysis Engine</h2>
-              <span className="text-xs text-gray-500 ml-auto">
+              <span className="text-xs text-gray-400 ml-auto">
                 Domain actions — deliberate, vote, minutes, conflict
               </span>
             </div>
@@ -3133,7 +3133,7 @@ export default function CouncilLensPage() {
                   )}
                   {'weightedScore' in deliberateResult && (
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500">Weighted Score</span>
+                      <span className="text-xs text-gray-400">Weighted Score</span>
                       <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
@@ -3156,7 +3156,7 @@ export default function CouncilLensPage() {
                   )}
                   {'consensus' in deliberateResult && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Consensus:</span>
+                      <span className="text-xs text-gray-400">Consensus:</span>
                       <span
                         className={cn(
                           'text-xs px-2 py-0.5 rounded-full',
@@ -3173,7 +3173,7 @@ export default function CouncilLensPage() {
                   )}
                   {Array.isArray(deliberateResult.evaluations) && (
                     <div className="space-y-2">
-                      <p className="text-xs text-gray-500 font-medium">Voice Evaluations</p>
+                      <p className="text-xs text-gray-400 font-medium">Voice Evaluations</p>
                       {(deliberateResult.evaluations as Array<Record<string, unknown>>).map(
                         (ev, i) => (
                           <div key={i} className="flex items-center gap-2">
@@ -3263,14 +3263,14 @@ export default function CouncilLensPage() {
                           <p className={cn('text-lg font-bold', color)}>
                             {String((voteCountResult.tally as Record<string, unknown>)[key] ?? 0)}
                           </p>
-                          <p className="text-xs text-gray-500">{label}</p>
+                          <p className="text-xs text-gray-400">{label}</p>
                         </div>
                       ))}
                     </div>
                   )}
                   {'forPercent' in voteCountResult && (
                     <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-gray-500">
+                      <div className="flex justify-between text-xs text-gray-400">
                         <span>Support Rate</span>
                         <span className="font-mono text-white">
                           {String(voteCountResult.forPercent)}%
@@ -3287,7 +3287,7 @@ export default function CouncilLensPage() {
                           )}
                         />
                       </div>
-                      <div className="flex justify-between text-xs text-gray-600">
+                      <div className="flex justify-between text-xs text-gray-400">
                         <span>Threshold: {String(voteCountResult.passThreshold)}</span>
                         <span>
                           Quorum:{' '}
@@ -3319,13 +3319,13 @@ export default function CouncilLensPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {'date' in minutesResult && (
                       <div className="lens-card text-center">
-                        <p className="text-xs text-gray-500">Date</p>
+                        <p className="text-xs text-gray-400">Date</p>
                         <p className="text-sm font-mono text-white">{String(minutesResult.date)}</p>
                       </div>
                     )}
                     {'attendees' in minutesResult && (
                       <div className="lens-card text-center">
-                        <p className="text-xs text-gray-500">Attendees</p>
+                        <p className="text-xs text-gray-400">Attendees</p>
                         <p className="text-sm font-bold text-neon-cyan">
                           {String(minutesResult.attendees)}
                         </p>
@@ -3335,7 +3335,7 @@ export default function CouncilLensPage() {
                   {Array.isArray(minutesResult.agendaItems) &&
                     (minutesResult.agendaItems as Array<Record<string, unknown>>).length > 0 && (
                       <div>
-                        <p className="text-xs text-gray-500 font-medium mb-1">Agenda Items</p>
+                        <p className="text-xs text-gray-400 font-medium mb-1">Agenda Items</p>
                         <div className="space-y-1">
                           {(minutesResult.agendaItems as Array<Record<string, unknown>>).map(
                             (item, i) => (
@@ -3344,7 +3344,7 @@ export default function CouncilLensPage() {
                                   {String(item.item)}
                                 </span>
                                 <span className="text-gray-300 flex-1">{String(item.topic)}</span>
-                                <span className="text-gray-500 capitalize">
+                                <span className="text-gray-400 capitalize">
                                   {String(item.status)}
                                 </span>
                               </div>
@@ -3356,7 +3356,7 @@ export default function CouncilLensPage() {
                   {Array.isArray(minutesResult.decisions) &&
                     (minutesResult.decisions as Array<Record<string, unknown>>).length > 0 && (
                       <div>
-                        <p className="text-xs text-gray-500 font-medium mb-1">Decisions</p>
+                        <p className="text-xs text-gray-400 font-medium mb-1">Decisions</p>
                         {(minutesResult.decisions as Array<Record<string, unknown>>).map((d, i) => (
                           <div
                             key={i}
@@ -3392,7 +3392,7 @@ export default function CouncilLensPage() {
                   )}
                   {'commonGround' in conflictResult && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Common Ground:</span>
+                      <span className="text-xs text-gray-400">Common Ground:</span>
                       <span
                         className={cn(
                           'text-xs px-2 py-0.5 rounded-full',
@@ -3412,7 +3412,7 @@ export default function CouncilLensPage() {
                   )}
                   {Array.isArray(conflictResult.steps) && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-1">Resolution Steps</p>
+                      <p className="text-xs text-gray-400 font-medium mb-1">Resolution Steps</p>
                       <ol className="space-y-1">
                         {(conflictResult.steps as string[]).map((step, i) => (
                           <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
@@ -3427,7 +3427,7 @@ export default function CouncilLensPage() {
                   )}
                   {Array.isArray(conflictResult.parties) && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-1">Parties</p>
+                      <p className="text-xs text-gray-400 font-medium mb-1">Parties</p>
                       <div className="flex flex-wrap gap-2">
                         {(conflictResult.parties as Array<Record<string, unknown>>).map((p, i) => (
                           <span

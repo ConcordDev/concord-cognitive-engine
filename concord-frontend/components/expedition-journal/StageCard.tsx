@@ -170,7 +170,7 @@ export function StageCard({
       {expanded && (
         <div className="mt-3 space-y-3 border-t border-white/10 pt-3">
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-500">Journal entry</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">Journal entry</label>
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -180,7 +180,7 @@ export function StageCard({
               className="w-full rounded border border-white/10 bg-[#0b0f17] p-2 text-xs text-gray-200 outline-none focus:border-emerald-500/50"
             />
             <div className="mt-1 flex items-center justify-between">
-              <span className="text-[10px] text-gray-600">{draft.length}/4000</span>
+              <span className="text-[10px] text-gray-400">{draft.length}/4000</span>
               <button
                 type="button"
                 disabled={savingEntry || !draft.trim()}
@@ -196,7 +196,7 @@ export function StageCard({
                   <li key={en.id} className="group flex items-start justify-between gap-2 rounded border border-white/5 bg-black/20 p-2">
                     <div className="min-w-0">
                       <p className="whitespace-pre-wrap break-words text-xs text-gray-300">{en.text}</p>
-                      <p className="mt-0.5 text-[10px] text-gray-600">{new Date(en.createdAt).toLocaleString()}</p>
+                      <p className="mt-0.5 text-[10px] text-gray-400">{new Date(en.createdAt).toLocaleString()}</p>
                     </div>
                     <button
                       type="button"
@@ -213,12 +213,12 @@ export function StageCard({
           </div>
 
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-500">Screenshots</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">Screenshots</label>
             <div className="flex flex-wrap gap-2">
               {photos.map((p) => (
                 <div key={p.id} className="group relative flex h-16 w-16 flex-col items-center justify-center rounded border border-white/10 bg-black/30 p-1 text-center">
                   <Camera className="h-4 w-4 text-cyan-400" />
-                  <span className="mt-0.5 line-clamp-2 text-[8px] text-gray-500">{p.caption || 'photo'}</span>
+                  <span className="mt-0.5 line-clamp-2 text-[8px] text-gray-400">{p.caption || 'photo'}</span>
                   <button
                     type="button"
                     onClick={() => deletePhoto(p.id)}
@@ -233,7 +233,7 @@ export function StageCard({
                 type="button"
                 disabled={uploading}
                 onClick={() => fileRef.current?.click()}
-                className="flex h-16 w-16 items-center justify-center rounded border border-dashed border-white/20 text-gray-500 hover:border-emerald-500/50 hover:text-emerald-300"
+                className="flex h-16 w-16 items-center justify-center rounded border border-dashed border-white/20 text-gray-400 hover:border-emerald-500/50 hover:text-emerald-300"
               >
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-5 w-5" />}
               </button>

@@ -55,13 +55,13 @@ export function RouteOptimizerPanel() {
         </div>
 
         <div className="rounded border border-white/10">
-          <header className="px-2 py-1 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-500">Stops ({stops.length})</header>
+          <header className="px-2 py-1 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-400">Stops ({stops.length})</header>
           <ul className="max-h-40 overflow-y-auto divide-y divide-white/5">
             {stops.map(s => (
               <li key={s.id} className="px-2 py-1 text-xs flex items-center gap-2 group">
                 <MapPin className="w-3 h-3 text-cyan-300" />
                 <span className="text-white">{s.label || s.id}</span>
-                <span className="text-[10px] text-gray-500 font-mono">{s.lat.toFixed(4)},{s.lng.toFixed(4)}</span>
+                <span className="text-[10px] text-gray-400 font-mono">{s.lat.toFixed(4)},{s.lng.toFixed(4)}</span>
                 <button onClick={() => setStops(prev => prev.filter(x => x.id !== s.id))} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
@@ -82,11 +82,11 @@ export function RouteOptimizerPanel() {
                 <li key={s.id} className="flex items-center gap-2 text-xs">
                   <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[10px] font-bold">{i + 1}</span>
                   <span className="text-white">{s.label || s.id}</span>
-                  <span className="text-[10px] text-gray-500 font-mono ml-auto">+{s.distanceFromPrev.toFixed(2)} units</span>
+                  <span className="text-[10px] text-gray-400 font-mono ml-auto">+{s.distanceFromPrev.toFixed(2)} units</span>
                 </li>
               ))}
             </ol>
-            <div className="mt-2 text-[10px] text-gray-500">Total: {result.totalDistanceUnits.toFixed(2)} units</div>
+            <div className="mt-2 text-[10px] text-gray-400">Total: {result.totalDistanceUnits.toFixed(2)} units</div>
           </div>
         )}
       </div>

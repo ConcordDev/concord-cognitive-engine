@@ -200,7 +200,7 @@ function KingdomList({ kingdoms, onPick }: { kingdoms: Kingdom[]; onPick: (id: s
                 <h3 className="font-semibold text-amber-100">{k.name}</h3>
                 <span className="text-xs text-slate-400">{k.world_id}</span>
               </div>
-              <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
+              <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
                 <span>Ruler: {k.ruler_user_id ? k.ruler_user_id.slice(0, 12) : k.ruler_faction_id || 'None'}</span>
                 <span>·</span>
                 <span>{k.region_polygon?.length ?? 0} vertices</span>
@@ -313,7 +313,7 @@ function KingdomDetail({
             </button>
           </div>
           {decrees.length === 0 ? (
-            <div className="text-sm text-slate-500">No decrees yet.</div>
+            <div className="text-sm text-slate-400">No decrees yet.</div>
           ) : (
             <ul className="space-y-2">
               {decrees.map((d) => (
@@ -442,7 +442,7 @@ function KingdomCreate({ onCreated }: { onCreated: (id: string) => void }) {
             rows={4}
             className="w-full rounded bg-slate-800 px-2 py-1 font-mono text-xs"
           />
-          <p className="mt-1 text-[10px] text-slate-500">v1 — paste polygon coords directly. Visual editor in v1.1.</p>
+          <p className="mt-1 text-[10px] text-slate-400">v1 — paste polygon coords directly. Visual editor in v1.1.</p>
         </div>
         {error && <div className="rounded bg-rose-950/40 px-2 py-1 text-sm text-rose-300">{error}</div>}
         <button

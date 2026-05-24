@@ -130,7 +130,7 @@ export default function TombsOverlay({ worldId, pollIntervalMs = 90_000 }: Props
           <span className="font-medium text-stone-300">
             Tombs — {tombs.length}
           </span>
-          <span className="text-zinc-500">{collapsed ? '▸' : '▾'}</span>
+          <span className="text-zinc-400">{collapsed ? '▸' : '▾'}</span>
         </button>
         {!collapsed && (
           <div className="border-t border-zinc-800 max-h-[36vh] overflow-y-auto">
@@ -144,7 +144,7 @@ export default function TombsOverlay({ worldId, pollIntervalMs = 90_000 }: Props
                 <div className="text-stone-200 truncate">
                   {tomb.archetype || 'Unknown'}{tomb.faction ? ` · ${tomb.faction}` : ''}
                 </div>
-                <div className="text-zinc-500 truncate text-[11px]">
+                <div className="text-zinc-400 truncate text-[11px]">
                   {tomb.last_words ? `"${tomb.last_words}"` : '(no last words)'}
                 </div>
                 <div className="text-zinc-600 text-[10px] mt-0.5">
@@ -187,7 +187,7 @@ function LegacyModal({ legacy, onClose }: { legacy: LegacyDetail; onClose: () =>
         <h2 className="text-lg font-medium mb-2">
           {legacy.archetype || 'NPC'} — last words
         </h2>
-        <p className="text-zinc-500 text-xs mb-4">
+        <p className="text-zinc-400 text-xs mb-4">
           {legacy.faction && (
             <>Faction: <code className="bg-zinc-900 px-1.5 py-0.5 rounded">{legacy.faction}</code> · </>
           )}

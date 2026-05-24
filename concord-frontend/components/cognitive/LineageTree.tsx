@@ -113,7 +113,7 @@ export function LineageTree({
             aria-label="Zoom out">
               <ZoomOut className="w-4 h-4" />
             </button>
-            <span className="text-xs text-gray-500 w-10 text-center">
+            <span className="text-xs text-gray-400 w-10 text-center">
               {Math.round(zoom * 100)}%
             </span>
             <button
@@ -164,7 +164,7 @@ export function LineageTree({
               </div>
             ))}
           </div>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-400">
             {countNodes(root)} total nodes
           </span>
         </div>
@@ -267,7 +267,7 @@ function TreeNode({
         </button>
 
         {/* Timestamp */}
-        <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
           {formatRelativeTime(node.createdAt)}
         </span>
       </div>
@@ -390,7 +390,7 @@ export function LineageTimeline({
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               {formatRelativeTime(node.createdAt)}
             </p>
           </button>

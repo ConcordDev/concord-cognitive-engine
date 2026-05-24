@@ -102,7 +102,7 @@ export function PestPanel() {
       <div className="flex items-center gap-2 mb-3">
         <Bug className="w-4 h-4 text-orange-400" />
         <h3 className="text-sm font-bold text-zinc-100">Pest &amp; Disease Tracking</h3>
-        <span className="ml-auto text-[10px] text-zinc-500">
+        <span className="ml-auto text-[10px] text-zinc-400">
           {reports.filter((r) => r.status === 'open').length} open
         </span>
       </div>
@@ -139,7 +139,7 @@ export function PestPanel() {
           </p>
           {upcoming.map((t) => (
             <p key={t.id} className="text-[11px] text-zinc-300">
-              {t.scheduledDate} — {t.method} <span className="text-zinc-500">({t.agent})</span>
+              {t.scheduledDate} — {t.method} <span className="text-zinc-400">({t.agent})</span>
             </p>
           ))}
         </div>
@@ -153,8 +153,8 @@ export function PestPanel() {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-zinc-100">{rp.agent}</span>
                 <span className={`text-[10px] font-bold uppercase ${sevColor}`}>{rp.severity}</span>
-                <span className="text-[10px] text-zinc-500">{rp.kind}</span>
-                {rp.affectedAcres > 0 && <span className="text-[10px] text-zinc-500">{rp.affectedAcres} ac</span>}
+                <span className="text-[10px] text-zinc-400">{rp.kind}</span>
+                {rp.affectedAcres > 0 && <span className="text-[10px] text-zinc-400">{rp.affectedAcres} ac</span>}
                 <span className={`ml-auto text-[10px] font-semibold ${rp.status === 'open' ? 'text-orange-400' : 'text-emerald-400'}`}>
                   {rp.status}
                 </span>
@@ -194,7 +194,7 @@ export function PestPanel() {
             </div>
           );
         })}
-        {reports.length === 0 && <p className="text-xs text-zinc-500 italic">No pest or disease reports yet.</p>}
+        {reports.length === 0 && <p className="text-xs text-zinc-400 italic">No pest or disease reports yet.</p>}
       </div>
     </div>
   );

@@ -119,7 +119,7 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
 
   if (isLoading) {
     return (
-      <div className={cn('p-6 text-center text-gray-500', className)}>
+      <div className={cn('p-6 text-center text-gray-400', className)}>
         <Layers className="w-8 h-8 mx-auto mb-2 animate-pulse" />
         Loading features...
       </div>
@@ -161,7 +161,7 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
             );
           })}
           {features.length > 6 && (
-            <span className="px-2 py-0.5 rounded text-[10px] bg-white/5 text-gray-500">
+            <span className="px-2 py-0.5 rounded text-[10px] bg-white/5 text-gray-400">
               +{features.length - 6} more
             </span>
           )}
@@ -177,7 +177,7 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
         <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
           <Layers className="w-4 h-4 text-neon-cyan" />
           Lens Features
-          <span className="text-xs text-gray-500">({features.length})</span>
+          <span className="text-xs text-gray-400">({features.length})</span>
         </h3>
         <div className="flex items-center gap-2">
           {summary?.emergentAccess && (
@@ -216,7 +216,7 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
       {/* Search + Filter */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
@@ -264,7 +264,7 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{feature.name}</p>
                   {!isExpanded && (
-                    <p className="text-[11px] text-gray-500 truncate">{feature.description}</p>
+                    <p className="text-[11px] text-gray-400 truncate">{feature.description}</p>
                   )}
                 </div>
                 <span
@@ -277,9 +277,9 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
                   {statusCfg.label}
                 </span>
                 {isExpanded ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 )}
               </button>
 
@@ -304,7 +304,7 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
       </div>
 
       {filteredFeatures.length === 0 && (
-        <p className="text-center text-gray-500 text-xs py-4">No features match your filters.</p>
+        <p className="text-center text-gray-400 text-xs py-4">No features match your filters.</p>
       )}
     </div>
   );

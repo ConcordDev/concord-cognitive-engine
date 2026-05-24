@@ -131,14 +131,14 @@ export default function CraftingPanelV2({ worldId: _worldId, onClose }: Crafting
           </div>
         ))}
         {inventory.length === 0 && (
-          <div className="col-span-full text-gray-500 italic">Empty inventory. Right-click terrain to gather.</div>
+          <div className="col-span-full text-gray-400 italic">Empty inventory. Right-click terrain to gather.</div>
         )}
       </div>
 
       {/* Recipe list */}
       <div className="space-y-2 max-h-[320px] overflow-y-auto">
         {recipes.length === 0 ? (
-          <div className="text-gray-500 italic">No recipes available.</div>
+          <div className="text-gray-400 italic">No recipes available.</div>
         ) : (
           recipes.map((recipe) => {
             const canCraft = recipe.craftable !== false;
@@ -147,7 +147,7 @@ export default function CraftingPanelV2({ worldId: _worldId, onClose }: Crafting
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <div className="text-amber-200 font-medium">{recipe.output.name}</div>
-                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">
                       {recipe.category ?? recipe.output.type}
                     </div>
                   </div>

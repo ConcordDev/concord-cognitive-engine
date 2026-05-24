@@ -98,7 +98,7 @@ export function VehicleHistory() {
               <Car className="h-6 w-6 text-blue-300" />
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Vehicle Identification</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Vehicle Identification</div>
               <input
                 className="block w-full rounded border border-transparent bg-transparent font-mono text-xl tracking-wider text-white hover:border-zinc-700 focus:border-blue-500/40 focus:outline-none"
                 value={vin}
@@ -109,16 +109,16 @@ export function VehicleHistory() {
               {vinData && (
                 <div className="text-[12px] text-zinc-300">
                   <span className="font-semibold text-white">{vinData.year} {vinData.make} {vinData.model}</span>
-                  {vinData.trim && <span className="text-zinc-500"> · {vinData.trim}</span>}
+                  {vinData.trim && <span className="text-zinc-400"> · {vinData.trim}</span>}
                 </div>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 rounded border border-zinc-800 bg-zinc-950 px-2 py-1">
-              <Gauge className="h-3.5 w-3.5 text-zinc-500" />
+              <Gauge className="h-3.5 w-3.5 text-zinc-400" />
               <input type="number" min={0} value={odometer} onChange={(e) => setOdometer(Math.max(0, Number(e.target.value) || 0))} className="w-20 bg-transparent text-right text-xs text-white font-mono focus:outline-none" />
-              <span className="text-[10px] text-zinc-500">mi</span>
+              <span className="text-[10px] text-zinc-400">mi</span>
             </label>
             <button type="button" onClick={() => pull.mutate()} disabled={pull.isPending || vin.trim().length < 11} className="rounded bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
               {pull.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Pull report'}
@@ -139,25 +139,25 @@ export function VehicleHistory() {
         {/* Carfax-style stat row */}
         <div className="mt-4 grid grid-cols-4 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Odometer</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">Odometer</div>
             <div className={`font-mono text-lg ${odoColour}`}>{odometer.toLocaleString()}</div>
             <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-800">
               <div className={`h-full ${odometer > 150000 ? 'bg-rose-500' : odometer > 100000 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${odoPct}%` }} />
             </div>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Recalls</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">Recalls</div>
             <div className={`flex items-baseline gap-1 ${recalls.length > 0 ? 'text-rose-300' : 'text-emerald-300'}`}>
               {recalls.length > 0 ? <ShieldAlert className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
               <span className="font-mono text-lg">{recalls.length}</span>
             </div>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Overdue</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">Overdue</div>
             <div className={`font-mono text-lg ${overdueCount > 0 ? 'text-rose-300' : 'text-emerald-300'}`}>{overdueCount}</div>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Upcoming</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">Upcoming</div>
             <div className={`font-mono text-lg ${upcomingCount > 0 ? 'text-amber-300' : 'text-zinc-300'}`}>{upcomingCount}</div>
           </div>
         </div>
@@ -167,7 +167,7 @@ export function VehicleHistory() {
           <div className="mt-3 grid grid-cols-2 gap-1 text-[10px] sm:grid-cols-4">
             {[['Engine', vinData.engine], ['Trans', vinData.transmission], ['Body', vinData.bodyClass], ['Fuel', vinData.fuelType], ['Drive', vinData.driveType], ['Plant', vinData.plant], ['Mfgr', vinData.manufacturer], ['Type', vinData.vehicleType]].filter(([, v]) => v).map(([k, v]) => (
               <div key={k} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-1.5 py-1">
-                <span className="text-zinc-500">{k}</span>
+                <span className="text-zinc-400">{k}</span>
                 <span className="font-mono text-zinc-300">{v}</span>
               </div>
             ))}
@@ -177,17 +177,17 @@ export function VehicleHistory() {
 
       {/* Vertical timeline rail — Carfax signature */}
       <div className="p-4">
-        <div className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-wider text-zinc-500">
+        <div className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-wider text-zinc-400">
           <FileText className="h-3 w-3" />Vehicle history timeline
         </div>
         {!pull.isPending && events.length === 0 && !vinData && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Enter a VIN and odometer above, then "Pull report".</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Enter a VIN and odometer above, then "Pull report".</div>
         )}
         {!pull.isPending && events.length === 0 && vinData && (
           <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-6 text-center text-[11px] text-emerald-200">No active recalls. All maintenance current.</div>
         )}
         {pull.isPending && (
-          <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" />Pulling NHTSA data…</div>
+          <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Pulling NHTSA data…</div>
         )}
         {events.length > 0 && (
           <div className="relative space-y-2 pl-6">
@@ -209,13 +209,13 @@ export function VehicleHistory() {
                           </div>
                           <div className="line-clamp-1 text-[11px] text-zinc-400">{r.summary}</div>
                         </div>
-                        {expanded ? <ChevronUp className="h-3.5 w-3.5 shrink-0 text-zinc-500" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-500" />}
+                        {expanded ? <ChevronUp className="h-3.5 w-3.5 shrink-0 text-zinc-400" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" />}
                       </div>
                       {expanded && (
                         <div className="mt-2 space-y-1 border-t border-rose-500/20 pt-2 text-[11px] text-zinc-300">
                           {r.consequence && <div><span className="text-rose-300">Consequence: </span>{r.consequence}</div>}
                           {r.remedy && <div><span className="text-emerald-300">Remedy: </span>{r.remedy}</div>}
-                          {r.campaignId && <div className="font-mono text-[10px] text-zinc-500">Campaign ID: {r.campaignId}</div>}
+                          {r.campaignId && <div className="font-mono text-[10px] text-zinc-400">Campaign ID: {r.campaignId}</div>}
                         </div>
                       )}
                     </button>
@@ -233,7 +233,7 @@ export function VehicleHistory() {
                       <span className={`font-mono text-[10px] text-${colour}-300 uppercase`}>{item.status === 'due-now' ? `${Math.abs(item.milesUntilDue)} mi overdue` : `due in ${item.milesUntilDue} mi`}</span>
                     </div>
                     <div className="text-[11px] text-zinc-400">at ~{(ev.mileage).toLocaleString()} mi · interval {item.intervalMiles.toLocaleString()} mi / {item.intervalMonths} mo</div>
-                    {item.notes && <div className="mt-1 text-[10px] text-zinc-500">{item.notes}</div>}
+                    {item.notes && <div className="mt-1 text-[10px] text-zinc-400">{item.notes}</div>}
                   </div>
                 </div>
               );

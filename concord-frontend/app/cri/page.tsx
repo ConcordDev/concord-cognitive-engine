@@ -592,7 +592,7 @@ function CRIDetailView({ criId, onBack }: { criId: string; onBack: () => void })
                       {m.entityId}
                     </p>
                     {m.joinedAt && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         Joined {new Date(m.joinedAt).toLocaleDateString()}
                       </p>
                     )}
@@ -628,7 +628,7 @@ function CRIDetailView({ criId, onBack }: { criId: string; onBack: () => void })
                     <StatusBadge status={p.status} />
                   </div>
                   <ProgressBar value={p.progress ?? 0} color="neon-purple" />
-                  <p className="text-xs text-gray-500">{p.progress ?? 0}% complete</p>
+                  <p className="text-xs text-gray-400">{p.progress ?? 0}% complete</p>
                 </div>
               ))}
             </div>
@@ -864,13 +864,13 @@ export default function CRIDashboardPage() {
                     <div className="flex items-center gap-6 shrink-0">
                       <div className="text-center">
                         <p className="text-white font-bold">{cri.memberCount ?? 0}</p>
-                        <p className="text-xs text-gray-500">Members</p>
+                        <p className="text-xs text-gray-400">Members</p>
                       </div>
                       <div className="text-center">
                         <p className="text-white font-bold">{cri.activeProgramCount ?? 0}</p>
-                        <p className="text-xs text-gray-500">Programs</p>
+                        <p className="text-xs text-gray-400">Programs</p>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-500" />
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
                     </div>
                   </div>
                 ))}

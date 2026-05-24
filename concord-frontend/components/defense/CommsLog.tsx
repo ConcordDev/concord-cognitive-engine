@@ -158,7 +158,7 @@ export function CommsLog() {
             className={`text-[10px] px-2 py-0.5 rounded-full border ${
               channelFilter === null
                 ? 'border-purple-500/50 bg-purple-500/15 text-purple-300'
-                : 'border-zinc-800 bg-zinc-900 text-zinc-500'
+                : 'border-zinc-800 bg-zinc-900 text-zinc-400'
             }`}
           >
             all channels
@@ -170,7 +170,7 @@ export function CommsLog() {
               className={`text-[10px] px-2 py-0.5 rounded-full border ${
                 channelFilter === c
                   ? 'border-purple-500/50 bg-purple-500/15 text-purple-300'
-                  : 'border-zinc-800 bg-zinc-900 text-zinc-500'
+                  : 'border-zinc-800 bg-zinc-900 text-zinc-400'
               }`}
             >
               #{c}
@@ -180,7 +180,7 @@ export function CommsLog() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-zinc-500">
+        <div className="flex items-center justify-center py-12 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -200,7 +200,7 @@ export function CommsLog() {
                   <span className={`text-[10px] uppercase shrink-0 ${PREC_COLOR[m.precedence]}`}>
                     {m.precedence}
                   </span>
-                  <span className="text-[10px] text-zinc-500 shrink-0">{m.sender}</span>
+                  <span className="text-[10px] text-zinc-400 shrink-0">{m.sender}</span>
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0">
                   {!m.acknowledged && (
@@ -208,7 +208,7 @@ export function CommsLog() {
                       onClick={() => ack(m.id)}
                       disabled={busy}
                       title="Acknowledge"
-                      className="p-1 text-zinc-500 hover:text-green-400 disabled:opacity-50"
+                      className="p-1 text-zinc-400 hover:text-green-400 disabled:opacity-50"
                     >
                       <Check className="w-3.5 h-3.5" />
                     </button>
@@ -217,7 +217,7 @@ export function CommsLog() {
                     onClick={() => remove(m.id)}
                     disabled={busy}
                     aria-label="Delete message"
-                    className="p-1 text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                    className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -225,7 +225,7 @@ export function CommsLog() {
               </div>
               <p className="text-xs text-zinc-200 mt-1 whitespace-pre-wrap">{m.body}</p>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-[10px] text-zinc-600">{fmtTime(m.postedAt)}</span>
+                <span className="text-[10px] text-zinc-400">{fmtTime(m.postedAt)}</span>
                 {m.acknowledged && (
                   <span className="text-[10px] text-green-500 flex items-center gap-0.5">
                     <Check className="w-2.5 h-2.5" />
@@ -236,7 +236,7 @@ export function CommsLog() {
             </div>
           ))}
           {messages.length === 0 && (
-            <div className="text-center py-6 text-xs text-zinc-500">
+            <div className="text-center py-6 text-xs text-zinc-400">
               <Radio className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No messages{channelFilter ? ` on #${channelFilter}` : ''}. Post one below.
             </div>

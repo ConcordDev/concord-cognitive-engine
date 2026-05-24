@@ -81,11 +81,11 @@ export function ArtistPage() {
       )}
 
       {!data && !error && !loading && (
-        <div className="py-6 text-center text-[12px] text-zinc-500 italic">No artist loaded yet. Search a name to aggregate works across museums.</div>
+        <div className="py-6 text-center text-[12px] text-zinc-400 italic">No artist loaded yet. Search a name to aggregate works across museums.</div>
       )}
 
       {data && data.totalWorks === 0 && (
-        <div className="py-6 text-center text-[12px] text-zinc-500 italic">
+        <div className="py-6 text-center text-[12px] text-zinc-400 italic">
           No works found for &ldquo;{data.artist}&rdquo; in the connected museum collections.
         </div>
       )}
@@ -123,7 +123,7 @@ export function ArtistPage() {
                   <div className="w-full h-28 bg-zinc-950 rounded flex items-center justify-center"><Frame className="w-6 h-6 text-zinc-700" /></div>
                 )}
                 <div className="text-[10px] text-zinc-200 mt-1 line-clamp-2">{w.title}</div>
-                <div className="text-[9px] text-zinc-500">{w.date || ''} · {w.museum}</div>
+                <div className="text-[9px] text-zinc-400">{w.date || ''} · {w.museum}</div>
               </a>
             ))}
           </div>

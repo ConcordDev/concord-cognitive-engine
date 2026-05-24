@@ -242,7 +242,7 @@ export function MarketplaceActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -260,7 +260,7 @@ export function MarketplaceActionPanel() {
           <div className="rounded-md border border-yellow-500/40 bg-yellow-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> Price</div>
             <div className="text-2xl font-bold text-yellow-200 mt-1">${priceResult.suggestedPrice}</div>
-            <div className="text-[10px] text-zinc-500">vs competitor avg ${priceResult.competitorAvg} · demand {priceResult.demandIndex}</div>
+            <div className="text-[10px] text-zinc-400">vs competitor avg ${priceResult.competitorAvg} · demand {priceResult.demandIndex}</div>
             {priceResult.rationale && <p className="text-[11px] text-zinc-300 mt-1">{priceResult.rationale}</p>}
           </div>
         )}

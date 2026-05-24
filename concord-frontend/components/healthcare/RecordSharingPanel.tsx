@@ -97,7 +97,7 @@ export function RecordSharingPanel({ patientId }: { patientId: string }) {
           <span className="text-sm font-semibold text-gray-200">Health-record sharing (FHIR R4)</span>
         </header>
         <div className="p-3 space-y-2">
-          <p className="text-xs text-gray-500">Export a FHIR R4 Bundle for import into any conformant system (other EHRs, immunization registries, personal health records).</p>
+          <p className="text-xs text-gray-400">Export a FHIR R4 Bundle for import into any conformant system (other EHRs, immunization registries, personal health records).</p>
           <div className="flex items-center gap-2">
             <button onClick={() => exportFhir('full')} disabled={exporting} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
               {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}Export full record
@@ -119,7 +119,7 @@ export function RecordSharingPanel({ patientId }: { patientId: string }) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Users className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Family / proxy access</span>
-          <span className="text-[10px] text-gray-500">{grants.filter(g => g.status === 'active').length} active</span>
+          <span className="text-[10px] text-gray-400">{grants.filter(g => g.status === 'active').length} active</span>
           <button onClick={() => setAdding(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />Grant access
           </button>
@@ -141,17 +141,17 @@ export function RecordSharingPanel({ patientId }: { patientId: string }) {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : grants.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">No proxy access granted.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No proxy access granted.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {grants.map(g => (
               <li key={g.id} className="px-4 py-2.5 flex items-center gap-3">
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', g.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-400')}>{g.status}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{g.proxyName} <span className="text-[10px] text-gray-500">{g.relationship} · {g.accessLevel.replace(/_/g, ' ')}</span></div>
-                  <div className="text-[10px] text-gray-500 truncate">
+                  <div className="text-sm text-white truncate">{g.proxyName} <span className="text-[10px] text-gray-400">{g.relationship} · {g.accessLevel.replace(/_/g, ' ')}</span></div>
+                  <div className="text-[10px] text-gray-400 truncate">
                     {g.proxyEmail || 'no email'} · granted {g.grantedAt.slice(0, 10)}
                     {g.expiresOn && ` · expires ${g.expiresOn}`}
                   </div>

@@ -129,11 +129,11 @@ export function WordDecks({ onImported }: { onImported?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-4 text-zinc-500">
+        <div className="flex items-center justify-center py-4 text-zinc-400">
           <Loader2 className="w-4 h-4 animate-spin" />
         </div>
       ) : decks.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No decks yet — create one to organise themed vocabulary.</p>
+        <p className="text-xs text-zinc-400 italic">No decks yet — create one to organise themed vocabulary.</p>
       ) : (
         <ul className="space-y-1.5">
           {decks.map((d) => (
@@ -141,7 +141,7 @@ export function WordDecks({ onImported }: { onImported?: () => void }) {
               <div className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-zinc-100 truncate">{d.name}</p>
-                  {d.description && <p className="text-[10px] text-zinc-500 truncate">{d.description}</p>}
+                  {d.description && <p className="text-[10px] text-zinc-400 truncate">{d.description}</p>}
                 </div>
                 <span className="text-[10px] text-cyan-300 bg-cyan-900/30 border border-cyan-800/40 rounded px-1.5 py-0.5 shrink-0">
                   {d.theme}

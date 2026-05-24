@@ -111,13 +111,13 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
         </button>
       </div>
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading…
         </div>
       )}
       {error && <div className="text-xs text-red-400">{error}</div>}
       {!loading && !error && items.length === 0 && (
-        <div className="text-xs text-gray-500">No saved computations yet. Evaluate something and press Save.</div>
+        <div className="text-xs text-gray-400">No saved computations yet. Evaluate something and press Save.</div>
       )}
       {items.length > 0 && (
         <ul className="space-y-1.5">
@@ -128,15 +128,15 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
               <span className="text-xs text-gray-300 font-mono truncate flex-1">{c.label}</span>
               {c.resultGlyph && <span className="text-sm text-violet-300 shrink-0">{c.resultGlyph}</span>}
               <button onClick={() => void reload(c.id)} title="Reload into playground"
-                className="p-1 text-gray-500 hover:text-violet-400" aria-label="Reload computation">
+                className="p-1 text-gray-400 hover:text-violet-400" aria-label="Reload computation">
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => void share(c)} title="Copy share link"
-                className="p-1 text-gray-500 hover:text-emerald-400" aria-label="Share computation">
+                className="p-1 text-gray-400 hover:text-emerald-400" aria-label="Share computation">
                 <Share2 className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => void remove(c.id)} title="Delete"
-                className="p-1 text-gray-500 hover:text-red-400" aria-label="Delete computation">
+                className="p-1 text-gray-400 hover:text-red-400" aria-label="Delete computation">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </motion.li>

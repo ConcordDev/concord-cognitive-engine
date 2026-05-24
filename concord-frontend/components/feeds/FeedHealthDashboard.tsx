@@ -164,7 +164,7 @@ export function FeedHealthDashboard({ className }: FeedHealthDashboardProps) {
         </div>
         <div className="bg-gray-800/50 rounded-lg p-3 border border-cyan-900/30">
           <div className="text-xs text-gray-400">DTUs This Hour</div>
-          <div className="text-2xl font-bold text-cyan-400">{data.dtusThisHour}<span className="text-xs text-gray-500">/{data.maxDtusPerHour}</span></div>
+          <div className="text-2xl font-bold text-cyan-400">{data.dtusThisHour}<span className="text-xs text-gray-400">/{data.maxDtusPerHour}</span></div>
         </div>
       </div>
 
@@ -198,7 +198,7 @@ export function FeedHealthDashboard({ className }: FeedHealthDashboardProps) {
               {expandedDomains.has(domain) ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
               <Globe className="w-4 h-4 text-cyan-400" />
               <span className="text-sm font-medium text-white capitalize">{domain}</span>
-              <span className="text-xs text-gray-500 ml-auto">{feeds.length} feeds</span>
+              <span className="text-xs text-gray-400 ml-auto">{feeds.length} feeds</span>
               <span className="text-xs text-green-400">{feeds.filter(f => f.enabled).length} active</span>
             </button>
 
@@ -215,12 +215,12 @@ export function FeedHealthDashboard({ className }: FeedHealthDashboardProps) {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-medium text-white truncate">{feed.name}</div>
-                      <div className="text-[10px] text-gray-500 truncate">{feed.url}</div>
+                      <div className="text-[10px] text-gray-400 truncate">{feed.url}</div>
                       {feed.autoDisableReason && (
                         <div className="text-[10px] text-red-400 truncate">⚠ {feed.autoDisableReason}</div>
                       )}
                     </div>
-                    <div className="text-[10px] text-gray-500 text-right flex-shrink-0">
+                    <div className="text-[10px] text-gray-400 text-right flex-shrink-0">
                       <div>{feed.health.successRate} success</div>
                       <div>{feed.health.totalDTUsCreated} DTUs</div>
                     </div>

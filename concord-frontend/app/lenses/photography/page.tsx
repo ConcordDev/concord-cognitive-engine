@@ -518,7 +518,7 @@ export default function PhotographyPage() {
               <s.icon className={`w-5 h-5 ${s.color}`} />
               <div>
                 <p className="text-lg font-bold">{s.value}</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">{s.label}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">{s.label}</p>
               </div>
             </motion.div>
           ))}
@@ -531,7 +531,7 @@ export default function PhotographyPage() {
           <div className="space-y-4">
             <div className="flex gap-2 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search photos..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-sky-500/50" />
               </div>
@@ -543,7 +543,7 @@ export default function PhotographyPage() {
               </div>
             </div>
             {filteredPhotos.length === 0 ? (
-              <div className="text-center py-16 text-gray-500">
+              <div className="text-center py-16 text-gray-400">
                 <Camera className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No photos yet. Upload your first shot.</p>
                 <button onClick={() => setShowUpload(true)} className="mt-3 px-4 py-2 text-xs bg-sky-500/20 rounded-lg hover:bg-sky-500/30">Upload Photo</button>
@@ -602,7 +602,7 @@ export default function PhotographyPage() {
                           <span className="px-1.5 py-0.5 text-[9px] bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20 font-mono">{photo.focalLength}</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
                         {photo.camera && <span className="flex items-center gap-0.5"><Aperture className="w-2.5 h-2.5" />{photo.camera}</span>}
                         <span className="flex items-center gap-0.5"><Eye className="w-2.5 h-2.5" />{photo.views || 0}</span>
                         <span className="flex items-center gap-0.5"><Heart className="w-2.5 h-2.5" />{photo.likes || 0}</span>
@@ -670,9 +670,9 @@ export default function PhotographyPage() {
               {uploadPreview ? (
                 <Image src={uploadPreview} alt="Preview" width={400} height={192} className="max-h-48 mx-auto rounded-lg mb-2 w-auto" />
               ) : (
-                <Camera className="w-8 h-8 mx-auto mb-2 text-gray-500" />
+                <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
               )}
-              <p className="text-xs text-gray-500">{uploadFile ? uploadFile.name : 'Drag & drop or click to upload'}</p>
+              <p className="text-xs text-gray-400">{uploadFile ? uploadFile.name : 'Drag & drop or click to upload'}</p>
             </div>
             <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Photo title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
             <DraftedTextarea lensId="photography" draftKey="upload-description" initial={uploadDesc} onValueChange={setUploadDesc} placeholder="Description" rows={2} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" />
@@ -686,20 +686,20 @@ export default function PhotographyPage() {
 
         {/* Collections */}
         {tab === 'collections' && (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-gray-400">
             <Layers className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm mb-2">Photo Collections</p>
-            <p className="text-xs text-gray-600">Organize your photos into themed collections and albums.</p>
-            <div className="mt-4 text-xs text-gray-600">{photos.length} photos in library</div>
+            <p className="text-xs text-gray-400">Organize your photos into themed collections and albums.</p>
+            <div className="mt-4 text-xs text-gray-400">{photos.length} photos in library</div>
           </div>
         )}
 
         {/* Editing */}
         {tab === 'editing' && (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-gray-400">
             <Sliders className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm mb-2">Photo Editing</p>
-            <p className="text-xs text-gray-600">Exposure, contrast, color grading, and LUT presets.</p>
+            <p className="text-xs text-gray-400">Exposure, contrast, color grading, and LUT presets.</p>
             <VisionAnalyzeButton domain="photography" onResult={() => {}} />
           </div>
         )}
@@ -708,15 +708,15 @@ export default function PhotographyPage() {
         {tab === 'stats' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Total Photos</div>
+              <div className="text-xs text-gray-400 mb-1">Total Photos</div>
               <div className="text-2xl font-bold">{photos.length}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Photo DTUs</div>
+              <div className="text-xs text-gray-400 mb-1">Photo DTUs</div>
               <div className="text-2xl font-bold">{contextDTUs.length}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Categories</div>
+              <div className="text-xs text-gray-400 mb-1">Categories</div>
               <div className="text-2xl font-bold">{new Set(photos.flatMap(p => p.tags || [])).size}</div>
             </div>
           </div>
@@ -814,7 +814,7 @@ export default function PhotographyPage() {
                   {/* Filter controls (visible in edit mode) */}
                   {editMode && (
                     <div className="mb-4 space-y-3 pb-4 border-b border-white/10">
-                      <h4 className="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
+                      <h4 className="text-[10px] uppercase tracking-wider text-gray-400 flex items-center gap-1">
                         <Sliders className="w-3 h-3" /> Image Filters
                       </h4>
                       {[
@@ -826,7 +826,7 @@ export default function PhotographyPage() {
                         <div key={f.label}>
                           <div className="flex justify-between text-[10px] mb-1">
                             <span className="text-gray-400">{f.label}</span>
-                            <span className="text-gray-500">{f.value}{f.unit}</span>
+                            <span className="text-gray-400">{f.value}{f.unit}</span>
                           </div>
                           <input
                             type="range"
@@ -863,43 +863,43 @@ export default function PhotographyPage() {
                   {/* EXIF metadata grid */}
                   {(lightboxPhoto.camera || lightboxPhoto.lens || lightboxPhoto.iso || lightboxPhoto.aperture || lightboxPhoto.shutter || lightboxPhoto.focalLength) && (
                     <div className="mb-4">
-                      <h4 className="text-[10px] uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1">
+                      <h4 className="text-[10px] uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
                         <Focus className="w-3 h-3" /> EXIF Data
                       </h4>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                         {lightboxPhoto.camera && (
                           <>
-                            <span className="text-gray-500">Camera</span>
+                            <span className="text-gray-400">Camera</span>
                             <span className="text-gray-300 truncate">{lightboxPhoto.camera}</span>
                           </>
                         )}
                         {lightboxPhoto.lens && (
                           <>
-                            <span className="text-gray-500">Lens</span>
+                            <span className="text-gray-400">Lens</span>
                             <span className="text-gray-300 truncate">{lightboxPhoto.lens}</span>
                           </>
                         )}
                         {lightboxPhoto.iso && (
                           <>
-                            <span className="text-gray-500">ISO</span>
+                            <span className="text-gray-400">ISO</span>
                             <span className="text-gray-300">{lightboxPhoto.iso}</span>
                           </>
                         )}
                         {lightboxPhoto.aperture && (
                           <>
-                            <span className="text-gray-500">Aperture</span>
+                            <span className="text-gray-400">Aperture</span>
                             <span className="text-gray-300">f/{lightboxPhoto.aperture}</span>
                           </>
                         )}
                         {lightboxPhoto.shutter && (
                           <>
-                            <span className="text-gray-500">Shutter</span>
+                            <span className="text-gray-400">Shutter</span>
                             <span className="text-gray-300">{lightboxPhoto.shutter}</span>
                           </>
                         )}
                         {lightboxPhoto.focalLength && (
                           <>
-                            <span className="text-gray-500">Focal Length</span>
+                            <span className="text-gray-400">Focal Length</span>
                             <span className="text-gray-300">{lightboxPhoto.focalLength}</span>
                           </>
                         )}
@@ -917,7 +917,7 @@ export default function PhotographyPage() {
                   )}
 
                   {/* Stats + favorite */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-3 text-xs text-gray-400 pt-3 border-t border-white/10">
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{lightboxPhoto.views || 0}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{lightboxPhoto.likes || 0}</span>
                     <button
@@ -930,7 +930,7 @@ export default function PhotographyPage() {
                   </div>
 
                   {/* Counter */}
-                  <div className="text-center text-[10px] text-gray-600 mt-3">
+                  <div className="text-center text-[10px] text-gray-400 mt-3">
                     {lightboxIndex + 1} / {filteredPhotos.length}
                   </div>
                 </div>

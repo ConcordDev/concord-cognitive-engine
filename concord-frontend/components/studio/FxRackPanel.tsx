@@ -69,7 +69,7 @@ export function FxRackPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <SlidersHorizontal className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">FX racks — EQ · compressor · reverb · delay</span>
-        <span className="ml-auto text-[10px] text-gray-500">{racks.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{racks.length}</span>
       </header>
 
       <div className="p-3 border-b border-white/10 space-y-2">
@@ -100,7 +100,7 @@ export function FxRackPanel() {
                         <input type="range" min={min} max={max} step={(max - min) / 100} value={val}
                           onChange={(e) => updateDraftParam(u.id, key, Number(e.target.value))}
                           className="block w-full accent-violet-500" />
-                        <span className="text-[9px] text-gray-500">{val}</span>
+                        <span className="text-[9px] text-gray-400">{val}</span>
                       </label>
                     );
                   })}
@@ -113,16 +113,16 @@ export function FxRackPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : racks.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">No saved FX racks yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No saved FX racks yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {racks.map((r) => (
               <li key={r.id} className="px-3 py-2 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{r.name}</div>
-                  <div className="text-[10px] text-gray-500">{r.units.map((u) => u.type).join(' → ')}</div>
+                  <div className="text-[10px] text-gray-400">{r.units.map((u) => u.type).join(' → ')}</div>
                 </div>
                 <button onClick={() => deleteRack(r.id)} className="p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>

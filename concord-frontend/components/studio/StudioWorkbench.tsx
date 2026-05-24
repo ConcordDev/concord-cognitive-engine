@@ -109,11 +109,11 @@ function ProjectList({ onSelect }: { onSelect: (id: string) => void }) {
             placeholder="Project name"
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100" />
           <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1"><span className="text-[10px] text-gray-500">BPM</span>
+            <label className="flex flex-col gap-1"><span className="text-[10px] text-gray-400">BPM</span>
               <input type="number" value={draft.bpm} onChange={(e) => setDraft({ ...draft, bpm: Number(e.target.value) })} min="30" max="300"
                 className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             </label>
-            <label className="flex flex-col gap-1"><span className="text-[10px] text-gray-500">Time sig</span>
+            <label className="flex flex-col gap-1"><span className="text-[10px] text-gray-400">Time sig</span>
               <input type="text" value={draft.timeSignature} onChange={(e) => setDraft({ ...draft, timeSignature: e.target.value })}
                 className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             </label>
@@ -124,14 +124,14 @@ function ProjectList({ onSelect }: { onSelect: (id: string) => void }) {
           </button>
         </div>
       )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        projects.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No projects.</p> :
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+        projects.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No projects.</p> :
         projects.map((p) => (
           <div key={p.id} className="rounded border border-white/10 bg-black/20 p-3 group hover:bg-white/5">
             <div className="flex items-start justify-between gap-2">
               <button type="button" onClick={() => onSelect(p.id)} className="flex-1 text-left min-w-0">
                 <p className="text-sm font-medium text-gray-100">{p.name}</p>
-                <p className="text-[11px] text-gray-500">{p.bpm} BPM · {p.timeSignature} · {p.trackCount} tracks</p>
+                <p className="text-[11px] text-gray-400">{p.bpm} BPM · {p.timeSignature} · {p.trackCount} tracks</p>
               </button>
               <button type="button" onClick={() => remove(p.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
@@ -183,7 +183,7 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
     } catch (e) { console.error(e); }
   };
 
-  if (!project) return <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
+  if (!project) return <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
 
   return (
     <div className="p-3 space-y-3">
@@ -191,11 +191,11 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
 
       <div className="rounded border border-purple-500/30 bg-purple-500/5 p-3">
         <h3 className="text-lg font-semibold text-gray-100">{project.name}</h3>
-        <p className="text-[11px] text-gray-500">{project.bpm} BPM · {project.timeSignature} · {project.tracks.length} tracks</p>
+        <p className="text-[11px] text-gray-400">{project.bpm} BPM · {project.timeSignature} · {project.tracks.length} tracks</p>
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-[10px] uppercase text-gray-500">Add track:</span>
+        <span className="text-[10px] uppercase text-gray-400">Add track:</span>
         {(['audio', 'midi', 'drum', 'synth', 'sample'] as const).map((k) => (
           <button key={k} type="button" onClick={() => addTrack(k)}
             className="px-2 py-1 rounded-md border border-purple-500/30 bg-purple-500/10 text-xs text-purple-200">
@@ -210,32 +210,32 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
             <div className="flex items-center gap-2">
               <Sliders className="w-3 h-3 text-purple-400" />
               <span className="text-sm font-medium text-gray-100">{t.name}</span>
-              <span className="text-[10px] text-gray-500 uppercase">{t.kind}</span>
+              <span className="text-[10px] text-gray-400 uppercase">{t.kind}</span>
             </div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => updateTrack(t.id, { muted: !t.muted })}
-                className={cn('px-2 py-0.5 text-[10px] rounded uppercase font-mono', t.muted ? 'bg-rose-500/20 text-rose-300' : 'border border-white/10 text-gray-500')}>M</button>
+                className={cn('px-2 py-0.5 text-[10px] rounded uppercase font-mono', t.muted ? 'bg-rose-500/20 text-rose-300' : 'border border-white/10 text-gray-400')}>M</button>
               <button type="button" onClick={() => updateTrack(t.id, { solo: !t.solo })}
-                className={cn('px-2 py-0.5 text-[10px] rounded uppercase font-mono', t.solo ? 'bg-amber-500/20 text-amber-300' : 'border border-white/10 text-gray-500')}>S</button>
+                className={cn('px-2 py-0.5 text-[10px] rounded uppercase font-mono', t.solo ? 'bg-amber-500/20 text-amber-300' : 'border border-white/10 text-gray-400')}>S</button>
               <button type="button" onClick={() => removeTrack(t.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <label>
-              <span className="text-[10px] text-gray-500 inline-flex items-center gap-1"><Volume2 className="w-3 h-3" /> Vol {(t.volume * 100).toFixed(0)}</span>
+              <span className="text-[10px] text-gray-400 inline-flex items-center gap-1"><Volume2 className="w-3 h-3" /> Vol {(t.volume * 100).toFixed(0)}</span>
               <input type="range" min="0" max="1" step="0.01" value={t.volume}
                 onChange={(e) => updateTrack(t.id, { volume: Number(e.target.value) })} className="w-full" />
             </label>
             <label>
-              <span className="text-[10px] text-gray-500">Pan {t.pan > 0 ? `R${(t.pan * 100).toFixed(0)}` : t.pan < 0 ? `L${(-t.pan * 100).toFixed(0)}` : 'C'}</span>
+              <span className="text-[10px] text-gray-400">Pan {t.pan > 0 ? `R${(t.pan * 100).toFixed(0)}` : t.pan < 0 ? `L${(-t.pan * 100).toFixed(0)}` : 'C'}</span>
               <input type="range" min="-1" max="1" step="0.01" value={t.pan}
                 onChange={(e) => updateTrack(t.id, { pan: Number(e.target.value) })} className="w-full" />
             </label>
           </div>
           {t.effects.length > 0 && (
             <div className="border-t border-white/10 pt-2 space-y-1">
-              <p className="text-[10px] uppercase text-gray-500">Effects ({t.effects.length})</p>
+              <p className="text-[10px] uppercase text-gray-400">Effects ({t.effects.length})</p>
               {t.effects.map((e) => (
                 <p key={e.id} className="text-[11px] text-gray-400">→ {e.kind}</p>
               ))}
@@ -244,7 +244,7 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
           <div className="flex flex-wrap gap-1 mt-1">
             {(['delay', 'reverb', 'eq3', 'compressor', 'distortion'] as const).map((k) => (
               <button key={k} type="button" onClick={() => addEffect(t.id, k)}
-                className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 hover:border-purple-500/30 text-gray-500 hover:text-purple-300">
+                className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 hover:border-purple-500/30 text-gray-400 hover:text-purple-300">
                 + {k}
               </button>
             ))}

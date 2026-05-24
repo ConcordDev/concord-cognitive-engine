@@ -73,14 +73,14 @@ export function StructuralCompass() {
   const strikeNum = Number(form.strike);
   const previewStrike = Number.isFinite(strikeNum) ? ((strikeNum % 360) + 360) % 360 : 0;
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Compass className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-bold text-zinc-100">Strike &amp; Dip — Structural Measurements</h3>
-        <span className="text-[11px] text-zinc-500">Strabo shape</span>
+        <span className="text-[11px] text-zinc-400">Strabo shape</span>
       </div>
 
       <div className="flex gap-3 mb-3">
@@ -150,14 +150,14 @@ export function StructuralCompass() {
       {error && <p className="text-xs text-rose-400 mb-2">{error}</p>}
 
       {rows.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2 text-[10px] text-zinc-500">
+        <div className="flex flex-wrap gap-2 mb-2 text-[10px] text-zinc-400">
           {meanStrike != null && <span className="text-sky-300">Mean strike: {meanStrike}°</span>}
           {Object.entries(byKind).map(([k, n]) => <span key={k} className="capitalize">{k}: {n}</span>)}
         </div>
       )}
 
       {rows.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No structural measurements recorded yet.</p>
+        <p className="text-xs text-zinc-400 italic">No structural measurements recorded yet.</p>
       ) : (
         <ul className="space-y-1 max-h-64 overflow-y-auto">
           {rows.map((m) => (
@@ -165,13 +165,13 @@ export function StructuralCompass() {
               <div className="flex items-center gap-2">
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 capitalize">{m.planeKind}</span>
                 <span className="text-xs font-mono text-zinc-100">{m.strike}° / {m.dip}°</span>
-                <span className="text-[10px] text-zinc-500">dip→{m.dipDirection}°</span>
-                {m.locationName && <span className="text-[10px] text-zinc-500 truncate flex-1">{m.locationName}</span>}
+                <span className="text-[10px] text-zinc-400">dip→{m.dipDirection}°</span>
+                {m.locationName && <span className="text-[10px] text-zinc-400 truncate flex-1">{m.locationName}</span>}
                 <button onClick={() => del(m.id)} className={cn('text-rose-400 ml-auto', 'opacity-0 group-hover:opacity-100')}>
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-              {m.notes && <p className="text-[11px] text-zinc-600 mt-0.5">{m.notes}</p>}
+              {m.notes && <p className="text-[11px] text-zinc-400 mt-0.5">{m.notes}</p>}
             </li>
           ))}
         </ul>

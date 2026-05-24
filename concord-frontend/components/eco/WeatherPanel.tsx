@@ -92,7 +92,7 @@ export function WeatherPanel() {
       </header>
 
       <div className="flex items-center gap-2">
-        <MapPin className="h-3.5 w-3.5 text-zinc-500" />
+        <MapPin className="h-3.5 w-3.5 text-zinc-400" />
         <input type="number" step="0.0001" value={lat} onChange={(e) => setLat(Number(e.target.value))} placeholder="lat" className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
         <input type="number" step="0.0001" value={lng} onChange={(e) => setLng(Number(e.target.value))} placeholder="lng" className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
         <button type="button" onClick={() => loadMutation.mutate()} disabled={loadMutation.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -120,7 +120,7 @@ export function WeatherPanel() {
               <div>
                 <div className="font-mono text-5xl font-bold text-white">{Math.round(forecast.current.temperature)}°</div>
                 <div className="mt-1 text-sm text-cyan-300">{WEATHER_CODE_LABEL[forecast.current.weatherCode] || 'condition'}</div>
-                <div className="mt-1 text-[11px] text-zinc-500">Feels {Math.round(forecast.current.feelsLike)}° · {lat.toFixed(2)}, {lng.toFixed(2)}</div>
+                <div className="mt-1 text-[11px] text-zinc-400">Feels {Math.round(forecast.current.feelsLike)}° · {lat.toFixed(2)}, {lng.toFixed(2)}</div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <Mini label="Humidity" value={`${forecast.current.humidity}%`} icon={Droplets} />
@@ -150,13 +150,13 @@ export function WeatherPanel() {
           )}
 
           <div>
-            <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">7-day forecast</div>
+            <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">7-day forecast</div>
             <div className="grid grid-cols-7 gap-1.5">
               {forecast.daily.map((d) => (
                 <div key={d.date} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-center text-[11px]">
-                  <div className="text-zinc-500">{new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                  <div className="text-zinc-400">{new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' })}</div>
                   <div className="mt-1 text-cyan-300">{Math.round(d.high)}°</div>
-                  <div className="text-zinc-500">{Math.round(d.low)}°</div>
+                  <div className="text-zinc-400">{Math.round(d.low)}°</div>
                   {d.uvIndex > 0 && <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[9px] text-amber-400"><Sun className="h-2 w-2" />{d.uvIndex.toFixed(0)}</div>}
                 </div>
               ))}
@@ -171,7 +171,7 @@ export function WeatherPanel() {
 function Mini({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Cloud }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-center">
-      <div className="flex items-center justify-center gap-0.5 text-[10px] text-zinc-500"><Icon className="h-2.5 w-2.5" />{label}</div>
+      <div className="flex items-center justify-center gap-0.5 text-[10px] text-zinc-400"><Icon className="h-2.5 w-2.5" />{label}</div>
       <div className="font-mono text-xs text-white">{value}</div>
     </div>
   );
@@ -180,9 +180,9 @@ function Mini({ label, value, icon: Icon }: { label: string; value: string; icon
 function Pol({ label, value, unit }: { label: string; value: number; unit: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-center">
-      <div className="text-zinc-500">{label}</div>
+      <div className="text-zinc-400">{label}</div>
       <div className="font-mono text-cyan-300">{value?.toFixed?.(1) ?? '—'}</div>
-      <div className="text-[9px] text-zinc-600">{unit}</div>
+      <div className="text-[9px] text-zinc-400">{unit}</div>
     </div>
   );
 }

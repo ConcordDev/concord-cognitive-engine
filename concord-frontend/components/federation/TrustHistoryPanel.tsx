@@ -75,7 +75,7 @@ export function TrustHistoryPanel() {
       <h2 className="text-emerald-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <TrendingUp className="w-4 h-4" /> Peer trust history
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Reputation timeline for a single peer. Record trust events as you
         observe peer behaviour.
       </p>
@@ -143,7 +143,7 @@ export function TrustHistoryPanel() {
               height={200}
             />
           ) : (
-            <p className="text-xs text-gray-500 italic">
+            <p className="text-xs text-gray-400 italic">
               No trust events recorded for {data.domain} yet.
             </p>
           )}

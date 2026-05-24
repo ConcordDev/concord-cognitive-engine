@@ -146,7 +146,7 @@ export function EnvAlerts() {
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Label</span>
+            <span className="text-[10px] text-gray-400 uppercase">Label</span>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -155,7 +155,7 @@ export function EnvAlerts() {
             />
           </label>
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Latitude</span>
+            <span className="text-[10px] text-gray-400 uppercase">Latitude</span>
             <input
               value={lat}
               onChange={(e) => setLat(e.target.value)}
@@ -164,7 +164,7 @@ export function EnvAlerts() {
             />
           </label>
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Longitude</span>
+            <span className="text-[10px] text-gray-400 uppercase">Longitude</span>
             <input
               value={lng}
               onChange={(e) => setLng(e.target.value)}
@@ -194,13 +194,13 @@ export function EnvAlerts() {
         {error && <div className="text-xs text-red-400">{error}</div>}
 
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 py-6 justify-center">
+          <div className="flex items-center gap-2 text-xs text-gray-400 py-6 justify-center">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading saved locations…
           </div>
         )}
 
         {!loading && locations.length === 0 && (
-          <p className="py-8 text-center text-xs text-gray-500">
+          <p className="py-8 text-center text-xs text-gray-400">
             No data yet. Save a location to get air-quality, pollen, and UV alerts for it.
           </p>
         )}
@@ -218,7 +218,7 @@ export function EnvAlerts() {
                     <MapPin className="w-4 h-4 text-green-400 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm text-white truncate">{loc.label}</div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-gray-400">
                         {loc.lat.toFixed(3)}, {loc.lng.toFixed(3)}
                       </div>
                     </div>
@@ -237,7 +237,7 @@ export function EnvAlerts() {
                     <button
                       onClick={() => remove(loc.id)}
                       disabled={busy === loc.id}
-                      className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400 disabled:opacity-50"
+                      className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-50"
                       aria-label="Delete location"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -249,19 +249,19 @@ export function EnvAlerts() {
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="p-1.5 bg-white/[0.03] rounded">
                           <p className="text-sm font-bold text-cyan-400">{res.readings.aqi}</p>
-                          <p className="text-[9px] text-gray-500">US AQI</p>
+                          <p className="text-[9px] text-gray-400">US AQI</p>
                         </div>
                         <div className="p-1.5 bg-white/[0.03] rounded">
                           <p className="text-sm font-bold text-amber-400">
                             {res.readings.uvIndexMax}
                           </p>
-                          <p className="text-[9px] text-gray-500">UV index max</p>
+                          <p className="text-[9px] text-gray-400">UV index max</p>
                         </div>
                         <div className="p-1.5 bg-white/[0.03] rounded">
                           <p className="text-sm font-bold text-green-400">
                             {res.readings.peakPollen}
                           </p>
-                          <p className="text-[9px] text-gray-500">
+                          <p className="text-[9px] text-gray-400">
                             peak pollen{res.readings.peakPollenType ? ` (${res.readings.peakPollenType})` : ''}
                           </p>
                         </div>
@@ -294,7 +294,7 @@ export function EnvAlerts() {
                           ))}
                         </div>
                       )}
-                      <p className="text-[10px] text-gray-600">
+                      <p className="text-[10px] text-gray-400">
                         Source: {res.source} · checked {new Date(res.checkedAt).toLocaleTimeString()}
                       </p>
                     </div>

@@ -66,7 +66,7 @@ export function BranchForkButton({
         'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] transition',
         state === 'done'
           ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
-          : 'border border-white/10 text-gray-500 hover:border-cyan-500/30 hover:text-cyan-300 hover:bg-cyan-500/5',
+          : 'border border-white/10 text-gray-400 hover:border-cyan-500/30 hover:text-cyan-300 hover:bg-cyan-500/5',
         className,
       )}
     >

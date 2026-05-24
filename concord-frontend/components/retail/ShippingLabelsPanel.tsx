@@ -84,12 +84,12 @@ export function ShippingLabelsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Truck className="w-4 h-4 text-blue-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shipping labels & tracking</span>
-        <span className="ml-auto text-[10px] text-gray-500">{labels.length} labels</span>
+        <span className="ml-auto text-[10px] text-gray-400">{labels.length} labels</span>
       </header>
 
       {/* Buy label */}
       <div className="p-3 border-b border-white/10 space-y-2">
-        <p className="text-[10px] uppercase text-gray-500">Buy a carrier label</p>
+        <p className="text-[10px] uppercase text-gray-400">Buy a carrier label</p>
         <div className="grid grid-cols-3 gap-2">
           <select value={buyForm.orderId} onChange={e => setBuyForm({ ...buyForm, orderId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">Select order…</option>
@@ -118,7 +118,7 @@ export function ShippingLabelsPanel() {
 
       {/* Track */}
       <div className="p-3 border-b border-white/10 space-y-2">
-        <p className="text-[10px] uppercase text-gray-500">Track a shipment</p>
+        <p className="text-[10px] uppercase text-gray-400">Track a shipment</p>
         <div className="grid grid-cols-4 gap-2">
           <input value={trackForm.trackingNumber} onChange={e => setTrackForm({ ...trackForm, trackingNumber: e.target.value })} placeholder="Tracking number" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <select value={trackForm.carrier} onChange={e => setTrackForm({ ...trackForm, carrier: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
@@ -133,7 +133,7 @@ export function ShippingLabelsPanel() {
             {trackResult.events.length > 0 && (
               <ul className="mt-1 space-y-0.5">
                 {trackResult.events.slice(0, 6).map((ev, i) => (
-                  <li key={i} className="flex items-center gap-1"><MapPin className="w-2.5 h-2.5 text-gray-500" />{ev.status || ev.description} {ev.location && `· ${ev.location}`}</li>
+                  <li key={i} className="flex items-center gap-1"><MapPin className="w-2.5 h-2.5 text-gray-400" />{ev.status || ev.description} {ev.location && `· ${ev.location}`}</li>
                 ))}
               </ul>
             )}
@@ -146,16 +146,16 @@ export function ShippingLabelsPanel() {
       {/* Labels list */}
       <div className="max-h-56 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : labels.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No labels purchased yet.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No labels purchased yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {labels.map(l => (
               <li key={l.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-white font-mono">{l.orderNumber} · {l.carrier.toUpperCase()} {l.service}</p>
-                  <p className="text-[10px] text-gray-500">{l.trackingNumber} · ${(l.costCents / 100).toFixed(2)}</p>
+                  <p className="text-[10px] text-gray-400">{l.trackingNumber} · ${(l.costCents / 100).toFixed(2)}</p>
                 </div>
                 <span className={cn('px-2 py-0.5 text-[10px] rounded font-mono', l.trackingStatus === 'delivered' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-blue-500/15 text-blue-300')}>{l.trackingStatus}</span>
                 {l.labelUrl && <a href={l.labelUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyan-300 hover:underline">PDF</a>}

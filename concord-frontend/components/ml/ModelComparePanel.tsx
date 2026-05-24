@@ -72,7 +72,7 @@ export function ModelComparePanel() {
           <Plus className="w-3 h-3 mr-1 inline" /> Candidate
         </button>
       </div>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Enter metrics for 2+ models, or leave blank to compare your completed experiments.
       </p>
 
@@ -110,14 +110,14 @@ export function ModelComparePanel() {
               <Trophy className="w-4 h-4 text-yellow-400" /> Leaderboard
             </h4>
             {usedExperiments && (
-              <span className="text-xs text-gray-500 flex items-center gap-1">
+              <span className="text-xs text-gray-400 flex items-center gap-1">
                 <Beaker className="w-3 h-3" /> from experiments
               </span>
             )}
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-lattice-border">
+              <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-lattice-border">
                 <th className="text-left py-1.5">Rank</th>
                 <th className="text-left">Model</th>
                 {usedExperiments ? (

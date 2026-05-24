@@ -105,7 +105,7 @@ export function PhotoMode() {
             {FILTER_LABEL[f]}
           </button>
         ))}
-        <span className="mx-2 text-[10px] text-zinc-500">Esc to exit</span>
+        <span className="mx-2 text-[10px] text-zinc-400">Esc to exit</span>
       </div>
     </div>
   );

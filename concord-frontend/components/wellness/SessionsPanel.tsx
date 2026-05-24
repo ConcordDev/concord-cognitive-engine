@@ -146,9 +146,9 @@ export function SessionsPanel() {
       <header className="flex items-center gap-2 border-b border-sky-500/10 pb-2">
         <Wind className="h-4 w-4 text-sky-400" />
         <h3 className="text-sm font-semibold text-white">Meditation &amp; breathing</h3>
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />}
+        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         {history && (
-          <span className="ml-auto text-[10px] text-zinc-500 inline-flex items-center gap-1">
+          <span className="ml-auto text-[10px] text-zinc-400 inline-flex items-center gap-1">
             <Flame className="w-3 h-3 text-amber-400" />{history.streak}d streak · {history.totalMin}m
           </span>
         )}
@@ -158,7 +158,7 @@ export function SessionsPanel() {
         <div className="rounded border border-sky-500/30 bg-black/40 p-4 space-y-3">
           <div className="text-center">
             <div className="text-sm font-semibold text-white">{active.title}</div>
-            <div className="text-[10px] text-zinc-500">
+            <div className="text-[10px] text-zinc-400">
               {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} / {active.durationMin}:00
             </div>
           </div>
@@ -193,7 +193,7 @@ export function SessionsPanel() {
             </button>
           ) : (
             <div className="space-y-2">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">How do you feel now?</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">How do you feel now?</div>
               <div className="flex gap-1.5">
                 {MOODS.map((m, i) => (
                   <button key={i} type="button" onClick={() => setMoodAfter(i)}
@@ -214,7 +214,7 @@ export function SessionsPanel() {
       ) : (
         <>
           <div className="rounded border border-white/10 bg-black/30 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1.5">How are you feeling before you start?</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1.5">How are you feeling before you start?</div>
             <div className="flex gap-1.5">
               {MOODS.map((m, i) => (
                 <button key={i} type="button" onClick={() => setMoodBefore(i)}
@@ -236,9 +236,9 @@ export function SessionsPanel() {
                       {p.kind}
                     </span>
                     <span className="text-sm text-white truncate">{p.title}</span>
-                    <span className="text-[10px] text-zinc-500 font-mono">{p.durationMin}m</span>
+                    <span className="text-[10px] text-zinc-400 font-mono">{p.durationMin}m</span>
                   </div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5">{p.desc}</div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">{p.desc}</div>
                 </div>
                 <button type="button" onClick={() => begin(p)}
                   className="p-2 rounded-full bg-sky-600 hover:bg-sky-500 text-white flex-shrink-0">
@@ -250,7 +250,7 @@ export function SessionsPanel() {
 
           {history && history.sessions.length > 0 && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                 Recent sessions
                 {history.avgMoodShift !== null && ` · avg mood shift ${history.avgMoodShift > 0 ? '+' : ''}${history.avgMoodShift}`}
               </div>
@@ -258,7 +258,7 @@ export function SessionsPanel() {
                 {history.sessions.slice(0, 6).map(s => (
                   <li key={s.id} className="flex items-center gap-2 text-[11px]">
                     <span className="text-zinc-300 flex-1 truncate">{s.title}</span>
-                    <span className="text-[10px] text-zinc-500 font-mono">{s.durationMin}m · {s.date}</span>
+                    <span className="text-[10px] text-zinc-400 font-mono">{s.durationMin}m · {s.date}</span>
                     {s.moodShift !== null && (
                       <span className={cn('text-[10px] font-mono px-1 rounded',
                         s.moodShift > 0 ? 'bg-emerald-500/15 text-emerald-300'

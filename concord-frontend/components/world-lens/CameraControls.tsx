@@ -113,7 +113,7 @@ export default function CameraControls({
 
       {/* Mode selector */}
       <div className={`${panel} p-2`}>
-        <div className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Camera Mode</div>
+        <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">Camera Mode</div>
         <div className="flex gap-1">
           {cameraModes.map(({ mode, label, icon }) => (
             <button
@@ -122,7 +122,7 @@ export default function CameraControls({
               className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded text-[10px] transition-colors ${
                 cameraState.mode === mode
                   ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent'
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-white/5 border border-transparent'
               }`}
             >
               {icon}
@@ -135,7 +135,7 @@ export default function CameraControls({
       {/* Zoom slider */}
       <div className={`${panel} p-2`}>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] text-gray-500 uppercase tracking-wider">Zoom</span>
+          <span className="text-[10px] text-gray-400 uppercase tracking-wider">Zoom</span>
           <span className="text-[10px] text-cyan-400 capitalize">{currentZoomLevel}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -178,12 +178,12 @@ export default function CameraControls({
             <ZoomIn className="w-3.5 h-3.5 text-gray-400" />
           </button>
         </div>
-        <div className="text-center text-[9px] text-gray-600 mt-1">{cameraState.zoom}%</div>
+        <div className="text-center text-[9px] text-gray-400 mt-1">{cameraState.zoom}%</div>
       </div>
 
       {/* Rotation controls */}
       <div className={`${panel} p-2`}>
-        <div className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Rotation</div>
+        <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">Rotation</div>
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={rotateLeft}
@@ -199,7 +199,7 @@ export default function CameraControls({
                 className={`px-2 py-1 rounded text-[10px] transition-colors ${
                   cameraState.rotation === angle
                     ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                    : 'text-gray-500 hover:text-gray-300 bg-white/5 border border-transparent'
+                    : 'text-gray-400 hover:text-gray-300 bg-white/5 border border-transparent'
                 }`}
               >
                 {angle}
@@ -213,13 +213,13 @@ export default function CameraControls({
             <RotateCw className="w-4 h-4 text-gray-400" />
           </button>
         </div>
-        <div className="text-center text-[9px] text-gray-600 mt-1">90° per step</div>
+        <div className="text-center text-[9px] text-gray-400 mt-1">90° per step</div>
       </div>
 
       {/* Follow mode target */}
       {cameraState.mode === 'follow' && (
         <div className={`${panel} p-2`}>
-          <div className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">
+          <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
             Follow Target
           </div>
           <div className="flex gap-1">
@@ -230,7 +230,7 @@ export default function CameraControls({
                 className={`flex-1 px-2 py-1.5 rounded text-[10px] capitalize transition-colors ${
                   cameraState.followTarget === target
                     ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                    : 'text-gray-500 hover:text-gray-300 bg-white/5 border border-transparent'
+                    : 'text-gray-400 hover:text-gray-300 bg-white/5 border border-transparent'
                 }`}
               >
                 {target === 'avatar' ? 'Your Avatar' : target === 'npc' ? 'NPC' : 'Event'}
@@ -242,7 +242,7 @@ export default function CameraControls({
 
       {/* Free camera hint */}
       {cameraState.mode === 'free' && (
-        <div className={`${panel} p-2 text-[10px] text-gray-500`}>
+        <div className={`${panel} p-2 text-[10px] text-gray-400`}>
           <div className="flex items-center gap-2 mb-1">
             <Maximize2 className="w-3 h-3 text-gray-400" />
             <span className="text-gray-300">Free Camera Controls</span>
@@ -267,7 +267,7 @@ export default function CameraControls({
       {/* Cinematic timeline */}
       {cameraState.mode === 'cinematic' && (
         <div className={`${panel} p-2`}>
-          <div className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">
+          <div className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">
             Cinematic Timeline
           </div>
           <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export default function CameraControls({
               <SkipForward className="w-3.5 h-3.5 text-gray-400" />
             </button>
           </div>
-          <div className="flex justify-between text-[9px] text-gray-600 mt-1">
+          <div className="flex justify-between text-[9px] text-gray-400 mt-1">
             <span>{formatTime(cameraState.cinematicTime)}</span>
             <span>{formatTime(cameraState.cinematicDuration)}</span>
           </div>
@@ -328,7 +328,7 @@ export default function CameraControls({
           <Camera className="w-3.5 h-3.5 text-cyan-400" />
           <span className="text-gray-300">Presets</span>
           <ChevronDown
-            className={`w-3 h-3 text-gray-500 ml-auto transition-transform ${
+            className={`w-3 h-3 text-gray-400 ml-auto transition-transform ${
               showPresets ? 'rotate-180' : ''
             }`}
           />
@@ -342,7 +342,7 @@ export default function CameraControls({
                 className="w-full text-left px-2 py-1.5 rounded text-xs text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors flex items-center justify-between"
               >
                 <span>{preset.name}</span>
-                <span className="text-[9px] text-gray-600 capitalize">{preset.mode}</span>
+                <span className="text-[9px] text-gray-400 capitalize">{preset.mode}</span>
               </button>
             ))}
           </div>

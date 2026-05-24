@@ -45,7 +45,7 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Grid3x3 className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Scenes · clip launcher</span>
-        <span className="ml-auto text-[10px] text-gray-500">{scenes.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{scenes.length}</span>
       </header>
       {projectId && (
         <div className="p-3 border-b border-white/10 flex items-center gap-2">
@@ -55,9 +55,9 @@ export function ScenesLauncher({ projectId }: { projectId?: string }) {
       )}
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : scenes.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Grid3x3 className="w-6 h-6 mx-auto mb-2 opacity-30" />No scenes. Build live arrangements with clip launching.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Grid3x3 className="w-6 h-6 mx-auto mb-2 opacity-30" />No scenes. Build live arrangements with clip launching.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {scenes.map(sc => (

@@ -52,7 +52,7 @@ export function AccuracyTracker() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+      <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading accuracy tracking...
       </div>
     );
@@ -113,7 +113,7 @@ export function AccuracyTracker() {
               />
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-400 mt-2">
             {streak.totalDays} total reflection day{streak.totalDays !== 1 ? 's' : ''}
             {streak.reflectedToday
               ? ' · reflected today'
@@ -137,7 +137,7 @@ export function AccuracyTracker() {
           />
         </div>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           Resolve at least two decisions in the journal to see a rolling-accuracy trend.
         </div>
       )}
@@ -159,7 +159,7 @@ export function AccuracyTracker() {
             {acc?.domains.map((d) => (
               <div key={d.domain} className="flex items-center justify-between text-xs">
                 <span className="text-gray-300 capitalize">{d.domain}</span>
-                <span className="text-gray-500">
+                <span className="text-gray-400">
                   {d.n} resolved · {(d.accuracy * 100).toFixed(0)}% · Brier {d.brierScore.toFixed(3)}
                 </span>
               </div>

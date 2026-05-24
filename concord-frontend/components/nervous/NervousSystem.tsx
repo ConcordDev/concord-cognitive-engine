@@ -30,7 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
   healthy: 'text-green-400',
   degraded: 'text-yellow-400',
   critical: 'text-red-400',
-  dead: 'text-gray-500',
+  dead: 'text-gray-400',
   closed: 'text-green-400',
   open: 'text-red-400',
   'half-open': 'text-yellow-400',
@@ -125,7 +125,7 @@ function NervousSystem({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Nervous System</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               System {overallStatus} — score: {overallScore}/100
               {pulseData?.issues?.length > 0 && ` — ${pulseData.issues.length} issues`}
             </p>
@@ -180,7 +180,7 @@ function NervousSystem({ className }: { className?: string }) {
               <Icon
                 className={cn('w-4 h-4 mx-auto', STATUS_COLORS[comp.status] || 'text-gray-400')}
               />
-              <p className="text-[10px] text-gray-500 mt-0.5">{name.replace('brain.', '')}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{name.replace('brain.', '')}</p>
               <p className={cn('text-xs font-bold', STATUS_COLORS[comp.status])}>{comp.score}</p>
             </div>
           );
@@ -281,7 +281,7 @@ function NervousSystem({ className }: { className?: string }) {
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                         <span>Calls: {breaker.stats.totalCalls}</span>
                         <span>Fails: {breaker.stats.totalFailures}</span>
                         <span>Opens: {breaker.stats.opens}</span>
@@ -295,7 +295,7 @@ function NervousSystem({ className }: { className?: string }) {
               {activeTab === 'events' && (
                 <div className="space-y-1">
                   {busData?.stats && (
-                    <div className="flex gap-3 text-xs text-gray-500 mb-2">
+                    <div className="flex gap-3 text-xs text-gray-400 mb-2">
                       <span>Emitted: {busData.stats.emitted}</span>
                       <span>Delivered: {busData.stats.delivered}</span>
                       <span>Errors: {busData.stats.errors}</span>
@@ -308,7 +308,7 @@ function NervousSystem({ className }: { className?: string }) {
                         className="p-1.5 bg-lattice-deep rounded text-[10px] flex items-center gap-2"
                       >
                         <span className="text-neon-cyan">{evt.type}</span>
-                        <span className="text-gray-500 ml-auto">
+                        <span className="text-gray-400 ml-auto">
                           {new Date(evt.timestamp).toLocaleTimeString()}
                         </span>
                       </div>
@@ -332,7 +332,7 @@ function NervousSystem({ className }: { className?: string }) {
                           <span className="text-xs text-white">
                             {trace.trigger?.type || 'unknown'}
                           </span>
-                          <span className="text-[10px] text-gray-500">
+                          <span className="text-[10px] text-gray-400">
                             {trace.totalDuration ? `${trace.totalDuration}ms` : 'running'}
                           </span>
                         </div>
@@ -464,7 +464,7 @@ function NervousSystem({ className }: { className?: string }) {
                         ))}
                       </div>
                       {wisdomResult.validation && (
-                        <div className="mt-2 text-[10px] text-gray-500">
+                        <div className="mt-2 text-[10px] text-gray-400">
                           Red team: {wisdomResult.validation.severity} severity,{' '}
                           {wisdomResult.validation.vulnerabilities?.length || 0} issues found
                         </div>

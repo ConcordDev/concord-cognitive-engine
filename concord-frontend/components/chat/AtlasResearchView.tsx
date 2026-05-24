@@ -88,8 +88,8 @@ export default function AtlasResearchView({ data, loading }: AtlasResearchViewPr
     return (
       <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4">
         <div className="flex items-center gap-2">
-          <FlaskConical size={16} className="text-zinc-500" />
-          <span className="text-sm text-zinc-500">
+          <FlaskConical size={16} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">
             {data?.error || 'No research data available. Research tier access required.'}
           </span>
         </div>
@@ -120,7 +120,7 @@ function SubsurfaceView({ data }: { data: NonNullable<AtlasResearchData['subsurf
         </span>
       </div>
       {data.features.length === 0 ? (
-        <p className="text-xs text-zinc-500">No subsurface features detected in this area</p>
+        <p className="text-xs text-zinc-400">No subsurface features detected in this area</p>
       ) : (
         <div className="space-y-1.5">
           {data.features.slice(0, 8).map((feat, i) => (
@@ -130,7 +130,7 @@ function SubsurfaceView({ data }: { data: NonNullable<AtlasResearchData['subsurf
               <span className={`px-1.5 py-0.5 rounded ${materialColors[feat.material] || 'bg-zinc-800 text-zinc-400'}`}>
                 {feat.material}
               </span>
-              <span className="text-zinc-500">{feat.type}</span>
+              <span className="text-zinc-400">{feat.type}</span>
               <span className="ml-auto text-zinc-600">{Math.round(feat.confidence * 100)}%</span>
             </div>
           ))}
@@ -189,7 +189,7 @@ function VolumeView({ data }: { data: NonNullable<AtlasResearchData['volume']> }
           </span>
         ))}
       </div>
-      <div className="text-xs text-zinc-500">{data.tileCount} tiles in volume</div>
+      <div className="text-xs text-zinc-400">{data.tileCount} tiles in volume</div>
     </div>
   );
 }
@@ -204,15 +204,15 @@ function ChangesView({ data }: { data: NonNullable<AtlasResearchData['changes']>
           <Activity size={16} className="text-yellow-400" />
           <span className="text-sm font-medium text-zinc-200">Temporal Changes</span>
         </div>
-        <span className="text-xs text-zinc-500">{data.count} detected</span>
+        <span className="text-xs text-zinc-400">{data.count} detected</span>
       </div>
       {data.count === 0 ? (
-        <p className="text-xs text-zinc-500">No recent changes detected</p>
+        <p className="text-xs text-zinc-400">No recent changes detected</p>
       ) : (
         <div className="space-y-1">
           {data.changes.slice(0, 8).map((change, i) => (
             <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="text-zinc-500 font-mono">{change.tileKey.slice(0, 16)}</span>
+              <span className="text-zinc-400 font-mono">{change.tileKey.slice(0, 16)}</span>
               <span className="text-yellow-400">{change.changeType}</span>
               <span className="text-zinc-600">mag: {change.magnitude.toFixed(2)}</span>
               <span className="ml-auto text-zinc-600">{change.detected_at?.slice(0, 10)}</span>

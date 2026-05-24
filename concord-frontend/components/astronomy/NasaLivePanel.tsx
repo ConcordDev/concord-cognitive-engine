@@ -117,7 +117,7 @@ export function NasaLivePanel({ className }: { className?: string }) {
         <button
           type="button"
           onClick={() => void fetchTab(tab)}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
           disabled={loading}
         >
@@ -150,7 +150,7 @@ export function NasaLivePanel({ className }: { className?: string }) {
       <div className="p-3 min-h-[200px]">
         {loading && !updatedAt && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-5 h-5 animate-spin text-zinc-500" aria-hidden="true" />
+            <Loader2 className="w-5 h-5 animate-spin text-zinc-400" aria-hidden="true" />
           </div>
         )}
         {error && (
@@ -164,8 +164,8 @@ export function NasaLivePanel({ className }: { className?: string }) {
           <article className="space-y-2">
             <header className="flex items-baseline gap-2 flex-wrap">
               <h4 className="text-sm font-semibold text-zinc-100">{apod.title}</h4>
-              <span className="text-[10px] text-zinc-500 font-mono">{apod.date}</span>
-              {apod.copyright && <span className="text-[10px] text-zinc-500 italic ml-auto">© {apod.copyright.trim()}</span>}
+              <span className="text-[10px] text-zinc-400 font-mono">{apod.date}</span>
+              {apod.copyright && <span className="text-[10px] text-zinc-400 italic ml-auto">© {apod.copyright.trim()}</span>}
             </header>
             {apod.mediaType === 'image' && apod.url && (
               <a href={apod.hdurl || apod.url} target="_blank" rel="noopener noreferrer" className="block rounded overflow-hidden border border-zinc-800 group">
@@ -179,7 +179,7 @@ export function NasaLivePanel({ className }: { className?: string }) {
               </div>
             )}
             <p className="text-xs text-zinc-300 leading-relaxed">{apod.explanation}</p>
-            <footer className="text-[10px] text-zinc-500 pt-2">
+            <footer className="text-[10px] text-zinc-400 pt-2">
               Source: NASA Astronomy Picture of the Day · {updatedAt ? new Date(updatedAt * 1000).toLocaleTimeString() : ''}
             </footer>
           </article>
@@ -194,31 +194,31 @@ export function NasaLivePanel({ className }: { className?: string }) {
             </header>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
               <div>
-                <dt className="text-zinc-500">Latitude</dt>
+                <dt className="text-zinc-400">Latitude</dt>
                 <dd className="text-zinc-100 font-mono">{iss.latitude.toFixed(4)}°</dd>
               </div>
               <div>
-                <dt className="text-zinc-500">Longitude</dt>
+                <dt className="text-zinc-400">Longitude</dt>
                 <dd className="text-zinc-100 font-mono">{iss.longitude.toFixed(4)}°</dd>
               </div>
               <div>
-                <dt className="text-zinc-500">Altitude</dt>
+                <dt className="text-zinc-400">Altitude</dt>
                 <dd className="text-zinc-100 font-mono">{iss.altitudeKm.toFixed(1)} km</dd>
               </div>
               <div>
-                <dt className="text-zinc-500">Velocity</dt>
+                <dt className="text-zinc-400">Velocity</dt>
                 <dd className="text-zinc-100 font-mono">{Math.round(iss.velocityKmh).toLocaleString()} km/h</dd>
               </div>
               <div>
-                <dt className="text-zinc-500">Visibility</dt>
+                <dt className="text-zinc-400">Visibility</dt>
                 <dd className="text-zinc-100">{iss.visibility}</dd>
               </div>
               <div>
-                <dt className="text-zinc-500">Footprint</dt>
+                <dt className="text-zinc-400">Footprint</dt>
                 <dd className="text-zinc-100 font-mono">{Math.round(iss.footprintKm)} km</dd>
               </div>
             </dl>
-            <footer className="text-[10px] text-zinc-500 pt-1">Source: wheretheiss.at · auto-refresh 5s</footer>
+            <footer className="text-[10px] text-zinc-400 pt-1">Source: wheretheiss.at · auto-refresh 5s</footer>
           </article>
         )}
 
@@ -226,7 +226,7 @@ export function NasaLivePanel({ className }: { className?: string }) {
           <article className="space-y-2">
             <header className="flex items-baseline gap-2">
               <h4 className="text-sm font-semibold text-zinc-100">Today’s near-Earth objects</h4>
-              <span className="text-[10px] text-zinc-500 font-mono ml-auto">closest first · {neo.length} shown</span>
+              <span className="text-[10px] text-zinc-400 font-mono ml-auto">closest first · {neo.length} shown</span>
             </header>
             <ul className="divide-y divide-zinc-800/60 text-xs">
               {neo.map((o) => (
@@ -240,7 +240,7 @@ export function NasaLivePanel({ className }: { className?: string }) {
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
                       {o.diameterKmMin && o.diameterKmMax
                         ? `${o.diameterKmMin.toFixed(2)}–${o.diameterKmMax.toFixed(2)} km diameter`
                         : '— km'}
@@ -248,20 +248,20 @@ export function NasaLivePanel({ className }: { className?: string }) {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-[10px] text-zinc-500">miss distance</div>
+                    <div className="text-[10px] text-zinc-400">miss distance</div>
                     <div className="text-xs font-mono text-zinc-200">
                       {o.missDistanceKm ? `${Math.round(o.missDistanceKm).toLocaleString()} km` : '—'}
                     </div>
                   </div>
                   {o.jplUrl && (
-                    <a href={o.jplUrl} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-sky-400 shrink-0" aria-label="JPL orbit details">
+                    <a href={o.jplUrl} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-sky-400 shrink-0" aria-label="JPL orbit details">
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </li>
               ))}
             </ul>
-            <footer className="text-[10px] text-zinc-500 pt-1">Source: NASA NeoWs</footer>
+            <footer className="text-[10px] text-zinc-400 pt-1">Source: NASA NeoWs</footer>
           </article>
         )}
       </div>

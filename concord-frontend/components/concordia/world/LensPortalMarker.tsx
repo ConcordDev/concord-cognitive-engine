@@ -51,7 +51,7 @@ export function LensPortalMarker({ portal, isNearby, onEnter }: LensPortalMarker
             : 'bg-gray-800/60 border-gray-600/40 opacity-50'}
         `}
       >
-        {portal.accessible ? icon : <Lock className="w-4 h-4 text-gray-500" />}
+        {portal.accessible ? icon : <Lock className="w-4 h-4 text-gray-400" />}
       </div>
 
       {/* Label */}

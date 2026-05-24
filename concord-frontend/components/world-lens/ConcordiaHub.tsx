@@ -113,7 +113,7 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
           <Globe className="w-6 h-6 text-cyan-400" />
           <div>
             <h2 className="text-lg font-bold text-white">Concordia</h2>
-            <p className="text-xs text-gray-500">The shared central world — everything built by users, validated by physics</p>
+            <p className="text-xs text-gray-400">The shared central world — everything built by users, validated by physics</p>
           </div>
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-400">
@@ -143,8 +143,8 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
             >
               <span style={{ color: d.color }}><Icon className="w-5 h-5 mb-1" /></span>
               <p className="text-xs font-medium text-white">{d.name}</p>
-              <p className="text-[9px] text-gray-500 mt-0.5 line-clamp-2">{d.description}</p>
-              <div className="flex items-center justify-between mt-2 text-[9px] text-gray-600">
+              <p className="text-[9px] text-gray-400 mt-0.5 line-clamp-2">{d.description}</p>
+              <div className="flex items-center justify-between mt-2 text-[9px] text-gray-400">
                 <span>{d.buildingCount} bldgs</span>
                 <span className="text-green-500">{d.activeUsers} online</span>
               </div>
@@ -175,15 +175,15 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
             <p className="text-xs text-gray-400 mb-3">{d.description}</p>
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div className="p-2 rounded bg-white/5 text-center">
-                <p className="text-gray-500">Buildings</p>
+                <p className="text-gray-400">Buildings</p>
                 <p className="font-bold text-white">{d.buildingCount}</p>
               </div>
               <div className="p-2 rounded bg-white/5 text-center">
-                <p className="text-gray-500">Population</p>
+                <p className="text-gray-400">Population</p>
                 <p className="font-bold text-white">{d.population}</p>
               </div>
               <div className="p-2 rounded bg-white/5 text-center">
-                <p className="text-gray-500">Online</p>
+                <p className="text-gray-400">Online</p>
                 <p className="font-bold text-green-400">{d.activeUsers}</p>
               </div>
             </div>

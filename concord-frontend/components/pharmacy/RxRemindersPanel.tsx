@@ -123,7 +123,7 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -164,7 +164,7 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
           <Bell className="w-3.5 h-3.5 text-amber-400" /> Dose reminders
         </h3>
         {meds.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Add a medication first to set reminders.</p>
+          <p className="text-[11px] text-zinc-400 italic">Add a medication first to set reminders.</p>
         ) : (
           <div className="grid grid-cols-3 gap-2 mb-2">
             <select value={remForm.medId} onChange={(e) => setRemForm({ ...remForm, medId: e.target.value })}
@@ -183,14 +183,14 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
           </div>
         )}
         {reminders.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No reminders set.</p>
+          <p className="text-[11px] text-zinc-400 italic">No reminders set.</p>
         ) : (
           <ul className="space-y-1">
             {reminders.map((r) => (
               <li key={r.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{r.medName}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {r.times.join(', ')}{r.leadMinutes > 0 ? ` · ${r.leadMinutes} min early` : ''}
                   </p>
                 </div>
@@ -246,14 +246,14 @@ export function RxRemindersPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {caregivers.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No caregivers added.</p>
+          <p className="text-[11px] text-zinc-400 italic">No caregivers added.</p>
         ) : (
           <ul className="space-y-1">
             {caregivers.map((c) => (
               <li key={c.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{c.name}{c.relationship ? ` · ${c.relationship}` : ''}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {c.contact || 'No contact'} · alerts after {c.missedThreshold} missed
                   </p>
                 </div>

@@ -49,7 +49,7 @@ export function DailyInspiration() {
         </div>
       </header>
       {quote.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">zenquotes unreachable.</div>}
-      {quote.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling a fresh quote…</div>}
+      {quote.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling a fresh quote…</div>}
       {q && (
         <blockquote className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-6">
           <p className="font-serif text-lg leading-relaxed text-white">&ldquo;{q.q}&rdquo;</p>

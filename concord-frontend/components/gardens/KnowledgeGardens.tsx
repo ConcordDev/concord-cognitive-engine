@@ -83,7 +83,7 @@ function KnowledgeGardens({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Knowledge Gardens</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {gardens.length > 0 ? `${gardens.length} gardens growing` : 'Curated knowledge spaces'}
             </p>
           </div>
@@ -145,7 +145,7 @@ function KnowledgeGardens({ className }: { className?: string }) {
       {/* Garden list */}
       <div className="p-4 space-y-3">
         {gardens.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">No gardens yet. Plant one above.</p>
+          <p className="text-sm text-gray-400 text-center py-4">No gardens yet. Plant one above.</p>
         ) : (
           gardens.slice(0, expanded ? 20 : 4).map(garden => {
             const stageConf = STAGE_CONFIG[garden.stage] || STAGE_CONFIG.seedling;
@@ -157,7 +157,7 @@ function KnowledgeGardens({ className }: { className?: string }) {
                   <StageIcon className={cn('w-5 h-5', stageConf.color)} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{garden.name}</p>
-                    <p className="text-[10px] text-gray-500">
+                    <p className="text-[10px] text-gray-400">
                       {garden.dtus.length} DTUs · {stageConf.label} · {Math.round(garden.health * 100)}% health
                     </p>
                   </div>
@@ -176,7 +176,7 @@ function KnowledgeGardens({ className }: { className?: string }) {
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                     </button>
-                    <span className="flex items-center gap-0.5 text-[10px] text-gray-500" title="Views">
+                    <span className="flex items-center gap-0.5 text-[10px] text-gray-400" title="Views">
                       <Eye className="w-3 h-3" />
                       {garden.stats.views}
                     </span>

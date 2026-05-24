@@ -159,7 +159,7 @@ function ApodPanel({ date }: { date: string }) {
         <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
           <ImageIcon className="h-3.5 w-3.5 text-cyan-400" />
           NASA Picture of the Day
-          <span className="font-mono text-[10px] text-zinc-500">{date}</span>
+          <span className="font-mono text-[10px] text-zinc-400">{date}</span>
         </div>
         {apod && (
           <SaveAsDtuButton
@@ -182,7 +182,7 @@ function ApodPanel({ date }: { date: string }) {
         )}
       </div>
       {apodQuery.isPending && (
-        <div className="flex h-48 items-center justify-center text-xs text-zinc-500">
+        <div className="flex h-48 items-center justify-center text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading APOD…
         </div>
       )}
@@ -205,7 +205,7 @@ function ApodPanel({ date }: { date: string }) {
           )}
           <h3 className="text-base font-semibold text-white">{apod.title}</h3>
           <p className="text-xs leading-relaxed text-zinc-300">{apod.explanation}</p>
-          <div className="flex items-center justify-between text-[10px] text-zinc-500">
+          <div className="flex items-center justify-between text-[10px] text-zinc-400">
             <span>{apod.copyright ? `© ${apod.copyright}` : 'NASA · public domain'}</span>
             {apod.hdurl && (
               <a href={apod.hdurl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-cyan-400">
@@ -292,7 +292,7 @@ function IssPanel() {
               </motion.g>
             )}
           </svg>
-          <div className="mt-1 flex justify-between text-[10px] text-zinc-500">
+          <div className="mt-1 flex justify-between text-[10px] text-zinc-400">
             <span>−180°</span>
             <span>0°</span>
             <span>+180°</span>
@@ -307,12 +307,12 @@ function IssPanel() {
               <DataRow label="Velocity" value={`${Math.round(iss.velocityKmH)} km/h`} />
               {iss.footprintKm && <DataRow label="Footprint" value={`${Math.round(iss.footprintKm)} km`} />}
               <DataRow label="Visibility" value={iss.visibility} />
-              <p className="pt-1 text-[10px] text-zinc-500">
+              <p className="pt-1 text-[10px] text-zinc-400">
                 Source: wheretheiss.at · refreshing every 15s
               </p>
             </>
           ) : (
-            <div className="flex h-32 items-center justify-center text-xs text-zinc-500">
+            <div className="flex h-32 items-center justify-center text-xs text-zinc-400">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Locating ISS…
             </div>
           )}
@@ -325,7 +325,7 @@ function IssPanel() {
 function DataRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2.5 py-1 text-[11px]">
-      <span className="text-zinc-500">{label}</span>
+      <span className="text-zinc-400">{label}</span>
       <span className="font-mono text-cyan-300">{value}</span>
     </div>
   );
@@ -364,10 +364,10 @@ function NeoTable({ startDate }: { startDate: string }) {
           <Globe2 className="h-3.5 w-3.5 text-cyan-400" />
           Near-Earth Objects · {startDate} → {endDate}
         </div>
-        <span className="text-[10px] text-zinc-500">{neos.length} close approaches</span>
+        <span className="text-[10px] text-zinc-400">{neos.length} close approaches</span>
       </div>
       {neoQuery.isPending && (
-        <div className="flex h-20 items-center justify-center text-xs text-zinc-500">
+        <div className="flex h-20 items-center justify-center text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading NEO feed…
         </div>
       )}
@@ -375,7 +375,7 @@ function NeoTable({ startDate }: { startDate: string }) {
         <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>
       )}
       {!neoQuery.isPending && neos.length === 0 && !error && (
-        <p className="rounded border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-4 text-center text-xs text-zinc-500">
+        <p className="rounded border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-4 text-center text-xs text-zinc-400">
           No NEOs in this window.
         </p>
       )}
@@ -414,7 +414,7 @@ function NeoRow({ n }: { n: NeoObject }) {
             </span>
           )}
         </div>
-        <div className="flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
+        <div className="flex flex-wrap gap-x-2 text-[10px] text-zinc-400">
           {n.approach && <span>{n.approach.date}</span>}
           {n.estimatedDiameterMeters?.max != null && (
             <span>{Math.round(n.estimatedDiameterMeters.min || 0)}–{Math.round(n.estimatedDiameterMeters.max)} m</span>
@@ -450,7 +450,7 @@ function NeoRow({ n }: { n: NeoObject }) {
           rawData={n}
         />
         {n.nasaJplUrl && (
-          <a href={n.nasaJplUrl} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200" aria-label="Open JPL page"><ExternalLink className="h-2.5 w-2.5" /></a>
+          <a href={n.nasaJplUrl} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200" aria-label="Open JPL page"><ExternalLink className="h-2.5 w-2.5" /></a>
         )}
       </div>
     </motion.div>

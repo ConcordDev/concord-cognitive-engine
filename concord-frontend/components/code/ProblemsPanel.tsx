@@ -46,21 +46,21 @@ export function ProblemsPanel({
       <div className="flex items-center border-b border-white/10 bg-[#0a0c10]">
         <button type="button" onClick={() => setTab('problems')}
           className={cn('px-3 py-1.5 text-[11px] font-semibold border-b-2',
-            tab === 'problems' ? 'text-white border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300')}>
+            tab === 'problems' ? 'text-white border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-300')}>
           Problems {problems.length > 0 && <span className="ml-1 px-1 rounded bg-white/10">{problems.length}</span>}
         </button>
         <button type="button" onClick={() => setTab('todos')}
           className={cn('px-3 py-1.5 text-[11px] font-semibold border-b-2 inline-flex items-center gap-1',
-            tab === 'todos' ? 'text-white border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300')}>
+            tab === 'todos' ? 'text-white border-blue-400' : 'text-gray-400 border-transparent hover:text-gray-300')}>
           <ListTodo className="w-3 h-3" /> TODOs {todos.length > 0 && <span className="ml-0.5 px-1 rounded bg-white/10">{todos.length}</span>}
         </button>
-        <button type="button" onClick={refresh} title="Rescan" className="ml-auto px-2 text-gray-500 hover:text-white">
+        <button type="button" onClick={refresh} title="Rescan" className="ml-auto px-2 text-gray-400 hover:text-white">
           <RefreshCw className="w-3 h-3" />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-3 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Scanning…</div>
+          <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Scanning…</div>
         ) : tab === 'problems' ? (
           problems.length === 0 ? (
             <div className="p-3 text-xs text-emerald-300">No problems detected in the workspace.</div>
@@ -73,7 +73,7 @@ export function ProblemsPanel({
                     className="px-3 py-1.5 flex items-center gap-2 cursor-pointer hover:bg-white/[0.04]">
                     <Icon className={cn('w-3.5 h-3.5 shrink-0', SEV_COLOR[p.severity])} />
                     <span className="text-[11px] text-white flex-1 truncate">{p.message}</span>
-                    <span className="text-[10px] text-gray-500 font-mono">{p.rule}</span>
+                    <span className="text-[10px] text-gray-400 font-mono">{p.rule}</span>
                     <span className="text-[10px] text-blue-300 font-mono shrink-0">{p.path}:{p.line}</span>
                   </li>
                 );
@@ -82,7 +82,7 @@ export function ProblemsPanel({
           )
         ) : (
           todos.length === 0 ? (
-            <div className="p-3 text-xs text-gray-500 italic">No TODO / FIXME comments found.</div>
+            <div className="p-3 text-xs text-gray-400 italic">No TODO / FIXME comments found.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {todos.map((t, i) => (

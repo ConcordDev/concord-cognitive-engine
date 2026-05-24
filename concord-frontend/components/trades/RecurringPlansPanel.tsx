@@ -60,7 +60,7 @@ export function RecurringPlansPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Repeat className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Recurring service plans</span>
-        <span className="ml-auto text-[10px] text-gray-500">{active.length} active · ~${monthlyRecurring.toFixed(0)}/mo MRR</span>
+        <span className="ml-auto text-[10px] text-gray-400">{active.length} active · ~${monthlyRecurring.toFixed(0)}/mo MRR</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
         <input value={form.customerId} onChange={e => setForm({ ...form, customerId: e.target.value })} placeholder="Customer ID" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -73,9 +73,9 @@ export function RecurringPlansPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : plans.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Repeat className="w-6 h-6 mx-auto mb-2 opacity-30" />No recurring plans.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Repeat className="w-6 h-6 mx-auto mb-2 opacity-30" />No recurring plans.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {plans.map(p => (
@@ -83,7 +83,7 @@ export function RecurringPlansPanel() {
                 <Repeat className="w-3.5 h-3.5 text-violet-400" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{p.serviceType}</div>
-                  <div className="text-[10px] text-gray-500">{p.customerId.slice(0, 12)} · {p.cadence} · {p.jobsCompleted} jobs done{p.nextServiceDate ? ` · next ${p.nextServiceDate}` : ''}</div>
+                  <div className="text-[10px] text-gray-400">{p.customerId.slice(0, 12)} · {p.cadence} · {p.jobsCompleted} jobs done{p.nextServiceDate ? ` · next ${p.nextServiceDate}` : ''}</div>
                 </div>
                 <span className="font-mono text-sm tabular-nums text-violet-300">${p.priceEach.toFixed(0)}</span>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', p.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{p.status}</span>

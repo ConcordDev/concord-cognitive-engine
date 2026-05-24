@@ -135,7 +135,7 @@ export function PactWriter({ onWritten }: PactWriterProps) {
               className="w-20 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-100"
               aria-label={`Beneficiary ${i + 1} share percent`}
             />
-            <span className="text-xs text-zinc-500">%</span>
+            <span className="text-xs text-zinc-400">%</span>
             <button
               type="button"
               onClick={() => removeBene(i)}

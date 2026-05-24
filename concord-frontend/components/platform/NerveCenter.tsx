@@ -72,7 +72,7 @@ function StrategyCard({
 }) {
   if (!strategy) {
     return (
-      <div className="text-xs text-gray-500 italic">
+      <div className="text-xs text-gray-400 italic">
         No strategy data yet. Pipeline needs more runs.
       </div>
     );
@@ -203,7 +203,7 @@ function NerveCenter() {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-gray-500">Beacon not available</p>
+          <p className="text-xs text-gray-400">Beacon not available</p>
         )}
       </div>
 
@@ -240,11 +240,11 @@ function NerveCenter() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Inconclusive</span>
-                <span className="text-gray-500">{hypothesisData.stats?.inconclusive ?? 0}</span>
+                <span className="text-gray-400">{hypothesisData.stats?.inconclusive ?? 0}</span>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-500 italic">Not yet initialized</p>
+            <p className="text-xs text-gray-400 italic">Not yet initialized</p>
           )}
         </div>
 
@@ -280,7 +280,7 @@ function NerveCenter() {
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-500 italic">Not yet initialized</p>
+            <p className="text-xs text-gray-400 italic">Not yet initialized</p>
           )}
         </div>
       </div>

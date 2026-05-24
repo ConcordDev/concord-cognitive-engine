@@ -61,7 +61,7 @@ export function HrPayrollPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (openRun) {
@@ -73,7 +73,7 @@ export function HrPayrollPanel() {
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h3 className="text-sm font-bold text-zinc-100">{openRun.periodLabel}</h3>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             {openRun.frequency} · pay date {openRun.payDate} · {openRun.headcount} stub(s)
           </p>
           <div className="grid grid-cols-3 gap-2 mt-2">
@@ -85,7 +85,7 @@ export function HrPayrollPanel() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="text-zinc-500 text-left border-b border-zinc-800">
+              <tr className="text-zinc-400 text-left border-b border-zinc-800">
                 <th className="py-1.5 pr-2">Employee</th>
                 <th className="py-1.5 px-2 text-right">Gross</th>
                 <th className="py-1.5 px-2 text-right">Fed</th>
@@ -134,13 +134,13 @@ export function HrPayrollPanel() {
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Run payroll
         </button>
-        <span className="text-[11px] text-zinc-500">YTD net paid: <span className="text-emerald-300 font-semibold">{usd(ytdPaid)}</span></span>
+        <span className="text-[11px] text-zinc-400">YTD net paid: <span className="text-emerald-300 font-semibold">{usd(ytdPaid)}</span></span>
       </div>
 
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Pay runs</h3>
         {runs.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No payroll runs yet. Add employees with salaries, then run payroll.</p>
+          <p className="text-[11px] text-zinc-400 italic">No payroll runs yet. Add employees with salaries, then run payroll.</p>
         ) : (
           <ul className="space-y-1">
             {runs.map((run) => (
@@ -151,7 +151,7 @@ export function HrPayrollPanel() {
                     <FileText className="w-3.5 h-3.5 text-emerald-400" />
                     <div>
                       <p className="text-xs text-zinc-100">{run.periodLabel}</p>
-                      <p className="text-[10px] text-zinc-500">{run.frequency} · {run.headcount} employee(s) · {run.payDate}</p>
+                      <p className="text-[10px] text-zinc-400">{run.frequency} · {run.headcount} employee(s) · {run.payDate}</p>
                     </div>
                   </div>
                   <span className="text-xs text-emerald-300 font-semibold">{usd(run.totalNet)}</span>
@@ -170,7 +170,7 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: '
     <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-center">
       <p className={cn('text-sm font-bold',
         tone === 'emerald' ? 'text-emerald-300' : tone === 'rose' ? 'text-rose-300' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

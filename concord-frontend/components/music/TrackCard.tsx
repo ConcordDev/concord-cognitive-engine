@@ -164,7 +164,7 @@ export function TrackCard({
           </p>
 
           <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-2 text-[10px] text-gray-500">
+            <div className="flex items-center gap-2 text-[10px] text-gray-400">
               <span className="flex items-center gap-0.5">
                 <Clock className="w-3 h-3" /> {formatTime(track.duration)}
               </span>
@@ -235,7 +235,7 @@ export function TrackCard({
         {/* Play button / track number */}
         <button
           onClick={handlePlay}
-          className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-gray-500 group-hover:text-white transition-colors relative"
+          className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-gray-400 group-hover:text-white transition-colors relative"
         >
           {isPlaying ? (
             <>
@@ -270,7 +270,7 @@ export function TrackCard({
             {track.artistName}
             {track.albumTitle && (
               <span
-                className="text-gray-500 cursor-pointer hover:text-gray-300"
+                className="text-gray-400 cursor-pointer hover:text-gray-300"
                 onClick={(e) => { e.stopPropagation(); onAlbumClick?.(track.albumId || ''); }}
               >
                 {' · '}{track.albumTitle}
@@ -290,12 +290,12 @@ export function TrackCard({
         )}
 
         {/* Play count */}
-        <span className="text-xs text-gray-500 w-16 text-right flex-shrink-0">
+        <span className="text-xs text-gray-400 w-16 text-right flex-shrink-0">
           {track.playCount.toLocaleString()} plays
         </span>
 
         {/* Duration */}
-        <span className="text-xs text-gray-500 w-10 text-right flex-shrink-0 font-mono">
+        <span className="text-xs text-gray-400 w-10 text-right flex-shrink-0 font-mono">
           {formatTime(track.duration)}
         </span>
 
@@ -311,18 +311,18 @@ export function TrackCard({
           <PullToSubstrate domain="music" artifactId={track.id} compact />
           <button
             onClick={() => setLiked(!liked)}
-            className={cn('p-1', liked ? 'text-neon-pink' : 'text-gray-500 hover:text-white')}
+            className={cn('p-1', liked ? 'text-neon-pink' : 'text-gray-400 hover:text-white')}
           aria-label="Like">
             <Heart className="w-3.5 h-3.5" fill={liked ? 'currentColor' : 'none'} />
           </button>
-          <button onClick={handleAddToQueue} className="p-1 text-gray-500 hover:text-white" aria-label="Add">
+          <button onClick={handleAddToQueue} className="p-1 text-gray-400 hover:text-white" aria-label="Add">
             <Plus className="w-3.5 h-3.5" />
           </button>
           {showTiers && (
             <div className="relative">
               <button
                 onClick={() => setShowTierMenu(!showTierMenu)}
-                className="p-1 text-gray-500 hover:text-white"
+                className="p-1 text-gray-400 hover:text-white"
               aria-label="Cart">
                 <ShoppingCart className="w-3.5 h-3.5" />
               </button>
@@ -347,7 +347,7 @@ export function TrackCard({
           <button
             onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('track:menu', { detail: { trackId: track.id } })); }}
             aria-label="Track menu"
-            className="p-1 text-gray-500 hover:text-white"
+            className="p-1 text-gray-400 hover:text-white"
           >
             <MoreHorizontal className="w-3.5 h-3.5" />
           </button>
@@ -369,13 +369,13 @@ export function TrackCard({
         {isPlaying ? (
           <Pause className="w-3 h-3 text-neon-cyan" />
         ) : (
-          <Play className="w-3 h-3 text-gray-500 group-hover:text-white" />
+          <Play className="w-3 h-3 text-gray-400 group-hover:text-white" />
         )}
       </div>
       <span className={cn('text-xs truncate flex-1', isCurrentTrack ? 'text-neon-cyan' : 'text-gray-300')}>
         {track.title}
       </span>
-      <span className="text-[10px] text-gray-500 font-mono">{formatTime(track.duration)}</span>
+      <span className="text-[10px] text-gray-400 font-mono">{formatTime(track.duration)}</span>
     </div>
   );
 }

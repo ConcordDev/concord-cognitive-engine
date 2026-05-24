@@ -190,7 +190,7 @@ export function GovernmentActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -200,20 +200,20 @@ export function GovernmentActionPanel() {
         {reps.length > 0 && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Representatives ({reps.length})</div>
-            {reps.slice(0, 6).map((r, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{r.name}</strong> <span className="text-zinc-500">{r.office} · {r.party}</span></div>)}
+            {reps.slice(0, 6).map((r, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{r.name}</strong> <span className="text-zinc-400">{r.office} · {r.party}</span></div>)}
           </div>
         )}
         {bills.length > 0 && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Bills ({bills.length})</div>
-            {bills.slice(0, 6).map((b, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200 font-mono">{b.id}</strong> {b.title.slice(0, 60)}{b.status && <span className="text-zinc-500 ml-1">({b.status})</span>}</div>)}
+            {bills.slice(0, 6).map((b, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200 font-mono">{b.id}</strong> {b.title.slice(0, 60)}{b.status && <span className="text-zinc-400 ml-1">({b.status})</span>}</div>)}
           </div>
         )}
         {permitResult && (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Permit timeline</div>
             <div className="text-2xl font-bold text-emerald-300">{permitResult.estimatedWeeks}w</div>
-            {permitResult.phases && <div className="text-[10px] text-zinc-500">{permitResult.phases.map(p => `${p.name}(${p.weeks}w)`).join(' → ')}</div>}
+            {permitResult.phases && <div className="text-[10px] text-zinc-400">{permitResult.phases.map(p => `${p.name}(${p.weeks}w)`).join(' → ')}</div>}
           </div>
         )}
         {violationResult && (

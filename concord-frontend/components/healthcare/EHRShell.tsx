@@ -103,7 +103,7 @@ export function EHRShell({
           <VitalChip icon={Wind}        label="Resp" value={vitals.resp != null ? String(vitals.resp) : '—'} unit="rpm" />
           <VitalChip icon={Droplet}     label="SpO2" value={vitals.spo2 != null ? String(vitals.spo2) : '—'} unit="%" />
           {vitals.takenAt && (
-            <span className="ml-auto text-[10px] text-gray-500 font-mono">
+            <span className="ml-auto text-[10px] text-gray-400 font-mono">
               taken {new Date(vitals.takenAt).toLocaleString()}
             </span>
           )}
@@ -113,7 +113,7 @@ export function EHRShell({
       <div className="flex flex-1 overflow-hidden">
         {/* Left rail — encounter timeline */}
         <aside className="w-56 shrink-0 border-r border-black/10 dark:border-white/10 overflow-y-auto bg-gray-50 dark:bg-[#202327]">
-          <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-gray-500 border-b border-black/5 dark:border-white/5">
+          <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-gray-400 border-b border-black/5 dark:border-white/5">
             Recent encounters
           </div>
           <ul>
@@ -130,7 +130,7 @@ export function EHRShell({
                     )}
                   >
                     <div className="font-medium text-gray-900 dark:text-white">{e.reason}</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5 inline-flex items-center gap-1">
+                    <div className="text-[10px] text-gray-400 mt-0.5 inline-flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {new Date(e.date).toLocaleDateString()}
                       {e.provider && <> · {e.provider}</>}
@@ -159,7 +159,7 @@ export function EHRShell({
               key={label}
               type="button"
               title={label}
-              className="w-9 h-9 inline-flex items-center justify-center rounded text-gray-500 hover:bg-black/5 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white"
+              className="w-9 h-9 inline-flex items-center justify-center rounded text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white"
             >
               <Icon className="w-4 h-4" />
             </button>
@@ -181,11 +181,11 @@ function VitalChip({ icon: Icon, label, value, unit }: VitalChipProps) {
   return (
     <div className="flex items-center gap-1.5">
       <Icon className="w-3.5 h-3.5 text-blue-500" aria-hidden="true" />
-      <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
         {value}
       </span>
-      <span className="text-[10px] text-gray-500">{unit}</span>
+      <span className="text-[10px] text-gray-400">{unit}</span>
     </div>
   );
 }

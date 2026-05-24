@@ -24,7 +24,7 @@ interface RefNote { id: string; title: string; kind: string; body: string }
 
 const STATUS = ['outline', 'draft', 'revised', 'final'];
 const STATUS_COLOR: Record<string, string> = {
-  outline: 'text-zinc-500', draft: 'text-amber-400', revised: 'text-sky-400', final: 'text-emerald-400',
+  outline: 'text-zinc-400', draft: 'text-amber-400', revised: 'text-sky-400', final: 'text-emerald-400',
 };
 
 export function CwBinderPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
@@ -144,7 +144,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
     () => (draft ? draft.content.split(/\s+/).filter(Boolean).length : 0), [draft]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const renderSceneRow = (sc: Scene) => (
@@ -154,7 +154,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           selected === sc.id ? 'bg-amber-600/30 text-amber-200' : 'text-zinc-300 hover:bg-zinc-800')}>
         <FileText className="w-3 h-3 shrink-0" />
         <span className="truncate flex-1">{sc.title}</span>
-        <span className="text-[9px] text-zinc-500">{sc.wordCount}</span>
+        <span className="text-[9px] text-zinc-400">{sc.wordCount}</span>
         <span className={cn('w-1.5 h-1.5 rounded-full', STATUS_COLOR[sc.status].replace('text-', 'bg-'))} />
       </button>
       <div className="flex opacity-0 group-hover:opacity-100">
@@ -187,7 +187,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           </button>
         </div>
         {chapters.length === 0 && unfiled.length === 0 && (
-          <p className="text-[11px] text-zinc-500 italic">Add a chapter to start your binder.</p>
+          <p className="text-[11px] text-zinc-400 italic">Add a chapter to start your binder.</p>
         )}
         {chapters.map((ch) => (
           <div key={ch.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-1.5">
@@ -210,19 +210,19 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               {scenes.filter((sc) => sc.chapterId === ch.id).map(renderSceneRow)}
             </ul>
             <button type="button" onClick={() => addScene(ch.id)}
-              className="mt-1 flex items-center gap-1 text-[10px] text-zinc-500 hover:text-amber-300 px-1">
+              className="mt-1 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-amber-300 px-1">
               <Plus className="w-3 h-3" /> Scene
             </button>
           </div>
         ))}
         {unfiled.length > 0 && (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-1.5">
-            <span className="text-[10px] text-zinc-500 px-1 uppercase">Unfiled</span>
+            <span className="text-[10px] text-zinc-400 px-1 uppercase">Unfiled</span>
             <ul className="mt-1 space-y-0.5">{unfiled.map(renderSceneRow)}</ul>
           </div>
         )}
         <button type="button" onClick={() => addScene(null)}
-          className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-amber-300 px-1">
+          className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-amber-300 px-1">
           <Plus className="w-3 h-3" /> Unfiled scene
         </button>
       </div>
@@ -230,7 +230,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
       {/* Editor */}
       <div>
         {!draft ? (
-          <div className="flex items-center justify-center h-full min-h-[200px] text-[11px] text-zinc-500 italic border border-zinc-800 rounded-xl">
+          <div className="flex items-center justify-center h-full min-h-[200px] text-[11px] text-zinc-400 italic border border-zinc-800 rounded-xl">
             Select a scene to write, or add one from the binder.
           </div>
         ) : (
@@ -250,7 +250,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                 <option value="">POV: none</option>
                 {characters.map((c) => <option key={c.id} value={c.id}>POV: {c.name}</option>)}
               </select>
-              <span className="flex items-center justify-end text-[11px] text-zinc-500">{liveWords} words</span>
+              <span className="flex items-center justify-end text-[11px] text-zinc-400">{liveWords} words</span>
             </div>
             <input placeholder="Synopsis (one-line card)" value={draft.synopsis || ''}
               onChange={(e) => { setDraft({ ...draft, synopsis: e.target.value }); setDirty(true); }}
@@ -277,7 +277,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
             {/* Snapshots */}
             {snapshots.length > 0 && (
               <div className="border-t border-zinc-800 pt-2">
-                <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Snapshots</p>
+                <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1">Snapshots</p>
                 <ul className="space-y-0.5">
                   {snapshots.map((sn) => (
                     <li key={sn.id} className="flex items-center gap-2 text-[11px] text-zinc-400">
@@ -293,7 +293,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
 
             {/* Comments */}
             <div className="border-t border-zinc-800 pt-2">
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Comments</p>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1">Comments</p>
               <ul className="space-y-1 mb-1.5">
                 {comments.map((c) => (
                   <li key={c.id} className="flex items-start gap-2 text-[11px] bg-zinc-950/60 rounded px-2 py-1">
@@ -346,11 +346,11 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               </select>
               {refScene ? (
                 <article className="text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed font-serif">
-                  <p className="text-zinc-500 italic mb-1">{refScene.synopsis || 'No synopsis'}</p>
+                  <p className="text-zinc-400 italic mb-1">{refScene.synopsis || 'No synopsis'}</p>
                   {refScene.content || <span className="text-zinc-600 italic">Empty scene.</span>}
                 </article>
               ) : (
-                <p className="text-[10px] text-zinc-600 italic">Select a scene to read it side-by-side while you write.</p>
+                <p className="text-[10px] text-zinc-400 italic">Select a scene to read it side-by-side while you write.</p>
               )}
             </>
           ) : (
@@ -366,7 +366,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                   {refNote.body || <span className="text-zinc-600 italic">No content.</span>}
                 </article>
               ) : (
-                <p className="text-[10px] text-zinc-600 italic">
+                <p className="text-[10px] text-zinc-400 italic">
                   {refNotes.length ? 'Select a note to view it.' : 'No research notes yet — add them in the Research tab.'}
                 </p>
               )}

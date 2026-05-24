@@ -105,7 +105,7 @@ export function PoetryWorkshop() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6 text-zinc-500">
+      <div className="flex items-center justify-center py-6 text-zinc-400">
         <Loader2 className="w-4 h-4 animate-spin" />
       </div>
     );
@@ -128,7 +128,7 @@ export function PoetryWorkshop() {
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 space-y-2">
             <p className="text-xs font-semibold text-zinc-300">Share a poem for critique</p>
             {myPoems.length === 0 ? (
-              <p className="text-[11px] text-zinc-600 italic">
+              <p className="text-[11px] text-zinc-400 italic">
                 Write a poem in the workspace first, then share it here.
               </p>
             ) : (
@@ -153,7 +153,7 @@ export function PoetryWorkshop() {
           {/* Shared poems list */}
           <div className="space-y-1.5">
             {shares.length === 0 && (
-              <p className="text-xs text-zinc-600 italic">No poems in the workshop yet.</p>
+              <p className="text-xs text-zinc-400 italic">No poems in the workshop yet.</p>
             )}
             {shares.map(sh => (
               <button key={sh.id} onClick={() => openDetail(sh.id)}
@@ -164,7 +164,7 @@ export function PoetryWorkshop() {
                     {sh.critiqueCount} critique{sh.critiqueCount === 1 ? '' : 's'}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-zinc-400">
                   by {sh.ownerName} · {sh.form} · {sh.lineCount} lines
                 </p>
                 {sh.note && <p className="text-[11px] text-zinc-400 italic mt-1">&ldquo;{sh.note}&rdquo;</p>}
@@ -190,7 +190,7 @@ export function PoetryWorkshop() {
 
           <div>
             <p className="text-sm font-semibold text-zinc-100 italic">{detail.title}</p>
-            <p className="text-[11px] text-zinc-500">by {detail.ownerName} · {detail.form}</p>
+            <p className="text-[11px] text-zinc-400">by {detail.ownerName} · {detail.form}</p>
             {detail.note && <p className="text-[11px] text-zinc-400 italic mt-0.5">&ldquo;{detail.note}&rdquo;</p>}
           </div>
 
@@ -203,7 +203,7 @@ export function PoetryWorkshop() {
                   <button onClick={() => setCritLine(i)}
                     className={cn('w-full text-left px-3 py-1.5 flex items-center gap-2',
                       critLine === i ? 'bg-violet-600/15' : 'hover:bg-zinc-800/40')}>
-                    <span className="text-[10px] text-zinc-600 w-5 text-right font-mono">{i + 1}</span>
+                    <span className="text-[10px] text-zinc-400 w-5 text-right font-mono">{i + 1}</span>
                     <span className="text-xs text-zinc-300 font-serif flex-1">{line || ' '}</span>
                     {lineCrits.length > 0 && (
                       <span className="text-[10px] text-violet-300">{lineCrits.length}</span>

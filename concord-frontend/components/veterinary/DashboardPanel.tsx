@@ -60,7 +60,7 @@ export function DashboardPanel({ refreshKey }: { refreshKey: number }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard…
         </div>
       ) : data ? (
@@ -91,7 +91,7 @@ export function DashboardPanel({ refreshKey }: { refreshKey: number }) {
               Patients by species
             </p>
             {speciesChart.length === 0 ? (
-              <p className="py-6 text-center text-xs text-zinc-600">
+              <p className="py-6 text-center text-xs text-zinc-400">
                 Register patients to populate this chart.
               </p>
             ) : (

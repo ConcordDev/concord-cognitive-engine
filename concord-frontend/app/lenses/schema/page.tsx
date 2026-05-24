@@ -201,7 +201,7 @@ export default function SchemaLensPage() {
                 className="text-xs px-3 py-1.5 rounded-full bg-lattice-deep border border-white/10 flex items-center gap-2">
                 <FileCode className="w-3 h-3 text-neon-cyan" />
                 <span className="font-medium">{s.name as string}</span>
-                <span className="text-gray-500">v{(s.version as number) || 1}</span>
+                <span className="text-gray-400">v{(s.version as number) || 1}</span>
                 <span className={`w-2 h-2 rounded-full ${(s.version as number) >= 1 ? 'bg-green-400' : 'bg-amber-400'}`} />
               </span>
             ))}
@@ -218,9 +218,9 @@ export default function SchemaLensPage() {
             <h2 className="text-lg font-semibold">
               Available Schemas
               {search ? (
-                <span className="text-sm text-gray-500 font-normal ml-2">({visibleSchemas.length} of {schemas?.length || 0})</span>
+                <span className="text-sm text-gray-400 font-normal ml-2">({visibleSchemas.length} of {schemas?.length || 0})</span>
               ) : (
-                <span className="text-sm text-gray-500 font-normal ml-2">({schemas?.length || 0})</span>
+                <span className="text-sm text-gray-400 font-normal ml-2">({schemas?.length || 0})</span>
               )}
             </h2>
             <input
@@ -236,7 +236,7 @@ export default function SchemaLensPage() {
           {isLoading ? (
             <div className="text-gray-400">Loading...</div>
           ) : visibleSchemas.length === 0 && schemas.length > 0 ? (
-            <div className="text-sm text-gray-500 text-center py-4">No schemas match the search.</div>
+            <div className="text-sm text-gray-400 text-center py-4">No schemas match the search.</div>
           ) : (
             <div className="space-y-3">
               {visibleSchemas.map((schema: Record<string, unknown>) => (
@@ -410,7 +410,7 @@ function SchemaCard({ schema }: { schema: Record<string, unknown> }) {
             {(schema.fields as Record<string, unknown>[])?.map((field: Record<string, unknown>) => (
               <div key={field.name as string} className="text-sm flex items-center gap-2">
                 <span className="text-neon-cyan">{field.name as string}</span>
-                <span className="text-gray-500">: {field.type as string}</span>
+                <span className="text-gray-400">: {field.type as string}</span>
                 {(field.required as boolean) && <span className="text-xs text-red-400">*</span>}
               </div>
             ))}

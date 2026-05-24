@@ -56,7 +56,7 @@ export function FashionStyleQuizPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // Show saved profile + recommendations unless retaking.
@@ -80,13 +80,13 @@ export function FashionStyleQuizPanel() {
             ].map(([label, value]) => (
               <div key={label} className="text-center bg-zinc-950/60 rounded-lg py-2">
                 <p className="text-xs font-bold text-fuchsia-300 capitalize">{value}</p>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+                <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
               </div>
             ))}
           </div>
           {profile.colors.length > 0 && (
             <div className="mt-3">
-              <p className="flex items-center gap-1 text-[10px] text-zinc-500 uppercase mb-1.5">
+              <p className="flex items-center gap-1 text-[10px] text-zinc-400 uppercase mb-1.5">
                 <Palette className="w-3 h-3" /> Recommended palette
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -101,7 +101,7 @@ export function FashionStyleQuizPanel() {
         <section>
           <h3 className="text-xs font-semibold text-zinc-300 mb-2">Closet recommendations</h3>
           {recommendations.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">
+            <p className="text-[11px] text-zinc-400 italic">
               Retake the quiz to refresh recommendations against your current closet.
             </p>
           ) : (
@@ -128,7 +128,7 @@ export function FashionStyleQuizPanel() {
   return (
     <div className="space-y-3">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Answer {questions.length} quick questions to get a style profile and recommendations from your real closet gaps.
       </p>
       {questions.map((qn) => (

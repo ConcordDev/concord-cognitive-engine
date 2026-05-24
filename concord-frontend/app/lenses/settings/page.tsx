@@ -85,7 +85,7 @@ export default function SettingsPage() {
 
         {tab === 'preferences' && (
           <section aria-label="Preferences">
-            <p className="text-[11px] text-gray-500 mb-4">
+            <p className="text-[11px] text-gray-400 mb-4">
               Preferences are persisted on the server and sync across every device you sign in on.
             </p>
             <PreferencesPanel key={prefVersion} />
@@ -94,7 +94,7 @@ export default function SettingsPage() {
 
         {tab === 'keybindings' && (
           <section aria-label="Keybindings">
-            <p className="text-[11px] text-gray-500 mb-4">
+            <p className="text-[11px] text-gray-400 mb-4">
               Click a binding, then press the key chord you want. Press Escape to cancel.
             </p>
             <KeybindingPanel />
@@ -103,7 +103,7 @@ export default function SettingsPage() {
 
         {tab === 'snapshots' && (
           <section aria-label="Snapshots">
-            <p className="text-[11px] text-gray-500 mb-4">
+            <p className="text-[11px] text-gray-400 mb-4">
               Capture the current preference set so you can roll back to a known-good config.
             </p>
             <SnapshotManager onApplied={onSnapshotApplied} />

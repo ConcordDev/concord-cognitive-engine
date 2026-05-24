@@ -215,7 +215,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
         <span className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold flex items-center gap-1.5">
           <Wand2 className="h-3 w-3" /> Article actions
         </span>
-        <button onClick={() => setOpen(false)} className="text-zinc-500 hover:text-zinc-200" aria-label="Close actions">
+        <button onClick={() => setOpen(false)} className="text-zinc-400 hover:text-zinc-200" aria-label="Close actions">
           <X className="h-3 w-3" />
         </button>
       </div>
@@ -231,7 +231,7 @@ export function HistoryArticleActions({ article }: { article: ArticleSummaryLike
               onClick={() => { setPane(p.id); setFeedback(null); }}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium border-b-2 transition-colors whitespace-nowrap',
-                active ? '' : 'border-transparent text-zinc-500 hover:text-zinc-200',
+                active ? '' : 'border-transparent text-zinc-400 hover:text-zinc-200',
               )}
               style={active ? { borderBottomColor: p.accent, color: p.accent } : {}}
             >

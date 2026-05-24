@@ -1,0 +1,143 @@
+# Production audit gate. Every PR runs the full static-audit suite + the
+# server test suite. The job fails if any of the audit scores regress
+# below their established floors:
+#   - macro-depth weighted score:    must be 1.000
+#   - UX polish weighted score:      must be ≥ 0.995
+#   - verifier WIRED count:          must be ≥ 234 of 235
+#   - test suite:                    must be 0 failures
+#
+# The browser-driven audit (a11y + console errors via Playwright) runs
+# on a separate matrix entry against a built frontend + booted backend.
+# A11y violations gate the PR; console errors (mostly auth-flow noise)
+# are reported but don't gate. Both budgets are tunable above this
+# block — adjust deliberately, never silently.
+
+name: audits
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Weekly drift detection: re-run on Sunday 04:00 UTC so a quiet
+    # main branch still surfaces breakage when external deps update.
+    - cron: '0 4 * * 0'
+
+jobs:
+  structural-audits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci --no-audit --no-fund
+
+      - name: Install repo deps (audit scripts)
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Lens wiring verifier
+        run: |
+          node scripts/verify-lens-backends.mjs > /tmp/verify.log
+          tail /tmp/verify.log
+          # Must be ≥234 WIRED, only 1 NO-BACKEND-CALL allowed
+          jq -e '.verdicts.WIRED >= 234' /tmp/verify.log >/dev/null || (
+            echo "::error::Lens wiring regressed below 234 WIRED."; exit 1
+          )
+
+      - name: Macro depth grader
+        run: |
+          node scripts/grade-macro-depth.mjs
+          score=$(jq -r .weightedScore audit/macro-depth.json)
+          echo "Macro depth: $score"
+          awk -v s="$score" 'BEGIN { if (s+0 < 1.0) { print "::error::Macro depth regressed below 1.000"; exit 1 } }'
+
+      - name: UX polish grader
+        run: |
+          node scripts/grade-ux-polish.mjs
+          score=$(jq -r .weightedScore audit/ux-polish.json)
+          echo "UX polish: $score"
+          awk -v s="$score" 'BEGIN { if (s+0 < 0.995) { print "::error::UX polish regressed below 0.995"; exit 1 } }'
+
+      - name: Spec-vs-implementation audit
+        run: node scripts/audit-spec-vs-impl.mjs
+
+      - name: Server test suite
+        working-directory: server
+        run: CONCORD_NO_LISTEN=true NODE_ENV=test npm test
+
+      - name: Upload audit outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-${{ github.run_id }}
+          path: |
+            audit/macro-depth.json
+            audit/ux-polish.json
+            audit/spec-vs-impl.json
+
+  browser-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: structural-audits
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install
+        run: |
+          (cd server && npm ci --no-audit --no-fund)
+          (cd concord-frontend && npm ci --no-audit --no-fund)
+          npm install --no-audit --no-fund
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Boot backend
+        run: |
+          cd server
+          CONCORD_FORCE_LISTEN=true PORT=5050 NODE_ENV=test \
+            JWT_SECRET=ci-secret-must-be-at-least-32-characters \
+            node server.js > /tmp/server.log 2>&1 &
+          for i in {1..60}; do
+            curl -sf http://127.0.0.1:5050/api/status >/dev/null && break
+            sleep 5
+          done
+
+      - name: Boot frontend
+        working-directory: concord-frontend
+        run: |
+          NEXT_TELEMETRY_DISABLED=1 npm run dev > /tmp/frontend.log 2>&1 &
+          for i in {1..60}; do
+            curl -sf http://127.0.0.1:3000/ >/dev/null && break
+            sleep 5
+          done
+
+      - name: Browser audit (axe-core + console + responsive)
+        run: node scripts/audit-browser.mjs
+
+      - name: Gate on a11y violations
+        run: |
+          violations=$(jq -r '.totalA11yNodes' audit/browser-audit.json)
+          echo "Total a11y violation nodes: $violations"
+          if [ "$violations" -gt 0 ]; then
+            echo "::error::A11y violations detected. See audit/browser-audit.md"
+            jq -r '.topViolationIds | to_entries | sort_by(-.value.lensCount) | .[0:5][]' audit/browser-audit.json
+            exit 1
+          fi
+
+      - name: Upload browser-audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-audit-${{ github.run_id }}
+          path: audit/browser-audit.*

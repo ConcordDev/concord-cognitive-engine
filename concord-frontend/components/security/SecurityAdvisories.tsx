@@ -50,7 +50,7 @@ export function SecurityAdvisories() {
       {advs.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub unreachable.</div>}
       <div className="grid grid-cols-4 gap-2">
         {(['critical', 'high', 'medium', 'low'] as const).map((s) => (
-          <div key={s} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">{s}</div><div className={`mt-0.5 font-mono text-lg ${s === 'critical' ? 'text-rose-300' : s === 'high' ? 'text-orange-300' : s === 'medium' ? 'text-amber-300' : 'text-zinc-300'}`}>{sevCounts[s] || 0}</div></div>
+          <div key={s} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">{s}</div><div className={`mt-0.5 font-mono text-lg ${s === 'critical' ? 'text-rose-300' : s === 'high' ? 'text-orange-300' : s === 'medium' ? 'text-amber-300' : 'text-zinc-300'}`}>{sevCounts[s] || 0}</div></div>
         ))}
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
@@ -64,7 +64,7 @@ export function SecurityAdvisories() {
                   <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${COLOR[a.severity] || COLOR.low}`}><AlertOctagon className="inline h-2.5 w-2.5 mr-0.5" />{a.severity}{a.cvss?.score ? ` · ${a.cvss.score}` : ''}</span>
                 </div>
                 <p className="mt-1 line-clamp-2 text-[12px] text-zinc-200">{a.summary}</p>
-                <div className="mt-1 text-[10px] text-zinc-500">published {a.published_at?.slice(0, 10)}</div>
+                <div className="mt-1 text-[10px] text-zinc-400">published {a.published_at?.slice(0, 10)}</div>
               </a>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
@@ -75,16 +75,16 @@ export function SecurityAdvisories() {
                 >
                   <Zap className="h-3 w-3" /> Actions
                 </button>
-                <a href={a.html_url} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-zinc-800 text-zinc-500" aria-label="Open advisory">
+                <a href={a.html_url} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-zinc-800 text-zinc-400" aria-label="Open advisory">
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             </div>
           </div>
         ))}
-        {list.length === 0 && !advs.isPending && !advs.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No advisories.</div>}
+        {list.length === 0 && !advs.isPending && !advs.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No advisories.</div>}
       </div>
-      {advs.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {advs.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
 
       <AnimatePresence>
         {actAdvisory && (

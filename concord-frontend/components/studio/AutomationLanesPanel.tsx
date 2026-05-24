@@ -52,7 +52,7 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Activity className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Automation lanes</span>
-        <span className="ml-auto text-[10px] text-gray-500">{lanes.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{lanes.length}</span>
       </header>
       {trackId && (
         <div className="p-3 border-b border-white/10 flex items-center gap-2">
@@ -64,11 +64,11 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
       )}
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : !trackId ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Activity className="w-6 h-6 mx-auto mb-2 opacity-30" />Select a track to add automation.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Activity className="w-6 h-6 mx-auto mb-2 opacity-30" />Select a track to add automation.</div>
         ) : lanes.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Activity className="w-6 h-6 mx-auto mb-2 opacity-30" />No automation lanes on this track.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Activity className="w-6 h-6 mx-auto mb-2 opacity-30" />No automation lanes on this track.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {lanes.map(l => {
@@ -78,7 +78,7 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
                   <div className="flex items-center gap-2 mb-1">
                     <Activity className="w-3 h-3 text-cyan-300" />
                     <span className="text-xs font-mono text-white">{l.parameter}</span>
-                    <span className="ml-auto text-[10px] text-gray-500">{l.points.length} pts</span>
+                    <span className="ml-auto text-[10px] text-gray-400">{l.points.length} pts</span>
                     <button onClick={() => addPoint(l.id, Math.random() * 8, Math.random())} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50">+ pt</button>
                     <button onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </div>

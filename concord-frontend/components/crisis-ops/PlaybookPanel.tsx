@@ -80,7 +80,7 @@ export function PlaybookPanel({
       )}
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading playbook…
         </div>
       )}
@@ -101,7 +101,7 @@ export function PlaybookPanel({
               >
                 {s.done
                   ? <CheckSquare className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                  : <Square className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />}
+                  : <Square className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />}
                 <span className={s.done ? 'line-through opacity-70' : ''}>
                   <span className="mr-1.5 font-mono text-[10px] opacity-50">{s.order}.</span>
                   {s.label}

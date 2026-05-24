@@ -436,7 +436,7 @@ function DispatchPanel() {
                   </button>
                 </div>
                 {tech?.skills.length ? (
-                  <p className="text-xs text-gray-500 mb-2">{tech.skills.join(' · ')}</p>
+                  <p className="text-xs text-gray-400 mb-2">{tech.skills.join(' · ')}</p>
                 ) : null}
                 {lane.appointments.length ? (
                   lane.appointments.map((a) => (
@@ -506,7 +506,7 @@ function ApptCard({
       <p className="text-xs text-gray-400 truncate">
         {appt.client}{appt.address ? ` · ${appt.address}` : ''}
       </p>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         {appt.date || 'no date'} · {appt.slot} · {appt.durationHrs}h
       </p>
       <div className="flex items-center gap-1 mt-1.5 flex-wrap">
@@ -599,7 +599,7 @@ function BookingsPanel() {
       </div>
       {showForm && (
         <div className={cn(ds.panel, 'space-y-2')}>
-          <p className="text-xs text-gray-500">Customer-facing self-service booking request form.</p>
+          <p className="text-xs text-gray-400">Customer-facing self-service booking request form.</p>
           <div className="grid grid-cols-2 gap-2">
             <input className={ds.input} placeholder="Customer name" value={customer} onChange={(e) => setCustomer(e.target.value)} />
             <input className={ds.input} placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
@@ -630,7 +630,7 @@ function BookingsPanel() {
                 <p className="text-xs text-gray-400">
                   {b.serviceType} · {b.preferredDate || 'flexible'} ({b.preferredSlot})
                 </p>
-                <p className="text-xs text-gray-500">{b.phone || b.email}{b.address ? ` · ${b.address}` : ''}</p>
+                <p className="text-xs text-gray-400">{b.phone || b.email}{b.address ? ` · ${b.address}` : ''}</p>
               </div>
               <span className="text-[10px] uppercase font-semibold text-amber-300">{b.confirmation}</span>
             </div>
@@ -785,7 +785,7 @@ function AssetsPanel() {
                   {a.brand} {a.model || a.equipmentType}
                 </p>
                 <p className="text-xs text-gray-400">{a.client} · {a.address}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {a.serial ? `S/N ${a.serial} · ` : ''}
                   {a.ageYears != null ? `${a.ageYears}yr old · ` : ''}
                   {a.tonnage ? `${a.tonnage}t · ` : ''}
@@ -924,7 +924,7 @@ function EsignPanel() {
               <div>
                 <p className="text-white font-medium">Estimate {s.estimateId}</p>
                 <p className="text-xs text-gray-400">{s.client} · ${s.amount.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">Token {s.token}</p>
+                <p className="text-xs text-gray-400">Token {s.token}</p>
               </div>
               <span
                 className={cn(
@@ -1077,7 +1077,7 @@ function PaymentsPanel() {
                 <p className="text-xs text-gray-400">
                   {p.client} · {p.method} · fee ${p.processingFee} · net ${p.net}
                 </p>
-                <p className="text-xs text-gray-500">{p.reference} · {p.paidAt.slice(0, 10)}</p>
+                <p className="text-xs text-gray-400">{p.reference} · {p.paidAt.slice(0, 10)}</p>
               </div>
               <div className="flex items-center gap-1">
                 <span
@@ -1187,7 +1187,7 @@ function AgreementsPanel() {
                 <p className="text-xs text-gray-400">
                   ${a.annualPrice}/yr · {a.visitsPerYear} visits · renews {a.renewalDate}
                 </p>
-                {a.address && <p className="text-xs text-gray-500">{a.address}</p>}
+                {a.address && <p className="text-xs text-gray-400">{a.address}</p>}
               </div>
               <div className="flex items-center gap-1">
                 <span
@@ -1203,7 +1203,7 @@ function AgreementsPanel() {
                 )}
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">{a.perks.join(' · ')}</p>
+            <p className="text-xs text-gray-400 mt-1">{a.perks.join(' · ')}</p>
             <div className="mt-2 border-t border-lattice-border pt-2 grid gap-1">
               {a.visits.map((v) => (
                 <div key={v.seq} className="text-xs flex items-center justify-between">
@@ -1371,7 +1371,7 @@ function FieldPanel() {
                     disabled={v.status === 'completed'}
                     onChange={(e) => toggleCheck(v.id, idx, e.target.checked)}
                   />
-                  <span className={cn(c.done && 'line-through text-gray-500')}>{c.label}</span>
+                  <span className={cn(c.done && 'line-through text-gray-400')}>{c.label}</span>
                 </label>
               ))}
             </div>

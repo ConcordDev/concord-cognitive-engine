@@ -66,7 +66,7 @@ export function GdeltHeadlines() {
             )}
             <div className="min-w-0 flex-1">
               <a href={h.url} target="_blank" rel="noopener noreferrer" className="line-clamp-2 text-sm text-white hover:text-cyan-300">{h.title}</a>
-              <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
+              <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-zinc-400">
                 <span className="font-medium text-zinc-400">{h.source}</span>
                 {h.sourceCountry && <span>{h.sourceCountry}</span>}
                 <span>{new Date(h.publishedAt).toLocaleString()}</span>
@@ -82,7 +82,7 @@ export function GdeltHeadlines() {
                 extraTags={['news', 'gdelt', h.category, h.sourceCountry?.toLowerCase() || 'us']}
                 rawData={h}
               />
-              <a href={h.url} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>
+              <a href={h.url} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>
             </div>
           </motion.div>
         ))}

@@ -66,7 +66,7 @@ export function PricebookPanel() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Pricebook</span>
         <div className="ml-auto flex items-center gap-1">
           {(['', 'service', 'material'] as const).map(f => (
-            <button key={f || 'all'} onClick={() => setFilter(f)} className={cn('px-2 py-0.5 text-[10px] rounded', filter === f ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30' : 'text-gray-500 border border-transparent hover:text-gray-300')}>
+            <button key={f || 'all'} onClick={() => setFilter(f)} className={cn('px-2 py-0.5 text-[10px] rounded', filter === f ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30' : 'text-gray-400 border border-transparent hover:text-gray-300')}>
               {f || 'all'}
             </button>
           ))}
@@ -96,13 +96,13 @@ export function PricebookPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : items.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No pricebook items yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No pricebook items yet.</div>
         ) : (
           <table className="w-full text-xs">
             <thead className="bg-white/[0.02]">
-              <tr className="text-[9px] uppercase text-gray-600">
+              <tr className="text-[9px] uppercase text-gray-400">
                 <th className="text-left px-3 py-1.5">Item</th>
                 <th className="text-left px-2 py-1.5">Kind</th>
                 <th className="text-right px-2 py-1.5">Cost</th>
@@ -116,7 +116,7 @@ export function PricebookPanel() {
                 <tr key={it.id} className="hover:bg-white/[0.02] group">
                   <td className="px-3 py-1.5">
                     <div className="text-white">{it.name}</div>
-                    <div className="text-[9px] text-gray-600">{it.category} · per {it.unit}</div>
+                    <div className="text-[9px] text-gray-400">{it.category} · per {it.unit}</div>
                   </td>
                   <td className="px-2 py-1.5"><span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', it.kind === 'service' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-amber-500/15 text-amber-300')}>{it.kind}</span></td>
                   <td className="px-2 py-1.5 text-right font-mono text-gray-400">${it.cost.toFixed(2)}</td>

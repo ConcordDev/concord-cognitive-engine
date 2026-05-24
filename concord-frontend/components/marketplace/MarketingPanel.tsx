@@ -53,7 +53,7 @@ export function MarketingPanel() {
     <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-sm font-semibold text-gray-200">Promotions / coupons</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <button onClick={() => setCreating(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New code
         </button>
@@ -78,23 +78,23 @@ export function MarketingPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">No promotions yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No promotions yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(p => (
               <li key={p.id} className="px-4 py-2.5 hover:bg-white/[0.02] flex items-center gap-3">
-                <button onClick={() => toggle(p.id)} className={cn('p-1 rounded', p.active ? 'text-emerald-300' : 'text-gray-500')} title={p.active ? 'Active — click to disable' : 'Disabled — click to activate'}>
+                <button onClick={() => toggle(p.id)} className={cn('p-1 rounded', p.active ? 'text-emerald-300' : 'text-gray-400')} title={p.active ? 'Active — click to disable' : 'Disabled — click to activate'}>
                   {p.active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
                 </button>
                 <span className="font-mono text-sm text-orange-300 font-bold">{p.code}</span>
                 <div className="flex-1 text-xs text-gray-300">
                   {p.kind === 'percent' ? `${p.amount}% off` : p.kind === 'fixed' ? `$${p.amount} off` : 'Free shipping'}
-                  {p.minOrderUsd > 0 && <span className="text-gray-500"> · min ${p.minOrderUsd}</span>}
-                  {p.validUntil && <span className="text-gray-500"> · expires {p.validUntil}</span>}
+                  {p.minOrderUsd > 0 && <span className="text-gray-400"> · min ${p.minOrderUsd}</span>}
+                  {p.validUntil && <span className="text-gray-400"> · expires {p.validUntil}</span>}
                 </div>
-                <span className="text-[10px] text-gray-500 font-mono">{p.usageCount} uses</span>
+                <span className="text-[10px] text-gray-400 font-mono">{p.usageCount} uses</span>
               </li>
             ))}
           </ul>

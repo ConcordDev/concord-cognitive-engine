@@ -95,7 +95,7 @@ export function AcPurchaseOrdersPanel() {
                 <button type="button" onClick={() => lensRun({ domain: 'accounting', action: 'po-delete', input: { id: po.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
-              <p className="text-[10px] text-gray-500 mt-0.5">
+              <p className="text-[10px] text-gray-400 mt-0.5">
                 {po.lines.map((l) => `${l.qty}× ${l.description}`).join(' · ')}
               </p>
             </li>
@@ -108,5 +108,5 @@ export function AcPurchaseOrdersPanel() {
 
 const inp = 'flex-1 bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded px-3 py-1.5';
-function Spin() { return <div className="flex items-center justify-center py-10 text-gray-500"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-500 italic">{text}</p>; }
+function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
+function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }

@@ -32,13 +32,13 @@ export function FavouritesPanel({ onSelect }: { onSelect?: (l: Listing) => void 
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Heart className="w-4 h-4 text-rose-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Saved homes</span>
-        <span className="ml-auto text-[10px] text-gray-500">{favourites.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{favourites.length}</span>
       </header>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : favourites.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Heart className="w-6 h-6 mx-auto mb-2 opacity-30" />Heart a listing to save it here.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Heart className="w-6 h-6 mx-auto mb-2 opacity-30" />Heart a listing to save it here.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {favourites.map(l => (

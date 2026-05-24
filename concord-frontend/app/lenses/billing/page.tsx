@@ -358,7 +358,7 @@ export default function BillingPage() {
                   {income > 0 && <div className="w-full bg-green-500/60 rounded-t" style={{ height: `${Math.min(income / Math.max(maxUsage, 1) * 100, 100)}%`, minHeight: '4px' }} />}
                   {day.value > 0 && <div className="w-full bg-pink-500/60 rounded-t" style={{ height: `${Math.min(day.value / Math.max(maxUsage, 1) * 100, 100)}%`, minHeight: '4px' }} />}
                 </div>
-                <span className="text-[10px] text-gray-500">{day.label}</span>
+                <span className="text-[10px] text-gray-400">{day.label}</span>
               </div>
             );
           })}
@@ -411,12 +411,12 @@ export default function BillingPage() {
                       style={{ height: `${maxUsage > 0 ? (day.value / maxUsage) * 100 : 0}%`, minHeight: day.value > 0 ? '4px' : '0px' }}
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{day.label}</span>
+                  <span className="text-xs text-gray-400">{day.label}</span>
                 </div>
               ))}
             </div>
             {usageByDay.every((d) => d.value === 0) && (
-              <p className="text-sm text-gray-500 text-center mt-4">No usage recorded in the last 7 days.</p>
+              <p className="text-sm text-gray-400 text-center mt-4">No usage recorded in the last 7 days.</p>
             )}
           </div>
 
@@ -427,14 +427,14 @@ export default function BillingPage() {
               Top Token Consumers
             </h3>
             {topConsumers.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">No usage data available yet.</p>
+              <p className="text-sm text-gray-400 text-center py-4">No usage data available yet.</p>
             ) : (
               <div className="space-y-3">
                 {topConsumers.map(([source, amount], i) => {
                   const pct = Math.round((amount / Math.max(topConsumers[0][1], 1)) * 100);
                   return (
                     <div key={source} className="flex items-center gap-3">
-                      <span className="w-6 text-xs text-gray-500 text-right">{i + 1}.</span>
+                      <span className="w-6 text-xs text-gray-400 text-right">{i + 1}.</span>
                       <div className="flex-1">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="capitalize">{source.replace(/[-_]/g, ' ')}</span>
@@ -503,13 +503,13 @@ export default function BillingPage() {
               <div className="p-8 text-center text-gray-400 animate-pulse">Loading transactions...</div>
             ) : transactions.length === 0 ? (
               <div className="p-8 text-center">
-                <Wallet className="w-8 h-8 text-gray-500 mx-auto mb-3" />
+                <Wallet className="w-8 h-8 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-400">No transactions found.</p>
               </div>
             ) : (
               <div className="divide-y divide-lattice-border">
                 {/* Table Header */}
-                <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-gray-500 font-medium uppercase">
+                <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-gray-400 font-medium uppercase">
                   <div className="col-span-3">Date</div>
                   <div className="col-span-2">Type</div>
                   <div className="col-span-2 text-right">Amount</div>
@@ -544,7 +544,7 @@ export default function BillingPage() {
                       <div className="col-span-2 text-right text-gray-400">
                         {tx.balance_after != null ? `${tx.balance_after} CT` : '-'}
                       </div>
-                      <div className="col-span-3 text-gray-500 truncate">
+                      <div className="col-span-3 text-gray-400 truncate">
                         {tx.description || tx.source || '-'}
                       </div>
                     </div>
@@ -805,7 +805,7 @@ export default function BillingPage() {
               </h3>
               <button
                 onClick={() => setActionResult(null)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-white transition-colors"
               aria-label="Xcircle">
                 <XCircle className="w-4 h-4" />
               </button>
@@ -848,7 +848,7 @@ export default function BillingPage() {
                     </div>
                     {Array.isArray(actionResult.lineItems) && (actionResult.lineItems as Array<Record<string, unknown>>).length > 0 && (
                       <div>
-                        <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Line Items</p>
+                        <p className="text-xs text-gray-400 font-semibold uppercase mb-2">Line Items</p>
                         <div className="divide-y divide-lattice-border rounded-lg overflow-hidden border border-lattice-border">
                           {(actionResult.lineItems as Array<Record<string, unknown>>).map((item, i) => (
                             <div key={i} className="flex items-center justify-between px-4 py-2 text-sm hover:bg-lattice-elevated/40 transition-colors">
@@ -944,7 +944,7 @@ export default function BillingPage() {
                       const total = Object.values(dist).reduce((s, v) => s + v, 0) || 1;
                       return (
                         <div>
-                          <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Risk Distribution</p>
+                          <p className="text-xs text-gray-400 font-semibold uppercase mb-2">Risk Distribution</p>
                           <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-2">
                             {riskLevels.map(r => (
                               dist[r.key] > 0 && (
@@ -970,7 +970,7 @@ export default function BillingPage() {
                     })()}
                     {Array.isArray(actionResult.predictions) && (actionResult.predictions as Array<Record<string, unknown>>).filter(p => p.isAtRisk).length > 0 && (
                       <div>
-                        <p className="text-xs text-gray-500 font-semibold uppercase mb-2">At-Risk Customers</p>
+                        <p className="text-xs text-gray-400 font-semibold uppercase mb-2">At-Risk Customers</p>
                         <div className="space-y-2">
                           {(actionResult.predictions as Array<Record<string, unknown>>)
                             .filter(p => p.isAtRisk)

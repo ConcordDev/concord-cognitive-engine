@@ -171,7 +171,7 @@ export default function ControlsMenu({ open, onClose }: Props) {
                 <input type="checkbox" checked={invertY} onChange={(e) => setInvertY(e.target.checked)} />
                 Invert Y-Axis
               </label>
-              <div className="text-[11px] text-slate-500 italic">
+              <div className="text-[11px] text-slate-400 italic">
                 Mouse-only for camera + shoot/cast is locked on by design — keeps the trackpad-friendly combat path clean.
               </div>
             </>

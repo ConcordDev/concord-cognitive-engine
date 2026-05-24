@@ -292,7 +292,7 @@ export function ScenarioStudio() {
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-zinc-500">
+                <tr className="text-left text-zinc-400">
                   <th className="py-1 pr-3">Metric</th>
                   {compare.scenarios.map((s) => (
                     <th key={s.id} className="py-1 pr-3 text-right">
@@ -319,14 +319,14 @@ export function ScenarioStudio() {
                         {((s as any)[m] as number).toLocaleString()}
                       </td>
                     ))}
-                    <td className="py-1 pr-3 text-right font-mono text-zinc-500">
+                    <td className="py-1 pr-3 text-right font-mono text-zinc-400">
                       {compare.totals[m]?.toLocaleString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="mt-1 text-[10px] text-zinc-600">
+            <p className="mt-1 text-[10px] text-zinc-400">
               Emerald = best scenario for that metric (lowest emissions, highest yield otherwise).
             </p>
           </div>
@@ -335,11 +335,11 @@ export function ScenarioStudio() {
 
       {/* Scenario cards with massing + impacts */}
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading scenarios…
         </div>
       ) : scenarios.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-500">
+        <div className="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-400">
           No scenarios yet. Create one above to model massing &amp; impacts.
         </div>
       ) : (
@@ -352,9 +352,9 @@ export function ScenarioStudio() {
                     <Box className="h-4 w-4 text-emerald-400" /> {s.name}
                   </h4>
                   {s.description && (
-                    <p className="mt-0.5 text-xs text-zinc-500">{s.description}</p>
+                    <p className="mt-0.5 text-xs text-zinc-400">{s.description}</p>
                   )}
-                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-600">
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
                     {s.zoneType} · use {s.useMix} · {s.lotSizeSqFt.toLocaleString()} sqft lot
                   </p>
                 </div>
@@ -380,7 +380,7 @@ export function ScenarioStudio() {
                         key={label as string}
                         className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1"
                       >
-                        <div className="text-[9px] uppercase tracking-wider text-zinc-500">
+                        <div className="text-[9px] uppercase tracking-wider text-zinc-400">
                           {label}
                         </div>
                         <div className="font-mono text-sm text-emerald-300">

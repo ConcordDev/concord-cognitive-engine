@@ -36,7 +36,7 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Download className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Bounce / export</span>
-        <span className="ml-auto text-[10px] text-gray-500">{renders.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{renders.length}</span>
       </header>
       {projectId && (
         <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
@@ -52,9 +52,9 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
       )}
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : renders.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Download className="w-6 h-6 mx-auto mb-2 opacity-30" />No bounces yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Download className="w-6 h-6 mx-auto mb-2 opacity-30" />No bounces yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {renders.map(r => (
@@ -62,7 +62,7 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
                 <FileAudio className="w-3.5 h-3.5 text-emerald-300" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{r.projectName}</div>
-                  <div className="text-[10px] text-gray-500">{r.format} · {r.sampleRate / 1000}kHz · {r.kind}</div>
+                  <div className="text-[10px] text-gray-400">{r.format} · {r.sampleRate / 1000}kHz · {r.kind}</div>
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded inline-flex items-center gap-0.5', r.status === 'completed' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>
                   {r.status === 'completed' && <CheckCircle className="w-2.5 h-2.5" />}

@@ -66,7 +66,7 @@ export function ReleaseCadence() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); load.mutate(); }} className="flex items-center gap-2">
         <input type="text" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="owner" className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-white" />
-        <span className="text-zinc-500">/</span>
+        <span className="text-zinc-400">/</span>
         <input type="text" value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="repo" className="w-40 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-white" />
         <button type="submit" disabled={!owner || !repo || load.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
           {load.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calendar className="h-3.5 w-3.5" />}
@@ -77,15 +77,15 @@ export function ReleaseCadence() {
       {avgGapDays != null && (
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">Releases</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">Releases</div>
             <div className="mt-0.5 font-mono text-lg text-cyan-300">{releases.length}</div>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">Avg gap</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">Avg gap</div>
             <div className="mt-0.5 font-mono text-lg text-cyan-300">{avgGapDays.toFixed(1)}d</div>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">Days since last</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">Days since last</div>
             <div className={`mt-0.5 font-mono text-lg ${(daysSinceLast ?? 0) > (avgGapDays * 2) ? 'text-amber-300' : 'text-cyan-300'}`}>{daysSinceLast}d</div>
           </div>
         </div>
@@ -102,16 +102,16 @@ export function ReleaseCadence() {
                   {r.draft && <span className="rounded bg-zinc-700 px-1 font-mono text-[9px] text-zinc-300">draft</span>}
                   {r.name && r.name !== r.tag_name && <span className="text-[11px] text-zinc-400">— {r.name}</span>}
                 </div>
-                <div className="mt-0.5 text-[10px] text-zinc-500">
+                <div className="mt-0.5 text-[10px] text-zinc-400">
                   {new Date(r.published_at).toLocaleDateString()} by {r.author?.login || '?'}
                 </div>
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
             </div>
           </a>
         ))}
         {releases.length === 0 && !load.isPending && !error && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Load a repo to see real release cadence.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Load a repo to see real release cadence.</div>
         )}
       </div>
     </div>

@@ -64,7 +64,7 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
     await refresh();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   const elapsedHours = timer ? (Date.now() - timer.startedAt) / 3600000 : 0;
 
@@ -77,7 +77,7 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
 
       {timer ? (
         <div className="text-center">
-          <p className="text-[11px] text-zinc-500 mb-1">{timer.engagementName}{timer.note ? ` — ${timer.note}` : ''}</p>
+          <p className="text-[11px] text-zinc-400 mb-1">{timer.engagementName}{timer.note ? ` — ${timer.note}` : ''}</p>
           <p className="text-4xl font-mono font-bold text-emerald-400 tabular-nums mb-3">{fmt(elapsedHours)}</p>
           <div className="flex justify-center gap-2">
             <button onClick={stop}

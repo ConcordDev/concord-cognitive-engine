@@ -107,12 +107,26 @@ const nextConfig = {
   },
 };
 
-module.exports = withSentryConfig(nextConfig, {
-  silent: true,
-  org: process.env.SENTRY_ORG || "",
-  project: process.env.SENTRY_PROJECT || "concord-frontend",
-  disableLogger: true,
-  tunnelRoute: "/monitoring",
-  hideSourceMaps: true,
-  widenClientFileUpload: false,
-});
+// Wrap with Sentry only when actually configured. Without SENTRY_DSN +
+// SENTRY_ORG the tunnelRoute /monitoring/* rewrite injects script
+// references that hit a redirect (Sentry CDN behaviour) and Chromium
+// refuses to follow redirects for <script src> with the default CSP.
+// That surfaces as a "Failed to load resource: 404" + "The script
+// resource is behind a redirect, which is disallowed." console error
+// on every page in dev / unconfigured environments. Skipping
+// withSentryConfig when DSN isn't set removes the spurious script
+// load entirely; production deployments that set NEXT_PUBLIC_SENTRY_DSN
+// (and SENTRY_ORG/SENTRY_PROJECT for source maps) still get the full
+// integration.
+const sentryDsnConfigured = !!(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_ORG);
+module.exports = sentryDsnConfigured
+  ? withSentryConfig(nextConfig, {
+      silent: true,
+      org: process.env.SENTRY_ORG || "",
+      project: process.env.SENTRY_PROJECT || "concord-frontend",
+      disableLogger: true,
+      tunnelRoute: "/monitoring",
+      hideSourceMaps: true,
+      widenClientFileUpload: false,
+    })
+  : nextConfig;

@@ -80,14 +80,14 @@ export function ScheduleAnalyzer() {
     },
   });
 
-  if (isLoading) return <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" />Loading calendar events…</div>;
+  if (isLoading) return <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Loading calendar events…</div>;
 
   if (realEvents.length < 2) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950 p-8 text-center">
         <CalendarX className="mx-auto h-8 w-8 text-zinc-600" />
         <div className="mt-3 text-sm text-zinc-300">Add 2+ calendar events to analyze.</div>
-        <div className="mt-1 text-xs text-zinc-500">Use the lens's "New event" button above. This panel will then detect overlapping events and surface free slots in your work day.</div>
+        <div className="mt-1 text-xs text-zinc-400">Use the lens's "New event" button above. This panel will then detect overlapping events and surface free slots in your work day.</div>
       </div>
     );
   }
@@ -99,7 +99,7 @@ export function ScheduleAnalyzer() {
           <CalendarClock className="h-5 w-5 text-indigo-400" />
           <h2 className="text-sm font-semibold text-white">Schedule analyzer</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">calendar.detectConflicts + findAvailability</span>
-          <span className="text-[10px] text-zinc-500">· {realEvents.length} real events</span>
+          <span className="text-[10px] text-zinc-400">· {realEvents.length} real events</span>
         </div>
         {(conflicts || availability) && (
           <SaveAsDtuButton
@@ -114,13 +114,13 @@ export function ScheduleAnalyzer() {
       </header>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Free-slot date</span>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Free-slot date</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Work start (h)</span>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Work start (h)</span>
           <input type="number" min={0} max={23} value={workStart} onChange={(e) => setWorkStart(Math.max(0, Math.min(23, Number(e.target.value) || 9)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Work end (h)</span>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Work end (h)</span>
           <input type="number" min={1} max={24} value={workEnd} onChange={(e) => setWorkEnd(Math.max(1, Math.min(24, Number(e.target.value) || 17)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
-        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Min slot (min)</span>
+        <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Min slot (min)</span>
           <input type="number" min={5} max={240} value={slot} onChange={(e) => setSlot(Math.max(5, Math.min(240, Number(e.target.value) || 30)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" /></label>
       </div>
 
@@ -133,8 +133,8 @@ export function ScheduleAnalyzer() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><AlertCircle className="h-3 w-3" />Conflicts (all events)</div>
-          {!conflicts && <div className="text-[11px] text-zinc-500">Analyze to detect.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><AlertCircle className="h-3 w-3" />Conflicts (all events)</div>
+          {!conflicts && <div className="text-[11px] text-zinc-400">Analyze to detect.</div>}
           {conflicts && conflicts.conflictFree && <div className="text-[11px] text-emerald-300">No conflicts across your {realEvents.length} events.</div>}
           {conflicts && !conflicts.conflictFree && conflicts.conflicts && (
             <div className="space-y-1.5 text-[11px]">
@@ -149,8 +149,8 @@ export function ScheduleAnalyzer() {
           )}
         </div>
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Clock className="h-3 w-3" />Free slots on {date}</div>
-          {!availability && <div className="text-[11px] text-zinc-500">Analyze to scan.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Clock className="h-3 w-3" />Free slots on {date}</div>
+          {!availability && <div className="text-[11px] text-zinc-400">Analyze to scan.</div>}
           {availability && (
             <div className="space-y-1.5 text-[11px]">
               <div className="text-zinc-400">{availability.totalFreeMinutes} min free across {availability.availableSlots?.length || 0} slot{availability.availableSlots?.length === 1 ? '' : 's'} ({availability.workHours}) · {eventsOnDate.length} event{eventsOnDate.length === 1 ? '' : 's'} on this date</div>

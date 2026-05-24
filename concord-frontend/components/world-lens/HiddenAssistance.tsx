@@ -309,12 +309,12 @@ export default function HiddenAssistance({
           )}
           <p className="text-xs text-gray-300">{activeSuggestion.suggestion}</p>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-gray-400">
               Score: {(activeSuggestion.score * 100).toFixed(1)}%
             </span>
             <button
               onClick={dismissSuggestion}
-              className="text-[10px] text-gray-500 hover:text-white transition-colors"
+              className="text-[10px] text-gray-400 hover:text-white transition-colors"
             >
               Dismiss
             </button>
@@ -340,7 +340,7 @@ export default function HiddenAssistance({
           {activeNudge.dismissable && (
             <button
               onClick={() => dismissNudge(activeNudge.id)}
-              className="text-[10px] text-gray-500 hover:text-white mt-2 transition-colors"
+              className="text-[10px] text-gray-400 hover:text-white mt-2 transition-colors"
             >
               Got it
             </button>

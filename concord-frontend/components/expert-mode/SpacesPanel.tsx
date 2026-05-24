@@ -200,7 +200,7 @@ export function SpacesPanel({
       )}
 
       {spaces.length === 0 ? (
-        <p className="text-[11px] text-zinc-600">
+        <p className="text-[11px] text-zinc-400">
           No spaces yet. Create one to collect cited answers.
         </p>
       ) : (
@@ -256,10 +256,10 @@ export function SpacesPanel({
             </button>
           </div>
           {openSpace.description && (
-            <p className="text-[11px] text-zinc-500 mb-2">{openSpace.description}</p>
+            <p className="text-[11px] text-zinc-400 mb-2">{openSpace.description}</p>
           )}
           {openSpace.answers.length === 0 ? (
-            <p className="text-[11px] text-zinc-600">No answers saved here yet.</p>
+            <p className="text-[11px] text-zinc-400">No answers saved here yet.</p>
           ) : (
             <ul className="space-y-2">
               {openSpace.answers.map((a) => (
@@ -279,7 +279,7 @@ export function SpacesPanel({
                   <p className="mt-1 text-[11px] text-zinc-400 line-clamp-3 whitespace-pre-wrap">
                     {a.answer}
                   </p>
-                  <p className="mt-1 text-[10px] text-zinc-600">
+                  <p className="mt-1 text-[10px] text-zinc-400">
                     {a.sources.length} source{a.sources.length === 1 ? '' : 's'}
                     {a.model ? ` · ${a.model}` : ''}
                   </p>

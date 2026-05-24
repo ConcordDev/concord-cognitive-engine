@@ -90,18 +90,18 @@ export function DispatchShell({
           <header className="px-3 py-2 bg-cyan-500/5 border-b border-cyan-500/20 flex items-center gap-2">
             <Wrench className="w-4 h-4 text-cyan-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-200">Dispatch board · {date}</span>
-            <span className="ml-auto text-[10px] text-gray-500">{rows.length} techs · {jobsToday} jobs</span>
+            <span className="ml-auto text-[10px] text-gray-400">{rows.length} techs · {jobsToday} jobs</span>
           </header>
           {rows.length === 0 ? (
-            <div className="p-6 text-center text-xs text-gray-500">No technicians added.</div>
+            <div className="p-6 text-center text-xs text-gray-400">No technicians added.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs min-w-[640px]">
                 <thead className="bg-white/[0.02] border-b border-white/5">
                   <tr>
-                    <th className="text-left px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 sticky left-0 bg-[#0d1117]">Tech</th>
+                    <th className="text-left px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 sticky left-0 bg-[#0d1117]">Tech</th>
                     {HOURS.map(h => (
-                      <th key={h} className="text-[10px] text-gray-500 font-mono">{h}{h < 12 ? 'a' : 'p'}</th>
+                      <th key={h} className="text-[10px] text-gray-400 font-mono">{h}{h < 12 ? 'a' : 'p'}</th>
                     ))}
                   </tr>
                 </thead>
@@ -153,16 +153,16 @@ export function DispatchShell({
             <header className="px-3 py-2 bg-amber-500/5 border-b border-amber-500/20 flex items-center gap-2">
               <Plus className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-xs uppercase font-semibold tracking-wider text-gray-200">Pending bookings</span>
-              <span className="ml-auto text-[10px] text-gray-500">{pendingBookings.length}</span>
+              <span className="ml-auto text-[10px] text-gray-400">{pendingBookings.length}</span>
             </header>
             {pendingBookings.length === 0 ? (
-              <div className="p-4 text-center text-xs text-gray-500">No bookings waiting.</div>
+              <div className="p-4 text-center text-xs text-gray-400">No bookings waiting.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {pendingBookings.slice(0, 4).map(b => (
                   <li key={b.id} className="px-3 py-2 hover:bg-white/[0.03]">
                     <div className="text-xs text-white">{b.customerName}</div>
-                    <div className="text-[10px] text-gray-500">{b.serviceType} · {b.preferredDate || 'flexible'}</div>
+                    <div className="text-[10px] text-gray-400">{b.serviceType} · {b.preferredDate || 'flexible'}</div>
                   </li>
                 ))}
               </ul>
@@ -173,10 +173,10 @@ export function DispatchShell({
             <header className="px-3 py-2 bg-violet-500/5 border-b border-violet-500/20 flex items-center gap-2">
               <FileText className="w-3.5 h-3.5 text-violet-400" />
               <span className="text-xs uppercase font-semibold tracking-wider text-gray-200">Quotes pending</span>
-              <span className="ml-auto text-[10px] text-gray-500">{pendingQuotes.length}</span>
+              <span className="ml-auto text-[10px] text-gray-400">{pendingQuotes.length}</span>
             </header>
             {pendingQuotes.length === 0 ? (
-              <div className="p-4 text-center text-xs text-gray-500">No open quotes.</div>
+              <div className="p-4 text-center text-xs text-gray-400">No open quotes.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {pendingQuotes.slice(0, 4).map(q => (
@@ -206,10 +206,10 @@ function Metric({ icon: Icon, label, value, caption, tone }: { icon: typeof Cale
     <div className={cn('rounded-lg border bg-white/[0.02] p-3', TILE_TONE[tone])}>
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className="w-3 h-3" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-xl font-mono font-bold tabular-nums text-white">{value}</div>
-      <div className="text-[10px] text-gray-500">{caption}</div>
+      <div className="text-[10px] text-gray-400">{caption}</div>
     </div>
   );
 }

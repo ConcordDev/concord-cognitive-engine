@@ -47,7 +47,7 @@ export function TankMixesPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Beaker className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Tank mix builder</span>
-        <span className="ml-auto text-[10px] text-gray-500">{mixes.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{mixes.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-4 gap-2">
@@ -67,9 +67,9 @@ export function TankMixesPanel() {
       </div>
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : mixes.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Beaker className="w-6 h-6 mx-auto mb-2 opacity-30" />No tank mixes yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Beaker className="w-6 h-6 mx-auto mb-2 opacity-30" />No tank mixes yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {mixes.map(m => (
@@ -80,7 +80,7 @@ export function TankMixesPanel() {
                   {m.compatible ? <CheckCircle className="w-3 h-3 text-emerald-300" /> : <AlertTriangle className="w-3 h-3 text-amber-300" />}
                   <span className="ml-auto font-mono text-xs text-violet-300">${m.totalCostPerAcre.toFixed(2)}/ac</span>
                 </div>
-                <div className="text-[10px] text-gray-500 ml-5">{m.carrierGalPerAcre}gal carrier · {m.components.map(c => c.product).join(' + ')}</div>
+                <div className="text-[10px] text-gray-400 ml-5">{m.carrierGalPerAcre}gal carrier · {m.components.map(c => c.product).join(' + ')}</div>
               </li>
             ))}
           </ul>

@@ -128,12 +128,12 @@ export function DreamPanel() {
         ))}
       </div>
 
-      {loading && <p className="text-xs text-zinc-500">Loading…</p>}
+      {loading && <p className="text-xs text-zinc-400">Loading…</p>}
 
       {tab === 'dreams' && !loading && (
         <div className="space-y-2 max-h-[24rem] overflow-auto">
           {dreams.length === 0 && (
-            <p className="text-xs text-zinc-500 italic">No dreams composed yet. The engine waits for ~12h of activity then ~6h offline before composing.</p>
+            <p className="text-xs text-zinc-400 italic">No dreams composed yet. The engine waits for ~12h of activity then ~6h offline before composing.</p>
           )}
           {dreams.map((d) => (
             <div
@@ -143,10 +143,10 @@ export function DreamPanel() {
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-medium text-zinc-100 truncate">{d.dtu?.title || 'Untitled dream'}</span>
-                <span className="text-[10px] font-mono text-zinc-500">{fmtAgo(d.composed_at)}</span>
+                <span className="text-[10px] font-mono text-zinc-400">{fmtAgo(d.composed_at)}</span>
               </div>
               <p className="text-[11px] text-zinc-300 leading-snug whitespace-pre-line">{dreamProse(d) || '(no prose)'}</p>
-              <p className="mt-1 text-[10px] text-zinc-500">{d.fragment_count} fragments · composer: {d.composer}</p>
+              <p className="mt-1 text-[10px] text-zinc-400">{d.fragment_count} fragments · composer: {d.composer}</p>
             </div>
           ))}
         </div>
@@ -155,7 +155,7 @@ export function DreamPanel() {
       {tab === 'predictions' && !loading && (
         <div className="space-y-2 max-h-[24rem] overflow-auto">
           {preds.length === 0 && (
-            <p className="text-xs text-zinc-500 italic">No active anticipations. The forward-sim runs every ~25min for offline players.</p>
+            <p className="text-xs text-zinc-400 italic">No active anticipations. The forward-sim runs every ~25min for offline players.</p>
           )}
           {preds.map((p) => (
             <div
@@ -170,7 +170,7 @@ export function DreamPanel() {
                 </span>
               </div>
               <p className="text-[11px] text-zinc-300 leading-snug">{p.anticipated}</p>
-              <p className="mt-1 text-[10px] text-zinc-500">composer: {p.composer} · expires in {fmtUntil(p.expires_at)}</p>
+              <p className="mt-1 text-[10px] text-zinc-400">composer: {p.composer} · expires in {fmtUntil(p.expires_at)}</p>
             </div>
           ))}
         </div>

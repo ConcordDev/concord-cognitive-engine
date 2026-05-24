@@ -114,7 +114,7 @@ export function ContactAgentForm({ listingId }: { listingId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Mail className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Contact an agent</span>
-        {listingId && <span className="ml-auto text-[10px] text-gray-500">about this listing</span>}
+        {listingId && <span className="ml-auto text-[10px] text-gray-400">about this listing</span>}
       </header>
 
       <div className="p-3 space-y-3">
@@ -152,16 +152,16 @@ export function ContactAgentForm({ listingId }: { listingId?: string }) {
             <span className="text-[10px] uppercase tracking-wider text-gray-400">Lead history</span>
           </div>
           {loading ? (
-            <div className="flex items-center justify-center py-4 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <div className="flex items-center justify-center py-4 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : leads.length === 0 ? (
-            <p className="text-[11px] text-gray-500 py-1">No leads submitted yet.</p>
+            <p className="text-[11px] text-gray-400 py-1">No leads submitted yet.</p>
           ) : (
             <ul className="space-y-1.5 max-h-56 overflow-y-auto">
               {leads.map((l) => (
                 <li key={l.id} className="rounded-md border border-white/10 bg-white/[0.03] p-2 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-white">{l.name}</span>
-                    <span className="text-[10px] text-gray-500">· {l.intent}</span>
+                    <span className="text-[10px] text-gray-400">· {l.intent}</span>
                     <select
                       value={l.status}
                       onChange={(e) => updateStatus(l.id, e.target.value)}
@@ -171,7 +171,7 @@ export function ContactAgentForm({ listingId }: { listingId?: string }) {
                     </select>
                   </div>
                   <div className="text-[11px] text-gray-300 mt-0.5">{l.message}</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">
+                  <div className="text-[10px] text-gray-400 mt-0.5">
                     {l.contact}
                     {l.preferredDate ? ` · prefers ${l.preferredDate}${l.preferredTime ? ` ${l.preferredTime}` : ''}` : ''}
                     {` · ${new Date(l.submittedAt).toLocaleDateString()}`}

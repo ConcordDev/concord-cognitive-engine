@@ -170,14 +170,14 @@ export function SkyChartWorkbench() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-violet-600/15 to-transparent">
         <Sparkles className="w-5 h-5 text-violet-400" />
         <h2 className="text-sm font-bold text-zinc-100">Sky Chart Workbench</h2>
-        <span className="text-[11px] text-zinc-500">real-time ephemeris · SkySafari / Stellarium parity</span>
+        <span className="text-[11px] text-zinc-400">real-time ephemeris · SkySafari / Stellarium parity</span>
       </header>
 
       {/* Observer location bar */}
       <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/40">
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Latitude</span>
+            <span className="text-[10px] uppercase tracking-wide text-zinc-400">Latitude</span>
             <input
               value={latInput} onChange={(e) => setLatInput(e.target.value)}
               placeholder="40.7128" inputMode="decimal"
@@ -185,7 +185,7 @@ export function SkyChartWorkbench() {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Longitude</span>
+            <span className="text-[10px] uppercase tracking-wide text-zinc-400">Longitude</span>
             <input
               value={lonInput} onChange={(e) => setLonInput(e.target.value)}
               placeholder="-74.0060" inputMode="decimal"
@@ -235,7 +235,7 @@ export function SkyChartWorkbench() {
 
       <div className="p-4">
         {!observer ? (
-          <p className="text-xs text-zinc-500 italic py-8 text-center">
+          <p className="text-xs text-zinc-400 italic py-8 text-center">
             Set your observer location above to compute the live sky.
           </p>
         ) : (
@@ -297,7 +297,7 @@ function SkyChartPanel({ observer }: { observer: Observer }) {
           <input type="checkbox" checked={showLines} onChange={(e) => setShowLines(e.target.checked)} />
           Constellation lines
         </label>
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-zinc-400">
           {data.sun.isDaytime ? 'Daytime' : 'Night'} · {data.visibleCount} stars up · sidereal {data.siderealTimeDeg.toFixed(1)}°
         </span>
       </div>
@@ -434,7 +434,7 @@ function WhatsUpPanel({ observer }: { observer: Observer }) {
       </div>
 
       {data.objects.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic py-6 text-center">
+        <p className="text-xs text-zinc-400 italic py-6 text-center">
           Nothing above {minAlt}° right now — lower the altitude or check back later.
         </p>
       ) : (
@@ -446,15 +446,15 @@ function WhatsUpPanel({ observer }: { observer: Observer }) {
                 <p className="text-xs text-zinc-100">
                   {o.name}
                   <span className="text-zinc-600 capitalize"> · {o.kind}</span>
-                  {o.phase && <span className="text-zinc-500"> · {o.phase}</span>}
+                  {o.phase && <span className="text-zinc-400"> · {o.phase}</span>}
                 </p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {o.constellation ? `${o.constellation} · ` : ''}mag {o.magnitude}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-violet-300">{o.altitude.toFixed(1)}° alt</p>
-                <p className="text-[10px] text-zinc-500">{o.azimuth.toFixed(0)}° az</p>
+                <p className="text-[10px] text-zinc-400">{o.azimuth.toFixed(0)}° az</p>
               </div>
             </li>
           ))}
@@ -527,7 +527,7 @@ function ConstellationsPanel({ observer }: { observer: Observer }) {
               className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
               <div className="min-w-0">
                 <p className="text-xs text-zinc-100 truncate">{d.id} — {d.name}</p>
-                <p className="text-[10px] text-zinc-500 capitalize">{d.type} · {d.constellation} · mag {d.magnitude}</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{d.type} · {d.constellation} · mag {d.magnitude}</p>
               </div>
               <button
                 type="button" disabled={importing === d.id}
@@ -605,7 +605,7 @@ function ArPanel({ observer }: { observer: Observer }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Point your phone at the sky — device-orientation sensors resolve which stars you are facing.
         On desktop, enter a direction manually.
       </p>
@@ -628,12 +628,12 @@ function ArPanel({ observer }: { observer: Observer }) {
         {!active && (
           <>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase text-zinc-500">Altitude</span>
+              <span className="text-[10px] uppercase text-zinc-400">Altitude</span>
               <input value={manualAlt} onChange={(e) => setManualAlt(e.target.value)}
                 className="w-20 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase text-zinc-500">Azimuth</span>
+              <span className="text-[10px] uppercase text-zinc-400">Azimuth</span>
               <input value={manualAz} onChange={(e) => setManualAz(e.target.value)}
                 className="w-20 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
             </label>
@@ -652,11 +652,11 @@ function ArPanel({ observer }: { observer: Observer }) {
 
       {data && (
         <div className="space-y-2">
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             Pointing {data.pointing.altitude.toFixed(0)}° alt / {data.pointing.azimuth.toFixed(0)}° az · FOV {data.fov}°
           </p>
           {data.matches.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic">No catalogued bright stars in that direction.</p>
+            <p className="text-xs text-zinc-400 italic">No catalogued bright stars in that direction.</p>
           ) : (
             <ul className="space-y-1">
               {data.matches.map((m) => (
@@ -664,7 +664,7 @@ function ArPanel({ observer }: { observer: Observer }) {
                   className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                   <div>
                     <p className="text-xs text-zinc-100">{m.name}</p>
-                    <p className="text-[10px] text-zinc-500">{m.constellation} · mag {m.magnitude}</p>
+                    <p className="text-[10px] text-zinc-400">{m.constellation} · mag {m.magnitude}</p>
                   </div>
                   <span className="text-xs text-violet-300">{m.separationDeg}° off-centre</span>
                 </li>
@@ -797,7 +797,7 @@ function GotoPanel({ observer }: { observer: Observer }) {
           )}
         </div>
         {queue.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No GoTo commands queued.</p>
+          <p className="text-[11px] text-zinc-400 italic">No GoTo commands queued.</p>
         ) : (
           <ul className="space-y-1">
             {queue.map((c) => (
@@ -805,7 +805,7 @@ function GotoPanel({ observer }: { observer: Observer }) {
                 className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-100">{c.targetName}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     RA {c.ra}° / Dec {c.dec}°
                     {c.altAz && ` · ${c.altAz.altitude.toFixed(0)}° alt`}
                     {c.belowHorizon && <span className="text-rose-400"> · below horizon</span>}
@@ -816,7 +816,7 @@ function GotoPanel({ observer }: { observer: Observer }) {
                     c.status === 'completed' ? 'bg-emerald-900/50 text-emerald-300'
                       : c.status === 'failed' ? 'bg-rose-900/50 text-rose-300'
                         : c.status === 'slewing' ? 'bg-amber-900/50 text-amber-300'
-                          : c.status === 'no-mount' ? 'bg-zinc-800 text-zinc-500'
+                          : c.status === 'no-mount' ? 'bg-zinc-800 text-zinc-400'
                             : 'bg-violet-900/50 text-violet-300')}>
                     {c.status}
                   </span>
@@ -879,7 +879,7 @@ function EphemerisPanel({ observer }: { observer: Observer }) {
               <MoonGlyph illumination={d.moonIllumination} />
               {d.moonPhase}
             </span>
-            <span className="text-[10px] text-zinc-500">illum {Math.round(d.moonIllumination * 100)}%</span>
+            <span className="text-[10px] text-zinc-400">illum {Math.round(d.moonIllumination * 100)}%</span>
             <span className="text-[10px] text-amber-300/80">
               ☀ {fmtTime(d.sunrise)} – {fmtTime(d.sunset)}
             </span>
@@ -933,7 +933,7 @@ function ForecastPanel({ observer }: { observer: Observer }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Cloud cover, visibility &amp; humidity from Open-Meteo (free, keyless). Higher score = better seeing.
       </p>
       {data.bestWindow && (
@@ -948,7 +948,7 @@ function ForecastPanel({ observer }: { observer: Observer }) {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Night hours (21:00–04:00 UTC)</h3>
         {data.nightHours.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No night-hour data in the forecast window.</p>
+          <p className="text-[11px] text-zinc-400 italic">No night-hour data in the forecast window.</p>
         ) : (
           <ul className="space-y-1">
             {data.nightHours.map((h) => (
@@ -960,7 +960,7 @@ function ForecastPanel({ observer }: { observer: Observer }) {
                   <div className={cn('h-full', ratingColor(h.rating))} style={{ width: `${h.observingScore}%` }} />
                 </div>
                 <span className="text-[10px] text-zinc-300 w-8 text-right">{h.observingScore}</span>
-                <span className="text-[10px] text-zinc-500 w-24 text-right">
+                <span className="text-[10px] text-zinc-400 w-24 text-right">
                   {h.cloudCover}% cloud · {h.temperatureC}°C
                 </span>
               </li>
@@ -974,7 +974,7 @@ function ForecastPanel({ observer }: { observer: Observer }) {
 
 // ─── Small shared primitives ──────────────────────────────────────────
 function PanelLoading() {
-  return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
 }
 function PanelError({ msg }: { msg: string | null }) {
   return <p className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{msg || 'Unavailable.'}</p>;
@@ -982,7 +982,7 @@ function PanelError({ msg }: { msg: string | null }) {
 function Tile({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</p>
       <p className="text-sm text-zinc-100">{value}</p>
     </div>
   );

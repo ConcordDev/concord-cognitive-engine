@@ -121,7 +121,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Encounters</span>
-          <span className="text-[10px] text-gray-500">{list.length}</span>
+          <span className="text-[10px] text-gray-400">{list.length}</span>
           <button onClick={() => setCreating(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />New
           </button>
@@ -139,18 +139,18 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
         )}
         <ul className="max-h-[36rem] overflow-y-auto divide-y divide-white/5">
           {loading ? (
-            <li className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</li>
+            <li className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</li>
           ) : list.length === 0 ? (
-            <li className="px-3 py-8 text-center text-xs text-gray-500">No encounters yet.</li>
+            <li className="px-3 py-8 text-center text-xs text-gray-400">No encounters yet.</li>
           ) : (
             list.map(e => (
               <li key={e.id} onClick={() => { setActiveId(e.id); setActive(e); }} className={cn('px-4 py-2.5 cursor-pointer flex items-center gap-2 hover:bg-white/[0.03]', activeId === e.id && 'bg-cyan-500/[0.06]')}>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', e.status === 'signed' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300')}>{e.status}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white truncate">{e.encounterType.replace('_', ' ')}</div>
-                  <div className="text-[10px] text-gray-500 truncate">{e.chiefComplaint || '(no CC)'}</div>
+                  <div className="text-[10px] text-gray-400 truncate">{e.chiefComplaint || '(no CC)'}</div>
                 </div>
-                <span className="text-[10px] text-gray-500 font-mono">{e.encounteredAt.slice(0, 10)}</span>
+                <span className="text-[10px] text-gray-400 font-mono">{e.encounteredAt.slice(0, 10)}</span>
               </li>
             ))
           )}
@@ -212,7 +212,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
               ))}
               {smartPhrases.length > 0 && !isSigned && (
                 <div className="rounded border border-white/10 bg-black/30 p-2">
-                  <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Available SmartPhrases (type the trigger in any field, then click expand)</div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Available SmartPhrases (type the trigger in any field, then click expand)</div>
                   <div className="flex flex-wrap gap-1">
                     {smartPhrases.map(sp => (
                       <span key={sp.id} className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-mono" title={sp.text}>{sp.name}</span>
@@ -223,7 +223,7 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full bg-[#0d1117] border border-cyan-500/15 rounded-lg p-10 text-xs text-gray-500">Pick an encounter or start a new one.</div>
+          <div className="flex items-center justify-center h-full bg-[#0d1117] border border-cyan-500/15 rounded-lg p-10 text-xs text-gray-400">Pick an encounter or start a new one.</div>
         )}
       </div>
 

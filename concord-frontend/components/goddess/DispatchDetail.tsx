@@ -85,7 +85,7 @@ export function DispatchDetail({
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-sm text-zinc-500">
+      <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 text-sm text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Resolving dispatch…
       </div>
     );
@@ -113,7 +113,7 @@ export function DispatchDetail({
         >
           ← Back to feed
         </button>
-        <span className="flex items-center gap-1 font-mono text-[10px] text-zinc-500">
+        <span className="flex items-center gap-1 font-mono text-[10px] text-zinc-400">
           <Link2 className="h-3 w-3" /> dispatch #{d.id}
         </span>
       </div>
@@ -160,14 +160,14 @@ export function DispatchDetail({
             </p>
           </div>
         ) : (
-          <p className="mt-2 text-xs text-zinc-500 italic">
+          <p className="mt-2 text-xs text-zinc-400 italic">
             No world event found near this dispatch&apos;s compose time.
           </p>
         )}
         {correlation && correlation.nearby.length > 1 && (
           <ul className="mt-2 space-y-1">
             {correlation.nearby.filter((e) => e.id !== cand?.id).slice(0, 4).map((e) => (
-              <li key={e.id} className="font-mono text-[11px] text-zinc-500">
+              <li key={e.id} className="font-mono text-[11px] text-zinc-400">
                 {e.title || `Event #${e.id}`} — {fmtOffset(e.offsetSeconds)}
               </li>
             ))}
@@ -203,11 +203,11 @@ export function DispatchDetail({
           ))}
         </div>
         {reactions && reactions.total > 0 ? (
-          <p className="mt-2 text-[11px] text-zinc-500">
+          <p className="mt-2 text-[11px] text-zinc-400">
             {reactions.total} {reactions.total === 1 ? 'soul has' : 'souls have'} communed.
           </p>
         ) : (
-          <p className="mt-2 text-[11px] text-zinc-600 italic">No one has communed here yet.</p>
+          <p className="mt-2 text-[11px] text-zinc-400 italic">No one has communed here yet.</p>
         )}
         {reactions && reactions.notes.length > 0 && (
           <ul className="mt-2 space-y-1.5 border-t border-zinc-800 pt-2">

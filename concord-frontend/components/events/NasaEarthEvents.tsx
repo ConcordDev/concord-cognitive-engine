@@ -84,15 +84,15 @@ export function NasaEarthEvents() {
       {events.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NASA EONET unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Open</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Open</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{open}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Closed</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Closed</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-300">{closed}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Categories</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Categories</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">{catCount}</div>
         </div>
       </div>
@@ -108,22 +108,22 @@ export function NasaEarthEvents() {
                     <p className="line-clamp-1 text-[12px] text-zinc-100">{e.title}</p>
                     {!e.closed && <span className="rounded bg-amber-500/30 px-1 font-mono text-[9px] text-amber-200"><AlertTriangle className="inline h-2.5 w-2.5 mr-0.5" />ongoing</span>}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
                     {e.categories?.slice(0, 3).map((c) => <span key={c.id} className="rounded bg-emerald-500/20 px-1 font-mono text-[9px] text-emerald-200">{c.title}</span>)}
                     {coords && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{coords[1]?.toFixed(2)}, {coords[0]?.toFixed(2)}</span>}
                     {e.closed && <span>closed {e.closed.slice(0, 10)}</span>}
                   </div>
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
               </div>
             </a>
           );
         })}
         {list.length === 0 && !events.isPending && !events.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No events in this filter.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No events in this filter.</div>
         )}
       </div>
-      {events.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling EONET…</div>}
+      {events.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling EONET…</div>}
     </div>
   );
 }

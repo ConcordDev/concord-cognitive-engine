@@ -58,7 +58,7 @@ export function KeyHealthPanel() {
       </div>
 
       {loaded && rows.length === 0 && (
-        <div className="text-xs text-zinc-500 rounded-md border border-dashed border-zinc-800 p-6 text-center">
+        <div className="text-xs text-zinc-400 rounded-md border border-dashed border-zinc-800 p-6 text-center">
           No keys configured yet. Health status appears here once you add a BYO key and run a
           test ping or an inference call.
         </div>
@@ -72,18 +72,18 @@ export function KeyHealthPanel() {
                 <span className={`h-2 w-2 rounded-full shrink-0 ${DOT[r.status]}`} />
                 <span className="font-mono text-xs text-zinc-300">{r.slot}</span>
                 {r.provider && (
-                  <span className="font-mono text-[10px] text-zinc-500">{r.provider}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">{r.provider}</span>
                 )}
                 <span
                   className={`ml-auto text-[10px] font-mono uppercase ${
                     r.status === 'ok' ? 'text-emerald-400'
-                      : r.status === 'error' ? 'text-red-400' : 'text-zinc-500'
+                      : r.status === 'error' ? 'text-red-400' : 'text-zinc-400'
                   }`}
                 >
                   {r.status}
                 </span>
               </div>
-              <div className="mt-1 text-[11px] text-zinc-500 pl-[18px]">
+              <div className="mt-1 text-[11px] text-zinc-400 pl-[18px]">
                 {r.status === 'error' && r.lastError && (
                   <span className="text-red-400">last error: {r.lastError} ({fmtRel(r.lastErrorAt)})</span>
                 )}

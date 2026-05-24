@@ -114,22 +114,22 @@ export function MultiModalDirections() {
           <input
             type="number" step="any" placeholder="Start lat" value={startLat}
             onChange={(e) => setStartLat(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-sky-500/40 focus:outline-none"
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-sky-500/40 focus:outline-none"
           />
           <input
             type="number" step="any" placeholder="Start lng" value={startLng}
             onChange={(e) => setStartLng(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-sky-500/40 focus:outline-none"
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-sky-500/40 focus:outline-none"
           />
           <input
             type="number" step="any" placeholder="Dest lat" value={endLat}
             onChange={(e) => setEndLat(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-sky-500/40 focus:outline-none"
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-sky-500/40 focus:outline-none"
           />
           <input
             type="number" step="any" placeholder="Dest lng" value={endLng}
             onChange={(e) => setEndLng(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-sky-500/40 focus:outline-none"
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-sky-500/40 focus:outline-none"
           />
         </div>
 
@@ -149,7 +149,7 @@ export function MultiModalDirections() {
           <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!result && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
             No data yet. Enter start and destination coordinates, pick a mode, then tap "Get directions".
           </div>
         )}
@@ -160,7 +160,7 @@ export function MultiModalDirections() {
                 <span className="font-mono text-2xl text-sky-200">{result.durationText}</span>
                 <span className="font-mono text-sm text-zinc-400">{result.distanceKm} km · {result.distanceMiles} mi</span>
               </div>
-              <div className="mt-1 text-[10px] text-zinc-500">via {result.mode} · {result.stepCount} step{result.stepCount === 1 ? '' : 's'}</div>
+              <div className="mt-1 text-[10px] text-zinc-400">via {result.mode} · {result.stepCount} step{result.stepCount === 1 ? '' : 's'}</div>
             </div>
             {result.steps.length > 0 && (
               <ol className="space-y-1">
@@ -169,7 +169,7 @@ export function MultiModalDirections() {
                     <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-400" />
                     <div className="flex-1 text-[11px]">
                       <div className="capitalize text-zinc-100">{step.instruction || step.type}</div>
-                      <div className="text-[10px] text-zinc-500">
+                      <div className="text-[10px] text-zinc-400">
                         {step.roadName && <span>{step.roadName} · </span>}
                         {fmtMeters(step.distanceMeters)}
                       </div>
@@ -179,7 +179,7 @@ export function MultiModalDirections() {
               </ol>
             )}
             {result.steps.length === 0 && (
-              <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+              <div className="flex items-center gap-2 text-[11px] text-zinc-400">
                 <MapPin className="h-3.5 w-3.5" /> Route resolved but the provider returned no maneuver steps.
               </div>
             )}

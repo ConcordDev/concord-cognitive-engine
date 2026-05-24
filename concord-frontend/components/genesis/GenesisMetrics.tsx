@@ -68,7 +68,7 @@ export function GenesisMetrics({ onSelect }: { onSelect?: (id: string) => void }
       </header>
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Computing metrics…
         </div>
       )}
@@ -92,13 +92,13 @@ export function GenesisMetrics({ onSelect }: { onSelect?: (id: string) => void }
             ] as const).map(([label, n]) => (
               <div key={label} className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-2">
                 <p className="text-lg font-bold text-white">{n}</p>
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</p>
               </div>
             ))}
           </div>
 
           <div>
-            <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-500">
+            <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-400">
               Activity over time ({data.windowDays}d)
             </p>
             <ChartKit
@@ -113,7 +113,7 @@ export function GenesisMetrics({ onSelect }: { onSelect?: (id: string) => void }
 
           {(data.focusDistribution?.length ?? 0) > 0 && (
             <div>
-              <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-500">
+              <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-400">
                 Focus distribution
               </p>
               <ChartKit
@@ -129,7 +129,7 @@ export function GenesisMetrics({ onSelect }: { onSelect?: (id: string) => void }
 
           {(data.topContributors?.length ?? 0) > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-              <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-500">
+              <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-400">
                 Top contributors
               </p>
               <ol className="space-y-1">
@@ -143,7 +143,7 @@ export function GenesisMetrics({ onSelect }: { onSelect?: (id: string) => void }
                     >
                       {c.given_name}
                     </button>
-                    <span className="font-mono text-zinc-500">{c.events}</span>
+                    <span className="font-mono text-zinc-400">{c.events}</span>
                   </li>
                 ))}
               </ol>

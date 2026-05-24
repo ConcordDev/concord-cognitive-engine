@@ -102,10 +102,10 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
       <button type="button" onClick={() => setOpenTask(t.id)} className="block w-full text-left">
         <p className="text-xs text-zinc-100">{t.title}</p>
         <div className="flex flex-wrap items-center gap-1.5 mt-1">
-          <span className="text-[9px] font-mono text-zinc-500">{t.ref}</span>
+          <span className="text-[9px] font-mono text-zinc-400">{t.ref}</span>
           <span className={cn('text-[9px] uppercase', TYPE_COLOR[t.type])}>{t.type}</span>
           {t.priority !== 'none' && <span className={cn('text-[9px] uppercase', PRIORITY_COLOR[t.priority])}>{t.priority}</span>}
-          {t.points > 0 && <span className="text-[9px] text-zinc-500">{t.points}pt</span>}
+          {t.points > 0 && <span className="text-[9px] text-zinc-400">{t.points}pt</span>}
           {t.assigneeName && <span className="text-[9px] text-indigo-400">{t.assigneeName}</span>}
           {t.labels.map((l) => (
             <span key={l} className="text-[9px] px-1 rounded text-white" style={{ background: cssColor(labelColor(l)) }}>{l}</span>
@@ -120,7 +120,7 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
   );
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -143,7 +143,7 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Task
         </button>
-        <span className="text-[11px] text-zinc-500 ml-auto">Swimlanes</span>
+        <span className="text-[11px] text-zinc-400 ml-auto">Swimlanes</span>
         <select value={groupBy} onChange={(e) => setGroupBy(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           {['none', 'assignee', 'epic', 'priority', 'type'].map((g) => <option key={g} value={g}>{g}</option>)}
@@ -164,7 +164,7 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
                 </p>
                 <ul className="space-y-1.5">
                   {tasks.map(renderCard)}
-                  {tasks.length === 0 && <li className="text-[10px] text-zinc-600 italic px-1">Empty</li>}
+                  {tasks.length === 0 && <li className="text-[10px] text-zinc-400 italic px-1">Empty</li>}
                 </ul>
               </div>
             );
@@ -180,7 +180,7 @@ export function PjBoardPanel({ projectId, onChange }: { projectId: string; onCha
                   const tasks = lane.columns.find((c) => c.status === col.id)?.tasks || [];
                   return (
                     <div key={col.id} className="bg-zinc-900/50 border-t-2 border-zinc-700 rounded-lg p-2">
-                      <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1.5">{col.label} {tasks.length}</p>
+                      <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">{col.label} {tasks.length}</p>
                       <ul className="space-y-1.5">{tasks.map(renderCard)}</ul>
                     </div>
                   );

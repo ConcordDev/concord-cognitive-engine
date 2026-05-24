@@ -199,7 +199,7 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
         <div className={`fixed top-4 left-4 z-[8500] w-72 ${panel} p-4`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-gray-300">Adaptive Complexity</h3>
-            <button onClick={() => setShowDebug(false)} className="text-[10px] text-gray-500 hover:text-white">
+            <button onClick={() => setShowDebug(false)} className="text-[10px] text-gray-400 hover:text-white">
               Close
             </button>
           </div>
@@ -207,7 +207,7 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
           {/* Inferred level */}
           <div className="mb-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-500">Inferred Level</span>
+              <span className="text-[10px] text-gray-400">Inferred Level</span>
               <span className={`text-xs font-semibold capitalize ${levelColors[level]}`}>{level}</span>
             </div>
             <div className="h-1.5 rounded-full bg-white/10 mt-1 overflow-hidden">
@@ -217,15 +217,15 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
               />
             </div>
             <div className="flex justify-between mt-0.5">
-              <span className="text-[8px] text-gray-600">Newcomer</span>
-              <span className="text-[8px] text-gray-600">Expert</span>
+              <span className="text-[8px] text-gray-400">Newcomer</span>
+              <span className="text-[8px] text-gray-400">Expert</span>
             </div>
           </div>
 
           {/* Detail level */}
           <div className="mb-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-500">Detail Level</span>
+              <span className="text-[10px] text-gray-400">Detail Level</span>
               <span className="text-xs text-cyan-400 capitalize">{detailLevel}</span>
             </div>
             {override && (
@@ -235,10 +235,10 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
 
           {/* Metrics breakdown */}
           <div className="space-y-1.5">
-            <span className="text-[10px] text-gray-500">Behavior Metrics</span>
+            <span className="text-[10px] text-gray-400">Behavior Metrics</span>
             {Object.entries(metrics).map(([key, value]) => (
               <div key={key} className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-500 w-24 truncate">
+                <span className="text-[9px] text-gray-400 w-24 truncate">
                   {key.replace(/([A-Z])/g, ' $1').trim()}
                 </span>
                 <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
@@ -247,7 +247,7 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
                     style={{ width: `${(value as number) * 100}%` }}
                   />
                 </div>
-                <span className="text-[8px] text-gray-600 w-8 text-right">
+                <span className="text-[8px] text-gray-400 w-8 text-right">
                   {((value as number) * 100).toFixed(0)}%
                 </span>
               </div>
@@ -256,13 +256,13 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
 
           {/* Signal count */}
           <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
-            <span className="text-[9px] text-gray-600">{signals.length} signals recorded</span>
-            {userId && <span className="text-[9px] text-gray-600">{userId}</span>}
+            <span className="text-[9px] text-gray-400">{signals.length} signals recorded</span>
+            {userId && <span className="text-[9px] text-gray-400">{userId}</span>}
           </div>
 
           {/* Override control */}
           <div className="mt-3 pt-2 border-t border-white/5">
-            <span className="text-[10px] text-gray-500 block mb-1">Override Detail Level</span>
+            <span className="text-[10px] text-gray-400 block mb-1">Override Detail Level</span>
             <div className="flex gap-1 flex-wrap">
               {(['simplified', 'standard', 'detailed', 'engineering'] as DetailLevel[]).map((lvl) => (
                 <button
@@ -271,7 +271,7 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
                   className={`text-[9px] px-2 py-0.5 rounded border transition-colors ${
                     override === lvl
                       ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400'
-                      : 'border-white/10 text-gray-500 hover:text-white hover:border-white/20'
+                      : 'border-white/10 text-gray-400 hover:text-white hover:border-white/20'
                   }`}
                 >
                   {lvl}
@@ -280,7 +280,7 @@ export default function AdaptiveComplexity({ children, userId }: AdaptiveComplex
             </div>
             <button
               onClick={() => setOverride('engineering')}
-              className="text-[9px] text-gray-500 hover:text-cyan-400 mt-1.5 transition-colors"
+              className="text-[9px] text-gray-400 hover:text-cyan-400 mt-1.5 transition-colors"
             >
               Always show full engineering data
             </button>

@@ -78,7 +78,7 @@ function ArgumentStrengthMeter({ text }: { text: string }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-500 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Argument Strength</span>
+        <span className="text-gray-400 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Argument Strength</span>
         <span className="font-semibold" style={{ color }}>{label} ({strength}%)</span>
       </div>
       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -107,7 +107,7 @@ function ProConScale({ proCount, conCount, proVotes, conVotes }:
       </h3>
       {/* Arguments bar */}
       <div className="space-y-1">
-        <div className="flex justify-between text-xs text-gray-500">
+        <div className="flex justify-between text-xs text-gray-400">
           <span className="text-neon-green">Pro ({proCount})</span>
           <span>Arguments</span>
           <span className="text-red-400">Con ({conCount})</span>
@@ -121,7 +121,7 @@ function ProConScale({ proCount, conCount, proVotes, conVotes }:
       </div>
       {/* Votes bar */}
       <div className="space-y-1">
-        <div className="flex justify-between text-xs text-gray-500">
+        <div className="flex justify-between text-xs text-gray-400">
           <span className="text-neon-green">{proVotes} votes</span>
           <span>Community</span>
           <span className="text-red-400">{conVotes} votes</span>
@@ -215,7 +215,7 @@ function PhaseProgressBar({ phase, onPhaseSelect }: { phase: DebatePhase; onPhas
             className={cn(
               'flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded transition-all text-center',
               isCurrent ? 'bg-neon-purple/30 text-neon-purple border border-neon-purple/40' :
-              isPast ? 'bg-white/5 text-gray-500 border border-white/5' :
+              isPast ? 'bg-white/5 text-gray-400 border border-white/5' :
               'bg-white/[0.02] text-gray-600 border border-white/5'
             )}>
             {PHASE_CONFIG[p].label}
@@ -305,7 +305,7 @@ function DebateRoundTimer({ onTimeUp, turnKey, autoStart, phase, currentTurn }: 
         <h3 className="font-semibold text-sm flex items-center gap-2">
           <Timer className="w-4 h-4 text-neon-purple" /> Round Timer
         </h3>
-        <span className={cn('text-xs', isActive ? 'text-neon-cyan font-medium' : 'text-gray-500')}>{turnLabel}</span>
+        <span className={cn('text-xs', isActive ? 'text-neon-cyan font-medium' : 'text-gray-400')}>{turnLabel}</span>
       </div>
       <div className="flex items-center gap-4">
         <div className="relative w-16 h-16 shrink-0">
@@ -378,22 +378,22 @@ function VerdictDisplay({ proArguments, conArguments, proVotes, conVotes }:
       <div className="grid grid-cols-3 items-center gap-2 text-center">
         <div>
           <p className="text-2xl font-bold text-neon-green">{proScore}</p>
-          <p className="text-xs text-gray-500">Pro Score</p>
+          <p className="text-xs text-gray-400">Pro Score</p>
         </div>
         <div>
           <p className={cn('text-sm font-bold', winnerColor)}>{winner}</p>
-          <p className="text-xs text-gray-600">leads</p>
+          <p className="text-xs text-gray-400">leads</p>
         </div>
         <div>
           <p className="text-2xl font-bold text-red-400">{conScore}</p>
-          <p className="text-xs text-gray-500">Con Score</p>
+          <p className="text-xs text-gray-400">Con Score</p>
         </div>
       </div>
       <div className="h-2 rounded-full overflow-hidden flex">
         <div className="h-full bg-neon-green/60 transition-all duration-500" style={{ width: `${proWidth}%` }} />
         <div className="h-full bg-red-400/60 flex-1" />
       </div>
-      <p className="text-xs text-gray-600 text-center">Score = (args × 10) + (votes × 2)</p>
+      <p className="text-xs text-gray-400 text-center">Score = (args × 10) + (votes × 2)</p>
     </div>
   );
 }
@@ -616,24 +616,24 @@ export default function DebateLensPage() {
             <div className="grid grid-cols-4 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-lg font-bold ${Number(actionResult.overallScore) >= 70 ? 'text-neon-green' : Number(actionResult.overallScore) >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>{String(actionResult.overallScore)}</p>
-                <p className="text-[10px] text-gray-500">Overall Score</p>
+                <p className="text-[10px] text-gray-400">Overall Score</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.evidenceScore ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Evidence</p>
+                <p className="text-[10px] text-gray-400">Evidence</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-purple">{String(actionResult.reasoningScore ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Reasoning</p>
+                <p className="text-[10px] text-gray-400">Reasoning</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-xs font-bold uppercase ${actionResult.strength === 'strong' ? 'text-neon-green' : actionResult.strength === 'moderate' ? 'text-yellow-400' : 'text-red-400'}`}>{String(actionResult.strength ?? '—')}</p>
-                <p className="text-[10px] text-gray-500">Strength</p>
+                <p className="text-[10px] text-gray-400">Strength</p>
               </div>
             </div>
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">Score</span>
+                <span className="text-gray-400">Score</span>
                 <span className="text-gray-400">{String(actionResult.overallScore ?? 0)}/100</span>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -652,7 +652,7 @@ export default function DebateLensPage() {
             )}
             {actionResult.addressesCounterpoints !== undefined && (
               <p className="text-xs flex items-center gap-1">
-                {actionResult.addressesCounterpoints ? <CheckCircle className="w-3 h-3 text-neon-green" /> : <XCircle className="w-3 h-3 text-gray-500" />}
+                {actionResult.addressesCounterpoints ? <CheckCircle className="w-3 h-3 text-neon-green" /> : <XCircle className="w-3 h-3 text-gray-400" />}
                 <span className="text-gray-400">{actionResult.addressesCounterpoints ? 'Addresses counterpoints' : 'No counterpoint addressed'}</span>
               </p>
             )}
@@ -665,11 +665,11 @@ export default function DebateLensPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String((actionResult.originalPosition as string)?.split(/\s+/)?.length ?? Number(actionResult.originalLength) ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Original Words</p>
+                <p className="text-[10px] text-gray-400">Original Words</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-purple">{Array.isArray(actionResult.steelmanSteps) ? (actionResult.steelmanSteps as unknown[]).length : 0}</p>
-                <p className="text-[10px] text-gray-500">Improvements</p>
+                <p className="text-[10px] text-gray-400">Improvements</p>
               </div>
             </div>
             {Array.isArray(actionResult.steelmanSteps) && (
@@ -684,7 +684,7 @@ export default function DebateLensPage() {
             )}
             {!!actionResult.framework && (
               <div className="bg-neon-purple/5 border border-neon-purple/20 rounded p-3 space-y-1">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Framework</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Framework</p>
                 {Object.entries(actionResult.framework as Record<string, string>).map(([k, v]) => (
                   <p key={k} className="text-xs text-gray-300"><span className="text-neon-purple capitalize">{k}: </span>{v}</p>
                 ))}
@@ -699,15 +699,15 @@ export default function DebateLensPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-neon-green/5 border border-neon-green/20 rounded text-center">
                 <p className="text-xs font-bold text-neon-green uppercase truncate">{String(actionResult.winner ?? '—')}</p>
-                <p className="text-[10px] text-gray-500">Winner</p>
+                <p className="text-[10px] text-gray-400">Winner</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-yellow-400">{String(actionResult.margin ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Margin</p>
+                <p className="text-[10px] text-gray-400">Margin</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-xs font-bold ${actionResult.close ? 'text-yellow-400' : 'text-neon-green'}`}>{actionResult.close ? 'Close' : 'Clear'}</p>
-                <p className="text-[10px] text-gray-500">Result</p>
+                <p className="text-[10px] text-gray-400">Result</p>
               </div>
             </div>
             {Array.isArray(actionResult.sides) && (
@@ -718,7 +718,7 @@ export default function DebateLensPage() {
                       <span className="text-sm font-semibold text-gray-200">{s.side}</span>
                       <span className={`text-sm font-bold ${i === 0 ? 'text-neon-green' : 'text-gray-400'}`}>{s.score} pts</span>
                     </div>
-                    <div className="flex gap-3 text-[10px] text-gray-500 mt-1">
+                    <div className="flex gap-3 text-[10px] text-gray-400 mt-1">
                       <span>{s.arguments} args</span>
                       <span>{s.evidencePoints} evidence</span>
                       <span>{s.rebuttals} rebuttals</span>
@@ -736,17 +736,17 @@ export default function DebateLensPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-lg font-bold ${Number(actionResult.count) === 0 ? 'text-neon-green' : Number(actionResult.count) <= 2 ? 'text-yellow-400' : 'text-red-400'}`}>{String(actionResult.count ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Fallacies</p>
+                <p className="text-[10px] text-gray-400">Fallacies</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-cyan">{String(actionResult.textLength ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Chars</p>
+                <p className="text-[10px] text-gray-400">Chars</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-[10px] font-bold uppercase ${actionResult.logicalSoundness === 'appears-sound' ? 'text-neon-green' : actionResult.logicalSoundness === 'minor-issues' ? 'text-yellow-400' : 'text-red-400'}`}>
                   {String(actionResult.logicalSoundness).replace(/-/g, ' ')}
                 </p>
-                <p className="text-[10px] text-gray-500">Soundness</p>
+                <p className="text-[10px] text-gray-400">Soundness</p>
               </div>
             </div>
             {Array.isArray(actionResult.fallaciesDetected) && (actionResult.fallaciesDetected as Array<{fallacy:string;description:string}>).length > 0 && (
@@ -802,7 +802,7 @@ export default function DebateLensPage() {
         <div className="space-y-3">
           <PhaseProgressBar phase={debatePhase} onPhaseSelect={setDebatePhase} />
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               Phase: <span className="text-white font-medium">{phaseConfig.label}</span> — {phaseConfig.description}
             </p>
             {debatePhase === 'setup' && (
@@ -855,7 +855,7 @@ export default function DebateLensPage() {
                   />
                 </div>
               ) : (
-                <div className="panel p-4 flex items-center justify-center text-gray-500 text-sm">
+                <div className="panel p-4 flex items-center justify-center text-gray-400 text-sm">
                   Select a debate to see balance & scoring
                 </div>
               )}
@@ -879,7 +879,7 @@ export default function DebateLensPage() {
       )}
 
       <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search debates..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
       </div>
 
@@ -905,7 +905,7 @@ export default function DebateLensPage() {
                     <span>{d.format}</span>
                   </div>
                 </button>
-                <button onClick={() => remove(d.id)} disabled={deleteMut.isPending} className="mt-2 text-gray-500 hover:text-red-400 text-xs flex items-center gap-1">
+                <button onClick={() => remove(d.id)} disabled={deleteMut.isPending} className="mt-2 text-gray-400 hover:text-red-400 text-xs flex items-center gap-1">
                   {deleteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Remove
                 </button>
               </div>
@@ -929,7 +929,7 @@ export default function DebateLensPage() {
                       {(selectedDebateData.proArguments || []).map((arg, i) => (
                         <div key={i} className="bg-neon-green/5 border border-neon-green/20 rounded-lg p-3 space-y-2">
                           <p className="text-sm text-gray-200">{arg.text}</p>
-                          <p className="text-xs text-gray-500">{arg.author}</p>
+                          <p className="text-xs text-gray-400">{arg.author}</p>
                           <ArgumentStrengthMeter text={arg.text} />
                         </div>
                       ))}
@@ -942,7 +942,7 @@ export default function DebateLensPage() {
                       {(selectedDebateData.conArguments || []).map((arg, i) => (
                         <div key={i} className="bg-red-400/5 border border-red-400/20 rounded-lg p-3 space-y-2">
                           <p className="text-sm text-gray-200">{arg.text}</p>
-                          <p className="text-xs text-gray-500">{arg.author}</p>
+                          <p className="text-xs text-gray-400">{arg.author}</p>
                           <ArgumentStrengthMeter text={arg.text} />
                         </div>
                       ))}
@@ -1022,7 +1022,7 @@ export default function DebateLensPage() {
             </>
           ) : (
             <div className="panel p-4 h-full flex items-center justify-center">
-              <div className="text-center text-gray-500">
+              <div className="text-center text-gray-400">
                 <Scale className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Select a debate to view arguments</p>
               </div>

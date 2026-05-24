@@ -63,7 +63,7 @@ function Ring({ percent, size = 140, stroke = 12, colour }: { percent: number; s
 }
 
 function WeightChart({ history, ideal }: { history: Array<{ date: string; weight: number }>; ideal?: { min: number; max: number } }) {
-  if (history.length < 2) return <div className="text-[10px] text-zinc-500">Need 2+ weigh-ins (HealthRecord with weight) for chart.</div>;
+  if (history.length < 2) return <div className="text-[10px] text-zinc-400">Need 2+ weigh-ins (HealthRecord with weight) for chart.</div>;
   const values = history.map((h) => h.weight);
   const min = Math.min(...values, ideal?.min || values[0]);
   const max = Math.max(...values, ideal?.max || values[0]);
@@ -148,13 +148,13 @@ export function ActivityWeightDashboard() {
       <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-8 text-center">
         <PawPrint className="mx-auto h-8 w-8 text-zinc-600" />
         <div className="mt-3 text-sm text-zinc-300">No pets in your library yet.</div>
-        <div className="mt-1 text-xs text-zinc-500">Add a PetProfile via the lens's "New" button above. Once you have a pet plus some ActivityLog and HealthRecord entries, this dashboard will surface your real wellness data.</div>
+        <div className="mt-1 text-xs text-zinc-400">Add a PetProfile via the lens's "New" button above. Once you have a pet plus some ActivityLog and HealthRecord entries, this dashboard will surface your real wellness data.</div>
       </div>
     );
   }
 
   if (petsLoading) {
-    return <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" />Loading your pets…</div>;
+    return <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Loading your pets…</div>;
   }
 
   const d = activePet?.data || {};
@@ -193,12 +193,12 @@ export function ActivityWeightDashboard() {
 
       <div className="grid gap-4 p-4 md:grid-cols-2">
         <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-          <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-zinc-500">
+          <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-zinc-400">
             <span className="flex items-center gap-2"><Activity className="h-3 w-3" />Weekly activity</span>
-            <span className="text-[10px] text-zinc-500">{petActivities.length} logged</span>
+            <span className="text-[10px] text-zinc-400">{petActivities.length} logged</span>
           </div>
           {petActivities.length === 0 ? (
-            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No ActivityLog entries for this pet yet. Log walks/play via the lens's "New" button.</div>
+            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No ActivityLog entries for this pet yet. Log walks/play via the lens's "New" button.</div>
           ) : (
             <>
               <div className="flex items-center gap-4">
@@ -206,16 +206,16 @@ export function ActivityWeightDashboard() {
                   <Ring percent={activity?.score ?? 0} colour={ringColour} />
                   <div className="absolute text-center">
                     <div className="font-mono text-3xl text-white">{activity?.score ?? '—'}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-500">score</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-400">score</div>
                   </div>
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1">
-                    <div className="text-[9px] uppercase tracking-wider text-zinc-500">Daily avg</div>
-                    <div className="font-mono text-sm text-rose-200">{activity?.dailyAvg ?? '—'} <span className="text-[10px] text-zinc-500">/ {activity?.dailyTarget ?? '—'} min target</span></div>
+                    <div className="text-[9px] uppercase tracking-wider text-zinc-400">Daily avg</div>
+                    <div className="font-mono text-sm text-rose-200">{activity?.dailyAvg ?? '—'} <span className="text-[10px] text-zinc-400">/ {activity?.dailyTarget ?? '—'} min target</span></div>
                   </div>
                   <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1">
-                    <div className="text-[9px] uppercase tracking-wider text-zinc-500">Week total</div>
+                    <div className="text-[9px] uppercase tracking-wider text-zinc-400">Week total</div>
                     <div className="font-mono text-sm text-rose-200">{activity?.weeklyTotal ?? '—'} min</div>
                   </div>
                 </div>
@@ -233,27 +233,27 @@ export function ActivityWeightDashboard() {
         </div>
 
         <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-          <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-zinc-500">
+          <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-zinc-400">
             <span className="flex items-center gap-2"><Heart className="h-3 w-3" />Weight trend</span>
-            <span className="text-[10px] text-zinc-500">{petWeights.length} weigh-ins</span>
+            <span className="text-[10px] text-zinc-400">{petWeights.length} weigh-ins</span>
           </div>
           {petWeights.length === 0 ? (
-            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No HealthRecord weigh-ins for this pet yet. Add records with a weight field via the lens's "New" button.</div>
+            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No HealthRecord weigh-ins for this pet yet. Add records with a weight field via the lens's "New" button.</div>
           ) : (
             <>
               <div className="flex items-center gap-3">
-                <div className="font-mono text-3xl text-white">{weight?.currentWeight ?? petWeights[petWeights.length - 1]?.weight ?? '—'} <span className="text-sm text-zinc-500">lb</span></div>
+                <div className="font-mono text-3xl text-white">{weight?.currentWeight ?? petWeights[petWeights.length - 1]?.weight ?? '—'} <span className="text-sm text-zinc-400">lb</span></div>
                 {weight?.trend && <div className="flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-[11px] text-zinc-300">{trendIcon}{weight.trend}</div>}
               </div>
               {weight?.idealRange && (
-                <div className="text-[10px] text-zinc-500">Ideal range: <span className="text-emerald-300">{weight.idealRange.min}–{weight.idealRange.max} lb</span> · {weight.idealRange.note}</div>
+                <div className="text-[10px] text-zinc-400">Ideal range: <span className="text-emerald-300">{weight.idealRange.min}–{weight.idealRange.max} lb</span> · {weight.idealRange.note}</div>
               )}
               <div className="overflow-x-auto">
                 <WeightChart history={petWeights} ideal={weight?.idealRange ? { min: weight.idealRange.min, max: weight.idealRange.max } : undefined} />
               </div>
               {weight?.weeklyChangeLbs != null && (
                 <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
-                  <span className="text-zinc-500">Weekly change: </span>
+                  <span className="text-zinc-400">Weekly change: </span>
                   <span className={`font-mono ${weight.weeklyChangeLbs > 0.3 ? 'text-amber-300' : weight.weeklyChangeLbs < -0.3 ? 'text-blue-300' : 'text-emerald-300'}`}>
                     {weight.weeklyChangeLbs > 0 ? '+' : ''}{weight.weeklyChangeLbs} lb
                   </span>

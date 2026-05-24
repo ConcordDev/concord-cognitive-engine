@@ -102,7 +102,7 @@ export default function FactionWarBanner() {
               </div>
             ))}
           </div>
-          <div className="mt-2 text-[10px] text-slate-500 italic">
+          <div className="mt-2 text-[10px] text-slate-400 italic">
             NPCs co-evolve in the background. Combat actions you take while
             nearby contribute to your side's collective intelligence.
           </div>

@@ -40,7 +40,7 @@ export function AprHistoryChart({ poolId, months }: { poolId: string; months: nu
   }, [poolId, months]);
 
   if (!hist) {
-    return <div className="text-xs text-zinc-500 py-3">Loading APR history…</div>;
+    return <div className="text-xs text-zinc-400 py-3">Loading APR history…</div>;
   }
 
   const chartData = hist.series.map((p) => ({
@@ -60,12 +60,12 @@ export function AprHistoryChart({ poolId, months }: { poolId: string; months: nu
         <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-zinc-400">
           High {hist.maxAprPct.toFixed(2)}%
         </span>
-        <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-zinc-500">
+        <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-zinc-400">
           {hist.points} sample{hist.points === 1 ? '' : 's'}
         </span>
       </div>
       {chartData.length < 2 ? (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           One sample so far — the APR series builds a point per day this pool is viewed.
         </p>
       ) : (

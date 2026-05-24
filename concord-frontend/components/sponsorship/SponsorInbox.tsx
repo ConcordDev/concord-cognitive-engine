@@ -47,7 +47,7 @@ export function SponsorInbox({ refreshKey }: { refreshKey: number }) {
           Messages from creators {unread > 0 && <span className="ml-1 text-amber-400">({unread} unread)</span>}
         </h3>
         {messages.length === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">No messages from your sponsored creators yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No messages from your sponsored creators yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {messages.map((m) => (
@@ -57,7 +57,7 @@ export function SponsorInbox({ refreshKey }: { refreshKey: number }) {
               >
                 <div className="flex justify-between items-baseline">
                   <p className="text-zinc-200 font-medium text-[12px]">{m.creatorName}</p>
-                  <span className="text-[9px] text-zinc-600">{new Date(m.sentAt * 1000).toLocaleString()}</span>
+                  <span className="text-[9px] text-zinc-400">{new Date(m.sentAt * 1000).toLocaleString()}</span>
                 </div>
                 <p className="text-[12px] text-zinc-300 mt-0.5">{m.body}</p>
                 {!m.read && (
@@ -72,7 +72,7 @@ export function SponsorInbox({ refreshKey }: { refreshKey: number }) {
 
       <section className="bg-zinc-900/80 border border-emerald-800/50 rounded-xl p-3 space-y-2">
         <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Send a thank-you (creator)</h3>
-        <p className="text-[10px] text-zinc-500">As a sponsored NPC-mentor, thank one of your active sponsors.</p>
+        <p className="text-[10px] text-zinc-400">As a sponsored NPC-mentor, thank one of your active sponsors.</p>
         {msg && <div className="bg-emerald-950/50 border border-emerald-700/50 text-emerald-200 px-2 py-1 rounded text-[11px]">{msg}</div>}
         <div className="flex flex-wrap gap-2">
           <input

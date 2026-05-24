@@ -104,10 +104,10 @@ export function ResidueDetail({
         onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between">
           <h2 className="text-xl font-semibold text-violet-300">Residue Investigation</h2>
-          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-200">✕</button>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-200">✕</button>
         </div>
 
-        {loading && <p className="mt-4 text-gray-500">Reading the residue…</p>}
+        {loading && <p className="mt-4 text-gray-400">Reading the residue…</p>}
         {!loading && !r && <p className="mt-4 text-rose-400">This residue could not be read.</p>}
 
         {!loading && r && (
@@ -158,7 +158,7 @@ export function ResidueDetail({
                           ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/40'
                           : i === stageIndex
                             ? 'bg-violet-600/40 text-violet-100 border border-violet-400/50'
-                            : 'bg-white/5 text-gray-500 border border-white/10'
+                            : 'bg-white/5 text-gray-400 border border-white/10'
                       }`}
                     >
                       {STAGE_LABEL[s] || s}
@@ -229,7 +229,7 @@ export function ResidueDetail({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-white/10 bg-white/5 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-gray-400">{label}</div>
       <div className="mt-0.5 text-gray-200">{value}</div>
     </div>
   );

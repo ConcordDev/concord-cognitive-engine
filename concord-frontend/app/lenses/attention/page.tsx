@@ -311,7 +311,7 @@ export default function AttentionLensPage() {
           </button>
         </div>
         {attentionItems.length === 0 && (
-          <p className="text-xs text-gray-500 mt-3 text-center">Add cognitive threads above to enable computational actions.</p>
+          <p className="text-xs text-gray-400 mt-3 text-center">Add cognitive threads above to enable computational actions.</p>
         )}
       </div>
 
@@ -351,29 +351,29 @@ export default function AttentionLensPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-green">{(actionResult.deepWork as Record<string, unknown>)?.ratio as number}%</p>
-                  <p className="text-[10px] text-gray-500">Deep Work Ratio</p>
+                  <p className="text-[10px] text-gray-400">Deep Work Ratio</p>
                 </div>
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-blue">{(actionResult.interruptions as Record<string, unknown>)?.perHour as number}/hr</p>
-                  <p className="text-[10px] text-gray-500">Interruptions</p>
+                  <p className="text-[10px] text-gray-400">Interruptions</p>
                 </div>
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-purple">{(actionResult.contextSwitching as Record<string, unknown>)?.switches as number}</p>
-                  <p className="text-[10px] text-gray-500">Context Switches</p>
+                  <p className="text-[10px] text-gray-400">Context Switches</p>
                 </div>
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-yellow">{actionResult.longestUninterruptedStreak as number}m</p>
-                  <p className="text-[10px] text-gray-500">Longest Streak</p>
+                  <p className="text-[10px] text-gray-400">Longest Streak</p>
                 </div>
               </div>
               {(actionResult.componentScores as Record<string, number>) && (
                 <div className="pt-2 border-t border-lattice-border">
-                  <p className="text-xs text-gray-500 mb-2">Component Scores</p>
+                  <p className="text-xs text-gray-400 mb-2">Component Scores</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {Object.entries(actionResult.componentScores as Record<string, number>).map(([key, val]) => (
                       <div key={key} className="text-center">
                         <p className="text-sm font-bold text-gray-200">{val}</p>
-                        <p className="text-[10px] text-gray-500 capitalize">{key.replace(/Score$/, '').replace(/([A-Z])/g, ' $1').trim()}</p>
+                        <p className="text-[10px] text-gray-400 capitalize">{key.replace(/Score$/, '').replace(/([A-Z])/g, ' $1').trim()}</p>
                       </div>
                     ))}
                   </div>
@@ -387,7 +387,7 @@ export default function AttentionLensPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-300">{actionResult.taskCount as number} tasks ranked</span>
-                <span className="text-xs text-gray-500">Eisenhower Matrix</span>
+                <span className="text-xs text-gray-400">Eisenhower Matrix</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {(['do-first', 'schedule', 'delegate', 'eliminate'] as const).map((q) => {
@@ -406,21 +406,21 @@ export default function AttentionLensPage() {
                   };
                   return (
                     <div key={q} className={`p-2 rounded-lg border ${colors[q]}`}>
-                      <p className="text-xs font-medium text-gray-300 mb-1">{labels[q]} <span className="text-gray-500">({quad.count})</span></p>
+                      <p className="text-xs font-medium text-gray-300 mb-1">{labels[q]} <span className="text-gray-400">({quad.count})</span></p>
                       {quad.tasks.slice(0, 2).map((t) => (
                         <div key={t.name} className="flex justify-between text-[10px] text-gray-400">
                           <span className="truncate max-w-[80px]">{t.name}</span>
                           <span className="text-neon-cyan">{t.priorityScore}</span>
                         </div>
                       ))}
-                      {quad.count > 2 && <p className="text-[10px] text-gray-600 mt-0.5">+{quad.count - 2} more</p>}
+                      {quad.count > 2 && <p className="text-[10px] text-gray-400 mt-0.5">+{quad.count - 2} more</p>}
                     </div>
                   );
                 })}
               </div>
               {(actionResult.optimalOrder as Array<{ name: string; priorityScore: number }>)?.slice(0, 5).length > 0 && (
                 <div className="pt-2 border-t border-lattice-border">
-                  <p className="text-xs text-gray-500 mb-2">Optimal Order (top 5)</p>
+                  <p className="text-xs text-gray-400 mb-2">Optimal Order (top 5)</p>
                   <div className="space-y-1">
                     {(actionResult.optimalOrder as Array<{ name: string; priorityScore: number }>).slice(0, 5).map((t, i) => (
                       <div key={i} className="flex items-center justify-between text-xs">
@@ -444,31 +444,31 @@ export default function AttentionLensPage() {
                 <div className="text-3xl font-bold text-neon-green">{actionResult.efficiency as number}%</div>
                 <div>
                   <p className="text-sm text-gray-300">Allocation Efficiency</p>
-                  <p className="text-xs text-gray-500">{actionResult.scheduledTasks as number}/{actionResult.totalTasks as number} tasks scheduled</p>
+                  <p className="text-xs text-gray-400">{actionResult.scheduledTasks as number}/{actionResult.totalTasks as number} tasks scheduled</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">{actionResult.totalAllocatedMinutes as number}m</p>
-                  <p className="text-[10px] text-gray-500">Allocated</p>
+                  <p className="text-[10px] text-gray-400">Allocated</p>
                 </div>
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-yellow">{actionResult.remainingMinutes as number}m</p>
-                  <p className="text-[10px] text-gray-500">Remaining</p>
+                  <p className="text-[10px] text-gray-400">Remaining</p>
                 </div>
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-purple">{actionResult.avgCognitiveLoad as number}</p>
-                  <p className="text-[10px] text-gray-500">Avg Cog Load</p>
+                  <p className="text-[10px] text-gray-400">Avg Cog Load</p>
                 </div>
               </div>
               {(actionResult.schedule as Array<{ name: string; startMinute: number; allocatedMinutes: number; cognitiveLoad: number; partial?: boolean }>).slice(0, 4).length > 0 && (
                 <div className="pt-2 border-t border-lattice-border">
-                  <p className="text-xs text-gray-500 mb-2">Schedule Preview</p>
+                  <p className="text-xs text-gray-400 mb-2">Schedule Preview</p>
                   <div className="space-y-1">
                     {(actionResult.schedule as Array<{ name: string; startMinute: number; allocatedMinutes: number; cognitiveLoad: number; partial?: boolean }>).slice(0, 4).map((s, i) => (
                       <div key={i} className="flex items-center justify-between p-2 bg-lattice-bg rounded text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-500 font-mono w-12">{Math.floor(s.startMinute / 60)}h{s.startMinute % 60}m</span>
+                          <span className="text-gray-400 font-mono w-12">{Math.floor(s.startMinute / 60)}h{s.startMinute % 60}m</span>
                           <span className="text-gray-300">{s.name}</span>
                           {s.partial && <span className="text-yellow-400 text-[10px]">partial</span>}
                         </div>
@@ -503,28 +503,28 @@ export default function AttentionLensPage() {
           <Brain className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{threadList.filter(t => t.status === 'active' || t.status === 'pending').length}</p>
-            <p className="text-xs text-gray-500">Focus Sessions</p>
+            <p className="text-xs text-gray-400">Focus Sessions</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Clock className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{stats.avgFocusDurationMs ? ((stats.avgFocusDurationMs / 3600000) * (stats.threadsCompleted || 1)).toFixed(1) : '0.0'}h</p>
-            <p className="text-xs text-gray-500">Total Focus Hours</p>
+            <p className="text-xs text-gray-400">Total Focus Hours</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-neon-yellow" />
           <div>
             <p className="text-lg font-bold">{stats.interruptions || 0}</p>
-            <p className="text-xs text-gray-500">Distractions</p>
+            <p className="text-xs text-gray-400">Distractions</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Gauge className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{(focusScore * 100).toFixed(0)}%</p>
-            <p className="text-xs text-gray-500">Daily Score</p>
+            <p className="text-xs text-gray-400">Daily Score</p>
           </div>
         </motion.div>
       </div>
@@ -598,7 +598,7 @@ export default function AttentionLensPage() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           <p>No priority items tracked yet. Add attention items to see priority distribution.</p>
         </div>
       )}
@@ -610,19 +610,19 @@ export default function AttentionLensPage() {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <p className="text-xs text-gray-500 uppercase">Total Created</p>
+            <p className="text-xs text-gray-400 uppercase">Total Created</p>
             <p className="text-lg font-bold text-gray-200">{stats.threadsCreated || 0}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-500 uppercase">Interruptions</p>
+            <p className="text-xs text-gray-400 uppercase">Interruptions</p>
             <p className="text-lg font-bold text-yellow-400">{stats.interruptions || 0}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-500 uppercase">Background Tasks</p>
+            <p className="text-xs text-gray-400 uppercase">Background Tasks</p>
             <p className="text-lg font-bold text-gray-200">{status?.backgroundTasks || 0}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-500 uppercase">Avg Focus Duration</p>
+            <p className="text-xs text-gray-400 uppercase">Avg Focus Duration</p>
             <p className="text-lg font-bold text-gray-200">
               {stats.avgFocusDurationMs ? `${(stats.avgFocusDurationMs / 1000).toFixed(1)}s` : '--'}
             </p>
@@ -642,7 +642,7 @@ export default function AttentionLensPage() {
             ))}
           </select>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">
+            <label className="text-xs text-gray-400 mb-1 block">
               Priority: <span className="text-neon-cyan">{parseFloat(newPriority).toFixed(1)}</span>
             </label>
             <input
@@ -654,7 +654,7 @@ export default function AttentionLensPage() {
               step="0.1"
               className="w-full accent-neon-cyan"
             />
-            <div className="flex justify-between text-[10px] text-gray-600">
+            <div className="flex justify-between text-[10px] text-gray-400">
               <span>Low</span>
               <span>Medium</span>
               <span>High</span>
@@ -732,7 +732,7 @@ export default function AttentionLensPage() {
               </select>
               <button
                 onClick={() => setSortBy(sortBy === 'priority' ? 'created' : sortBy === 'created' ? 'status' : 'priority')}
-                className="text-xs flex items-center gap-1 text-gray-500 hover:text-gray-300 transition-colors"
+                className="text-xs flex items-center gap-1 text-gray-400 hover:text-gray-300 transition-colors"
                 title={`Sort by: ${sortBy}`}
               >
                 <ArrowUpDown className="w-3 h-3" /> {sortBy}
@@ -776,11 +776,11 @@ export default function AttentionLensPage() {
                   <div className="mt-2 pt-2 border-t border-lattice-border space-y-2">
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-gray-500">Status</span>
+                        <span className="text-gray-400">Status</span>
                         <p className="capitalize text-gray-300">{t.status}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Created</span>
+                        <span className="text-gray-400">Created</span>
                         <p className="text-gray-300">
                           {t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : '--'}
                         </p>
@@ -801,7 +801,7 @@ export default function AttentionLensPage() {
               </motion.div>
             ))}
             {filteredThreads.length === 0 && (
-              <p className="text-center py-4 text-gray-500 text-sm">
+              <p className="text-center py-4 text-gray-400 text-sm">
                 {threadFilter === 'all' ? 'No threads yet' : `No ${threadFilter} threads`}
               </p>
             )}
@@ -827,7 +827,7 @@ export default function AttentionLensPage() {
                   <span className="font-mono">P:{((q.priority as number) ?? 0).toFixed(1)}</span>
                 </div>
               )) : (
-                <p className="text-sm text-gray-500 text-center py-2">Queue empty</p>
+                <p className="text-sm text-gray-400 text-center py-2">Queue empty</p>
               )}
             </div>
           </div>
@@ -852,7 +852,7 @@ export default function AttentionLensPage() {
                   </div>
                 </div>
               )) : (
-                <p className="text-sm text-gray-500 text-center py-2">None yet</p>
+                <p className="text-sm text-gray-400 text-center py-2">None yet</p>
               )}
             </div>
           </div>
@@ -864,7 +864,7 @@ export default function AttentionLensPage() {
                 <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
                 <div className="text-xs">
                   <p className="text-yellow-400 font-medium">High Interruption Rate</p>
-                  <p className="text-gray-500 mt-0.5">
+                  <p className="text-gray-400 mt-0.5">
                     {stats.interruptions} interruptions detected. Consider reducing thread concurrency.
                   </p>
                 </div>
@@ -905,7 +905,7 @@ export default function AttentionLensPage() {
           {/* Individual entity cards for active threads with emergent roles */}
           {threadList.filter(t => t.status === 'active').length > 0 && (
             <div className="mt-3 space-y-2">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Active Thread Entities</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wider">Active Thread Entities</p>
               {threadList.filter(t => t.status === 'active').map(t => (
                 <EmergentCard key={t.id} emergent={{ id: t.id, role: t.type === 'creative' ? 'builder' : t.type === 'analysis' ? 'critic' : 'synthesizer', name: `${t.type}: ${t.description}`, active: true, state: 'active' } as EmergentEntity} />
               ))}

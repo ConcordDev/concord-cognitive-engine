@@ -164,7 +164,7 @@ export function DreamReader({
         </header>
 
         <div className="space-y-5 px-5 py-5">
-          {loading && <p className="text-sm text-zinc-500">Loading dream…</p>}
+          {loading && <p className="text-sm text-zinc-400">Loading dream…</p>}
           {error && (
             <div className="rounded-lg border border-rose-800/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
               {error}
@@ -173,7 +173,7 @@ export function DreamReader({
 
           {dream && !loading && (
             <>
-              <p className="text-[11px] font-mono text-zinc-500">
+              <p className="text-[11px] font-mono text-zinc-400">
                 {dream.fragmentCount ?? 0} fragments · {dream.composer} ·{' '}
                 {dream.composedAt ? new Date(dream.composedAt * 1000).toLocaleString() : '—'}
                 {dream.worldId ? ` · ${dream.worldId}` : ''}
@@ -189,13 +189,13 @@ export function DreamReader({
               {/* Substrate summary */}
               {summaryRows.length > 0 && (
                 <section>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
                     Substrate that night
                   </h3>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {summaryRows.map((r) => (
                       <div key={r.key} className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-                        <div className="text-[10px] uppercase tracking-wider text-zinc-500">{r.label}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-zinc-400">{r.label}</div>
                         <div className="mt-0.5 font-mono text-lg text-purple-300">{r.value}</div>
                       </div>
                     ))}
@@ -206,7 +206,7 @@ export function DreamReader({
               {/* Interpretation */}
               <section>
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                     Interpretation
                   </h3>
                   <button
@@ -238,7 +238,7 @@ export function DreamReader({
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-zinc-600">
+                  <p className="text-xs text-zinc-400">
                     A deterministic reflection links this dream&apos;s fragments to your recent activity.
                   </p>
                 )}
@@ -246,7 +246,7 @@ export function DreamReader({
 
               {/* Tags */}
               <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">Tags</h3>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">Tags</h3>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -282,7 +282,7 @@ export function DreamReader({
                     placeholder="CC"
                     className="w-24 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600"
                   />
-                  <span className="text-xs text-zinc-500">CC</span>
+                  <span className="text-xs text-zinc-400">CC</span>
                   {isPublished ? (
                     <>
                       <button
@@ -313,7 +313,7 @@ export function DreamReader({
                     </button>
                   )}
                 </div>
-                <p className="mt-1.5 text-[11px] text-zinc-500">
+                <p className="mt-1.5 text-[11px] text-zinc-400">
                   Royalty cascade pays you on every purchase. Currency: CC.
                 </p>
               </section>

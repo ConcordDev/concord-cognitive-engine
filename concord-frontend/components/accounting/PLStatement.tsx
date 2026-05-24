@@ -41,15 +41,15 @@ export function PLStatement() {
         <span className="text-sm font-semibold text-gray-200">Profit & Loss</span>
         <div className="ml-auto flex items-center gap-2">
           <input type="date" value={start} onChange={e => setStart(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <span className="text-[10px] text-gray-500">to</span>
+          <span className="text-[10px] text-gray-400">to</span>
           <input type="date" value={end} onChange={e => setEnd(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
         </div>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !pl ? (
-        <div className="p-10 text-center text-xs text-gray-500">No data.</div>
+        <div className="p-10 text-center text-xs text-gray-400">No data.</div>
       ) : (
         <div className="p-4">
           <Section label="Revenue" lines={pl.revenue.lines} total={pl.revenue.total} tone="positive" />
@@ -66,15 +66,15 @@ export function PLStatement() {
 function Section({ label, lines, total, tone }: { label: string; lines: Line[]; total: number; tone: 'positive' | 'negative' }) {
   return (
     <div className="mb-4">
-      <div className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{label}</div>
+      <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-1">{label}</div>
       <ul className="space-y-0.5 mb-1">
         {lines.map(l => (
           <li key={l.id} className="flex items-center justify-between text-xs">
-            <span className="text-gray-300"><span className="text-[10px] text-gray-500 font-mono mr-1.5">{l.code}</span>{l.name}</span>
+            <span className="text-gray-300"><span className="text-[10px] text-gray-400 font-mono mr-1.5">{l.code}</span>{l.name}</span>
             <span className="font-mono tabular-nums text-white">${l.amount.toFixed(2)}</span>
           </li>
         ))}
-        {lines.length === 0 && <li className="text-[11px] text-gray-500 italic">No entries</li>}
+        {lines.length === 0 && <li className="text-[11px] text-gray-400 italic">No entries</li>}
       </ul>
       <div className={cn('flex items-center justify-between text-sm pt-1 border-t border-white/10', tone === 'positive' ? 'text-emerald-300' : 'text-rose-300')}>
         <span className="font-semibold">Total {label.toLowerCase()}</span>
@@ -96,7 +96,7 @@ function Subtotal({ label, value, pct, bold }: { label: string; value: number; p
         <div className={cn('font-mono tabular-nums', isPositive ? 'text-emerald-300' : 'text-rose-300', bold ? 'text-base font-bold' : 'text-sm')}>
           ${value.toFixed(2)}
         </div>
-        <div className="text-[10px] text-gray-500">{pct.toFixed(1)}% margin</div>
+        <div className="text-[10px] text-gray-400">{pct.toFixed(1)}% margin</div>
       </div>
     </div>
   );

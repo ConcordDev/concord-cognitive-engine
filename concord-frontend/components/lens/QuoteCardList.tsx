@@ -87,18 +87,18 @@ export default function QuoteCardList({ quotes, isLive, lastUpdated, className =
               <Wifi className="w-3 h-3 animate-pulse" /><span>live</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
               <WifiOff className="w-3 h-3" /><span>offline</span>
             </span>
           )}
         </div>
         {lastUpdated && (
-          <span className="text-[10px] text-zinc-500">{new Date(lastUpdated).toLocaleTimeString()}</span>
+          <span className="text-[10px] text-zinc-400">{new Date(lastUpdated).toLocaleTimeString()}</span>
         )}
       </header>
 
       {list.length === 0 ? (
-        <div className="p-6 text-center text-xs text-zinc-500">Yahoo Finance feed connecting…</div>
+        <div className="p-6 text-center text-xs text-zinc-400">Yahoo Finance feed connecting…</div>
       ) : (
         <ul className="divide-y divide-white/5">
           {list.map(q => {
@@ -107,7 +107,7 @@ export default function QuoteCardList({ quotes, isLive, lastUpdated, className =
             const pct = q.changePercent != null && q.changePercent !== '' ? Number(q.changePercent) : null;
             const up = pct != null && pct >= 0;
             const TrendIcon = pct == null ? Minus : (up ? TrendingUp : TrendingDown);
-            const trendColor = pct == null ? 'text-zinc-500' : (up ? 'text-emerald-400' : 'text-rose-400');
+            const trendColor = pct == null ? 'text-zinc-400' : (up ? 'text-emerald-400' : 'text-rose-400');
             const pillBg = pct == null ? 'bg-zinc-700/40' : (up ? 'bg-emerald-500/15' : 'bg-rose-500/15');
             const spark = sparks[q.symbol] || [];
             return (
@@ -115,7 +115,7 @@ export default function QuoteCardList({ quotes, isLive, lastUpdated, className =
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-base font-mono font-bold text-zinc-100">{sym}</span>
-                    <span className="text-[10px] uppercase tracking-wider text-zinc-500">{q.exchange || 'INDX'}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-zinc-400">{q.exchange || 'INDX'}</span>
                   </div>
                   <div className="text-xs text-zinc-400 truncate">{label}</div>
                 </div>

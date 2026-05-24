@@ -202,7 +202,7 @@ export function ConstructionActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -213,9 +213,9 @@ export function ConstructionActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Takeoff</div>
             <div className="text-2xl font-bold text-amber-300">${takeoffResult.grandTotal.toLocaleString()}</div>
-            {takeoffResult.costPerSqFt && <div className="text-[10px] text-zinc-500">${takeoffResult.costPerSqFt}/sf</div>}
-            <div className="text-[10px] text-zinc-500">mat ${takeoffResult.subtotalMaterials.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">lab ${takeoffResult.laborCost.toLocaleString()} · OH ${takeoffResult.overhead} · P ${takeoffResult.profit}</div>
+            {takeoffResult.costPerSqFt && <div className="text-[10px] text-zinc-400">${takeoffResult.costPerSqFt}/sf</div>}
+            <div className="text-[10px] text-zinc-400">mat ${takeoffResult.subtotalMaterials.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">lab ${takeoffResult.laborCost.toLocaleString()} · OH ${takeoffResult.overhead} · P ${takeoffResult.profit}</div>
           </div>
         )}
         {cpmResult && (
@@ -229,7 +229,7 @@ export function ConstructionActionPanel() {
           <div className={cn('rounded-md border p-2.5', safetyResult.rating === 'excellent' ? 'border-emerald-500/30 bg-emerald-500/5' : safetyResult.rating === 'acceptable' ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">Safety · {safetyResult.rating}</div>
             <div className={cn('text-2xl font-bold', safetyResult.complianceRate >= 95 ? 'text-emerald-300' : safetyResult.complianceRate >= 80 ? 'text-amber-300' : 'text-red-300')}>{safetyResult.complianceRate}%</div>
-            <div className="text-[10px] text-zinc-500">TRIR {safetyResult.incidentRate} · {safetyResult.incidents} incidents / {safetyResult.hoursWorked.toLocaleString()}h</div>
+            <div className="text-[10px] text-zinc-400">TRIR {safetyResult.incidentRate} · {safetyResult.incidents} incidents / {safetyResult.hoursWorked.toLocaleString()}h</div>
             {safetyResult.criticalFailures.length > 0 && <div className="text-[10px] text-red-300 mt-0.5">⚠ {safetyResult.criticalFailures.join(', ')}</div>}
           </div>
         )}
@@ -237,7 +237,7 @@ export function ConstructionActionPanel() {
           <div className={cn('rounded-md border p-2.5', progResult.projectStatus === 'on-schedule' ? 'border-emerald-500/30 bg-emerald-500/5' : progResult.projectStatus === 'minor-delay' ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Progress · {progResult.projectStatus}</div>
             <div className="text-2xl font-bold text-green-300">{progResult.overallActualPercent}%<span className="text-xs text-zinc-400"> / {progResult.overallPlannedPercent}% plan</span></div>
-            <div className="text-[10px] text-zinc-500">variance {progResult.overallVariance >= 0 ? '+' : ''}{progResult.overallVariance}%</div>
+            <div className="text-[10px] text-zinc-400">variance {progResult.overallVariance >= 0 ? '+' : ''}{progResult.overallVariance}%</div>
             {progResult.behindPhases.length > 0 && <div className="text-[10px] text-red-300">behind: {progResult.behindPhases.join(', ')}</div>}
             {progResult.phases.slice(0, 4).map((p, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono">{p.phase}</span> · {p.actualPercent}/{p.plannedPercent}%</div>)}
           </div>

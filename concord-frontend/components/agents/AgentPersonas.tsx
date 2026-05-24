@@ -123,7 +123,7 @@ function AgentPersonas({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Agent Personas</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {personas.filter((p) => p.active).length} experts available
             </p>
           </div>
@@ -181,7 +181,7 @@ function AgentPersonas({ className }: { className?: string }) {
                   <Icon className="w-4 h-4" />
                 </div>
                 <p className="text-xs font-medium text-white mt-1 truncate">{persona.name}</p>
-                <p className="text-[10px] text-gray-500">{persona.stats.queries} queries</p>
+                <p className="text-[10px] text-gray-400">{persona.stats.queries} queries</p>
               </button>
             );
           })}
@@ -261,13 +261,13 @@ function AgentPersonas({ className }: { className?: string }) {
                     })()}
                     <div>
                       <p className="text-sm text-white">{persona.name}</p>
-                      <p className="text-[10px] text-gray-500">{persona.style}</p>
+                      <p className="text-[10px] text-gray-400">{persona.style}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
                       <p className="text-xs text-gray-400">{persona.domains.join(', ')}</p>
-                      <p className="text-[10px] text-gray-500">{persona.brain} brain</p>
+                      <p className="text-[10px] text-gray-400">{persona.brain} brain</p>
                     </div>
                     <button
                       onClick={() =>
@@ -277,7 +277,7 @@ function AgentPersonas({ className }: { className?: string }) {
                         })
                       }
                       disabled={configureAgentMutation.isPending}
-                      className="p-1 rounded hover:bg-lattice-surface text-gray-500 hover:text-neon-cyan transition-colors disabled:opacity-50"
+                      className="p-1 rounded hover:bg-lattice-surface text-gray-400 hover:text-neon-cyan transition-colors disabled:opacity-50"
                       title={`Configure ${persona.name}`}
                     >
                       {configureAgentMutation.isPending ? (

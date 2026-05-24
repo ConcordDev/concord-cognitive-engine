@@ -321,7 +321,7 @@ export default function MeditationLensPage() {
                 <div className="flex items-center gap-1 text-orange-300 text-lg font-semibold">
                   <Flame className="w-4 h-4" />{streak.currentStreak}
                 </div>
-                <div className="text-[10px] text-zinc-500">day streak · {streak.totalMinutes} min total</div>
+                <div className="text-[10px] text-zinc-400">day streak · {streak.totalMinutes} min total</div>
               </div>
             )}
           </header>
@@ -373,9 +373,9 @@ export default function MeditationLensPage() {
           {track && (
             <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 p-6 mb-6">
               <div className="text-center mb-4">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">{goalCfg.label} · {goalCfg.vibe}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">{goalCfg.label} · {goalCfg.vibe}</div>
                 <h2 className="text-xl font-semibold text-zinc-100">{track.title}</h2>
-                <div className="text-xs text-zinc-500">narrated by {track.narrator}</div>
+                <div className="text-xs text-zinc-400">narrated by {track.narrator}</div>
               </div>
 
               <div className="relative w-48 h-48 mx-auto mb-4">
@@ -394,7 +394,7 @@ export default function MeditationLensPage() {
                   <div className="text-3xl font-light text-zinc-100">
                     {Math.floor(elapsedSec / 60).toString().padStart(2, '0')}:{(elapsedSec % 60).toString().padStart(2, '0')}
                   </div>
-                  <div className="text-xs text-zinc-500">{completed ? '✓ complete' : playing ? `${remainingMin}m left` : 'ready'}</div>
+                  <div className="text-xs text-zinc-400">{completed ? '✓ complete' : playing ? `${remainingMin}m left` : 'ready'}</div>
                 </div>
               </div>
 
@@ -442,7 +442,7 @@ export default function MeditationLensPage() {
                       key={n}
                       type="button"
                       onClick={() => setRating(n)}
-                      className={cn('w-7 h-7 rounded-full text-sm transition-colors', rating >= n ? 'bg-amber-400 text-amber-950' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700')}
+                      className={cn('w-7 h-7 rounded-full text-sm transition-colors', rating >= n ? 'bg-amber-400 text-amber-950' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700')}
                     >★</button>
                   ))}
                 </div>
@@ -491,7 +491,7 @@ export default function MeditationLensPage() {
                         {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
                       </div>
                       <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-                      <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+                      <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
                     </button>
                   );
                 })}
@@ -518,19 +518,19 @@ export default function MeditationLensPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div className="rounded bg-zinc-950/60 p-2 text-center">
                   <div className="text-lg font-bold text-orange-300 flex items-center justify-center gap-1"><Flame className="w-3 h-3" />{streak.currentStreak}</div>
-                  <div className="text-[10px] text-zinc-500">current streak</div>
+                  <div className="text-[10px] text-zinc-400">current streak</div>
                 </div>
                 <div className="rounded bg-zinc-950/60 p-2 text-center">
                   <div className="text-lg font-bold text-purple-300">{streak.longestStreak}</div>
-                  <div className="text-[10px] text-zinc-500">longest streak</div>
+                  <div className="text-[10px] text-zinc-400">longest streak</div>
                 </div>
                 <div className="rounded bg-zinc-950/60 p-2 text-center">
                   <div className="text-lg font-bold text-zinc-100">{streak.totalSessions}</div>
-                  <div className="text-[10px] text-zinc-500">sessions</div>
+                  <div className="text-[10px] text-zinc-400">sessions</div>
                 </div>
                 <div className="rounded bg-zinc-950/60 p-2 text-center">
                   <div className="text-lg font-bold text-emerald-300">{streak.totalMinutes}</div>
-                  <div className="text-[10px] text-zinc-500">minutes</div>
+                  <div className="text-[10px] text-zinc-400">minutes</div>
                 </div>
               </div>
             </div>

@@ -124,12 +124,12 @@ function TemplateCard({
       </div>
 
       {/* Description */}
-      <p className="text-[9px] text-gray-500 line-clamp-2 mb-1.5">
+      <p className="text-[9px] text-gray-400 line-clamp-2 mb-1.5">
         {template.description}
       </p>
 
       {/* Meta row */}
-      <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-gray-500">
+      <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-gray-400">
         <span className="text-cyan-500">{template.creator}</span>
         <span className="flex items-center gap-0.5">
           <Quote className="w-2.5 h-2.5" /> {template.citations}
@@ -139,7 +139,7 @@ function TemplateCard({
       </div>
 
       {/* Material summary */}
-      <p className="text-[8px] text-gray-600 mt-1 truncate">
+      <p className="text-[8px] text-gray-400 mt-1 truncate">
         {template.materialSummary}
       </p>
     </button>
@@ -186,7 +186,7 @@ function TemplatePreview({
         >
           <ChevronLeft className="w-3.5 h-3.5" /> Back to Catalog
         </button>
-        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
+        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -194,7 +194,7 @@ function TemplatePreview({
       {/* 3D / Isometric preview placeholder */}
       <div className="w-full aspect-[16/10] rounded-lg bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/5 flex flex-col items-center justify-center gap-2">
         <CatIcon className={`w-12 h-12 ${catColor} opacity-50`} />
-        <p className="text-[9px] text-gray-600 max-w-[80%] text-center">
+        <p className="text-[9px] text-gray-400 max-w-[80%] text-center">
           {template.previewDescription}
         </p>
       </div>
@@ -216,24 +216,24 @@ function TemplatePreview({
       {/* Specs grid */}
       <div className="grid grid-cols-2 gap-2">
         <div className={`${panel} p-2`}>
-          <p className="text-[8px] text-gray-500 uppercase tracking-wider mb-0.5">Size</p>
+          <p className="text-[8px] text-gray-400 uppercase tracking-wider mb-0.5">Size</p>
           <div className="flex items-center gap-1">
-            <Ruler className="w-3 h-3 text-gray-500" />
+            <Ruler className="w-3 h-3 text-gray-400" />
             <SizeLabel size={template.size} />
           </div>
         </div>
         <div className={`${panel} p-2`}>
-          <p className="text-[8px] text-gray-500 uppercase tracking-wider mb-0.5">Difficulty</p>
+          <p className="text-[8px] text-gray-400 uppercase tracking-wider mb-0.5">Difficulty</p>
           <DifficultyStars level={template.difficulty} />
         </div>
         <div className={`${panel} p-2`}>
-          <p className="text-[8px] text-gray-500 uppercase tracking-wider mb-0.5">Citations</p>
+          <p className="text-[8px] text-gray-400 uppercase tracking-wider mb-0.5">Citations</p>
           <span className="text-[10px] text-white flex items-center gap-1">
-            <Quote className="w-3 h-3 text-gray-500" /> {template.citations}
+            <Quote className="w-3 h-3 text-gray-400" /> {template.citations}
           </span>
         </div>
         <div className={`${panel} p-2`}>
-          <p className="text-[8px] text-gray-500 uppercase tracking-wider mb-0.5">Category</p>
+          <p className="text-[8px] text-gray-400 uppercase tracking-wider mb-0.5">Category</p>
           <span className={`text-[10px] flex items-center gap-1 ${catColor}`}>
             <CatIcon className="w-3 h-3" />
             {SNAP_BUILD_CATEGORIES.find(c => c.key === template.category)?.label}
@@ -271,7 +271,7 @@ function TemplatePreview({
         <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">Creator</p>
         <p className="text-[10px] text-cyan-400">{template.creator}</p>
         {template.basedOn && (
-          <p className="text-[9px] text-gray-500 mt-1">
+          <p className="text-[9px] text-gray-400 mt-1">
             Based on {template.basedOn}&apos;s design
           </p>
         )}
@@ -284,7 +284,7 @@ function TemplatePreview({
         </p>
 
         <div>
-          <label className="text-[9px] text-gray-500 block mb-0.5">Name</label>
+          <label className="text-[9px] text-gray-400 block mb-0.5">Name</label>
           <input
             value={customName}
             onChange={e => setCustomName(e.target.value)}
@@ -293,7 +293,7 @@ function TemplatePreview({
         </div>
 
         <div>
-          <label className="text-[9px] text-gray-500 block mb-0.5">Description</label>
+          <label className="text-[9px] text-gray-400 block mb-0.5">Description</label>
           <textarea
             value={customDescription}
             onChange={e => setCustomDescription(e.target.value)}
@@ -305,7 +305,7 @@ function TemplatePreview({
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[9px] text-gray-500 block mb-0.5">Interior Layout</label>
+            <label className="text-[9px] text-gray-400 block mb-0.5">Interior Layout</label>
             <select
               value={interiorLayout}
               onChange={e => setInteriorLayout(e.target.value)}
@@ -318,7 +318,7 @@ function TemplatePreview({
             </select>
           </div>
           <div>
-            <label className="text-[9px] text-gray-500 block mb-0.5">Color Scheme</label>
+            <label className="text-[9px] text-gray-400 block mb-0.5">Color Scheme</label>
             <select
               value={colorScheme}
               onChange={e => setColorScheme(e.target.value)}
@@ -349,7 +349,7 @@ function TemplatePreview({
           <Wrench className="w-3 h-3" /> Upgrade to Guided Build
           <ArrowUpRight className="w-3 h-3" />
         </button>
-        <p className="text-[8px] text-gray-600 text-center">
+        <p className="text-[8px] text-gray-400 text-center">
           Guided Build lets you modify the structure but exits snap-build mode
         </p>
       </div>
@@ -462,12 +462,12 @@ export default function SnapBuildCatalog({
           <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
             Snap-Build Catalog
           </h2>
-          <p className="text-[9px] text-gray-500 mt-0.5">
+          <p className="text-[9px] text-gray-400 mt-0.5">
             {totalCount} templates available
           </p>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -489,7 +489,7 @@ export default function SnapBuildCatalog({
               className={`flex items-center gap-1 px-2 py-1 rounded text-[9px] transition-all ${
                 active
                   ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-400/30'
-                  : 'text-gray-500 hover:text-gray-300 border border-transparent hover:border-white/10'
+                  : 'text-gray-400 hover:text-gray-300 border border-transparent hover:border-white/10'
               }`}
             >
               <Icon className="w-3 h-3" />
@@ -501,7 +501,7 @@ export default function SnapBuildCatalog({
 
       {/* Search */}
       <div className="relative">
-        <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" />
+        <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -569,7 +569,7 @@ export default function SnapBuildCatalog({
                       <CIcon className={`w-3 h-3 ${CATEGORY_COLORS[t.category]}`} />
                       <span className="text-[10px] text-white truncate">{t.name}</span>
                     </div>
-                    <span className="text-[8px] text-gray-500 flex items-center gap-0.5">
+                    <span className="text-[8px] text-gray-400 flex items-center gap-0.5">
                       <Quote className="w-2 h-2" /> {t.citations}
                     </span>
                   </button>
@@ -603,7 +603,7 @@ export default function SnapBuildCatalog({
       {/* Active filter indicator */}
       {categoryFilter !== 'all' && (
         <div className="flex items-center gap-1">
-          <span className="text-[9px] text-gray-500">Filtered:</span>
+          <span className="text-[9px] text-gray-400">Filtered:</span>
           <button
             onClick={() => setCategoryFilter('all')}
             className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] border border-white/10 ${CATEGORY_COLORS[categoryFilter]}`}
@@ -619,7 +619,7 @@ export default function SnapBuildCatalog({
         {filtered.length === 0 && (
           <div className="col-span-2 py-8 text-center">
             <Package className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-            <p className="text-[10px] text-gray-600">No templates found in this category</p>
+            <p className="text-[10px] text-gray-400">No templates found in this category</p>
             <p className="text-[9px] text-gray-700 mt-0.5">Try adjusting your filters or search</p>
           </div>
         )}
@@ -630,7 +630,7 @@ export default function SnapBuildCatalog({
 
       {/* Footer count */}
       {filtered.length > 0 && (
-        <p className="text-[9px] text-gray-600 text-center">
+        <p className="text-[9px] text-gray-400 text-center">
           Showing {filtered.length} of {totalCount} templates
         </p>
       )}

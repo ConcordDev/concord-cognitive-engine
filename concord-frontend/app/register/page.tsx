@@ -116,7 +116,7 @@ export default function RegisterPage() {
                 className="w-full px-4 py-3 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue/50 focus:ring-1 focus:ring-neon-blue/30 transition-colors"
                 placeholder="Choose a username"
               />
-              <p id="username-hint" className="text-gray-500 text-xs mt-1">3-50 characters, letters, numbers, underscores, hyphens</p>
+              <p id="username-hint" className="text-gray-400 text-xs mt-1">3-50 characters, letters, numbers, underscores, hyphens</p>
             </div>
 
             <div>
@@ -224,7 +224,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <p className="text-center text-gray-500 text-xs mt-6">
+        <p className="text-center text-gray-400 text-xs mt-6">
           First user becomes the owner with full administrative access.
         </p>
       </div>

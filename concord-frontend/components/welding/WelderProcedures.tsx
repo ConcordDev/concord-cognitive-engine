@@ -82,20 +82,20 @@ function JointStrengthCalc() {
 
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Weld type</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Weld type</span>
             <select value={weldType} onChange={(e) => setWeldType(e.target.value as typeof weldType)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               {WELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Material</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Material</span>
             <select value={material} onChange={(e) => setMaterial(e.target.value as typeof material)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               {MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Thickness (mm)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Thickness (mm)</span>
             <input type="number" step="0.5" min={0} value={thickness || ''} onChange={(e) => setThickness(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 6" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Weld length (mm)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Weld length (mm)</span>
             <input type="number" min={0} value={length || ''} onChange={(e) => setLength(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 100" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || thickness <= 0 || length <= 0} className="w-full rounded bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-400 disabled:opacity-50">
@@ -104,21 +104,21 @@ function JointStrengthCalc() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter thickness + length above.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter thickness + length above.</div>}
           {result && (
             <>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg border-2 border-orange-500/40 bg-orange-500/10 p-3">
                   <div className="text-[10px] uppercase tracking-wider text-orange-300">Tensile load</div>
-                  <div className="font-mono text-2xl text-orange-100">{result.tensileLoadKN} <span className="text-sm text-zinc-500">kN</span></div>
+                  <div className="font-mono text-2xl text-orange-100">{result.tensileLoadKN} <span className="text-sm text-zinc-400">kN</span></div>
                 </div>
                 <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3">
                   <div className="text-[10px] uppercase tracking-wider text-amber-300">Shear load</div>
-                  <div className="font-mono text-2xl text-amber-100">{result.shearLoadKN} <span className="text-sm text-zinc-500">kN</span></div>
+                  <div className="font-mono text-2xl text-amber-100">{result.shearLoadKN} <span className="text-sm text-zinc-400">kN</span></div>
                 </div>
               </div>
               <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5 text-[11px]">
-                <span className="text-zinc-500">Effective area:</span> <span className="font-mono text-orange-200">{result.effectiveArea} mm²</span>
+                <span className="text-zinc-400">Effective area:</span> <span className="font-mono text-orange-200">{result.effectiveArea} mm²</span>
               </div>
               {result.classification && <div className="rounded border border-orange-500/30 bg-orange-500/5 px-2 py-1 text-[11px] text-orange-200">{result.classification}</div>}
               {result.recommendation && <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">{result.recommendation}</div>}
@@ -239,18 +239,18 @@ function HeatInputCalc() {
 
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Voltage (V)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Voltage (V)</span>
             <input type="number" min={0} value={voltage || ''} onChange={(e) => setVoltage(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 25" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Amperage (A)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Amperage (A)</span>
             <input type="number" min={0} value={amperage || ''} onChange={(e) => setAmperage(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 150" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Travel speed (mm/s)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Travel speed (mm/s)</span>
             <input type="number" min={0} step="0.5" value={travelSpeed || ''} onChange={(e) => setTravelSpeed(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 5" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Efficiency η ({(efficiency * 100).toFixed(0)}%)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Efficiency η ({(efficiency * 100).toFixed(0)}%)</span>
             <input type="range" min={0.5} max={1} step={0.05} value={efficiency} onChange={(e) => setEfficiency(Number(e.target.value))} className="mt-1 w-full" />
-            <div className="text-[9px] text-zinc-500">SMAW 0.8 · GMAW 0.85 · GTAW 0.6</div>
+            <div className="text-[9px] text-zinc-400">SMAW 0.8 · GMAW 0.85 · GTAW 0.6</div>
           </label>
           <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || voltage <= 0 || amperage <= 0 || travelSpeed <= 0} className="w-full rounded bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Compute heat input'}
@@ -258,19 +258,19 @@ function HeatInputCalc() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter V/I/travel speed.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter V/I/travel speed.</div>}
           {result && (
             <>
               <div className="rounded-lg border-2 border-red-500/40 bg-red-500/10 p-3">
                 <div className="text-[10px] uppercase tracking-wider text-red-300">Heat input</div>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="font-mono text-3xl text-red-100">{result.heatInputJmm}</span>
-                  <span className="text-sm text-zinc-500">J/mm</span>
+                  <span className="text-sm text-zinc-400">J/mm</span>
                 </div>
                 <div className="text-[10px] text-zinc-400">({result.heatInputKjPerInch} kJ/in)</div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Classification</div><div className="font-mono text-red-200">{result.classification}</div></div>
+                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Classification</div><div className="font-mono text-red-200">{result.classification}</div></div>
                 <div className={`rounded border px-2 py-1.5 ${result.hazRisk === 'low' ? 'border-emerald-500/30 bg-emerald-500/10' : result.hazRisk === 'high' ? 'border-rose-500/30 bg-rose-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
                   <div className={`text-[9px] ${result.hazRisk === 'low' ? 'text-emerald-300' : result.hazRisk === 'high' ? 'text-rose-300' : 'text-amber-300'}`}>HAZ risk</div>
                   <div className="font-mono">{result.hazRisk}</div>
@@ -330,14 +330,14 @@ function WeldInspection() {
         </div>
 
         <div className="space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Findings (your inspection items)</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Findings (your inspection items)</div>
           {items.map((it, i) => (
             <div key={i} className="grid grid-cols-[1fr_70px_30px] gap-1.5">
               <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" placeholder="Inspection item finding" value={it.item} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, item: e.target.value } : x))} />
               <label className="flex items-center justify-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-1 text-[10px] text-zinc-300">
                 <input type="checkbox" checked={it.passed} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, passed: e.target.checked } : x))} />Pass
               </label>
-              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
           <button type="button" onClick={() => setItems((is) => [...is, { item: '', passed: true }])} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-emerald-500/40"><Plus className="h-3 w-3" />Add finding</button>
@@ -360,7 +360,7 @@ function WeldInspection() {
             )}
             {result.items && (
               <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Full checklist</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Full checklist</div>
                 {result.items.map((it, i) => (
                   <div key={i} className={`flex items-center justify-between rounded border px-2 py-1 ${it.passed ? 'border-emerald-500/15 bg-emerald-500/5' : 'border-rose-500/30 bg-rose-500/10'} text-[10px]`}>
                     <span className="text-zinc-100">{it.passed ? '✓' : '✗'} {it.item}</span>

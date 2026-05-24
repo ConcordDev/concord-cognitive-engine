@@ -516,7 +516,7 @@ export function CollabDocWorkspace() {
               className="px-3 py-1.5 rounded bg-blue-500/20 text-blue-300 text-xs font-semibold disabled:opacity-40">
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Create'}
             </button>
-            <button onClick={() => { setCreating(false); setNewTitle(''); }} className="text-zinc-500" aria-label="Cancel">
+            <button onClick={() => { setCreating(false); setNewTitle(''); }} className="text-zinc-400" aria-label="Cancel">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -528,11 +528,11 @@ export function CollabDocWorkspace() {
         )}
 
         {loading ? (
-          <div className="flex items-center gap-2 text-zinc-500 text-xs py-6 justify-center">
+          <div className="flex items-center gap-2 text-zinc-400 text-xs py-6 justify-center">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading documents…
           </div>
         ) : docs.length === 0 ? (
-          <p className="text-xs text-zinc-500 py-6 text-center">
+          <p className="text-xs text-zinc-400 py-6 text-center">
             No shared documents yet. Create one to start co-editing in real time.
           </p>
         ) : (
@@ -545,7 +545,7 @@ export function CollabDocWorkspace() {
                     {d.isOwner && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
                     {d.title}
                   </div>
-                  <div className="text-[10px] text-zinc-500">
+                  <div className="text-[10px] text-zinc-400">
                     {d.opCount} edits · {d.snapshotCount} versions · updated {timeAgo(d.updatedAt)}
                   </div>
                 </div>
@@ -574,7 +574,7 @@ export function CollabDocWorkspace() {
       <header className="flex items-center justify-between border-b border-blue-500/10 pb-2">
         <div className="flex items-center gap-2 min-w-0">
           <button onClick={() => { setActiveDocId(null); setDocState(null); loadDocs(); }}
-            className="text-zinc-500 hover:text-zinc-300 text-xs">← Docs</button>
+            className="text-zinc-400 hover:text-zinc-300 text-xs">← Docs</button>
           <FileText className="h-4 w-4 text-blue-400 shrink-0" />
           <h3 className="text-sm font-semibold text-white truncate">{docState?.title ?? 'Document'}</h3>
           <span className="text-[10px] px-1.5 py-0.5 rounded font-mono uppercase bg-zinc-800 text-zinc-400 shrink-0">
@@ -586,9 +586,9 @@ export function CollabDocWorkspace() {
 
       {/* Presence roster — live cursors + follow-mode */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <Users className="w-3.5 h-3.5 text-zinc-500" />
-        <span className="text-[10px] text-zinc-500">{presence.length} here:</span>
-        {presence.length === 0 && <span className="text-[10px] text-zinc-600">just you</span>}
+        <Users className="w-3.5 h-3.5 text-zinc-400" />
+        <span className="text-[10px] text-zinc-400">{presence.length} here:</span>
+        {presence.length === 0 && <span className="text-[10px] text-zinc-400">just you</span>}
         {presence.map((p) => (
           <button key={p.userId} onClick={() => toggleFollow(p.userId)}
             title={`cursor @ ${p.cursor}${following === p.userId ? ' · following' : ' · click to follow'}`}
@@ -612,7 +612,7 @@ export function CollabDocWorkspace() {
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
-                tab === t.id ? 'border-blue-400 text-blue-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                tab === t.id ? 'border-blue-400 text-blue-300' : 'border-transparent text-zinc-400 hover:text-zinc-300'
               }`}>
               <Icon className="w-3.5 h-3.5" /> {t.label}
             </button>
@@ -638,7 +638,7 @@ export function CollabDocWorkspace() {
             rows={12}
             className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 font-mono leading-relaxed resize-y focus:outline-none focus:border-blue-500/50 disabled:opacity-60"
           />
-          <div className="flex items-center justify-between text-[10px] text-zinc-500">
+          <div className="flex items-center justify-between text-[10px] text-zinc-400">
             <span>{text.length} chars · lamport {lamportRef.current} · {docState?.opCount ?? 0} ops</span>
             {following && (
               <span className="text-blue-300 flex items-center gap-1">
@@ -664,17 +664,17 @@ export function CollabDocWorkspace() {
           </div>
           {snapshots.length > 0 && <TimelineView events={historyEvents} height={90} />}
           {snapshots.length === 0 ? (
-            <p className="text-xs text-zinc-500 py-4 text-center">No saved versions yet.</p>
+            <p className="text-xs text-zinc-400 py-4 text-center">No saved versions yet.</p>
           ) : (
             <div className="space-y-1.5">
               {snapshots.map((s) => (
                 <div key={s.id} className="flex items-center justify-between p-2.5 rounded border border-zinc-800 bg-zinc-900/40">
                   <div className="min-w-0">
                     <div className="text-xs font-medium text-zinc-100 truncate">{s.label}</div>
-                    <div className="text-[10px] text-zinc-500">
+                    <div className="text-[10px] text-zinc-400">
                       {s.authorName} · {timeAgo(s.createdAt)} · {s.chars} chars
                     </div>
-                    {s.preview && <div className="text-[10px] text-zinc-600 truncate mt-0.5 font-mono">{s.preview}</div>}
+                    {s.preview && <div className="text-[10px] text-zinc-400 truncate mt-0.5 font-mono">{s.preview}</div>}
                   </div>
                   <button onClick={() => restoreSnapshot(s.id)} disabled={busy || !canEdit}
                     className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-800 text-zinc-300 text-[10px] font-semibold hover:bg-zinc-700 disabled:opacity-40 shrink-0 ml-2">
@@ -695,7 +695,7 @@ export function CollabDocWorkspace() {
               <input value={pinElement} onChange={(e) => setPinElement(e.target.value)}
                 placeholder="Pin to element (optional)" disabled={!canComment}
                 className="w-44 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white disabled:opacity-50" />
-              <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+              <span className="text-[10px] text-zinc-400 flex items-center gap-1">
                 <AtSign className="w-3 h-3" /> use @handle to mention + notify
               </span>
             </div>
@@ -712,14 +712,14 @@ export function CollabDocWorkspace() {
             </div>
           </div>
           {threads.length === 0 ? (
-            <p className="text-xs text-zinc-500 py-4 text-center">No comments yet.</p>
+            <p className="text-xs text-zinc-400 py-4 text-center">No comments yet.</p>
           ) : (
             <div className="space-y-2">
               {threads.map((th) => (
                 <div key={th.threadId}
                   className={`rounded border p-2.5 ${th.resolved ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-900/40'}`}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
                       {th.elementId && (
                         <span className="flex items-center gap-0.5 text-cyan-400">
                           <MapPin className="w-3 h-3" /> {th.elementId}
@@ -737,7 +737,7 @@ export function CollabDocWorkspace() {
                   {th.comments.map((c) => (
                     <div key={c.id} className={`text-xs text-zinc-300 py-1 ${c.parentId ? 'pl-4 border-l border-zinc-700 ml-1' : ''}`}>
                       <span className="font-semibold text-zinc-100">{c.authorName}</span>
-                      <span className="text-[10px] text-zinc-600 ml-1.5">{timeAgo(c.createdAt)}</span>
+                      <span className="text-[10px] text-zinc-400 ml-1.5">{timeAgo(c.createdAt)}</span>
                       <p className="text-zinc-300 mt-0.5">{renderMentions(c.text)}</p>
                     </div>
                   ))}
@@ -749,7 +749,7 @@ export function CollabDocWorkspace() {
                         className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" />
                       <button onClick={() => postReply(th.comments[th.comments.length - 1].id)} disabled={busy}
                         className="px-2 py-1 rounded bg-blue-500/20 text-blue-300 text-[10px] font-semibold disabled:opacity-40">Send</button>
-                      <button onClick={() => { setReplyTo(null); setReplyText(''); }} className="text-zinc-500" aria-label="Cancel reply">
+                      <button onClick={() => { setReplyTo(null); setReplyText(''); }} className="text-zinc-400" aria-label="Cancel reply">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -776,7 +776,7 @@ export function CollabDocWorkspace() {
                 {' · '}your tier: <span className="font-mono text-blue-300">{perms.myTier}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-zinc-500">Default access for anyone not listed:</span>
+                <span className="text-[10px] text-zinc-400">Default access for anyone not listed:</span>
                 {(['view', 'comment', 'edit'] as Tier[]).map((t) => (
                   <button key={t} onClick={() => setDefaultTier(t)}
                     disabled={perms.myTier !== 'edit' || perms.ownerId === ''}
@@ -803,7 +803,7 @@ export function CollabDocWorkspace() {
                 </button>
               </div>
               {perms.entries.length === 0 ? (
-                <p className="text-xs text-zinc-500 py-2 text-center">No per-user grants — everyone gets {perms.defaultTier}.</p>
+                <p className="text-xs text-zinc-400 py-2 text-center">No per-user grants — everyone gets {perms.defaultTier}.</p>
               ) : (
                 <div className="space-y-1">
                   {perms.entries.map((e) => (
@@ -867,11 +867,11 @@ function NotifBell({
             )}
           </div>
           {notifs.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 py-3 text-center">Nothing yet.</p>
+            <p className="text-[11px] text-zinc-400 py-3 text-center">Nothing yet.</p>
           ) : (
             notifs.map((n) => (
               <button key={n.id} onClick={() => markRead(n.id)}
-                className={`w-full text-left p-1.5 rounded text-[11px] ${n.read ? 'text-zinc-500' : 'bg-blue-500/10 text-zinc-200'}`}>
+                className={`w-full text-left p-1.5 rounded text-[11px] ${n.read ? 'text-zinc-400' : 'bg-blue-500/10 text-zinc-200'}`}>
                 <div className="flex items-center gap-1">
                   <span className="text-[9px] px-1 py-px rounded bg-zinc-800 text-zinc-400 uppercase font-mono">{n.kind}</span>
                   {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />}

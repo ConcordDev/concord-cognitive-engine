@@ -167,7 +167,7 @@ export default function CandleChart({
         </div>
       )}
       {!loading && candles.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-500">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-400">
           <span className="text-sm">No price data</span>
           <span className="text-xs">Pick a different timeframe or token</span>
         </div>

@@ -164,7 +164,7 @@ export function NutritionExplorer() {
       </header>
 
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
         <input
           type="text"
           value={queryInput}
@@ -178,7 +178,7 @@ export function NutritionExplorer() {
           <div className="absolute z-10 mt-1 max-h-80 w-full overflow-y-auto rounded-md border border-cyan-500/20 bg-zinc-950 shadow-2xl">
             {groupedHits.generic.length > 0 && (
               <>
-                <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-500">Generic foods</div>
+                <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-400">Generic foods</div>
                 {groupedHits.generic.map((h) => (
                   <Suggestion key={h.fdcId} hit={h} query={debouncedQuery} onPick={openFood} />
                 ))}
@@ -186,7 +186,7 @@ export function NutritionExplorer() {
             )}
             {groupedHits.branded.length > 0 && (
               <>
-                <div className="border-t border-zinc-800 px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-500">Branded</div>
+                <div className="border-t border-zinc-800 px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-400">Branded</div>
                 {groupedHits.branded.map((h) => (
                   <Suggestion key={h.fdcId} hit={h} query={debouncedQuery} onPick={openFood} />
                 ))}
@@ -203,13 +203,13 @@ export function NutritionExplorer() {
       )}
 
       {detailMutation.isPending && (
-        <div className="flex items-center justify-center py-6 text-xs text-zinc-500">
+        <div className="flex items-center justify-center py-6 text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading nutrition…
         </div>
       )}
 
       {!detail && !detailMutation.isPending && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           USDA FoodData Central — 600,000+ foods with full macro + micronutrient breakdowns.
           Search above to load a food, then expand each tier for detail.
         </div>
@@ -237,7 +237,7 @@ function Suggestion({ hit, query, onPick }: { hit: FoodHit; query: string; onPic
       className="block w-full border-b border-zinc-800 px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-cyan-500/10"
     >
       <div className="text-xs text-zinc-300">{matchedTitle}</div>
-      <div className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-500">
+      <div className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-400">
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono uppercase">{hit.dataType || '?'}</span>
         {hit.brandOwner && <span>{hit.brandOwner}</span>}
         {hit.servingSize && hit.servingSizeUnit && <span>{hit.servingSize}{hit.servingSizeUnit} serving</span>}
@@ -278,7 +278,7 @@ function FoodDetailCard({ detail }: { detail: NutrientDetail }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h3 className="text-base font-semibold text-white">{detail.description}</h3>
-            <p className="mt-0.5 text-[11px] text-zinc-500">
+            <p className="mt-0.5 text-[11px] text-zinc-400">
               {detail.dataType} {detail.brandOwner && `· ${detail.brandOwner}`} · {perWhat}
             </p>
           </div>
@@ -306,7 +306,7 @@ function FoodDetailCard({ detail }: { detail: NutrientDetail }) {
 
         <div className="mt-3 grid grid-cols-4 gap-2">
           <div className="rounded-md border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
-            <div className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">
+            <div className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">
               <Flame className="h-2.5 w-2.5" /> kcal
             </div>
             <div className="mt-0.5 font-mono text-xl font-bold text-white">{h.caloriesKcal ?? '—'}</div>
@@ -318,7 +318,7 @@ function FoodDetailCard({ detail }: { detail: NutrientDetail }) {
 
         {/* Calorie-from-macro bar */}
         <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-500">
+          <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-400">
             <span>Calorie split</span>
             <span>{Math.round(pP)}% P · {Math.round(pC)}% C · {Math.round(pF)}% F</span>
           </div>
@@ -354,7 +354,7 @@ function FoodDetailCard({ detail }: { detail: NutrientDetail }) {
             <div key={name} className="flex items-center justify-between gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2.5 py-1 text-[11px]">
               <span className="truncate text-zinc-300">{name}</span>
               <span className="shrink-0 font-mono text-cyan-300">
-                {v.amount} <span className="text-zinc-500">{v.unit}</span>
+                {v.amount} <span className="text-zinc-400">{v.unit}</span>
               </span>
             </div>
           ))}
@@ -378,8 +378,8 @@ function MacroCard({ label, value, unit, color }: { label: string; value: number
   const fg = color === 'cyan' ? 'text-cyan-300' : color === 'amber' ? 'text-amber-300' : 'text-violet-300';
   return (
     <div className="rounded-md border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
-      <div className={`mt-0.5 font-mono text-xl font-bold ${fg}`}>{value ?? '—'}<span className="ml-0.5 text-[10px] text-zinc-500">{unit}</span></div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
+      <div className={`mt-0.5 font-mono text-xl font-bold ${fg}`}>{value ?? '—'}<span className="ml-0.5 text-[10px] text-zinc-400">{unit}</span></div>
     </div>
   );
 }
@@ -417,7 +417,7 @@ function Tier({ label, open, onToggle, children }: { label: string; open: boolea
         className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-900/60"
       >
         <span>{label}</span>
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-zinc-500" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />}
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />}
       </button>
       <AnimatePresence initial={false}>
         {open && (

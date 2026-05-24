@@ -36,8 +36,8 @@ export function SentinelCves() {
       </header>
       {cves.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">NVD unreachable.</div>}
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">CVEs</div><div className="mt-0.5 font-mono text-lg text-rose-300">{list.length}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Sev</div><div className="mt-0.5 font-mono text-lg text-rose-300">{sev}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">CVEs</div><div className="mt-0.5 font-mono text-lg text-rose-300">{list.length}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Sev</div><div className="mt-0.5 font-mono text-lg text-rose-300">{sev}</div></div>
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((v) => {
@@ -47,13 +47,13 @@ export function SentinelCves() {
             <a key={v.cve.id} href={`https://nvd.nist.gov/vuln/detail/${v.cve.id}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-rose-500/15 bg-zinc-950/60 p-2.5 hover:border-rose-500/40">
               <div className="flex items-center gap-2"><span className="font-mono text-sm text-white">{v.cve.id}</span>{score != null && <span className="rounded bg-rose-500/30 px-1 font-mono text-[9px] text-rose-200"><AlertOctagon className="inline h-2.5 w-2.5 mr-0.5" />{score}</span>}</div>
               <p className="mt-1 line-clamp-2 text-[12px] text-zinc-200">{desc}</p>
-              <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-500"><span>{v.cve.published?.slice(0, 10)}</span><ExternalLink className="h-3 w-3" /></div>
+              <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400"><span>{v.cve.published?.slice(0, 10)}</span><ExternalLink className="h-3 w-3" /></div>
             </a>
           );
         })}
-        {list.length === 0 && !cves.isPending && !cves.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No CVEs.</div>}
+        {list.length === 0 && !cves.isPending && !cves.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No CVEs.</div>}
       </div>
-      {cves.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {cves.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
 }

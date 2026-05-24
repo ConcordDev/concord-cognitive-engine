@@ -42,7 +42,7 @@ export function ArtInspirePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -59,7 +59,7 @@ export function ArtInspirePanel() {
             </button>
           </div>
           <p className="text-sm text-zinc-100">{prompt.text}</p>
-          <p className="text-[10px] text-zinc-500 mt-1 capitalize">{prompt.category}</p>
+          <p className="text-[10px] text-zinc-400 mt-1 capitalize">{prompt.category}</p>
         </div>
       )}
 
@@ -94,7 +94,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       <p className="text-lg font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

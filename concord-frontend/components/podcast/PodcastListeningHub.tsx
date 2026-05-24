@@ -198,7 +198,7 @@ export function PodcastListeningHub() {
         <Radio className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-white">Listening hub</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">rss · streaming · sync</span>
-        <span className="ml-auto text-[10px] text-zinc-600">this device: {device}</span>
+        <span className="ml-auto text-[10px] text-zinc-400">this device: {device}</span>
       </header>
 
       <div className="flex gap-1">
@@ -206,7 +206,7 @@ export function PodcastListeningHub() {
           <button
             key={t.id} type="button" onClick={() => setTab(t.id)}
             className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              tab === t.id ? 'bg-violet-600/20 text-violet-200' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900')}
+              tab === t.id ? 'bg-violet-600/20 text-violet-200' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900')}
           >
             {t.icon}{t.label}
           </button>
@@ -217,7 +217,7 @@ export function PodcastListeningHub() {
       {notice && <div className="text-[11px] text-emerald-300 bg-emerald-950/40 border border-emerald-900/50 rounded-lg px-2.5 py-1.5">{notice}</div>}
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : (
         <>
           {/* ── FEEDS: RSS ingestion + auto-refresh + streaming + transcripts ── */}
@@ -246,7 +246,7 @@ export function PodcastListeningHub() {
               </div>
 
               {shows.length === 0 ? (
-                <p className="text-[11px] text-zinc-500 italic py-4 text-center">No shows yet. Paste a podcast RSS feed URL above to ingest its episodes.</p>
+                <p className="text-[11px] text-zinc-400 italic py-4 text-center">No shows yet. Paste a podcast RSS feed URL above to ingest its episodes.</p>
               ) : (
                 <ul className="space-y-2">
                   {shows.map((sh) => (
@@ -256,7 +256,7 @@ export function PodcastListeningHub() {
                           <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform shrink-0', openShowId === sh.id && 'rotate-90')} />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-zinc-100 truncate">{sh.title}</p>
-                            <p className="text-[10px] text-zinc-500 truncate">
+                            <p className="text-[10px] text-zinc-400 truncate">
                               {sh.episodeCount} episodes
                               {sh.feedUrl ? ' · RSS linked' : ' · no feed'}
                               {sh.lastRefreshedAt && ` · refreshed ${new Date(sh.lastRefreshedAt).toLocaleDateString()}`}
@@ -278,7 +278,7 @@ export function PodcastListeningHub() {
                       {openShowId === sh.id && (
                         <div className="border-t border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
                           {openEpisodes.length === 0 ? (
-                            <p className="text-[11px] text-zinc-500 italic">No episodes. Refresh the RSS feed to ingest them.</p>
+                            <p className="text-[11px] text-zinc-400 italic">No episodes. Refresh the RSS feed to ingest them.</p>
                           ) : (
                             <ul className="space-y-1">
                               {openEpisodes.map((ep) => (
@@ -286,7 +286,7 @@ export function PodcastListeningHub() {
                                   <div className="flex items-center gap-2">
                                     <div className="min-w-0 flex-1">
                                       <p className="text-[12px] text-zinc-200 truncate">{ep.title}</p>
-                                      <p className="text-[10px] text-zinc-500">{fmtDur(ep.durationSec)} · {ep.publishDate}{ep.progressPct > 0 ? ` · ${ep.progressPct}% played` : ''}</p>
+                                      <p className="text-[10px] text-zinc-400">{fmtDur(ep.durationSec)} · {ep.publishDate}{ep.progressPct > 0 ? ` · ${ep.progressPct}% played` : ''}</p>
                                     </div>
                                     <button
                                       type="button"
@@ -339,23 +339,23 @@ export function PodcastListeningHub() {
           {/* ── DISCOVER: personalized recommendations ── */}
           {tab === 'discover' && (
             <div className="space-y-2">
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 {recs.length > 0
                   ? `Recommended based on ${recsBasedOn}.`
                   : 'Recommendations appear once you subscribe to shows or listen to episodes.'}
               </p>
               {recs.length === 0 ? (
-                <p className="text-[11px] text-zinc-600 italic py-6 text-center">No recommendations yet.</p>
+                <p className="text-[11px] text-zinc-400 italic py-6 text-center">No recommendations yet.</p>
               ) : (
                 <ul className="space-y-2">
                   {recs.map((r) => (
                     <li key={r.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl px-3 py-2.5">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-zinc-100 truncate">{r.title}</p>
-                        <p className="text-[10px] text-zinc-500 truncate">{r.author || 'Unknown'} · {r.category}</p>
+                        <p className="text-[10px] text-zinc-400 truncate">{r.author || 'Unknown'} · {r.category}</p>
                         <p className="text-[11px] text-violet-400 mt-0.5">{r.reason}</p>
                       </div>
-                      <span className="text-[10px] text-zinc-600 font-mono shrink-0">match {r.score}</span>
+                      <span className="text-[10px] text-zinc-400 font-mono shrink-0">match {r.score}</span>
                       <button
                         type="button" onClick={() => subscribeRec(r.id)} disabled={busy === `sub-${r.id}`}
                         className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg shrink-0"
@@ -377,29 +377,29 @@ export function PodcastListeningHub() {
                 <div className="rounded-lg border border-violet-500/30 bg-violet-950/30 p-3">
                   <p className="text-[10px] uppercase tracking-wide text-violet-400 mb-0.5">Resume here</p>
                   <p className="text-sm font-semibold text-zinc-100 truncate">{sync.nowResuming.episodeTitle || 'Episode'}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {sync.nowResuming.showTitle} · at {fmtClock(sync.nowResuming.positionSec)}
                   </p>
                 </div>
               )}
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 Positions sync across every device. Playback speed: {sync?.playbackSpeed ?? 1}×.
               </p>
               {(sync?.positions || []).length === 0 ? (
-                <p className="text-[11px] text-zinc-600 italic py-6 text-center">No playback positions yet. Start streaming an episode.</p>
+                <p className="text-[11px] text-zinc-400 italic py-6 text-center">No playback positions yet. Start streaming an episode.</p>
               ) : (
                 <ul className="space-y-1">
                   {(sync?.positions || []).map((p) => (
                     <li key={p.episodeId} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                       <div className="min-w-0">
                         <p className="text-[12px] text-zinc-200 truncate">{p.episodeTitle || 'Episode'}</p>
-                        <p className="text-[10px] text-zinc-500 truncate">{p.showTitle}</p>
+                        <p className="text-[10px] text-zinc-400 truncate">{p.showTitle}</p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className={cn('text-[11px] font-mono', p.played ? 'text-emerald-400' : 'text-violet-300')}>
                           {p.played ? 'finished' : fmtClock(p.positionSec)}
                         </p>
-                        {p.updatedAt && <p className="text-[9px] text-zinc-600">{new Date(p.updatedAt).toLocaleString()}</p>}
+                        {p.updatedAt && <p className="text-[9px] text-zinc-400">{new Date(p.updatedAt).toLocaleString()}</p>}
                       </div>
                     </li>
                   ))}
@@ -412,7 +412,7 @@ export function PodcastListeningHub() {
           {tab === 'rules' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] text-zinc-500">Auto-download the newest episodes of chosen shows.</p>
+                <p className="text-[11px] text-zinc-400">Auto-download the newest episodes of chosen shows.</p>
                 <button
                   type="button" onClick={runRules} disabled={busy === 'runRules' || rules.length === 0}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg"
@@ -422,7 +422,7 @@ export function PodcastListeningHub() {
                 </button>
               </div>
               {shows.length === 0 ? (
-                <p className="text-[11px] text-zinc-600 italic py-6 text-center">Add shows in the Feeds tab first.</p>
+                <p className="text-[11px] text-zinc-400 italic py-6 text-center">Add shows in the Feeds tab first.</p>
               ) : (
                 <ul className="space-y-2">
                   {shows.map((sh) => {
@@ -433,7 +433,7 @@ export function PodcastListeningHub() {
                       <li key={sh.id} className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-xl px-3 py-2.5">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-zinc-100 truncate">{sh.title}</p>
-                          <p className="text-[10px] text-zinc-500">{sh.episodeCount} episodes available</p>
+                          <p className="text-[10px] text-zinc-400">{sh.episodeCount} episodes available</p>
                         </div>
                         <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 shrink-0">
                           Keep

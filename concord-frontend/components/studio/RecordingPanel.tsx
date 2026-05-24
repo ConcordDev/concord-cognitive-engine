@@ -88,9 +88,9 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Recording — metronome · count-in · takes</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !projectId ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">Open a project to configure recording.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">Open a project to configure recording.</div>
       ) : config ? (
         <div className="p-3 space-y-4">
           <section className="space-y-2">
@@ -132,7 +132,7 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
           <section className="space-y-2 pt-2 border-t border-white/10">
             <div className="text-[10px] uppercase text-violet-300 font-semibold">Takes {trackId ? `· ${trackId.slice(0, 10)}` : ''}</div>
             {!trackId ? (
-              <div className="text-[10px] text-gray-500">Paste a Track ID above to manage takes.</div>
+              <div className="text-[10px] text-gray-400">Paste a Track ID above to manage takes.</div>
             ) : (
               <>
                 <div className="grid grid-cols-3 gap-2">
@@ -141,7 +141,7 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
                   <button onClick={addTake} className="col-span-3 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add take</button>
                 </div>
                 {takes.length === 0 ? (
-                  <div className="text-[10px] text-gray-500">No takes recorded yet.</div>
+                  <div className="text-[10px] text-gray-400">No takes recorded yet.</div>
                 ) : (
                   <ul className="space-y-1">
                     {takes.map((t) => (
@@ -150,7 +150,7 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
                           {t.selected && <Check className="w-3 h-3 text-black" />}
                         </button>
                         <span className="text-white">#{t.takeNumber} {t.name}</span>
-                        <span className="text-gray-500">{t.durationSec}s</span>
+                        <span className="text-gray-400">{t.durationSec}s</span>
                         <button onClick={() => removeTake(t.id)} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
                       </li>
                     ))}

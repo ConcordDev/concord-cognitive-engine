@@ -44,11 +44,11 @@ export function AstronomySkySection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-indigo-600/15 to-transparent">
         <Sparkles className="w-5 h-5 text-indigo-400" />
         <h2 className="text-sm font-bold text-zinc-100">Observing Log</h2>
-        <span className="text-[11px] text-zinc-500">Stellarium + SkySafari shape</span>
+        <span className="text-[11px] text-zinc-400">Stellarium + SkySafari shape</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : dash && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-zinc-800">
           <Stat label="Targets" value={dash.targets} />
@@ -88,7 +88,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="text-center">
       <p className="text-lg font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

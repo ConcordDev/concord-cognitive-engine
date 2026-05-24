@@ -97,13 +97,13 @@ export default function AnomaliesPage() {
 
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-cyan-300 mb-3">Public transparency log</h2>
-        {!publicStats && <div className="text-xs text-gray-500">Loading…</div>}
+        {!publicStats && <div className="text-xs text-gray-400">Loading…</div>}
         {publicStats && (
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-900/60 border border-gray-700 rounded p-3">
               <h3 className="text-sm font-semibold text-gray-300 mb-2">By kind + status</h3>
               <ul className="space-y-1 text-xs">
-                {publicStats.byKind.length === 0 && <li className="text-gray-500 italic">No anomalies recorded</li>}
+                {publicStats.byKind.length === 0 && <li className="text-gray-400 italic">No anomalies recorded</li>}
                 {publicStats.byKind.map((row, i) => (
                   <li key={i} className="flex justify-between">
                     <span>
@@ -118,7 +118,7 @@ export default function AnomaliesPage() {
             <div className="bg-gray-900/60 border border-gray-700 rounded p-3">
               <h3 className="text-sm font-semibold text-gray-300 mb-2">Last 7 days</h3>
               <ul className="space-y-1 text-xs">
-                {publicStats.recent7d.length === 0 && <li className="text-gray-500 italic">Quiet week</li>}
+                {publicStats.recent7d.length === 0 && <li className="text-gray-400 italic">Quiet week</li>}
                 {publicStats.recent7d.map((row, i) => (
                   <li key={i} className="flex justify-between">
                     <span className="text-gray-200">{row.kind}</span>
@@ -151,7 +151,7 @@ export default function AnomaliesPage() {
         </div>
         {error && <div className="text-xs text-red-400 mb-3">{error}</div>}
         {worldAnomalies.length === 0 && !loading && !error && (
-          <div className="text-xs text-gray-500 italic">No open anomalies in this world.</div>
+          <div className="text-xs text-gray-400 italic">No open anomalies in this world.</div>
         )}
         <ul className="space-y-2">
           {worldAnomalies.map((a) => (
@@ -182,7 +182,7 @@ export default function AnomaliesPage() {
               </div>
               {a.details_json && (
                 <details className="mt-1">
-                  <summary className="text-gray-500 cursor-pointer">details</summary>
+                  <summary className="text-gray-400 cursor-pointer">details</summary>
                   <pre className="text-[10px] text-gray-400 mt-1 overflow-x-auto">{a.details_json}</pre>
                 </details>
               )}

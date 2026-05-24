@@ -460,7 +460,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
           <div className={ds.panel}>
             <div className={ds.textMuted}>Total Repairs</div>
             <div className="text-2xl font-bold text-white mt-1">{summary.totalRepairs}</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-400 mt-1">
               {(summary.successRate * 100).toFixed(0)}% success rate
             </div>
           </div>
@@ -513,7 +513,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                       {(dim.confidence * 100).toFixed(0)}%
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">{dim.samples} samples</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{dim.samples} samples</div>
                 </div>
               </div>
             ))}
@@ -565,7 +565,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
           </h2>
 
           {predictions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-400">
               <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>No active predictions. The system is healthy.</p>
             </div>
@@ -607,10 +607,10 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                           <span>Action: {action.replace(/_/g, ' ')}</span>
                         </div>
                         {pred.outcome && (
-                          <div className="text-xs text-gray-500 mt-1">Outcome: {pred.outcome}</div>
+                          <div className="text-xs text-gray-400 mt-1">Outcome: {pred.outcome}</div>
                         )}
                         {ts && (
-                          <div className="text-xs text-gray-600 mt-1">
+                          <div className="text-xs text-gray-400 mt-1">
                             {new Date(ts).toLocaleString()}
                           </div>
                         )}
@@ -681,7 +681,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
           </h2>
 
           {history.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-400">
               <Shield className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>No repair history yet. The brain is learning.</p>
             </div>
@@ -724,16 +724,16 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-gray-500 shrink-0">
+                      <span className="text-xs text-gray-400 shrink-0">
                         {formatDuration(entry.repairTimeMs)}
                       </span>
-                      <span className="text-xs text-gray-600 shrink-0 w-32 text-right">
+                      <span className="text-xs text-gray-400 shrink-0 w-32 text-right">
                         {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '-'}
                       </span>
                       {isExpanded ? (
-                        <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
+                        <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                       )}
                     </button>
 
@@ -741,11 +741,11 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                       <div className="px-4 pb-4 pt-1 border-t border-lattice-border bg-lattice-void/30">
                         <div className="grid grid-cols-2 gap-3 text-sm">
                           <div>
-                            <span className="text-gray-500">Fix Applied:</span>
+                            <span className="text-gray-400">Fix Applied:</span>
                             <p className="text-gray-300 mt-0.5">{entry.fixApplied || '-'}</p>
                           </div>
                           <div>
-                            <span className="text-gray-500">Symptoms:</span>
+                            <span className="text-gray-400">Symptoms:</span>
                             <div className="mt-0.5">
                               {entry.symptoms.length > 0 ? (
                                 <ul className="text-gray-300 text-xs space-y-0.5">
@@ -756,12 +756,12 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                                   ))}
                                 </ul>
                               ) : (
-                                <span className="text-gray-500">-</span>
+                                <span className="text-gray-400">-</span>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="mt-2 text-xs text-gray-600 font-mono">{entry.id}</div>
+                        <div className="mt-2 text-xs text-gray-400 font-mono">{entry.id}</div>
                       </div>
                     )}
                   </div>
@@ -815,7 +815,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
           </h2>
 
           {!stats?.knowledge.byCategory.length ? (
-            <div className="text-center py-6 text-gray-500">
+            <div className="text-center py-6 text-gray-400">
               <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>Knowledge base is empty. The brain will learn from repairs.</p>
             </div>
@@ -867,7 +867,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                 const maxTotal = Math.max(...stats.growth.map((e) => e.total), 1);
                 return (
                   <div key={g.day} className="flex items-center gap-3 text-sm">
-                    <span className="text-gray-500 w-24 shrink-0 text-xs font-mono">{g.day}</span>
+                    <span className="text-gray-400 w-24 shrink-0 text-xs font-mono">{g.day}</span>
                     <div className="flex-1 flex items-center gap-1">
                       <div
                         className="h-3 rounded bg-green-400/60"
@@ -1011,7 +1011,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       No issues classified from the provided information.
                     </div>
                   )}
@@ -1029,7 +1029,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                           key={i}
                           className="flex items-center gap-3 p-2 rounded-lg bg-lattice-elevated/30"
                         >
-                          <span className="text-xs text-gray-500 w-5 shrink-0">#{i + 1}</span>
+                          <span className="text-xs text-gray-400 w-5 shrink-0">#{i + 1}</span>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm text-white">{opt.name}</div>
                             <div className="text-xs text-gray-400 truncate">{opt.description}</div>
@@ -1048,7 +1048,7 @@ function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
                               {(opt.confidence * 100).toFixed(0)}%
                             </span>
                           </div>
-                          <span className="text-xs text-gray-600 shrink-0">{opt.source}</span>
+                          <span className="text-xs text-gray-400 shrink-0">{opt.source}</span>
                         </div>
                       ))}
                     </div>
@@ -1103,7 +1103,7 @@ function MetricCard({
 }) {
   return (
     <div className="p-3 rounded-lg bg-lattice-elevated/30">
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-gray-400">{label}</div>
       <div className={cn('text-lg font-semibold mt-0.5', accent ? 'text-neon-cyan' : 'text-white')}>
         {value}
       </div>

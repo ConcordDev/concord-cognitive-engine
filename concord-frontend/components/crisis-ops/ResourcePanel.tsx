@@ -89,7 +89,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
           ] as const).map(([label, v]) => (
             <div key={label} className="rounded-lg border border-white/10 bg-white/5 p-2">
               <div className="text-lg font-bold text-white tabular-nums">{v}</div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
             </div>
           ))}
         </div>
@@ -101,7 +101,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Asset name (e.g. Rescue boat)"
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-600"
+            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-400"
           />
           <div className="flex gap-2">
             <select
@@ -123,7 +123,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
               value={form.unit}
               onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
               placeholder="unit"
-              className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-600"
+              className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-400"
             />
             <button
               type="button"
@@ -138,13 +138,13 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
       )}
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading inventory…
         </div>
       )}
 
       {!loading && data && data.resources.length === 0 && (
-        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-500">
+        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-400">
           No resources tracked. Add an asset to start.
         </p>
       )}
@@ -166,7 +166,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
                         {res.category}
                       </span>
                     </div>
-                    <span className="text-[11px] text-zinc-500">
+                    <span className="text-[11px] text-zinc-400">
                       {avail}/{res.quantity} {res.unit} available · {res.deployed} deployed
                     </span>
                   </div>

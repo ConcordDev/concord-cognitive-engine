@@ -118,7 +118,7 @@ function ConversationItem({
             {conversation.participantName}
           </span>
           {conversation.lastMessageAt && (
-            <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+            <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
               {formatRelativeTime(conversation.lastMessageAt)}
             </span>
           )}
@@ -127,7 +127,7 @@ function ConversationItem({
           <p
             className={cn(
               'text-xs truncate',
-              conversation.unreadCount > 0 ? 'text-gray-300' : 'text-gray-500'
+              conversation.unreadCount > 0 ? 'text-gray-300' : 'text-gray-400'
             )}
           >
             {conversation.lastMessage || 'No messages yet'}
@@ -249,14 +249,14 @@ function MessageBubble({
               isOwn ? 'justify-end' : 'justify-start'
             )}
           >
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-gray-400">
               {new Date(message.createdAt).toLocaleTimeString(undefined, {
                 hour: '2-digit',
                 minute: '2-digit',
               })}
             </span>
             {isOwn && (
-              <span className={cn('flex-shrink-0', message.read ? 'text-neon-cyan' : 'text-gray-500')}>
+              <span className={cn('flex-shrink-0', message.read ? 'text-neon-cyan' : 'text-gray-400')}>
                 {message.read ? (
                   <CheckCheck className="w-3.5 h-3.5" />
                 ) : (
@@ -341,13 +341,13 @@ function NewConversationModal({
           )}
 
           {!isLoading && search.length >= 2 && (searchResults?.length ?? 0) === 0 && (
-            <div className="text-center py-8 text-gray-500 text-sm">
+            <div className="text-center py-8 text-gray-400 text-sm">
               No users found
             </div>
           )}
 
           {!isLoading && search.length < 2 && (
-            <div className="text-center py-8 text-gray-500 text-sm">
+            <div className="text-center py-8 text-gray-400 text-sm">
               Type at least 2 characters to search
             </div>
           )}
@@ -376,7 +376,7 @@ function NewConversationModal({
                   {user.displayName || user.username}
                 </p>
                 {user.displayName && (
-                  <p className="text-xs text-gray-500">@{user.username}</p>
+                  <p className="text-xs text-gray-400">@{user.username}</p>
                 )}
               </div>
             </button>
@@ -624,7 +624,7 @@ export default function MessagesPage() {
             <div className="flex flex-col items-center justify-center py-16 px-4">
               <MessageCircle className="w-12 h-12 text-gray-600 mb-3" />
               <p className="text-gray-400 text-sm font-medium">No conversations yet</p>
-              <p className="text-gray-500 text-xs mt-1 text-center">
+              <p className="text-gray-400 text-xs mt-1 text-center">
                 Start a new conversation by clicking the + button
               </p>
               <button
@@ -742,7 +742,7 @@ export default function MessagesPage() {
                     'p-2.5 rounded-xl transition-colors',
                     messageInput.trim()
                       ? 'bg-neon-cyan text-white hover:bg-neon-cyan/80'
-                      : 'bg-lattice-elevated text-gray-500 cursor-not-allowed'
+                      : 'bg-lattice-elevated text-gray-400 cursor-not-allowed'
                   )}
                 >
                   {sendMutation.isPending ? (
@@ -762,7 +762,7 @@ export default function MessagesPage() {
               <h3 className="text-lg text-gray-400 font-medium">
                 Select a conversation
               </h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 Choose a conversation from the sidebar or start a new one
               </p>
             </div>

@@ -70,7 +70,7 @@ export function SyncPolicyPanel() {
       <h2 className="text-cyan-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <ArrowLeftRight className="w-4 h-4" /> Per-peer sync policy
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Control which content classes flow in each direction with a given peer.
       </p>
 
@@ -121,9 +121,9 @@ export function SyncPolicyPanel() {
       {err && <div className="text-rose-300 text-xs mb-2">{err}</div>}
 
       {loading ? (
-        <p className="text-xs text-gray-500 italic">Loading policies…</p>
+        <p className="text-xs text-gray-400 italic">Loading policies…</p>
       ) : !data || data.entries.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">No sync policies set.</p>
+        <p className="text-xs text-gray-400 italic">No sync policies set.</p>
       ) : (
         <ul className="space-y-2">
           {data.entries.map((e) => (
@@ -144,7 +144,7 @@ export function SyncPolicyPanel() {
               <div className="text-[11px] text-gray-400 mt-1">
                 classes: <span className="font-mono">{e.classes.join(', ')}</span>
               </div>
-              <div className="text-[10px] text-gray-600 mt-1">
+              <div className="text-[10px] text-gray-400 mt-1">
                 updated {new Date(e.updatedAt).toLocaleString()}
               </div>
             </li>

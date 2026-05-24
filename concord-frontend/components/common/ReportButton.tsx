@@ -113,7 +113,7 @@ export function ReportButton({
                   <AlertTriangle className="w-4 h-4 text-red-400" />
                   <h3 className="text-sm font-semibold">Report Content</h3>
                 </div>
-                <button onClick={handleClose} className="text-gray-500 hover:text-white p-1" aria-label="Close">
+                <button onClick={handleClose} className="text-gray-400 hover:text-white p-1" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -132,7 +132,7 @@ export function ReportButton({
               ) : (
                 /* Form */
                 <div className="p-4 space-y-3">
-                  <p className="text-xs text-gray-500">Select a reason for reporting:</p>
+                  <p className="text-xs text-gray-400">Select a reason for reporting:</p>
 
                   <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
                     {REPORT_CATEGORIES.map(cat => (
@@ -147,7 +147,7 @@ export function ReportButton({
                         )}
                       >
                         <p className="font-medium">{cat.label}</p>
-                        <p className="text-[10px] text-gray-600 mt-0.5">{cat.desc}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{cat.desc}</p>
                       </button>
                     ))}
                   </div>
@@ -158,7 +158,7 @@ export function ReportButton({
                       onChange={(e) => setReason(e.target.value)}
                       placeholder="Additional details (optional)..."
                       rows={2}
-                      className="w-full bg-lattice-deep border border-lattice-border rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600 resize-none focus:outline-none focus:border-red-400/40"
+                      className="w-full bg-lattice-deep border border-lattice-border rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-400 resize-none focus:outline-none focus:border-red-400/40"
                     />
                   )}
 

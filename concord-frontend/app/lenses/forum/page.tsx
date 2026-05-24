@@ -499,9 +499,9 @@ export default function ForumLensPage() {
       <div key={comment.id} className={cn('border-l-2 pl-3 mt-3', depth === 0 ? 'border-orange-500/20' : depth === 1 ? 'border-amber-700/20' : 'border-gray-800')}>
         <div className="flex items-start gap-2">
           <div className="flex flex-col items-center gap-0.5 mt-1">
-            <button onClick={() => handleCommentVote(comment.id, 1)} className={cn('text-gray-500 hover:text-orange-400 transition-colors', comment.userVote === 1 && 'text-orange-500')} aria-label="Arrow big up"><ArrowBigUp className="w-4 h-4" /></button>
+            <button onClick={() => handleCommentVote(comment.id, 1)} className={cn('text-gray-400 hover:text-orange-400 transition-colors', comment.userVote === 1 && 'text-orange-500')} aria-label="Arrow big up"><ArrowBigUp className="w-4 h-4" /></button>
             <span className={cn('text-xs font-bold', comment.userVote === 1 ? 'text-orange-500' : comment.userVote === -1 ? 'text-blue-500' : 'text-gray-400')}>{comment.score}</span>
-            <button onClick={() => handleCommentVote(comment.id, -1)} className={cn('text-gray-500 hover:text-blue-400 transition-colors', comment.userVote === -1 && 'text-blue-500')} aria-label="Arrow big down"><ArrowBigDown className="w-4 h-4" /></button>
+            <button onClick={() => handleCommentVote(comment.id, -1)} className={cn('text-gray-400 hover:text-blue-400 transition-colors', comment.userVote === -1 && 'text-blue-500')} aria-label="Arrow big down"><ArrowBigDown className="w-4 h-4" /></button>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -512,9 +512,9 @@ export default function ForumLensPage() {
             <p className="text-sm text-gray-200 mt-1 whitespace-pre-wrap">{comment.content}</p>
             <div className="flex items-center gap-3 mt-1.5">
               {!isLocked && depth < 3 && (
-                <button onClick={() => { setReplyTo(comment.id); setReplyContent(''); }} className="text-xs text-gray-500 hover:text-white flex items-center gap-1"><MessageSquare className="w-3 h-3" />Reply</button>
+                <button onClick={() => { setReplyTo(comment.id); setReplyContent(''); }} className="text-xs text-gray-400 hover:text-white flex items-center gap-1"><MessageSquare className="w-3 h-3" />Reply</button>
               )}
-              <button onClick={() => setShowAwardModal({ type: 'comment', id: comment.id })} className="text-xs text-gray-500 hover:text-yellow-400 flex items-center gap-1"><Award className="w-3 h-3" />Award</button>
+              <button onClick={() => setShowAwardModal({ type: 'comment', id: comment.id })} className="text-xs text-gray-400 hover:text-yellow-400 flex items-center gap-1"><Award className="w-3 h-3" />Award</button>
               <ReportButton contentId={comment.id} contentType="comment" compact />
             </div>
             <AnimatePresence>
@@ -572,7 +572,7 @@ export default function ForumLensPage() {
               <ReportButton contentId={post.id} contentType="post" compact />
               <button onClick={() => handleToggleSave(post.id)} className={cn('flex items-center gap-1.5 text-xs hover:bg-lattice-bg px-2 py-1 rounded transition-colors', post.saved && 'text-neon-cyan')}>{post.saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}{post.saved ? 'Saved' : 'Save'}</button>
               <PullToSubstrate domain="forum" artifactId={post.id} compact />
-              <div className="flex items-center gap-1.5 text-xs px-2 py-1 text-gray-500"><Eye className="w-3.5 h-3.5" />{post.views.toLocaleString()}</div>
+              <div className="flex items-center gap-1.5 text-xs px-2 py-1 text-gray-400"><Eye className="w-3.5 h-3.5" />{post.views.toLocaleString()}</div>
               {/* Mod tools */}
               <div className="relative ml-auto">
                 <button onClick={() => setModToolsOpenId(modToolsOpenId === post.id ? null : post.id)} className="flex items-center gap-1 text-xs hover:bg-lattice-bg px-2 py-1 rounded transition-colors" aria-label="Shield"><Shield className="w-3.5 h-3.5" /><ChevronDown className="w-3 h-3" /></button>
@@ -640,7 +640,7 @@ export default function ForumLensPage() {
                 <ReportButton contentId={selectedPost.id} contentType="post" compact />
                 <button onClick={() => handleToggleSave(selectedPost.id)} className={cn('flex items-center gap-1 text-xs transition-colors', selectedPost.saved ? 'text-neon-cyan' : 'hover:text-white')}>{selectedPost.saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}{selectedPost.saved ? 'Saved' : 'Save'}</button>
                 <PullToSubstrate domain="forum" artifactId={selectedPost.id} compact />
-                <span className="text-xs flex items-center gap-1 text-gray-500"><Eye className="w-3.5 h-3.5" />{selectedPost.views.toLocaleString()} views</span>
+                <span className="text-xs flex items-center gap-1 text-gray-400"><Eye className="w-3.5 h-3.5" />{selectedPost.views.toLocaleString()} views</span>
               </div>
             </div>
           </div>
@@ -663,7 +663,7 @@ export default function ForumLensPage() {
         {/* Comments */}
         <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 lens-card">
           <h3 className="text-sm font-semibold text-white mb-3">Comments ({selectedPost.commentCount})</h3>
-          {selectedPost.comments.length === 0 && <p className="text-sm text-gray-500 py-4 text-center">No comments yet. Be the first to share your thoughts!</p>}
+          {selectedPost.comments.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">No comments yet. Be the first to share your thoughts!</p>}
           {selectedPost.comments.map(c => renderComment(c, selectedPost.id, 0))}
         </div>
       </motion.div>
@@ -693,7 +693,7 @@ export default function ForumLensPage() {
           </div>
         </div>
         <h3 className="text-sm font-semibold text-white">Posts by u/{selectedProfile.username}</h3>
-        {userPosts.length === 0 && <p className="text-gray-500 text-sm">No posts yet.</p>}
+        {userPosts.length === 0 && <p className="text-gray-400 text-sm">No posts yet.</p>}
         <div className="space-y-3">{userPosts.map(p => renderPostCard(p))}</div>
       </motion.div>
     );
@@ -755,7 +755,7 @@ export default function ForumLensPage() {
                 <div className="w-8 h-8 rounded-full bg-lattice-bg flex items-center justify-center text-sm">{comm.icon}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{comm.name}</p>
-                  <p className="text-[10px] text-gray-500">{comm.memberCount.toLocaleString()} members</p>
+                  <p className="text-[10px] text-gray-400">{comm.memberCount.toLocaleString()} members</p>
                 </div>
                 {comm.joined && <Check className="w-3.5 h-3.5 text-neon-cyan flex-shrink-0" />}
               </button>
@@ -820,10 +820,10 @@ export default function ForumLensPage() {
             </div>
             <div className="flex items-center gap-3 flex-1 justify-end">
               <div className="relative max-w-xs w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input ref={searchInputRef}
               type="text" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); if (viewMode !== 'feed') backToFeed(); }} placeholder="Search posts, tags, users..." className="w-full pl-10 pr-4 py-2 bg-lattice-bg border border-lattice-border rounded-full text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan input-lattice" />
-                {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close"><X className="w-3.5 h-3.5" /></button>}
+                {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white" aria-label="Close"><X className="w-3.5 h-3.5" /></button>}
               </div>
               <button onClick={() => setShowCreatePost(true)} className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-black font-medium rounded-full hover:bg-neon-cyan/90 transition-colors text-sm flex-shrink-0 btn-neon">
                 <Plus className="w-4 h-4" />Create Post
@@ -854,7 +854,7 @@ export default function ForumLensPage() {
                   ))}
                 </div>
                 {searchQuery && <p className="text-sm text-gray-400">Showing results for &quot;{searchQuery}&quot; ({displayPosts.length} found)</p>}
-                {displayPosts.length === 0 && <div className="text-center py-12 text-gray-500"><MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" /><p>No posts found.{searchQuery ? ' Try a different search.' : ' Be the first to post!'}</p></div>}
+                {displayPosts.length === 0 && <div className="text-center py-12 text-gray-400"><MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" /><p>No posts found.{searchQuery ? ' Try a different search.' : ' Be the first to post!'}</p></div>}
                 <div className="space-y-3">{displayPosts.map(p => renderPostCard(p))}</div>
               </motion.div>
             )}
@@ -891,7 +891,7 @@ export default function ForumLensPage() {
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1">Title</label>
                   <input value={newPostTitle} onChange={e => setNewPostTitle(e.target.value)} placeholder="An interesting title..." maxLength={300} className="w-full px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan input-lattice" />
-                  <p className="text-[10px] text-gray-500 mt-1 text-right">{newPostTitle.length}/300</p>
+                  <p className="text-[10px] text-gray-400 mt-1 text-right">{newPostTitle.length}/300</p>
                 </div>
                 {/* Content */}
                 <div>
@@ -966,7 +966,7 @@ export default function ForumLensPage() {
                   <button key={award.id} onClick={() => handleGiveAward(award.emoji)} className="flex flex-col items-center gap-1 p-3 bg-lattice-bg border border-lattice-border rounded-lg hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-colors">
                     <span className="text-2xl">{award.emoji}</span>
                     <span className="text-xs text-white font-medium">{award.name}</span>
-                    <span className="text-[10px] text-gray-500">{award.cost} credits</span>
+                    <span className="text-[10px] text-gray-400">{award.cost} credits</span>
                   </button>
                 ))}
               </div>
@@ -987,15 +987,15 @@ export default function ForumLensPage() {
               <div className="p-5 space-y-3">
                 <button onClick={() => { navigator.clipboard?.writeText(`https://concord.lattice/forum/${showShareModal}`); setShowShareModal(null); }} className="w-full flex items-center gap-3 p-3 bg-lattice-bg border border-lattice-border rounded-lg hover:border-neon-cyan/50 transition-colors text-left">
                   <Copy className="w-5 h-5 text-gray-400" />
-                  <div><p className="text-sm text-white font-medium">Copy Link</p><p className="text-xs text-gray-500">Copy the post URL to clipboard</p></div>
+                  <div><p className="text-sm text-white font-medium">Copy Link</p><p className="text-xs text-gray-400">Copy the post URL to clipboard</p></div>
                 </button>
                 <button onClick={() => setShowShareModal(null)} className="w-full flex items-center gap-3 p-3 bg-lattice-bg border border-lattice-border rounded-lg hover:border-neon-cyan/50 transition-colors text-left">
                   <ExternalLink className="w-5 h-5 text-gray-400" />
-                  <div><p className="text-sm text-white font-medium">Open in New Tab</p><p className="text-xs text-gray-500">Open the post in a new browser tab</p></div>
+                  <div><p className="text-sm text-white font-medium">Open in New Tab</p><p className="text-xs text-gray-400">Open the post in a new browser tab</p></div>
                 </button>
                 <button onClick={() => setShowShareModal(null)} className="w-full flex items-center gap-3 p-3 bg-lattice-bg border border-lattice-border rounded-lg hover:border-neon-cyan/50 transition-colors text-left">
                   <MessageSquare className="w-5 h-5 text-gray-400" />
-                  <div><p className="text-sm text-white font-medium">Crosspost</p><p className="text-xs text-gray-500">Share to another community</p></div>
+                  <div><p className="text-sm text-white font-medium">Crosspost</p><p className="text-xs text-gray-400">Share to another community</p></div>
                 </button>
 
       {/* Real-time Data Panel */}
@@ -1028,7 +1028,7 @@ export default function ForumLensPage() {
 
         {forumActionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setForumActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
+            <button onClick={() => setForumActionResult(null)} className="absolute top-3 right-3 text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 
@@ -1053,7 +1053,7 @@ export default function ForumLensPage() {
                     </div>
                     {Array.isArray(forumActionResult.topContributors) && (
                       <div className="space-y-1">
-                        <p className="text-xs text-gray-500">Top Contributors</p>
+                        <p className="text-xs text-gray-400">Top Contributors</p>
                         {(forumActionResult.topContributors as {name:string;posts:number}[]).map(c => (
                           <div key={c.name} className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5">
                             <span className="flex-1 text-white">{c.name}</span>

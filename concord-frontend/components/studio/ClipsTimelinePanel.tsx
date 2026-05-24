@@ -45,7 +45,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Music className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Clips {trackId && `· ${trackId.slice(0, 12)}`}</span>
-        <span className="ml-auto text-[10px] text-gray-500">{clips.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{clips.length}</span>
       </header>
       {projectId && trackId && (
         <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
@@ -60,11 +60,11 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
       )}
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : !projectId ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Music className="w-6 h-6 mx-auto mb-2 opacity-30" />Open a project to manage clips.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Music className="w-6 h-6 mx-auto mb-2 opacity-30" />Open a project to manage clips.</div>
         ) : clips.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Music className="w-6 h-6 mx-auto mb-2 opacity-30" />No clips yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Music className="w-6 h-6 mx-auto mb-2 opacity-30" />No clips yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {clips.map(c => (
@@ -72,7 +72,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
                 <span className="w-2 h-8 rounded" style={{ backgroundColor: c.colour }} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{c.name}</div>
-                  <div className="text-[10px] text-gray-500">{c.kind} · start {c.startBeats} · length {c.lengthBeats} beats</div>
+                  <div className="text-[10px] text-gray-400">{c.kind} · start {c.startBeats} · length {c.lengthBeats} beats</div>
                 </div>
                 <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>

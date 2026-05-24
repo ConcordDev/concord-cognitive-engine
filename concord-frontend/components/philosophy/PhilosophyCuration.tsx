@@ -89,7 +89,7 @@ export function PhilosophyCuration() {
       <div className="flex items-center gap-2 mb-3">
         <Network className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Curation Studio</h3>
-        <span className="text-[11px] text-zinc-500">Are.na + IEP feature surface</span>
+        <span className="text-[11px] text-zinc-400">Are.na + IEP feature surface</span>
       </div>
 
       <div className="flex flex-wrap gap-1 mb-4">
@@ -166,7 +166,7 @@ function ImageGridTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutat
   }
 
   if (channels.length === 0) {
-    return <p className="text-xs text-zinc-500 italic">Create a channel first to add image blocks.</p>;
+    return <p className="text-xs text-zinc-400 italic">Create a channel first to add image blocks.</p>;
   }
 
   return (
@@ -200,9 +200,9 @@ function ImageGridTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutat
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : blocks.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No blocks in this channel yet.</p>
+        <p className="text-xs text-zinc-400 italic">No blocks in this channel yet.</p>
       ) : (
         <div className="columns-2 sm:columns-3 gap-2 [&>*]:mb-2">
           {blocks.map((b) => (
@@ -263,7 +263,7 @@ function DiscoverTab() {
     <div className="space-y-3">
       <div className="flex gap-1.5">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
           <input
             value={query} onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void search(query); }}
@@ -277,9 +277,9 @@ function DiscoverTab() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : results.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No public channels yet. Publish a channel from the Collaborators tab.</p>
+        <p className="text-xs text-zinc-400 italic">No public channels yet. Publish a channel from the Collaborators tab.</p>
       ) : (
         <div className="grid sm:grid-cols-2 gap-2">
           {results.map((c) => (
@@ -288,8 +288,8 @@ function DiscoverTab() {
               className="text-left bg-zinc-900/60 border border-zinc-800 hover:border-amber-700/50 rounded-lg p-3"
             >
               <p className="text-xs font-bold text-zinc-100">{c.title}</p>
-              {c.description && <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-2">{c.description}</p>}
-              <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
+              {c.description && <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-2">{c.description}</p>}
+              <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-400">
                 <span>{c.blockCount} blocks</span>
                 <span>·</span>
                 <span>{c.collaboratorCount} collaborators</span>
@@ -305,13 +305,13 @@ function DiscoverTab() {
           <div className="flex items-center gap-2 mb-2">
             <Globe className="w-3.5 h-3.5 text-amber-400" />
             <h4 className="text-sm font-bold text-zinc-100">{open.channel.title}</h4>
-            <span className="text-[10px] text-zinc-500">by {open.ownerId}</span>
-            <button onClick={() => setOpen(null)} className="ml-auto text-zinc-500 hover:text-zinc-200">
+            <span className="text-[10px] text-zinc-400">by {open.ownerId}</span>
+            <button onClick={() => setOpen(null)} className="ml-auto text-zinc-400 hover:text-zinc-200">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
           {open.blocks.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">This channel has no blocks.</p>
+            <p className="text-[11px] text-zinc-400 italic">This channel has no blocks.</p>
           ) : (
             <div className="grid sm:grid-cols-2 gap-2">
               {open.blocks.map((b) => (
@@ -320,7 +320,7 @@ function DiscoverTab() {
                     <img src={b.imageUrl} alt={b.content} className="w-full rounded mb-1 object-cover" loading="lazy" />
                   )}
                   <p className={cn('text-[11px] text-zinc-300', b.kind === 'quote' && 'italic')}>{b.content}</p>
-                  {b.source && <p className="text-[9px] text-zinc-500 mt-1">— {b.source}</p>}
+                  {b.source && <p className="text-[9px] text-zinc-400 mt-1">— {b.source}</p>}
                 </div>
               ))}
             </div>
@@ -373,7 +373,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
   }
 
   if (channels.length === 0) {
-    return <p className="text-xs text-zinc-500 italic">Create a channel first to manage collaborators.</p>;
+    return <p className="text-xs text-zinc-400 italic">Create a channel first to manage collaborators.</p>;
   }
 
   return (
@@ -388,7 +388,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
       <div className="flex items-center justify-between bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
         <div>
           <p className="text-xs font-semibold text-zinc-200">Visibility</p>
-          <p className="text-[10px] text-zinc-500">{isPublic ? 'Public — listed in Discover' : 'Private — only you and collaborators'}</p>
+          <p className="text-[10px] text-zinc-400">{isPublic ? 'Public — listed in Discover' : 'Private — only you and collaborators'}</p>
         </div>
         <button
           onClick={togglePublish}
@@ -418,7 +418,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
           </button>
         </div>
         {collaborators.length === 0 ? (
-          <p className="text-[10px] text-zinc-500 italic">No collaborators yet.</p>
+          <p className="text-[10px] text-zinc-400 italic">No collaborators yet.</p>
         ) : (
           <ul className="space-y-1">
             {collaborators.map((u) => (
@@ -465,12 +465,12 @@ function EmbedTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutate: (
   }
 
   if (channels.length === 0) {
-    return <p className="text-xs text-zinc-500 italic">Create a channel first to add embed blocks.</p>;
+    return <p className="text-xs text-zinc-400 italic">Create a channel first to add embed blocks.</p>;
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Pull a rich Wikipedia preview (thumbnail + extract) into a channel as an embed block.
       </p>
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 flex flex-wrap gap-1.5">
@@ -600,7 +600,7 @@ function ReferenceTab() {
           )}
           {page.related.length > 0 && (
             <div className="mt-2">
-              <p className="text-[10px] uppercase text-zinc-500 mb-1">Related entries</p>
+              <p className="text-[10px] uppercase text-zinc-400 mb-1">Related entries</p>
               <div className="flex flex-wrap gap-1">
                 {page.related.map((r) => (
                   <button
@@ -619,7 +619,7 @@ function ReferenceTab() {
 
       {saved.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase text-zinc-500 mb-1">Saved reference pages</p>
+          <p className="text-[10px] uppercase text-zinc-400 mb-1">Saved reference pages</p>
           <ul className="space-y-1">
             {saved.map((p) => (
               <li key={p.id} className="group flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5">
@@ -628,7 +628,7 @@ function ReferenceTab() {
                   : <BookMarked className="w-4 h-4 text-amber-400 shrink-0" />}
                 <button onClick={() => setPage(p)} className="flex-1 text-left min-w-0">
                   <p className="text-[11px] font-semibold text-zinc-200 truncate">{p.title}</p>
-                  <p className="text-[9px] text-zinc-500">{p.kind}</p>
+                  <p className="text-[9px] text-zinc-400">{p.kind}</p>
                 </button>
                 <button onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
                   <Trash2 className="w-3 h-3" />
@@ -659,10 +659,10 @@ function GraphTab() {
   useEffect(() => { void load(); }, [load]);
 
   if (loading) {
-    return <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
   if (!graph || graph.nodes.length === 0) {
-    return <p className="text-xs text-zinc-500 italic">No channels or blocks to graph yet.</p>;
+    return <p className="text-xs text-zinc-400 italic">No channels or blocks to graph yet.</p>;
   }
 
   // Build a channel-rooted tree: each channel node → its block children.
@@ -700,7 +700,7 @@ function GraphTab() {
         ].map((s) => (
           <div key={s.label} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-amber-400">{s.value}</p>
-            <p className="text-[10px] text-zinc-500">{s.label}</p>
+            <p className="text-[10px] text-zinc-400">{s.label}</p>
           </div>
         ))}
       </div>
@@ -709,7 +709,7 @@ function GraphTab() {
 
       {graph.bridges.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase text-zinc-500 mb-1">Channel bridges (shared blocks)</p>
+          <p className="text-[10px] uppercase text-zinc-400 mb-1">Channel bridges (shared blocks)</p>
           <ul className="space-y-1">
             {graph.bridges.map((br, i) => {
               const a = graph.nodes.find((n) => n.id === br.a);
@@ -804,7 +804,7 @@ function DebateTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] text-zinc-500">Collaborative premise critique — anyone can post support / object / rebut / clarify.</p>
+        <p className="text-[11px] text-zinc-400">Collaborative premise critique — anyone can post support / object / rebut / clarify.</p>
         <button
           onClick={() => setShowNew((s) => !s)}
           className="ml-auto px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold inline-flex items-center gap-1"
@@ -844,8 +844,8 @@ function DebateTab() {
 
       <div className="grid sm:grid-cols-[220px_1fr] gap-3">
         <ul className="space-y-1">
-          {loading && <li className="text-[11px] text-zinc-600"><Loader2 className="w-3 h-3 animate-spin inline" /></li>}
-          {!loading && threads.length === 0 && <li className="text-[11px] text-zinc-600 italic">No debates yet.</li>}
+          {loading && <li className="text-[11px] text-zinc-400"><Loader2 className="w-3 h-3 animate-spin inline" /></li>}
+          {!loading && threads.length === 0 && <li className="text-[11px] text-zinc-400 italic">No debates yet.</li>}
           {threads.map((t) => (
             <li key={t.id}>
               <button
@@ -856,7 +856,7 @@ function DebateTab() {
                 )}
               >
                 <p className="text-xs font-semibold text-zinc-100 truncate">{t.title}</p>
-                <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-zinc-500">
+                <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-zinc-400">
                   <span>{t.branch}</span>
                   <span>·</span>
                   <span>{t.postCount ?? t.posts?.length ?? 0} posts</span>
@@ -890,13 +890,13 @@ function DebateTab() {
 
             <div className="space-y-1.5 mt-2 max-h-72 overflow-y-auto">
               {open.thread.posts.length === 0 ? (
-                <p className="text-[11px] text-zinc-500 italic">No posts yet — be the first to critique.</p>
+                <p className="text-[11px] text-zinc-400 italic">No posts yet — be the first to critique.</p>
               ) : (
                 open.thread.posts.map((p) => (
                   <div key={p.id} className={cn('rounded-lg border p-2', STANCE_TONE[p.stance] || STANCE_TONE.clarify)}>
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="text-[9px] uppercase font-bold">{p.stance}</span>
-                      <span className="text-[9px] text-zinc-500">{p.author}</span>
+                      <span className="text-[9px] text-zinc-400">{p.author}</span>
                     </div>
                     {p.targetPremise && (
                       <p className="text-[10px] text-zinc-400 mb-0.5">re: {p.targetPremise}</p>
@@ -946,7 +946,7 @@ function DebateTab() {
             )}
           </div>
         ) : (
-          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[140px]">
+          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[140px]">
             Select or create a debate thread.
           </div>
         )}

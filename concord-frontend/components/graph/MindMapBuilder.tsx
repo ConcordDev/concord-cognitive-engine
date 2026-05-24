@@ -70,7 +70,7 @@ export function MindMapBuilder() {
     await reload(); await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   // children of a node (tree rendering via edges)
   const childrenOf = (nodeId: string): GNode[] => {
@@ -106,7 +106,7 @@ export function MindMapBuilder() {
       <div className="flex items-center gap-2 mb-3">
         <Workflow className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-bold text-zinc-100">Mind Map Builder</h3>
-        <span className="text-[11px] text-zinc-500">XMind shape</span>
+        <span className="text-[11px] text-zinc-400">XMind shape</span>
       </div>
 
       <div className="flex gap-1.5 mb-3 flex-wrap">
@@ -139,7 +139,7 @@ export function MindMapBuilder() {
           </div>
         </div>
       ) : (
-        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[120px]">
+        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">
           Select or create a mind map.
         </div>
       )}

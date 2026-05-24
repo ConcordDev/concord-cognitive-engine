@@ -114,7 +114,7 @@ export function MarketingScoringPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -132,7 +132,7 @@ export function MarketingScoringPanel() {
       </div>
 
       {models.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No scoring models. Define rules mapping signals to points.</p>
+        <p className="text-[11px] text-zinc-400 italic">No scoring models. Define rules mapping signals to points.</p>
       ) : (
         <ul className="space-y-2">
           {models.map((m) => (
@@ -140,7 +140,7 @@ export function MarketingScoringPanel() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{m.name}</p>
-                  <p className="text-[11px] text-zinc-500">{m.ruleCount} rules · max {m.maxScore} pts · qualified ≥ {m.threshold}</p>
+                  <p className="text-[11px] text-zinc-400">{m.ruleCount} rules · max {m.maxScore} pts · qualified ≥ {m.threshold}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button type="button" onClick={() => openApply(m)}

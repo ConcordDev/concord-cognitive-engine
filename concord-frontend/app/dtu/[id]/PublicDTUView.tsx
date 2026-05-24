@@ -81,7 +81,7 @@ function SimplifiedLineageTree({ nodes }: { nodes: LineageNode[] }) {
     <div className="space-y-1">
       {nodes.slice(0, 10).map((node) => (
         <div key={node.id} className="flex items-center gap-2 text-sm">
-          <GitBranch className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+          <GitBranch className="w-3.5 h-3.5 text-gray-400 shrink-0" />
           <Link
             href={`/dtu/${node.id}`}
             className="text-gray-300 hover:text-neon-cyan transition-colors truncate"
@@ -100,7 +100,7 @@ function SimplifiedLineageTree({ nodes }: { nodes: LineageNode[] }) {
             </span>
           )}
           {node.children && node.children.length > 0 && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               +{node.children.length} branch{node.children.length > 1 ? 'es' : ''}
             </span>
           )}
@@ -258,7 +258,7 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
               </span>
             )}
             {dtu.domain && (
-              <span className="text-xs text-gray-500 px-2 py-1 bg-lattice-elevated rounded-full">
+              <span className="text-xs text-gray-400 px-2 py-1 bg-lattice-elevated rounded-full">
                 {dtu.domain}
               </span>
             )}
@@ -299,7 +299,7 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
         {/* Tags */}
         {tags.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
-            <Tag className="w-4 h-4 text-gray-500" />
+            <Tag className="w-4 h-4 text-gray-400" />
             {tags.map((tag) => (
               <span
                 key={tag}
@@ -340,7 +340,7 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
 
         {/* Footer */}
         <footer className="pt-6 border-t border-lattice-border text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Shared from{' '}
             <Link href="/" className="text-neon-cyan hover:underline">
               Concord OS

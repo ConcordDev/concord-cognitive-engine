@@ -217,7 +217,7 @@ export default function GroundingLensPage() {
         </div>
         <div>
           <p className="text-sm font-semibold">Aggregate Grounding Score</p>
-          <p className="text-xs text-gray-500">Weighted average across all verification sources</p>
+          <p className="text-xs text-gray-400">Weighted average across all verification sources</p>
         </div>
       </motion.div>
 
@@ -309,11 +309,11 @@ export default function GroundingLensPage() {
               <div key={i} className="lens-card text-xs flex items-center justify-between">
                 <span className="font-mono text-neon-cyan">{String(r.sensorId || r.sensor)}</span>
                 <span>{String(r.value)} {String(r.unit)}</span>
-                <span className="text-gray-500">{r.timestamp ? new Date(r.timestamp as string).toLocaleTimeString() : ''}</span>
+                <span className="text-gray-400">{r.timestamp ? new Date(r.timestamp as string).toLocaleTimeString() : ''}</span>
               </div>
             ))}
             {(!Array.isArray(readingList) || readingList.length === 0) && (
-              <p className="text-center py-8 text-gray-500 text-sm">No readings yet</p>
+              <p className="text-center py-8 text-gray-400 text-sm">No readings yet</p>
             )}
           </div>
         </div>
@@ -413,7 +413,7 @@ export default function GroundingLensPage() {
               <p className="text-xs text-gray-400 mb-3">{card.description}</p>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Confidence</span>
+                  <span className="text-gray-400">Confidence</span>
                   <span className={`font-mono ${
                     card.confidence >= 90 ? 'text-neon-green' :
                     card.confidence >= 80 ? 'text-neon-cyan' : 'text-yellow-500'
@@ -428,7 +428,7 @@ export default function GroundingLensPage() {
                     style={{ width: `${card.confidence}%` }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-500">
+                <div className="flex items-center justify-between text-[10px] text-gray-400">
                   <span>{card.readings} data points</span>
                   <span>Checked {card.lastCheck}</span>
                 </div>
@@ -449,7 +449,7 @@ export default function GroundingLensPage() {
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-neon-green">93.2%</p>
-              <p className="text-[10px] text-gray-500">Last full sweep: 2m ago</p>
+              <p className="text-[10px] text-gray-400">Last full sweep: 2m ago</p>
             </div>
           </div>
         </div>
@@ -513,7 +513,7 @@ export default function GroundingLensPage() {
           ))}
         </div>
         {!groundingArtifacts[0]?.id && (
-          <p className="text-xs text-gray-500 text-center">Create a grounding-data artifact to run analysis.</p>
+          <p className="text-xs text-gray-400 text-center">Create a grounding-data artifact to run analysis.</p>
         )}
 
         {runGroundingAction.isPending && (
@@ -542,7 +542,7 @@ export default function GroundingLensPage() {
                       </div>
                       <span className="text-xs font-mono text-gray-300">{Math.round(confidence * 100)}%</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{direction}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{direction}</p>
                   </div>
                 </div>
                 {breakdown && (
@@ -554,13 +554,13 @@ export default function GroundingLensPage() {
                 )}
                 {evaluations.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Evidence Sources</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Evidence Sources</p>
                     {evaluations.slice(0, 4).map((ev, i) => (
                       <div key={i} className="lens-card flex items-center justify-between text-xs">
                         <span className="text-gray-300">{ev.source}</span>
                         <div className="flex items-center gap-2">
                           <span className={`px-1.5 py-0.5 rounded ${ev.stance === 'supports' ? 'bg-neon-green/10 text-neon-green' : ev.stance === 'contradicts' ? 'bg-red-400/10 text-red-400' : 'bg-gray-500/10 text-gray-400'}`}>{ev.stance}</span>
-                          <span className="text-gray-500">rel:{ev.relevance}</span>
+                          <span className="text-gray-400">rel:{ev.relevance}</span>
                         </div>
                       </div>
                     ))}
@@ -595,7 +595,7 @@ export default function GroundingLensPage() {
                     <div className="h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${src.credibilityScore >= 70 ? 'bg-neon-green' : src.credibilityScore >= 50 ? 'bg-yellow-400' : 'bg-red-400'}`} style={{ width: `${src.credibilityScore}%` }} />
                     </div>
-                    <p className="text-xs text-gray-500">{src.credibilityLabel}</p>
+                    <p className="text-xs text-gray-400">{src.credibilityLabel}</p>
                   </div>
                 ))}
                 {(r.recommendations as string[])?.length > 0 && (
@@ -622,7 +622,7 @@ export default function GroundingLensPage() {
                 )}
                 {components.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Atomic Claims</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Atomic Claims</p>
                     {components.map((comp) => (
                       <div key={comp.index} className="lens-card space-y-1">
                         <div className="flex items-center justify-between">

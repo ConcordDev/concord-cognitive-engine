@@ -26,7 +26,7 @@ interface Booking {
 const SERVICES = ['boarding', 'walking', 'daycare', 'dropin', 'house_sitting', 'training'];
 const STATUS_COLOR: Record<string, string> = {
   requested: 'text-amber-400', confirmed: 'text-sky-400', in_progress: 'text-teal-400',
-  completed: 'text-emerald-400', cancelled: 'text-zinc-500',
+  completed: 'text-emerald-400', cancelled: 'text-zinc-400',
 };
 
 export function PetServicesPanel({ petId, onChange }: { petId: string; onChange: () => void }) {
@@ -85,7 +85,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -130,7 +130,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
         )}
 
         {caregivers.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No caregivers yet. Be the first to offer care.</p>
+          <p className="text-[11px] text-zinc-400 italic">No caregivers yet. Be the first to offer care.</p>
         ) : (
           <ul className="space-y-2">
             {caregivers.map((cg) => (
@@ -138,7 +138,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{cg.name}</p>
-                    {cg.bio && <p className="text-[11px] text-zinc-500">{cg.bio}</p>}
+                    {cg.bio && <p className="text-[11px] text-zinc-400">{cg.bio}</p>}
                   </div>
                   {cg.rating != null && (
                     <span className="flex items-center gap-1 text-[11px] text-amber-400">
@@ -165,7 +165,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">My bookings</h3>
         {bookings.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No bookings yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No bookings yet.</p>
         ) : (
           <ul className="space-y-2">
             {bookings.map((b) => (
@@ -175,22 +175,22 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
                     <p className="text-sm font-semibold text-zinc-100 capitalize">
                       {b.service.replace(/_/g, ' ')} · {b.caregiverName}
                     </p>
-                    <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                    <p className="text-[11px] text-zinc-400 flex items-center gap-1">
                       <PawPrint className="w-3 h-3" />{b.petName} · {b.startDate}
                       {b.endDate !== b.startDate ? `–${b.endDate}` : ''} · ${b.estimatedCost}
                     </p>
                   </div>
-                  <span className={cn('text-[10px] capitalize', STATUS_COLOR[b.status] || 'text-zinc-500')}>
+                  <span className={cn('text-[10px] capitalize', STATUS_COLOR[b.status] || 'text-zinc-400')}>
                     {b.status.replace(/_/g, ' ')}
                   </span>
                 </div>
                 {b.status === 'requested' && (
                   <button type="button" onClick={() => advance(b, 'cancelled')}
-                    className="mt-1.5 text-[10px] text-zinc-500 hover:text-rose-400">Cancel request</button>
+                    className="mt-1.5 text-[10px] text-zinc-400 hover:text-rose-400">Cancel request</button>
                 )}
                 {b.status === 'completed' && !b.rated && (
                   <div className="flex items-center gap-1 mt-1.5">
-                    <span className="text-[10px] text-zinc-500">Rate:</span>
+                    <span className="text-[10px] text-zinc-400">Rate:</span>
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button key={n} type="button" onClick={() => rate(b, n)}>
                         <Star className="w-3.5 h-3.5 text-zinc-600 hover:text-amber-400" />
@@ -199,7 +199,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
                   </div>
                 )}
                 {b.updates.length > 0 && (
-                  <p className="text-[10px] text-zinc-500 mt-1 italic">“{b.updates[b.updates.length - 1].note}”</p>
+                  <p className="text-[10px] text-zinc-400 mt-1 italic">“{b.updates[b.updates.length - 1].note}”</p>
                 )}
               </li>
             ))}

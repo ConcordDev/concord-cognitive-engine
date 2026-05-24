@@ -106,7 +106,7 @@ export function QBShell({ activeNav, onNavChange, badges = {}, children, askBar 
         <nav className="flex-1 overflow-y-auto py-2">
           {groups.map((g) => (
             <div key={g} className="mb-3">
-              <div className="px-3 mb-1 text-[9px] uppercase tracking-wider text-gray-600 font-semibold">{GROUP_LABELS[g]}</div>
+              <div className="px-3 mb-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold">{GROUP_LABELS[g]}</div>
               <ul>
                 {NAV.filter((n) => n.group === g).map((n) => {
                   const Icon = n.icon;

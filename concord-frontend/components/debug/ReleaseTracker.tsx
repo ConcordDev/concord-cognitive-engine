@@ -110,7 +110,7 @@ export function ReleaseTracker() {
 
       {/* Create release */}
       <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border space-y-2">
-        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Register Deploy</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Register Deploy</p>
         <div className="grid grid-cols-2 gap-2">
           <input
             value={form.version}
@@ -150,18 +150,18 @@ export function ReleaseTracker() {
       {/* Deploy timeline */}
       {timeline.length > 0 && (
         <div>
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Deploy Timeline</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Deploy Timeline</p>
           <TimelineView events={timeline} height={110} />
         </div>
       )}
 
       {/* Release list */}
       {loading ? (
-        <div className="text-center py-8 text-gray-500 text-sm flex items-center justify-center gap-2">
+        <div className="text-center py-8 text-gray-400 text-sm flex items-center justify-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading...
         </div>
       ) : releases.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-gray-400 text-sm">
           <GitBranch className="w-7 h-7 mx-auto mb-2 opacity-40" />
           No releases tracked yet
         </div>
@@ -186,7 +186,7 @@ export function ReleaseTracker() {
                     <CheckCircle className="w-2.5 h-2.5" /> crash-free
                   </span>
                 )}
-                <span className="text-[10px] text-gray-600 ml-auto">
+                <span className="text-[10px] text-gray-400 ml-auto">
                   {new Date(rel.deployedAt).toLocaleString()}
                 </span>
                 <button
@@ -197,29 +197,29 @@ export function ReleaseTracker() {
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-              {rel.notes && <p className="text-xs text-gray-500 mt-1">{rel.notes}</p>}
+              {rel.notes && <p className="text-xs text-gray-400 mt-1">{rel.notes}</p>}
               <div className="grid grid-cols-4 gap-2 mt-2">
                 <div className="text-center">
                   <p className="text-sm font-bold text-gray-200">{rel.issueCount}</p>
-                  <p className="text-[10px] text-gray-500">Issues</p>
+                  <p className="text-[10px] text-gray-400">Issues</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-bold text-neon-purple">{rel.occurrenceCount}</p>
-                  <p className="text-[10px] text-gray-500">Occurrences</p>
+                  <p className="text-[10px] text-gray-400">Occurrences</p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-bold text-neon-blue">{rel.newIssues}</p>
-                  <p className="text-[10px] text-gray-500">New</p>
+                  <p className="text-[10px] text-gray-400">New</p>
                 </div>
                 <div className="text-center">
                   <p
                     className={`text-sm font-bold ${
-                      rel.regressions > 0 ? 'text-orange-400' : 'text-gray-500'
+                      rel.regressions > 0 ? 'text-orange-400' : 'text-gray-400'
                     }`}
                   >
                     {rel.regressions}
                   </p>
-                  <p className="text-[10px] text-gray-500">Regressions</p>
+                  <p className="text-[10px] text-gray-400">Regressions</p>
                 </div>
               </div>
             </div>

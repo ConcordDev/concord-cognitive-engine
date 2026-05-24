@@ -93,7 +93,7 @@ export function InvoicesPanel() {
         <Receipt className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Invoices &amp; payments</span>
         {data && (
-          <span className="ml-auto text-[10px] text-gray-500">
+          <span className="ml-auto text-[10px] text-gray-400">
             ${data.outstanding.toFixed(0)} outstanding · ${data.collected.toFixed(0)} collected · {data.overdueCount} overdue
           </span>
         )}
@@ -131,9 +131,9 @@ export function InvoicesPanel() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : !data || data.invoices.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No invoices yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No invoices yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {data.invoices.map(inv => {
@@ -147,7 +147,7 @@ export function InvoicesPanel() {
                     <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', STATUS[inv.status])}>{inv.status}</span>
                     <span className="font-mono text-sm tabular-nums text-emerald-300">${inv.total.toFixed(2)}</span>
                   </div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">
+                  <div className="text-[10px] text-gray-400 mt-0.5">
                     {inv.lineItems.length} lines · paid ${inv.amountPaid.toFixed(2)}{inv.dueDate ? ` · due ${inv.dueDate}` : ''}
                   </div>
                   {inv.status !== 'paid' && (

@@ -122,11 +122,11 @@ export function PianoRoll({
 
   if (!clip) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-gray-400">
         <div className="text-center">
           <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Select a MIDI clip to edit notes</p>
-          <p className="text-xs text-gray-600 mt-1">Double-click a clip in the arrangement view</p>
+          <p className="text-xs text-gray-400 mt-1">Double-click a clip in the arrangement view</p>
         </div>
       </div>
     );
@@ -147,7 +147,7 @@ export function PianoRoll({
             <button
               key={t.id}
               onClick={() => setTool(t.id)}
-              className={cn('p-1 rounded', tool === t.id ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-500 hover:text-white')}
+              className={cn('p-1 rounded', tool === t.id ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white')}
               title={t.label}
             >
               <t.icon className="w-3.5 h-3.5" />
@@ -158,12 +158,12 @@ export function PianoRoll({
         <div className="w-px h-4 bg-white/10" />
 
         <div className="flex items-center gap-1 text-[10px]">
-          <span className="text-gray-500">Snap:</span>
+          <span className="text-gray-400">Snap:</span>
           {(['off', '1/4', '1/8', '1/16', '1/32'] as SnapMode[]).map(s => (
             <button
               key={s}
               onClick={() => onSnapChange(s)}
-              className={cn('px-1.5 py-0.5 rounded', snap === s ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-500 hover:text-white')}
+              className={cn('px-1.5 py-0.5 rounded', snap === s ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white')}
             >
               {s}
             </button>
@@ -174,17 +174,17 @@ export function PianoRoll({
 
         <button
           onClick={() => setShowVelocity(!showVelocity)}
-          className={cn('text-[10px] px-2 py-0.5 rounded', showVelocity ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-500 hover:text-white')}
+          className={cn('text-[10px] px-2 py-0.5 rounded', showVelocity ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white')}
         >
           Velocity
         </button>
 
         <div className="flex items-center gap-1" title="Horizontal Zoom">
-          <button onClick={() => setZoomX(Math.max(0.25, zoomX - 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom out">
+          <button onClick={() => setZoomX(Math.max(0.25, zoomX - 0.25))} className="p-0.5 text-gray-400 hover:text-white" aria-label="Zoom out">
             <ZoomOut className="w-3 h-3" />
           </button>
           <span className="text-[10px] text-gray-400 w-8 text-center">{Math.round(zoomX * 100)}%</span>
-          <button onClick={() => setZoomX(Math.min(4, zoomX + 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom in">
+          <button onClick={() => setZoomX(Math.min(4, zoomX + 0.25))} className="p-0.5 text-gray-400 hover:text-white" aria-label="Zoom in">
             <ZoomIn className="w-3 h-3" />
           </button>
         </div>
@@ -192,12 +192,12 @@ export function PianoRoll({
         <div className="w-px h-4 bg-white/10" />
 
         <div className="flex items-center gap-1" title="Vertical Zoom">
-          <span className="text-[10px] text-gray-500">V:</span>
-          <button onClick={() => setZoomY(Math.max(0.5, zoomY - 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom out">
+          <span className="text-[10px] text-gray-400">V:</span>
+          <button onClick={() => setZoomY(Math.max(0.5, zoomY - 0.25))} className="p-0.5 text-gray-400 hover:text-white" aria-label="Zoom out">
             <ZoomOut className="w-3 h-3" />
           </button>
           <span className="text-[10px] text-gray-400 w-8 text-center">{Math.round(zoomY * 100)}%</span>
-          <button onClick={() => setZoomY(Math.min(3, zoomY + 0.25))} className="p-0.5 text-gray-500 hover:text-white" aria-label="Zoom in">
+          <button onClick={() => setZoomY(Math.min(3, zoomY + 0.25))} className="p-0.5 text-gray-400 hover:text-white" aria-label="Zoom in">
             <ZoomIn className="w-3 h-3" />
           </button>
         </div>
@@ -216,7 +216,7 @@ export function PianoRoll({
                   key={pitch}
                   className={cn(
                     'border-b border-white/5 flex items-center justify-end pr-1 text-[9px] font-mono',
-                    isBlack ? 'bg-black/60 text-gray-500' : 'bg-lattice-deep text-gray-400',
+                    isBlack ? 'bg-black/60 text-gray-400' : 'bg-lattice-deep text-gray-400',
                     isC && 'border-b-white/20 font-bold text-white/60'
                   )}
                   style={{ height: noteHeight }}
@@ -302,7 +302,7 @@ export function PianoRoll({
       {showVelocity && (
         <div className="h-24 border-t border-white/10 bg-black/40 flex">
           <div style={{ width: KEY_WIDTH }} className="flex-shrink-0 flex items-center justify-center border-r border-white/10">
-            <span className="text-[9px] text-gray-500 -rotate-90">VELOCITY</span>
+            <span className="text-[9px] text-gray-400 -rotate-90">VELOCITY</span>
           </div>
           <div className="flex-1 relative overflow-hidden">
             {notes.map(note => (

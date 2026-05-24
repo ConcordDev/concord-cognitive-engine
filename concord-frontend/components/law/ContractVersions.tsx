@@ -66,15 +66,15 @@ export function ContractVersions({ contractId }: { contractId: string }) {
       </div>
 
       {versions.length === 0 ? (
-        <p className="text-[11px] text-gray-600 italic">No versions saved yet — save a snapshot to enable redline diff.</p>
+        <p className="text-[11px] text-gray-400 italic">No versions saved yet — save a snapshot to enable redline diff.</p>
       ) : (
         <ul className="space-y-1">
           {versions.map((v) => (
             <li key={v.version} className="flex items-center gap-2 bg-black/40 rounded px-2 py-1.5">
               <span className="text-[10px] font-bold text-amber-300">v{v.version}</span>
               <span className="text-xs text-white flex-1 truncate">{v.label}</span>
-              <span className="text-[9px] text-gray-500">{v.clauseCount} clauses</span>
-              <span className="text-[9px] text-gray-600">{new Date(v.savedAt).toLocaleDateString()}</span>
+              <span className="text-[9px] text-gray-400">{v.clauseCount} clauses</span>
+              <span className="text-[9px] text-gray-400">{new Date(v.savedAt).toLocaleDateString()}</span>
               <button onClick={() => showDiff(v.version)}
                 className={cn('text-[10px] px-1.5 py-0.5 rounded inline-flex items-center gap-1',
                   fromV === v.version ? 'bg-neon-cyan/30 text-neon-cyan' : 'bg-white/10 text-gray-400 hover:bg-white/20')}>
@@ -98,7 +98,7 @@ export function ContractVersions({ contractId }: { contractId: string }) {
               <div key={i} className={cn(
                 o.op === 'add' && 'bg-neon-green/10 text-neon-green',
                 o.op === 'remove' && 'bg-rose-500/10 text-rose-300 line-through',
-                o.op === 'same' && 'text-gray-500',
+                o.op === 'same' && 'text-gray-400',
               )}>
                 <span className="select-none opacity-50 mr-1">
                   {o.op === 'add' ? '+' : o.op === 'remove' ? '−' : ' '}

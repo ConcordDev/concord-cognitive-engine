@@ -81,14 +81,14 @@ export function VoiceTranscripts() {
     setHits((r.data?.result?.hits as { recordingId: string; recordingTitle: string; text: string }[]) || []);
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Mic className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-bold text-zinc-100">Transcripts</h3>
-        <span className="text-[11px] text-zinc-500">Otter.ai shape</span>
+        <span className="text-[11px] text-zinc-400">Otter.ai shape</span>
         <button onClick={() => setShowNew(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-sky-600 hover:bg-sky-500 text-white inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New
         </button>
@@ -108,7 +108,7 @@ export function VoiceTranscripts() {
 
       <div className="flex gap-1 mb-2">
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
           <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void runSearch(); }}
             placeholder="Search all transcripts" className="w-full bg-zinc-950 border border-zinc-800 rounded pl-7 pr-2 py-1.5 text-xs text-zinc-200" />
         </div>
@@ -117,7 +117,7 @@ export function VoiceTranscripts() {
 
       {hits ? (
         <div className="space-y-1">
-          {hits.length === 0 && <p className="text-xs text-zinc-500 italic">No matches.</p>}
+          {hits.length === 0 && <p className="text-xs text-zinc-400 italic">No matches.</p>}
           {hits.map((h, i) => (
             <button key={i} onClick={() => { open(h.recordingId); setHits(null); }} className="block w-full text-left bg-zinc-900/60 rounded px-2 py-1.5 hover:bg-zinc-800">
               <p className="text-[10px] text-sky-400">{h.recordingTitle}</p>
@@ -128,13 +128,13 @@ export function VoiceTranscripts() {
       ) : (
         <div className="grid sm:grid-cols-[200px_1fr] gap-3">
           <ul className="space-y-1">
-            {recordings.length === 0 && <li className="text-[11px] text-zinc-600 italic">No recordings yet.</li>}
+            {recordings.length === 0 && <li className="text-[11px] text-zinc-400 italic">No recordings yet.</li>}
             {recordings.map(r => (
               <li key={r.id} className="group flex items-center gap-1">
                 <button onClick={() => open(r.id)}
                   className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === r.id ? 'bg-sky-600/15 border-sky-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                   <p className="text-xs font-semibold text-zinc-100 truncate">{r.title}</p>
-                  <p className="text-[10px] text-zinc-500 inline-flex items-center gap-1">
+                  <p className="text-[10px] text-zinc-400 inline-flex items-center gap-1">
                     <Clock className="w-2.5 h-2.5" />{ts(r.durationSec)} · {r.speakerCount} spk
                     {r.highlightCount > 0 && <span className="text-amber-400"> · ★{r.highlightCount}</span>}
                   </p>
@@ -174,7 +174,7 @@ export function VoiceTranscripts() {
                     <button onClick={() => toggleHighlight(g.id)} className={cn('mt-0.5', g.highlighted ? 'text-amber-400' : 'text-zinc-700 hover:text-amber-400')}>
                       <Star className="w-3 h-3" fill={g.highlighted ? 'currentColor' : 'none'} />
                     </button>
-                    <span className="text-[10px] font-mono text-zinc-600 mt-0.5 w-9 shrink-0">{ts(g.startSec)}</span>
+                    <span className="text-[10px] font-mono text-zinc-400 mt-0.5 w-9 shrink-0">{ts(g.startSec)}</span>
                     <span className="text-[10px] font-semibold text-sky-400 mt-0.5 w-16 shrink-0 truncate">{g.speaker}</span>
                     <textarea defaultValue={g.text} rows={1}
                       onBlur={e => { if (e.target.value !== g.text) void editSegment(g.id, e.target.value); }}
@@ -184,7 +184,7 @@ export function VoiceTranscripts() {
               </div>
             </div>
           ) : (
-            <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[140px]">
+            <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[140px]">
               Select a recording.
             </div>
           )}

@@ -80,7 +80,7 @@ export function VersionHistory({
       <div className={cn('flex flex-col items-center justify-center py-8 text-center', className)}>
         <History className="w-10 h-10 text-gray-600 mb-3" />
         <p className="text-gray-400">No version history yet</p>
-        <p className="text-xs text-gray-600 mt-1">Changes will be tracked automatically</p>
+        <p className="text-xs text-gray-400 mt-1">Changes will be tracked automatically</p>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export function VersionHistory({
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-neon-cyan" />
           <span className="font-medium text-white">Version History</span>
-          <span className="text-xs text-gray-500">({versions.length})</span>
+          <span className="text-xs text-gray-400">({versions.length})</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -162,7 +162,7 @@ export function VersionHistory({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {formatDate(v.changedAt)}

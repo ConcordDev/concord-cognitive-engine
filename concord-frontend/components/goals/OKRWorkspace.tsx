@@ -86,7 +86,7 @@ const STATUS_COLOR: Record<string, string> = {
   off_track: 'text-red-400 bg-red-500/15',
 };
 
-const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-600 focus:border-cyan-500/50 focus:outline-none';
+const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-400 focus:border-cyan-500/50 focus:outline-none';
 const btnCls = 'flex items-center gap-1 rounded bg-cyan-500/15 px-2.5 py-1 text-xs font-medium text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-40';
 
 // --------------- Main ---------------
@@ -244,7 +244,7 @@ function AlignmentTab() {
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className="font-mono text-base text-cyan-300">{s.value}</div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">{s.label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{s.label}</div>
             </div>
           ))}
         </div>
@@ -326,17 +326,17 @@ function CheckinsTab() {
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
             <div className="font-mono text-base text-cyan-300">{stats.count}</div>
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Check-ins</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">Check-ins</div>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
             <div className="font-mono text-base text-cyan-300">{Math.round(stats.avgConfidence * 100)}%</div>
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Avg Confidence</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">Avg Confidence</div>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
             <div className={`text-xs font-medium ${STATUS_COLOR[stats.latestStatus || '']?.split(' ')[0] || 'text-zinc-400'}`}>
               {(stats.latestStatus || '—').replace('_', ' ')}
             </div>
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">Latest</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">Latest</div>
           </div>
         </div>
       )}
@@ -349,7 +349,7 @@ function CheckinsTab() {
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-300">
-                <span className="font-mono text-zinc-500">{c.goalId}</span>
+                <span className="font-mono text-zinc-400">{c.goalId}</span>
                 <span>· {Math.round(c.confidence * 100)}% conf</span>
                 {c.progress != null && <span>· {c.progress}% done</span>}
                 <span className="text-zinc-600">{c.period}</span>
@@ -429,7 +429,7 @@ function TeamGoalsTab() {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h4 className="text-xs font-semibold text-white">{g.title}</h4>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {g.totalContributed} / {g.target} · {g.members.length} member{g.members.length !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -531,7 +531,7 @@ function TemplatesTab() {
   return (
     <div className="space-y-3">
       <div>
-        <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Templates by category</p>
+        <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Templates by category</p>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {templates.map((t) => (
             <div key={t.id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5">
@@ -540,7 +540,7 @@ function TemplatesTab() {
                 <span className="rounded bg-purple-500/15 px-1 text-[9px] uppercase text-purple-300">{t.category}</span>
               </div>
               <p className="mt-0.5 text-[10px] text-zinc-400">{t.description}</p>
-              <p className="mt-1 text-[9px] text-zinc-600">Cadence: {t.cadence} · {t.keyResults.length} KRs</p>
+              <p className="mt-1 text-[9px] text-zinc-400">Cadence: {t.cadence} · {t.keyResults.length} KRs</p>
               <button onClick={() => applyTemplate(t)} className={`${btnCls} mt-1.5`}>
                 <LayoutTemplate className="h-3.5 w-3.5" /> Use template
               </button>
@@ -551,7 +551,7 @@ function TemplatesTab() {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-        <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">New recurring goal</p>
+        <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">New recurring goal</p>
         <div className="grid grid-cols-3 gap-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Goal title" className={`${inputCls} col-span-3`} />
           <select value={cadence} onChange={(e) => setCadence(e.target.value)} className={inputCls}>
@@ -567,7 +567,7 @@ function TemplatesTab() {
 
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-wider text-zinc-500">Recurring goals</p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-400">Recurring goals</p>
           {recurring.length > 0 && (
             <button onClick={runDue} className={btnCls}>
               <RefreshCw className="h-3.5 w-3.5" /> Generate due occurrences
@@ -580,7 +580,7 @@ function TemplatesTab() {
               <Repeat className="h-3.5 w-3.5 text-cyan-400" />
               <div className="min-w-0 flex-1">
                 <span className="text-xs text-white">{rg.title}</span>
-                <span className="ml-2 text-[10px] text-zinc-500">
+                <span className="ml-2 text-[10px] text-zinc-400">
                   {rg.cadence} · {rg.occurrences} run{rg.occurrences !== 1 ? 's' : ''} · next {rg.nextDue.slice(0, 10)}
                 </span>
               </div>
@@ -656,7 +656,7 @@ function ChartsTab() {
           {points.map((p, i) => (
             <span key={i} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
               {p.date}: {p.progress}%
-              <button onClick={() => removePoint(i)} className="text-zinc-500 hover:text-red-400">
+              <button onClick={() => removePoint(i)} className="text-zinc-400 hover:text-red-400">
                 <Trash2 className="h-3 w-3" />
               </button>
             </span>
@@ -674,7 +674,7 @@ function ChartsTab() {
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className="font-mono text-sm text-cyan-300">{s.value}</div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">{s.label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{s.label}</div>
             </div>
           ))}
         </div>
@@ -688,7 +688,7 @@ function ChartsTab() {
                 key={v}
                 onClick={() => setView(v)}
                 className={`rounded px-2 py-0.5 text-[10px] font-medium capitalize ${
-                  view === v ? 'bg-cyan-500/20 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
+                  view === v ? 'bg-cyan-500/20 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
                 }`}
               >
                 {v}
@@ -724,7 +724,7 @@ function ChartsTab() {
       {points.length === 0 && (
         <EmptyMsg text="No progress data yet. Add dated data points to chart burndown and trend." />
       )}
-      {busy && <div className="flex items-center gap-1.5 text-[10px] text-zinc-500"><Loader2 className="h-3 w-3 animate-spin" /> Computing…</div>}
+      {busy && <div className="flex items-center gap-1.5 text-[10px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> Computing…</div>}
     </div>
   );
 }
@@ -807,7 +807,7 @@ function RemindersTab() {
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className={`font-mono text-base ${s.cls}`}>{s.value}</div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">{s.label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{s.label}</div>
             </div>
           ))}
         </div>
@@ -822,8 +822,8 @@ function RemindersTab() {
             }`}>
               {overdue ? <AlertTriangle className="h-3.5 w-3.5 text-red-400" /> : <Bell className="h-3.5 w-3.5 text-cyan-400" />}
               <div className="min-w-0 flex-1">
-                <span className={`text-xs ${rm.done ? 'text-zinc-500 line-through' : 'text-white'}`}>{rm.label}</span>
-                <span className="ml-2 text-[10px] text-zinc-500">
+                <span className={`text-xs ${rm.done ? 'text-zinc-400 line-through' : 'text-white'}`}>{rm.label}</span>
+                <span className="ml-2 text-[10px] text-zinc-400">
                   {rm.kind} · {rm.cadence} · due {rm.dueAt.slice(0, 10)}
                   {rm.firedCount > 0 && ` · fired ${rm.firedCount}×`}
                 </span>
@@ -905,7 +905,7 @@ function DependenciesTab() {
           ].map((s) => (
             <div key={s.label} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
               <div className="font-mono text-base text-cyan-300">{s.value}</div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">{s.label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{s.label}</div>
             </div>
           ))}
         </div>
@@ -919,7 +919,7 @@ function DependenciesTab() {
               {result.blockedGoals.map((g) => (
                 <span key={g} className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-mono text-amber-300">{g}</span>
               ))}
-              {result.blockedGoals.length === 0 && <span className="text-[10px] text-zinc-600">none</span>}
+              {result.blockedGoals.length === 0 && <span className="text-[10px] text-zinc-400">none</span>}
             </div>
           </div>
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5">
@@ -928,7 +928,7 @@ function DependenciesTab() {
               {result.readyGoals.map((g) => (
                 <span key={g} className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-mono text-emerald-300">{g}</span>
               ))}
-              {result.readyGoals.length === 0 && <span className="text-[10px] text-zinc-600">none</span>}
+              {result.readyGoals.length === 0 && <span className="text-[10px] text-zinc-400">none</span>}
             </div>
           </div>
         </div>
@@ -939,7 +939,7 @@ function DependenciesTab() {
           <div key={e.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
             <Link2 className={`h-3.5 w-3.5 ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-400'}`} />
             <span className="font-mono text-[11px] text-zinc-300">{e.from}</span>
-            <span className={`text-[10px] uppercase ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-500'}`}>{e.kind}</span>
+            <span className={`text-[10px] uppercase ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-400'}`}>{e.kind}</span>
             <span className="font-mono text-[11px] text-zinc-300">{e.to}</span>
             <button onClick={() => unlink(e)} className="ml-auto text-zinc-600 hover:text-red-400">
               <Trash2 className="h-3.5 w-3.5" />
@@ -958,7 +958,7 @@ function DependenciesTab() {
 
 function EmptyMsg({ text }: { text: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+    <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
       {text}
     </div>
   );

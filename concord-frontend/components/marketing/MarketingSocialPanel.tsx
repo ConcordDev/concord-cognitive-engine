@@ -68,7 +68,7 @@ export function MarketingSocialPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -110,7 +110,7 @@ export function MarketingSocialPanel() {
       </div>
 
       {posts.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No scheduled posts yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No scheduled posts yet.</p>
       ) : (
         <ul className="space-y-2">
           {posts.map((p) => (
@@ -123,7 +123,7 @@ export function MarketingSocialPanel() {
                       <span key={c} className="text-[10px] capitalize bg-zinc-800 text-zinc-300 rounded px-1.5 py-0.5">{c}</span>
                     ))}
                   </div>
-                  <p className="text-[10px] text-zinc-500 mt-1">
+                  <p className="text-[10px] text-zinc-400 mt-1">
                     {p.status} · {new Date(p.scheduledAt).toLocaleString()}
                   </p>
                 </div>

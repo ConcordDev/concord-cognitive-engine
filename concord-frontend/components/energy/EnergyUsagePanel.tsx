@@ -50,7 +50,7 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const chartData = series.map((d) => ({ date: d.date.slice(5), kwh: d.kwh }));
@@ -75,7 +75,7 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
             <Activity className="w-3.5 h-3.5 text-lime-400" /> Last 30 days
           </h3>
-          <span className="text-[11px] text-zinc-500">{totalKwh} kWh · ${totalCost}</span>
+          <span className="text-[11px] text-zinc-400">{totalKwh} kWh · ${totalCost}</span>
         </div>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={150}>
@@ -88,14 +88,14 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic py-8 text-center">No readings yet. Log usage to see your trend.</p>
+          <p className="text-[11px] text-zinc-400 italic py-8 text-center">No readings yet. Log usage to see your trend.</p>
         )}
       </div>
 
       <div>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Usage by category</h3>
         {breakdown.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Assign readings to devices to see a breakdown.</p>
+          <p className="text-[11px] text-zinc-400 italic">Assign readings to devices to see a breakdown.</p>
         ) : (
           <ul className="space-y-1">
             {breakdown.map((b) => (
@@ -110,7 +110,7 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
               </li>
             ))}
             {untracked > 0 && (
-              <li className="text-[11px] text-zinc-500 px-3">+ {untracked} kWh untracked (whole-home readings)</li>
+              <li className="text-[11px] text-zinc-400 px-3">+ {untracked} kWh untracked (whole-home readings)</li>
             )}
           </ul>
         )}

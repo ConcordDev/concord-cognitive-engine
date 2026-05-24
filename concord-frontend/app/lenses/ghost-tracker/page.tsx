@@ -154,7 +154,7 @@ export default function GhostTrackerPage() {
               Clear filters
             </button>
           )}
-          <span className="ml-auto text-xs text-gray-500">
+          <span className="ml-auto text-xs text-gray-400">
             {active.length} active · {extinguished.length} extinguished
           </span>
         </div>
@@ -162,7 +162,7 @@ export default function GhostTrackerPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* residue list */}
           <div className="lg:col-span-2">
-            {loading && <p className="text-gray-500">Loading residues…</p>}
+            {loading && <p className="text-gray-400">Loading residues…</p>}
             {!loading && residues.length === 0 && (
               <div className="rounded border border-white/10 bg-white/5 p-6 text-center text-gray-400">
                 No spectral residues match. The world reads true.
@@ -187,7 +187,7 @@ export default function GhostTrackerPage() {
                             {r.stage}
                           </span>
                         </div>
-                        <p className="mt-0.5 text-xs text-gray-500">
+                        <p className="mt-0.5 text-xs text-gray-400">
                           severity {r.severity} · cell x{r.coords.x} z{r.coords.z} ·{' '}
                           {new Date(r.detected_at * 1000).toLocaleString()}
                         </p>

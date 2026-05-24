@@ -77,7 +77,7 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -86,7 +86,7 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
 
       {/* Query builder */}
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-400">
           <Filter className="w-3 h-3" /> Build a query
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -138,7 +138,7 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
                 {f.name} ({f.matchCount})
               </button>
               <button type="button" onClick={() => del(f.id)}
-                className="text-[11px] px-1.5 py-1 rounded-r-full border-y border-r border-zinc-700 text-zinc-600 hover:text-rose-400">
+                className="text-[11px] px-1.5 py-1 rounded-r-full border-y border-r border-zinc-700 text-zinc-400 hover:text-rose-400">
                 ✕
               </button>
             </span>
@@ -149,9 +149,9 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
       {/* Results */}
       {results !== null && (
         <div className="space-y-1">
-          <p className="text-[11px] text-zinc-500">{activeName} — {results.length} task{results.length === 1 ? '' : 's'}</p>
+          <p className="text-[11px] text-zinc-400">{activeName} — {results.length} task{results.length === 1 ? '' : 's'}</p>
           {results.length === 0 ? (
-            <div className="text-center text-zinc-500 text-sm italic py-6 border border-zinc-800 rounded-xl">
+            <div className="text-center text-zinc-400 text-sm italic py-6 border border-zinc-800 rounded-xl">
               No tasks match this query.
             </div>
           ) : (

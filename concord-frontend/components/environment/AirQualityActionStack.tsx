@@ -303,7 +303,7 @@ export function AirQualityActionStack() {
               <span className="text-3xl font-bold" style={{ color: accent.accent }}>{dominant.aqi}</span>
               <span className={cn('text-xs font-semibold uppercase tracking-wider', accent.text)}>{accent.label}</span>
             </div>
-            <span className="text-[10px] text-zinc-500 font-mono">
+            <span className="text-[10px] text-zinc-400 font-mono">
               {dominant.reportingArea}, {dominant.stateCode}
             </span>
           </div>
@@ -369,7 +369,7 @@ export function AirQualityActionStack() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}

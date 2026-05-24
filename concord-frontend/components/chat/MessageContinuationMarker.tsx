@@ -12,7 +12,7 @@ export function MessageContinuationMarker({
   if (!wasSynthesized && (!shadowsUsed || shadowsUsed === 0)) return null;
 
   return (
-    <div className="flex items-center gap-1.5 text-[10px] text-gray-600 mt-1 mb-0.5">
+    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-1 mb-0.5">
       <span className="text-gray-700">↳</span>
       <span>
         {wasSynthesized && shadowsUsed && shadowsUsed > 0

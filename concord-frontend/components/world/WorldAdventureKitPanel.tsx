@@ -137,7 +137,7 @@ export function WorldAdventureKitPanel({ worldId, open, onClose }: Props) {
               'flex-1 min-w-[52px] flex flex-col items-center gap-0.5 py-1.5 text-[10px] transition-colors',
               tab === t.id
                 ? 'text-cyan-300 border-b-2 border-cyan-400 bg-cyan-500/5'
-                : 'text-gray-500 border-b-2 border-transparent hover:text-gray-300',
+                : 'text-gray-400 border-b-2 border-transparent hover:text-gray-300',
             )}
           >
             <t.icon className="w-3.5 h-3.5" />
@@ -201,7 +201,7 @@ function BuildTab({ worldId }: { worldId: string }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Place structures directly in the 3D scene. Each placement is a real,
         editable record at world coordinates.
       </p>
@@ -250,13 +250,13 @@ function BuildTab({ worldId }: { worldId: string }) {
             <li key={p.id} className="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded px-2 py-1.5 text-xs">
               <span className="text-cyan-300 font-medium capitalize">{p.kind}</span>
               {p.label && <span className="text-gray-400 truncate">{p.label}</span>}
-              <span className="text-[10px] text-gray-600 ml-auto">
+              <span className="text-[10px] text-gray-400 ml-auto">
                 ({p.x.toFixed(0)}, {p.y.toFixed(0)}, {p.z.toFixed(0)})
               </span>
               <button
                 type="button"
                 onClick={() => remove(p.id)}
-                className="p-0.5 rounded hover:bg-white/10 text-gray-500 hover:text-red-400"
+                className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-red-400"
                 aria-label="Delete placement"
               >
                 <Trash2 className="w-3 h-3" />
@@ -323,7 +323,7 @@ function BagTab() {
   return (
     <div className="space-y-3">
       <div className="bg-white/[0.03] border border-white/10 rounded-lg p-2.5 space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500">Equipment slots</p>
+        <p className="text-[10px] uppercase tracking-wider text-gray-400">Equipment slots</p>
         <div className="grid grid-cols-4 gap-1.5">
           {slotNames.map((s) => {
             const equipped = inv?.slots[s] ? itemById.get(inv.slots[s]!) : null;
@@ -340,7 +340,7 @@ function BagTab() {
                     : 'border-dashed border-white/10 bg-black/20 text-gray-600',
                 )}
               >
-                <span className="capitalize text-gray-500">{s}</span>
+                <span className="capitalize text-gray-400">{s}</span>
                 {equipped && (
                   <span
                     className="font-medium truncate w-full text-center"
@@ -394,8 +394,8 @@ function BagTab() {
               <li key={it.id} className="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded px-2 py-1.5 text-xs">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: RARITY_COLOR[it.rarity] }} />
                 <span className="font-medium" style={{ color: RARITY_COLOR[it.rarity] }}>{it.name}</span>
-                {it.quantity > 1 && <span className="text-gray-500">×{it.quantity}</span>}
-                {it.slot && <span className="text-[10px] text-gray-600 capitalize">{it.slot}</span>}
+                {it.quantity > 1 && <span className="text-gray-400">×{it.quantity}</span>}
+                {it.slot && <span className="text-[10px] text-gray-400 capitalize">{it.slot}</span>}
                 <div className="ml-auto flex items-center gap-1">
                   {it.slot && (
                     <button
@@ -414,7 +414,7 @@ function BagTab() {
                   <button
                     type="button"
                     onClick={() => remove(it.id)}
-                    className="p-0.5 rounded hover:bg-white/10 text-gray-500 hover:text-red-400"
+                    className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-red-400"
                     aria-label="Remove item"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -477,9 +477,9 @@ function PartyTab({ worldId }: { worldId: string }) {
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-cyan-400" />
             <span className="text-sm font-semibold text-white">{party.name}</span>
-            <span className="text-[10px] text-gray-500 ml-auto">{party.memberCount}/8</span>
+            <span className="text-[10px] text-gray-400 ml-auto">{party.memberCount}/8</span>
           </div>
-          <p className="text-[10px] text-gray-500 font-mono select-all">{party.id}</p>
+          <p className="text-[10px] text-gray-400 font-mono select-all">{party.id}</p>
           <ul className="space-y-1">
             {party.members.map((m) => (
               <li key={m} className="flex items-center gap-1.5 text-xs">
@@ -490,7 +490,7 @@ function PartyTab({ worldId }: { worldId: string }) {
             ))}
           </ul>
           <div className="pt-1 space-y-1.5">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500">Shared objective</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400">Shared objective</p>
             <textarea
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
@@ -527,7 +527,7 @@ function PartyTab({ worldId }: { worldId: string }) {
   return (
     <div className="space-y-3">
       <div className="bg-white/[0.03] border border-white/10 rounded-lg p-2.5 space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500">Create a party</p>
+        <p className="text-[10px] uppercase tracking-wider text-gray-400">Create a party</p>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -549,7 +549,7 @@ function PartyTab({ worldId }: { worldId: string }) {
         </button>
       </div>
       <div className="bg-white/[0.03] border border-white/10 rounded-lg p-2.5 space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500">Join with party ID</p>
+        <p className="text-[10px] uppercase tracking-wider text-gray-400">Join with party ID</p>
         <input
           value={joinId}
           onChange={(e) => setJoinId(e.target.value)}
@@ -699,7 +699,7 @@ function MapTab({ worldId }: { worldId: string }) {
             <li key={m.id} className="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded px-2 py-1.5 text-xs">
               <Pin className={cn('w-3 h-3', m.fastTravel ? 'text-cyan-400' : 'text-gray-600')} />
               <span className="text-gray-200 font-medium truncate">{m.name}</span>
-              <span className="text-[10px] text-gray-600 capitalize">{m.kind}</span>
+              <span className="text-[10px] text-gray-400 capitalize">{m.kind}</span>
               <div className="ml-auto flex items-center gap-1">
                 {m.fastTravel && (
                   <button
@@ -713,7 +713,7 @@ function MapTab({ worldId }: { worldId: string }) {
                 <button
                   type="button"
                   onClick={() => remove(m.id)}
-                  className="p-0.5 rounded hover:bg-white/10 text-gray-500 hover:text-red-400"
+                  className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-red-400"
                   aria-label="Delete marker"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -809,9 +809,9 @@ function MountsTab() {
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <Rabbit className={cn('w-3.5 h-3.5', isActive ? 'text-cyan-400' : 'text-gray-500')} />
+                  <Rabbit className={cn('w-3.5 h-3.5', isActive ? 'text-cyan-400' : 'text-gray-400')} />
                   <span className="text-gray-200 font-medium">{m.name}</span>
-                  <span className="text-[10px] text-gray-600 capitalize">{m.species} · {m.kind}</span>
+                  <span className="text-[10px] text-gray-400 capitalize">{m.species} · {m.kind}</span>
                   <div className="ml-auto flex items-center gap-1">
                     <button
                       type="button"
@@ -828,14 +828,14 @@ function MountsTab() {
                     <button
                       type="button"
                       onClick={() => remove(m.id)}
-                      className="p-0.5 rounded hover:bg-white/10 text-gray-500 hover:text-red-400"
+                      className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-red-400"
                       aria-label="Remove mount"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-3 mt-1 text-[9px] text-gray-500">
+                <div className="flex gap-3 mt-1 text-[9px] text-gray-400">
                   <span>Speed {m.speed}</span>
                   <span>Stamina {m.stamina}</span>
                 </div>
@@ -929,7 +929,7 @@ function CombatTab() {
       </div>
 
       <div className="bg-white/[0.03] border border-white/10 rounded-lg p-2.5 space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500">Ability hotbar (8 slots)</p>
+        <p className="text-[10px] uppercase tracking-wider text-gray-400">Ability hotbar (8 slots)</p>
         <div className="grid grid-cols-8 gap-1">
           {Array.from({ length: 8 }, (_, i) => i + 1).map((s) => {
             const a = prefs.abilities.find((x) => x.slot === s);
@@ -948,7 +948,7 @@ function CombatTab() {
                   a
                     ? a.ready
                       ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200'
-                      : 'border-white/10 bg-black/40 text-gray-500'
+                      : 'border-white/10 bg-black/40 text-gray-400'
                     : 'border-dashed border-white/10 bg-black/20 text-gray-700',
                 )}
               >
@@ -999,12 +999,12 @@ function CombatTab() {
             <li key={a.id} className="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded px-2 py-1.5 text-xs">
               <span className="text-gray-600">#{a.slot}</span>
               <span className="text-gray-200 font-medium">{a.name}</span>
-              <span className="text-[10px] text-gray-600 capitalize">{a.element}</span>
-              <span className="text-[10px] text-gray-500 ml-auto">{a.cooldownMs / 1000}s CD</span>
+              <span className="text-[10px] text-gray-400 capitalize">{a.element}</span>
+              <span className="text-[10px] text-gray-400 ml-auto">{a.cooldownMs / 1000}s CD</span>
               <button
                 type="button"
                 onClick={() => removeAbility(a.id)}
-                className="p-0.5 rounded hover:bg-white/10 text-gray-500 hover:text-red-400"
+                className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-red-400"
                 aria-label="Remove ability"
               >
                 <Trash2 className="w-3 h-3" />
@@ -1044,7 +1044,7 @@ function PerfTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Per-user perf knobs the 3D scene reads to budget draw calls for big worlds.
       </p>
       <div className="grid grid-cols-3 gap-1.5">
@@ -1216,7 +1216,7 @@ function PhotosTab({ worldId }: { worldId: string }) {
               'flex-1 py-1 text-[11px] rounded border',
               view === v
                 ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
-                : 'border-white/10 text-gray-500',
+                : 'border-white/10 text-gray-400',
             )}
           >
             {v === 'mine' ? 'My photos' : 'Community wall'}
@@ -1261,7 +1261,7 @@ function PhotosTab({ worldId }: { worldId: string }) {
                     <button
                       type="button"
                       onClick={() => remove(p.id)}
-                      className="p-0.5 rounded hover:bg-white/10 text-gray-500 hover:text-red-400"
+                      className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-red-400"
                       aria-label="Delete photo"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -1281,7 +1281,7 @@ function PhotosTab({ worldId }: { worldId: string }) {
 
 function Spinner() {
   return (
-    <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+    <div className="flex items-center justify-center py-8 text-xs text-gray-400">
       <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
     </div>
   );
@@ -1289,7 +1289,7 @@ function Spinner() {
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="text-center py-6 text-xs text-gray-600">{label}</div>
+    <div className="text-center py-6 text-xs text-gray-400">{label}</div>
   );
 }
 

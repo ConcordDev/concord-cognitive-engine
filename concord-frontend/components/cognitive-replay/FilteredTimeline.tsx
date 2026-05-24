@@ -65,7 +65,7 @@ export function FilteredTimeline({ onJump }: { onJump: (eventId: string) => void
       <div className="flex items-center gap-2">
         <Filter className="h-4 w-4 text-cyan-400" />
         <h2 className="text-sm font-semibold text-zinc-100">Filter timeline</h2>
-        {data && <span className="text-[11px] text-zinc-500">{data.count} of {data.totalMatching} turns</span>}
+        {data && <span className="text-[11px] text-zinc-400">{data.count} of {data.totalMatching} turns</span>}
       </div>
       <div className="flex flex-wrap gap-2">
         <Select label="Brain" value={brain} onChange={setBrain} options={facets.brains} />
@@ -82,9 +82,9 @@ export function FilteredTimeline({ onJump }: { onJump: (eventId: string) => void
       </div>
       {error && <div className="rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>}
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Filtering…</div>
+        <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Filtering…</div>
       ) : data && data.events.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4 text-xs text-zinc-600">No turns match these filters.</div>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4 text-xs text-zinc-400">No turns match these filters.</div>
       ) : (
         <ul className="max-h-80 space-y-1.5 overflow-y-auto pr-1">
           {(data?.events || []).slice().reverse().map((e) => (
@@ -93,7 +93,7 @@ export function FilteredTimeline({ onJump }: { onJump: (eventId: string) => void
                 onClick={() => onJump(e.eventId)}
                 className="group flex w-full items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-2 text-left hover:border-cyan-500/40"
               >
-                <span className="mt-0.5 w-24 shrink-0 font-mono text-[10px] text-zinc-500">
+                <span className="mt-0.5 w-24 shrink-0 font-mono text-[10px] text-zinc-400">
                   {e.ts ? new Date(e.ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                 </span>
                 <span className="flex-1 min-w-0">
@@ -104,7 +104,7 @@ export function FilteredTimeline({ onJump }: { onJump: (eventId: string) => void
                     ))}
                   </span>
                   {e.contentPreview && <span className="mt-0.5 block truncate text-xs text-zinc-300">{e.contentPreview}</span>}
-                  <span className="mt-0.5 block font-mono text-[9px] text-zinc-600">
+                  <span className="mt-0.5 block font-mono text-[9px] text-zinc-400">
                     tok {e.tokenCount ?? '—'} · tools {e.toolCalls.length} · cites {e.dtusCited.length}
                   </span>
                 </span>

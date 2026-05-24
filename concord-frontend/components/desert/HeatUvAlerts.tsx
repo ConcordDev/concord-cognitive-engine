@@ -185,7 +185,7 @@ export function HeatUvAlerts() {
         <div key={t.id} className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-white">{t.name}</span>
-            <button onClick={() => remove(t.id)} className="p-1 text-zinc-500 hover:text-red-400" aria-label="Stop tracking">
+            <button onClick={() => remove(t.id)} className="p-1 text-zinc-400 hover:text-red-400" aria-label="Stop tracking">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -197,7 +197,7 @@ export function HeatUvAlerts() {
         </div>
       ))}
       {tracked.length === 0 && !adhoc && (
-        <p className="text-center text-sm text-zinc-500 py-6">No tracked locations yet.</p>
+        <p className="text-center text-sm text-zinc-400 py-6">No tracked locations yet.</p>
       )}
     </div>
   );
@@ -253,7 +253,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
     <div className="rounded bg-zinc-950/60 border border-zinc-800 px-2 py-1.5">
       <div className="flex items-center gap-1">
         {icon}
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       </div>
       <div className="mt-0.5 font-mono text-sm text-white">{value}</div>
     </div>

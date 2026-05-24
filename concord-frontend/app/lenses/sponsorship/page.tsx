@@ -68,7 +68,7 @@ export default function SponsorshipPage() {
               className={`px-3 py-1.5 text-sm rounded-t-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                 tab === t.id
                   ? 'bg-zinc-900 text-emerald-300 border-b-2 border-emerald-500'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >{t.label}</button>
           ))}

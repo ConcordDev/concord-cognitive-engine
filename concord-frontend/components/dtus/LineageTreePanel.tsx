@@ -53,7 +53,7 @@ export function LineageTreePanel({
 
   if (!root) {
     return (
-      <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-lattice-border bg-lattice-deep text-gray-500">
+      <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-lattice-border bg-lattice-deep text-gray-400">
         <GitBranch className="mb-2 h-7 w-7" />
         <p className="text-sm">Select a MEGA or HYPER DTU to drill its lineage.</p>
       </div>
@@ -88,7 +88,7 @@ export function LineageTreePanel({
           />
         </div>
       ) : (
-        !loading && <p className="text-xs text-gray-600">This DTU has no recorded lineage.</p>
+        !loading && <p className="text-xs text-gray-400">This DTU has no recorded lineage.</p>
       )}
     </div>
   );
@@ -98,7 +98,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded border border-lattice-border bg-lattice-surface p-2 text-center">
       <p className="text-sm font-bold text-white">{value}</p>
-      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-[10px] text-gray-400">{label}</p>
     </div>
   );
 }

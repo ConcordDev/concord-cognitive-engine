@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-24T15:31:16.201Z",
-  "head": "1797f08ddb4eba0e96089d8e178e1d7b2814b6a1",
+  "generatedAt": "2026-05-24T17:49:43.044Z",
+  "head": "666d28dfd79c9a4865a841ac010095a32094d918",
   "totals": {
     "stub": 0,
     "functional": 0,
@@ -22651,7 +22651,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -40903,7 +40903,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {

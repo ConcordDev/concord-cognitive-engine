@@ -49,14 +49,14 @@ export function DbProjectExplorer() {
         ))}
       </div>
       {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub rate-limited / unreachable.</div>}
-      {repos.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+      {repos.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="space-y-1 max-h-[480px] overflow-y-auto">
         {(repos.data || []).map((r, i) => (
           <a key={r.id} href={r.html_url} target="_blank" rel="noopener noreferrer" className="block rounded border border-zinc-800 bg-zinc-950 p-2.5 hover:border-cyan-500/30">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] text-zinc-500">#{i + 1}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">#{i + 1}</span>
                   <span className="font-mono text-sm text-cyan-300">{r.full_name}</span>
                   {r.language && <span className="rounded bg-zinc-800 px-1 font-mono text-[10px] text-zinc-300">{r.language}</span>}
                 </div>
@@ -65,7 +65,7 @@ export function DbProjectExplorer() {
               <div className="flex flex-col items-end gap-0.5 text-[10px] font-mono text-zinc-400">
                 <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{r.stargazers_count.toLocaleString()}</span>
                 <span className="flex items-center gap-0.5"><GitFork className="h-3 w-3" />{r.forks_count.toLocaleString()}</span>
-                <ExternalLink className="h-3 w-3 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 text-zinc-400" />
               </div>
             </div>
           </a>

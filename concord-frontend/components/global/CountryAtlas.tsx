@@ -49,23 +49,23 @@ export function CountryAtlas() {
       </header>
       {countries.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">REST Countries unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Countries</div><div className="mt-0.5 font-mono text-lg text-sky-300">{list.length}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Pop (sum)</div><div className="mt-0.5 font-mono text-lg text-sky-300">{totalPop > 1e9 ? `${(totalPop / 1e9).toFixed(2)}B` : `${(totalPop / 1e6).toFixed(0)}M`}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Subregions</div><div className="mt-0.5 font-mono text-lg text-sky-300">{subregions}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Countries</div><div className="mt-0.5 font-mono text-lg text-sky-300">{list.length}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Pop (sum)</div><div className="mt-0.5 font-mono text-lg text-sky-300">{totalPop > 1e9 ? `${(totalPop / 1e9).toFixed(2)}B` : `${(totalPop / 1e6).toFixed(0)}M`}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Subregions</div><div className="mt-0.5 font-mono text-lg text-sky-300">{subregions}</div></div>
       </div>
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((c) => (
           <a key={c.cca3} href={`https://en.wikipedia.org/wiki/${c.name.common.replace(/\s+/g, '_')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded border border-sky-500/15 bg-sky-500/5 p-2 text-[11px] hover:border-sky-500/40">
-            <span className="w-10 shrink-0 font-mono text-[10px] text-zinc-500">{c.cca3}</span>
+            <span className="w-10 shrink-0 font-mono text-[10px] text-zinc-400">{c.cca3}</span>
             <span className="flex-1 truncate font-mono text-zinc-100">{c.name.common}</span>
             <span className="hidden sm:inline truncate text-zinc-400">{c.capital?.[0] || ''}</span>
             <span className="flex items-center gap-1 font-mono text-zinc-400"><Users className="h-3 w-3" />{c.population > 1e6 ? `${(c.population / 1e6).toFixed(1)}M` : c.population.toLocaleString()}</span>
-            <span className="hidden md:inline-flex items-center gap-1 font-mono text-zinc-500"><Languages className="h-3 w-3" />{Object.keys(c.languages || {}).length}</span>
-            <ExternalLink className="h-3 w-3 text-zinc-500" />
+            <span className="hidden md:inline-flex items-center gap-1 font-mono text-zinc-400"><Languages className="h-3 w-3" />{Object.keys(c.languages || {}).length}</span>
+            <ExternalLink className="h-3 w-3 text-zinc-400" />
           </a>
         ))}
       </div>
-      {countries.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {countries.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
 }

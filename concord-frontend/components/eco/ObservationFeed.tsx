@@ -104,7 +104,7 @@ export function ObservationFeed() {
           Community sightings
         </span>
         {data && (
-          <span className="ml-auto text-[10px] text-gray-500">
+          <span className="ml-auto text-[10px] text-gray-400">
             {data.observations.length} shown · {data.total.toLocaleString()} records
           </span>
         )}
@@ -113,7 +113,7 @@ export function ObservationFeed() {
       <div className="p-4 space-y-3">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Latitude</span>
+            <span className="text-[10px] text-gray-400 uppercase">Latitude</span>
             <input
               value={lat}
               onChange={(e) => setLat(e.target.value)}
@@ -121,7 +121,7 @@ export function ObservationFeed() {
             />
           </label>
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Longitude</span>
+            <span className="text-[10px] text-gray-400 uppercase">Longitude</span>
             <input
               value={lng}
               onChange={(e) => setLng(e.target.value)}
@@ -129,7 +129,7 @@ export function ObservationFeed() {
             />
           </label>
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Radius (km)</span>
+            <span className="text-[10px] text-gray-400 uppercase">Radius (km)</span>
             <input
               value={radiusKm}
               onChange={(e) => setRadiusKm(e.target.value)}
@@ -137,7 +137,7 @@ export function ObservationFeed() {
             />
           </label>
           <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-gray-500 uppercase">Taxon filter</span>
+            <span className="text-[10px] text-gray-400 uppercase">Taxon filter</span>
             <input
               value={taxonName}
               onChange={(e) => setTaxonName(e.target.value)}
@@ -167,7 +167,7 @@ export function ObservationFeed() {
         {error && <div className="text-xs text-red-400">{error}</div>}
 
         {!data && !loading && !error && (
-          <p className="py-8 text-center text-xs text-gray-500">
+          <p className="py-8 text-center text-xs text-gray-400">
             No data yet. Set a location and load nearby species sightings from GBIF.
           </p>
         )}
@@ -179,7 +179,7 @@ export function ObservationFeed() {
               <div className="rounded border border-green-500/30 bg-green-500/[0.06] p-3 text-xs">
                 <div className="text-sm text-white">{selectedObs.commonName}</div>
                 <div className="italic text-gray-400">{selectedObs.scientificName}</div>
-                <div className="mt-1 flex flex-wrap gap-3 text-[10px] text-gray-500">
+                <div className="mt-1 flex flex-wrap gap-3 text-[10px] text-gray-400">
                   {selectedObs.kingdom && <span>{selectedObs.kingdom}</span>}
                   {selectedObs.country && <span>{selectedObs.country}</span>}
                   {selectedObs.observedAt && (
@@ -191,7 +191,7 @@ export function ObservationFeed() {
             )}
             <div className="max-h-72 overflow-y-auto rounded border border-white/5 divide-y divide-white/5">
               {data.observations.length === 0 ? (
-                <p className="px-3 py-6 text-center text-xs text-gray-500">
+                <p className="px-3 py-6 text-center text-xs text-gray-400">
                   No sightings in this area yet.
                 </p>
               ) : (
@@ -210,7 +210,7 @@ export function ObservationFeed() {
                         <div className="text-[11px] italic text-gray-400 truncate">
                           {o.scientificName}
                         </div>
-                        <div className="text-[10px] text-gray-500">
+                        <div className="text-[10px] text-gray-400">
                           {o.lat.toFixed(3)}, {o.lng.toFixed(3)}
                           {o.observedAt ? ` · ${new Date(o.observedAt).toLocaleDateString()}` : ''}
                         </div>
@@ -220,7 +220,7 @@ export function ObservationFeed() {
                 ))
               )}
             </div>
-            <p className="text-[10px] text-gray-600">Source: {data.source}</p>
+            <p className="text-[10px] text-gray-400">Source: {data.source}</p>
           </>
         )}
       </div>

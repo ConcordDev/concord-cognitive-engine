@@ -17,10 +17,10 @@ interface Pacing { budget: number; spent: number; expectedSpend: number; pace: s
 const CHANNELS = ['email', 'social', 'search', 'display', 'content', 'video', 'affiliate', 'events'];
 const VERDICT_COLOR: Record<string, string> = {
   strong: 'text-emerald-400', acceptable: 'text-sky-400', break_even: 'text-amber-400',
-  underperforming: 'text-rose-400', no_data: 'text-zinc-500',
+  underperforming: 'text-rose-400', no_data: 'text-zinc-400',
 };
 const PACE_COLOR: Record<string, string> = {
-  on_track: 'text-emerald-400', overpacing: 'text-rose-400', underpacing: 'text-amber-400', not_started: 'text-zinc-500',
+  on_track: 'text-emerald-400', overpacing: 'text-rose-400', underpacing: 'text-amber-400', not_started: 'text-zinc-400',
 };
 
 export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) {
@@ -85,7 +85,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Campaign detail ──
@@ -98,7 +98,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-          <p className="text-xs text-zinc-500 capitalize">{selected.channel} · ${selected.budget} budget · {selected.status}</p>
+          <p className="text-xs text-zinc-400 capitalize">{selected.channel} · ${selected.budget} budget · {selected.status}</p>
         </div>
 
         {kpis && (
@@ -121,7 +121,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
             <div className="mt-1.5 h-2 rounded-full bg-zinc-800 overflow-hidden">
               <div className="h-full bg-orange-500 rounded-full" style={{ width: `${Math.min(100, pacing.utilisationPct)}%` }} />
             </div>
-            <p className="text-[10px] text-zinc-500 mt-1">
+            <p className="text-[10px] text-zinc-400 mt-1">
               ${pacing.spent} of ${pacing.budget} spent · ${pacing.expectedSpend} expected by now
             </p>
           </div>
@@ -183,7 +183,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
       )}
 
       {campaigns.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No campaigns. Launch one to start tracking performance.
         </div>
       ) : (
@@ -194,7 +194,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
                 <Target className="w-4 h-4 text-orange-400 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{c.name}</p>
-                  <p className="text-[11px] text-zinc-500 capitalize">
+                  <p className="text-[11px] text-zinc-400 capitalize">
                     {c.channel} · {c.status}
                     {c.kpis ? ` · ${c.kpis.roas}× ROAS · $${c.kpis.spend} spend` : ''}
                   </p>
@@ -215,7 +215,7 @@ function Kpi({ label, value, className }: { label: string; value: string | numbe
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
       <p className={cn('text-sm font-bold text-zinc-100', className)}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase">{label}</p>
     </div>
   );
 }

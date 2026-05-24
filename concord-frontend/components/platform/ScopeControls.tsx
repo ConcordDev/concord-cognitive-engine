@@ -119,7 +119,7 @@ function DTUCard({
                 </span>
               ))}
               {dtu.tags.length > 5 && (
-                <span className="text-[10px] text-gray-500">+{dtu.tags.length - 5}</span>
+                <span className="text-[10px] text-gray-400">+{dtu.tags.length - 5}</span>
               )}
             </div>
           )}
@@ -211,7 +211,7 @@ function ScopeControls() {
             <BarChart3 className="w-4 h-4 text-neon-cyan" />
             DTU Scope Distribution
           </h3>
-          <span className="text-xs text-gray-500">{totalDtus} total DTUs</span>
+          <span className="text-xs text-gray-400">{totalDtus} total DTUs</span>
         </div>
 
         {/* Distribution bar */}
@@ -266,7 +266,7 @@ function ScopeControls() {
                   </span>
                 </div>
                 <p className={`text-2xl font-bold text-${meta.color}`}>{count}</p>
-                <p className="text-[10px] text-gray-500 mt-1">{meta.desc}</p>
+                <p className="text-[10px] text-gray-400 mt-1">{meta.desc}</p>
               </button>
             );
           })}
@@ -303,7 +303,7 @@ function ScopeControls() {
         ) : Array.isArray(dtus) && dtus.length > 0 ? (
           dtus.slice(0, 50).map((dtu) => <DTUCard key={dtu.id} dtu={dtu} />)
         ) : (
-          <div className="text-center py-12 text-gray-500 text-sm">
+          <div className="text-center py-12 text-gray-400 text-sm">
             No DTUs in {activeScope === 'all' ? 'the lattice' : `${activeScope} scope`}
           </div>
         )}

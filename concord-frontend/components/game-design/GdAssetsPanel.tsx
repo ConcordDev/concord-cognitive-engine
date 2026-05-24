@@ -107,7 +107,7 @@ export function GdAssetsPanel({ gameId, onChange }: { gameId: string; onChange: 
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -163,7 +163,7 @@ export function GdAssetsPanel({ gameId, onChange }: { gameId: string; onChange: 
       )}
 
       {assets.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No assets imported yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No assets imported yet.</p>
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {assets.map((a) => {
@@ -187,12 +187,12 @@ export function GdAssetsPanel({ gameId, onChange }: { gameId: string; onChange: 
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {a.width > 0 ? `${a.width}×${a.height}` : a.sourceType} · {fmtBytes(a.bytes)}
                   </p>
                   {(a.kind === 'sprite' || a.kind === 'tileset') && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-zinc-500">frame</span>
+                      <span className="text-[10px] text-zinc-400">frame</span>
                       <input type="number" min={0} value={a.frameW || ''} placeholder="W"
                         onChange={(e) => setFrame(a, Number(e.target.value) || 0, a.frameH)}
                         className="w-14 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
@@ -200,7 +200,7 @@ export function GdAssetsPanel({ gameId, onChange }: { gameId: string; onChange: 
                         onChange={(e) => setFrame(a, a.frameW, Number(e.target.value) || 0)}
                         className="w-14 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
                       {a.frameW > 0 && a.frameH > 0 && a.width > 0 && (
-                        <span className="text-[10px] text-zinc-500">
+                        <span className="text-[10px] text-zinc-400">
                           {Math.floor(a.width / a.frameW) * Math.max(1, Math.floor(a.height / a.frameH))} frames
                         </span>
                       )}

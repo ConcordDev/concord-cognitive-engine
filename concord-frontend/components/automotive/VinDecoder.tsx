@@ -137,7 +137,7 @@ export function VinDecoder() {
               : 'border-amber-500/40'
             }`}
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-zinc-500">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-zinc-400">
             {vinInput.length}/17
           </div>
         </div>
@@ -156,7 +156,7 @@ export function VinDecoder() {
       )}
 
       {!vehicle && !vinMutation.isPending && !error && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           Enter any 17-character VIN to decode via NHTSA vPIC. Recalls auto-load
           after decode. Letters I/O/Q are never valid in a VIN.
         </div>
@@ -180,7 +180,7 @@ export function VinDecoder() {
                   {vehicle.trim && <span>{vehicle.trim} · </span>}
                   {vehicle.bodyClass} · {vehicle.driveType} · {vehicle.transmission}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] text-zinc-500">VIN {vehicle.vin}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-zinc-400">VIN {vehicle.vin}</p>
               </div>
               <SaveAsDtuButton
                 apiSource="nhtsa-vpic"
@@ -212,7 +212,7 @@ export function VinDecoder() {
                 ['Doors', vehicle.doors],
               ].filter(([, v]) => v).map(([label, value]) => (
                 <div key={label as string} className="rounded-md border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
                   <div className="mt-0.5 truncate text-xs font-medium text-white">{value}</div>
                 </div>
               ))}
@@ -283,7 +283,7 @@ function RecallList({ recalls, vehicle, loading }: { recalls: Recall[]; vehicle:
                 <p className="mt-1.5 text-xs leading-relaxed text-zinc-200"><strong className="text-red-200">Summary:</strong> {r.summary}</p>
                 {r.consequence && <p className="mt-1 text-xs leading-relaxed text-amber-200"><strong>Consequence:</strong> {r.consequence}</p>}
                 <p className="mt-1 text-xs leading-relaxed text-emerald-200"><strong>Remedy:</strong> {r.remedy}</p>
-                <p className="mt-1 text-[10px] text-zinc-500">{r.manufacturer} · received {r.reportReceivedDate}</p>
+                <p className="mt-1 text-[10px] text-zinc-400">{r.manufacturer} · received {r.reportReceivedDate}</p>
               </div>
               <SaveAsDtuButton
                 compact

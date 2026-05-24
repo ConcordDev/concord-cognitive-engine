@@ -68,7 +68,7 @@ export function QuantizePanel({ clipId }: { clipId?: string }) {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Quantize & groove</span>
       </header>
       {!clipId ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">Paste a Clip ID above to quantize its MIDI notes.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">Paste a Clip ID above to quantize its MIDI notes.</div>
       ) : (
         <div className="p-3 space-y-3">
           <div>
@@ -99,14 +99,14 @@ export function QuantizePanel({ clipId }: { clipId?: string }) {
           <div className="pt-2 border-t border-white/10">
             <div className="text-[10px] uppercase text-violet-300 font-semibold mb-1">Groove templates</div>
             {loading ? (
-              <div className="flex items-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+              <div className="flex items-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
             ) : (
               <div className="grid grid-cols-2 gap-1.5">
                 {grooves.map((g) => (
                   <button key={g.id} onClick={() => applyGroove(g)} disabled={busy}
                     className="px-2 py-1.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.06] text-left disabled:opacity-40">
                     <div className="text-white">{g.name}</div>
-                    <div className="text-[9px] text-gray-500">swing {Math.round(g.swing * 100)}% · accent {g.velAccent}</div>
+                    <div className="text-[9px] text-gray-400">swing {Math.round(g.swing * 100)}% · accent {g.velAccent}</div>
                   </button>
                 ))}
               </div>

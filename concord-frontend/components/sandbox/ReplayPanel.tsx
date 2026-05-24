@@ -211,7 +211,7 @@ export function ReplayPanel({
         <div className="mb-2 rounded border border-slate-700 bg-slate-950/60 p-2">
           <div className="mb-1 flex items-center justify-between">
             <span className="truncate font-semibold text-slate-200">{activeName}</span>
-            <span className="tabular-nums text-[10px] text-slate-500">
+            <span className="tabular-nums text-[10px] text-slate-400">
               frame {activeFrames.length ? cursor + 1 : 0}/{activeFrames.length}
             </span>
           </div>
@@ -261,7 +261,7 @@ export function ReplayPanel({
       )}
 
       {saved.length === 0 ? (
-        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-500">
+        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-400">
           No recorded replays yet.
         </div>
       ) : (
@@ -270,11 +270,11 @@ export function ReplayPanel({
             <li key={r.id} className="flex items-center gap-1.5 rounded bg-slate-800/60 px-2 py-1">
               <button onClick={() => load(r.id, r.name)} className="min-w-0 flex-1 text-left hover:text-amber-200">
                 <div className="truncate text-slate-200">{r.name}</div>
-                <div className="text-[9px] tabular-nums text-slate-500">
+                <div className="text-[9px] tabular-nums text-slate-400">
                   {r.frameCount} frames · {(r.durationMs / 1000).toFixed(1)}s · {Math.round(r.totalDamage)} dmg
                 </div>
               </button>
-              <button onClick={() => remove(r.id)} aria-label="Delete replay" className="text-slate-500 hover:text-rose-400">
+              <button onClick={() => remove(r.id)} aria-label="Delete replay" className="text-slate-400 hover:text-rose-400">
                 <Trash2 className="h-3 w-3" />
               </button>
             </li>

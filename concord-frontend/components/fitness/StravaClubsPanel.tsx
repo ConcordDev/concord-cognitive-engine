@@ -74,7 +74,7 @@ export function StravaClubsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -99,14 +99,14 @@ export function StravaClubsPanel() {
           </button>
         </div>
         {clubs.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No clubs yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No clubs yet.</p>
         ) : (
           <ul className="space-y-2">
             {clubs.map((c) => (
               <li key={c.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{c.name}</p>
-                  <p className="text-[11px] text-zinc-500 capitalize">{c.sport} · {c.memberCount} members</p>
+                  <p className="text-[11px] text-zinc-400 capitalize">{c.sport} · {c.memberCount} members</p>
                 </div>
                 <button type="button" onClick={() => joinClub(c)}
                   className={cn('text-[11px] px-2.5 py-1 rounded-lg border',
@@ -139,7 +139,7 @@ export function StravaClubsPanel() {
           <Plus className="w-3.5 h-3.5" /> Create challenge
         </button>
         {challenges.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No challenges yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No challenges yet.</p>
         ) : (
           <ul className="space-y-2">
             {challenges.map((ch) => (
@@ -147,7 +147,7 @@ export function StravaClubsPanel() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{ch.name}</p>
-                    <p className="text-[11px] text-zinc-500 capitalize">
+                    <p className="text-[11px] text-zinc-400 capitalize">
                       {ch.metric.replace(/_/g, ' ')} · target {ch.target} · {ch.participantCount} in
                       {ch.active ? '' : ' · ended'}
                     </p>
@@ -168,7 +168,7 @@ export function StravaClubsPanel() {
                   <ol className="mt-2 space-y-0.5">
                     {ch.leaderboard.slice(0, 3).map((row) => (
                       <li key={row.userId} className={cn('flex items-center justify-between text-[10px]',
-                        row.isMe ? 'text-orange-300' : 'text-zinc-500')}>
+                        row.isMe ? 'text-orange-300' : 'text-zinc-400')}>
                         <span className="flex items-center gap-1">
                           {row.rank === 1 && <Trophy className="w-3 h-3 text-amber-400" />}
                           #{row.rank} {row.userId.slice(0, 10)}

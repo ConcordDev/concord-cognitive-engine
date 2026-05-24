@@ -153,9 +153,9 @@ export function InteractiveExercises() {
               {steps.map((s, i) => (
                 <div key={i} className="space-y-2 p-3 bg-white/[0.02] border border-white/5 rounded">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500">Step {i + 1}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">Step {i + 1}</span>
                     {steps.length > 1 && (
-                      <button onClick={() => setSteps(p => p.filter((_, idx) => idx !== i))} className="text-gray-500 hover:text-red-400">
+                      <button onClick={() => setSteps(p => p.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-400">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -226,11 +226,11 @@ export function InteractiveExercises() {
           )}
 
           {loading ? (
-            <div className="flex items-center gap-2 text-xs text-gray-500 py-6">
+            <div className="flex items-center gap-2 text-xs text-gray-400 py-6">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading exercises…
             </div>
           ) : exercises.length === 0 ? (
-            <p className="text-sm text-gray-500 py-8 text-center">No exercises yet. Create one to start the mastery loop.</p>
+            <p className="text-sm text-gray-400 py-8 text-center">No exercises yet. Create one to start the mastery loop.</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {exercises.map(ex => (
@@ -240,7 +240,7 @@ export function InteractiveExercises() {
                   className="text-left p-3 bg-white/[0.02] border border-white/10 rounded-lg hover:border-amber-400/40 transition-colors"
                 >
                   <div className="text-sm font-bold text-white">{ex.title}</div>
-                  <div className="text-[10px] text-gray-500 mt-1">
+                  <div className="text-[10px] text-gray-400 mt-1">
                     {ex.stepCount} step{ex.stepCount !== 1 ? 's' : ''}
                     {ex.skillId ? ' · linked to skill' : ''}
                   </div>
@@ -255,7 +255,7 @@ export function InteractiveExercises() {
         <div className="panel p-4 space-y-4 border border-amber-500/20 rounded-lg">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white">{active.title}</h3>
-            <span className="text-[10px] text-gray-500">Step {stepIdx + 1} / {active.stepCount}</span>
+            <span className="text-[10px] text-gray-400">Step {stepIdx + 1} / {active.stepCount}</span>
           </div>
           <div className="space-y-2">
             <input

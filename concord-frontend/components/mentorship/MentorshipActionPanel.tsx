@@ -196,7 +196,7 @@ export function MentorshipActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -207,7 +207,7 @@ export function MentorshipActionPanel() {
           <div className={cn('rounded-md border p-2.5', matchResult.matchScore >= 70 ? 'border-emerald-500/30 bg-emerald-500/5' : matchResult.matchScore >= 50 ? 'border-blue-500/30 bg-blue-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">{matchResult.mentor} ↔ {matchResult.mentee}</div>
             <div className={cn('text-2xl font-bold', COMP_COLOR[matchResult.compatibility])}>{matchResult.matchScore}<span className="text-xs text-zinc-400">/100</span></div>
-            <div className="text-[10px] text-zinc-500">skill overlap: {matchResult.skillOverlap}</div>
+            <div className="text-[10px] text-zinc-400">skill overlap: {matchResult.skillOverlap}</div>
             <div className={cn('text-[10px] font-semibold capitalize', COMP_COLOR[matchResult.compatibility])}>{matchResult.compatibility}</div>
           </div>
         )}
@@ -215,14 +215,14 @@ export function MentorshipActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Progress · {progResult.momentum}</div>
             <div className={cn('text-2xl font-bold', MOMENTUM_COLOR[progResult.momentum])}>{progResult.completionRate}%</div>
-            <div className="text-[10px] text-zinc-500">{progResult.completed}/{progResult.totalGoals} goals · {progResult.sessionsCompleted} sessions / {progResult.totalHours}h</div>
+            <div className="text-[10px] text-zinc-400">{progResult.completed}/{progResult.totalGoals} goals · {progResult.sessionsCompleted} sessions / {progResult.totalHours}h</div>
           </div>
         )}
         {fbResult && fbResult.avgRating != null && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Feedback · {fbResult.satisfaction}</div>
             <div className="text-2xl font-bold text-amber-300">{fbResult.avgRating}<span className="text-xs text-zinc-400">/5</span></div>
-            <div className="text-[10px] text-zinc-500">{fbResult.sessions} sessions</div>
+            <div className="text-[10px] text-zinc-400">{fbResult.sessions} sessions</div>
             <div className="flex flex-wrap gap-1 mt-1">{(fbResult.topThemes ?? []).map((t, i) => <span key={i} className="text-[9px] bg-amber-500/10 text-amber-200 px-1.5 py-0.5 rounded">{t.theme} ×{t.count}</span>)}</div>
           </div>
         )}

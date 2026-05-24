@@ -85,13 +85,13 @@ function ConduitFillCalc() {
       <div className="space-y-2 p-4">
         <div className="flex gap-2">
           <label className="flex-1">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Conduit type</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Conduit type</span>
             <select value={conductorType} onChange={(e) => setConductorType(e.target.value)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
               <option value="EMT">EMT</option><option value="PVC">PVC Sch 40</option><option value="RMC">Rigid (RMC)</option>
             </select>
           </label>
           <label className="flex-1">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Verify size (optional)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Verify size (optional)</span>
             <select value={conduitSize} onChange={(e) => setConduitSize(e.target.value)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono">
               <option value="">Auto-recommend</option>
               {['1/2', '3/4', '1', '1-1/4', '1-1/2', '2', '2-1/2', '3'].map((s) => <option key={s} value={s}>{s}&quot;</option>)}
@@ -99,7 +99,7 @@ function ConduitFillCalc() {
           </label>
         </div>
         <div className="space-y-1.5">
-          <div className="grid grid-cols-[1fr_1fr_30px] gap-2 text-[9px] uppercase tracking-wider text-zinc-500">
+          <div className="grid grid-cols-[1fr_1fr_30px] gap-2 text-[9px] uppercase tracking-wider text-zinc-400">
             <span>Conductor AWG</span><span>Count</span><span></span>
           </div>
           {rows.map((r, i) => (
@@ -108,7 +108,7 @@ function ConduitFillCalc() {
                 {AWG_LIST.map((g) => <option key={g} value={g}>{g} AWG THHN</option>)}
               </select>
               <input type="number" min={0} value={r.count} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, count: e.target.value } : x))} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" />
-              <button type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -118,15 +118,15 @@ function ConduitFillCalc() {
             {compute.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Size conduit'}
           </button>
         </div>
-        {result?.message && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-500">{result.message}</div>}
+        {result?.message && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-400">{result.message}</div>}
         {result && !result.message && (
           <div className="space-y-2">
             <div className="grid grid-cols-3 gap-2 text-[11px]">
               <div className="rounded border border-sky-500/30 bg-sky-500/10 px-2 py-1.5"><div className="text-[9px] text-sky-300">Recommended</div><div className="font-mono text-lg text-sky-100">{result.recommendedConduitSize}</div></div>
-              <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Actual fill</div><div className="font-mono text-lg text-zinc-200">{result.recommendedActualFillPercent}%</div></div>
-              <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">NEC limit</div><div className="font-mono text-lg text-zinc-200">{result.necFillLimitPercent}%</div></div>
+              <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Actual fill</div><div className="font-mono text-lg text-zinc-200">{result.recommendedActualFillPercent}%</div></div>
+              <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">NEC limit</div><div className="font-mono text-lg text-zinc-200">{result.necFillLimitPercent}%</div></div>
             </div>
-            <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[10px] text-zinc-500">{result.fillRule} · {result.totalConductors} conductors · {result.totalConductorArea} in&sup2;</div>
+            <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[10px] text-zinc-400">{result.fillRule} · {result.totalConductors} conductors · {result.totalConductorArea} in&sup2;</div>
             {result.requested && (
               <div className={`rounded border px-2 py-1.5 text-[11px] ${result.requested.pass ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/40 bg-rose-500/10 text-rose-200'}`}>
                 {result.requested.size}&quot; conduit: {result.requested.actualFillPercent}% fill ({result.requested.allowedFillPercent}% allowed) — {result.requested.pass ? 'PASS' : 'FAIL — too full'}
@@ -167,19 +167,19 @@ function BoxFillCalc() {
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">electrical.boxFill</span>
       </header>
       <div className="grid grid-cols-2 gap-2 p-4">
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Largest conductor</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Largest conductor</span>
           <select value={f.largestAwg} onChange={(e) => setF({ ...f, largestAwg: Number(e.target.value) })} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono">
             {[18, 16, 14, 12, 10, 8, 6].map((g) => <option key={g} value={g}>{g} AWG</option>)}
           </select></label>
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Current-carrying conductors</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Current-carrying conductors</span>
           <input type="number" min={0} value={f.currentCarrying} onChange={(e) => setF({ ...f, currentCarrying: e.target.value })} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" /></label>
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Ground conductors</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Ground conductors</span>
           <input type="number" min={0} value={f.groundConductors} onChange={(e) => setF({ ...f, groundConductors: e.target.value })} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" /></label>
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Devices / yokes (&times;2)</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Devices / yokes (&times;2)</span>
           <input type="number" min={0} value={f.devices} onChange={(e) => setF({ ...f, devices: e.target.value })} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" /></label>
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Support fittings</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Support fittings</span>
           <input type="number" min={0} value={f.supportFittings} onChange={(e) => setF({ ...f, supportFittings: e.target.value })} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" /></label>
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Box volume (in&sup3;)</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Box volume (in&sup3;)</span>
           <input type="number" min={0} step="0.1" value={f.boxVolumeCubicInches} onChange={(e) => setF({ ...f, boxVolumeCubicInches: e.target.value })} placeholder="e.g. 18" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" /></label>
         <label className="col-span-2 flex items-center gap-2 text-[11px] text-zinc-300">
           <input type="checkbox" checked={f.internalClamps} onChange={(e) => setF({ ...f, internalClamps: e.target.checked })} />Internal cable clamps present
@@ -190,9 +190,9 @@ function BoxFillCalc() {
         {result && !result.message && (
           <div className="col-span-2 space-y-1.5">
             <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Equivalents</div><div className="font-mono text-amber-200">{result.totalConductorEquivalents}</div></div>
+              <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Equivalents</div><div className="font-mono text-amber-200">{result.totalConductorEquivalents}</div></div>
               <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5"><div className="text-[9px] text-amber-300">Required vol</div><div className="font-mono text-amber-100">{result.requiredBoxVolume} in&sup3;</div></div>
-              <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Provided</div><div className="font-mono text-zinc-200">{result.providedBoxVolume} in&sup3;</div></div>
+              <div className="rounded border border-amber-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Provided</div><div className="font-mono text-zinc-200">{result.providedBoxVolume} in&sup3;</div></div>
             </div>
             {result.breakdown && result.breakdown.map((b, i) => (
               <div key={i} className="flex justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[10px]">
@@ -232,11 +232,11 @@ function WireSizeCalc() {
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">electrical.wireSize</span>
       </header>
       <div className="grid grid-cols-2 gap-2 p-4">
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Load (amps)</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Load (amps)</span>
           <input type="number" min={0} value={f.loadAmps} onChange={(e) => setF({ ...f, loadAmps: e.target.value })} placeholder="e.g. 40" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" /></label>
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">One-way distance (ft)</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">One-way distance (ft)</span>
           <input type="number" min={0} value={f.distanceFeet} onChange={(e) => setF({ ...f, distanceFeet: e.target.value })} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" /></label>
-        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Voltage</span>
+        <label><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Voltage</span>
           <select value={f.voltage} onChange={(e) => setF({ ...f, voltage: Number(e.target.value) })} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono">
             <option value={120}>120V</option><option value={240}>240V</option><option value={208}>208V</option><option value={480}>480V</option>
           </select></label>
@@ -250,14 +250,14 @@ function WireSizeCalc() {
           <div className="col-span-2 space-y-1.5">
             <div className="grid grid-cols-3 gap-2 text-[11px]">
               <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5"><div className="text-[9px] text-emerald-300">Recommended wire</div><div className="font-mono text-lg text-emerald-100">{result.recommendedWire}</div></div>
-              <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Min breaker</div><div className="font-mono text-lg text-zinc-200">{result.minBreaker}</div></div>
-              <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">V-drop</div><div className="font-mono text-lg text-zinc-200">{result.voltageDropAtRecommended}</div></div>
+              <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Min breaker</div><div className="font-mono text-lg text-zinc-200">{result.minBreaker}</div></div>
+              <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">V-drop</div><div className="font-mono text-lg text-zinc-200">{result.voltageDropAtRecommended}</div></div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 text-[10px] text-zinc-400">
               Design load {result.designAmps}A · ampacity wire {result.ampacityRequiredWire} ({result.recommendedAmpacity}A)
               {result.upsizedForVoltageDrop && <span className="text-amber-300"> · upsized for voltage drop</span>}
             </div>
-            <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[9px] text-zinc-600">{result.basis}</div>
+            <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[9px] text-zinc-400">{result.basis}</div>
           </div>
         )}
       </div>

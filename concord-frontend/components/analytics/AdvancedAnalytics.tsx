@@ -50,7 +50,7 @@ const BTN_GHOST =
   'inline-flex items-center gap-1';
 
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-600 italic py-3 text-center">{text}</p>;
+  return <p className="text-[11px] text-zinc-400 italic py-3 text-center">{text}</p>;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ export function AdvancedAnalytics() {
       <div className="flex items-center gap-2 mb-3">
         <LayoutDashboard className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Advanced Analytics</h3>
-        <span className="text-[11px] text-zinc-500">reports · paths · alerts · cohorts</span>
+        <span className="text-[11px] text-zinc-400">reports · paths · alerts · cohorts</span>
       </div>
 
       <div className="flex flex-wrap gap-1 mb-4">
@@ -216,7 +216,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
 
       {/* Saved dashboards */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5">Saved dashboards</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Saved dashboards</p>
         {dashboards.length === 0 && <Empty text="No saved dashboards yet." />}
         <div className="space-y-1">
           {dashboards.map((d) => (
@@ -224,7 +224,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
               <button onClick={() => open(d.id)} className="flex-1 text-left text-zinc-200 hover:text-amber-300 truncate">
                 {d.name}
               </button>
-              <span className="text-[10px] text-zinc-500">{d.widgetCount} widgets</span>
+              <span className="text-[10px] text-zinc-400">{d.widgetCount} widgets</span>
               <button onClick={() => remove(d.id)} aria-label={`Delete ${d.name}`} className="text-zinc-600 hover:text-red-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -294,7 +294,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
       {/* Live rendered dashboard */}
       {loaded && loaded.length > 0 && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-2">Live dashboard preview</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-2">Live dashboard preview</p>
           <div className="grid sm:grid-cols-2 gap-2">
             {loaded.map((w) => (
               <WidgetCard key={w.id} widget={w} />
@@ -393,11 +393,11 @@ function PathAnalysis({ eventNames }: { eventNames: string[] }) {
     <div className="space-y-3">
       <EventList id="pa-events" names={eventNames} />
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5">Journey flow analysis</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Journey flow analysis</p>
         <div className="flex flex-wrap gap-1.5 items-center">
           <input list="pa-events" value={anchor} onChange={(e) => setAnchor(e.target.value)}
             placeholder="anchor event (optional)" className={cn(INPUT, 'flex-1 min-w-[140px]')} />
-          <label className="text-[11px] text-zinc-500 flex items-center gap-1">
+          <label className="text-[11px] text-zinc-400 flex items-center gap-1">
             depth
             <input type="number" min={2} max={8} value={maxSteps}
               onChange={(e) => setMaxSteps(Math.min(8, Math.max(2, Number(e.target.value) || 5)))}
@@ -421,7 +421,7 @@ function PathAnalysis({ eventNames }: { eventNames: string[] }) {
             <div className="flex gap-6 min-w-max pb-2">
               {columns.map((col, depth) => (
                 <div key={depth} className="space-y-2">
-                  <p className="text-[9px] uppercase text-zinc-600 tracking-wide">Step {depth + 1}</p>
+                  <p className="text-[9px] uppercase text-zinc-400 tracking-wide">Step {depth + 1}</p>
                   {col.sort((a, b) => a.event.localeCompare(b.event)).map((n) => (
                     <div key={n.id}
                       className="px-2 py-1 rounded bg-zinc-950 border border-zinc-700 text-[11px] text-zinc-200 whitespace-nowrap">
@@ -433,7 +433,7 @@ function PathAnalysis({ eventNames }: { eventNames: string[] }) {
             </div>
           </div>
           <div className="mt-3 space-y-1">
-            <p className="text-[10px] uppercase tracking-wide text-zinc-500">Top transitions</p>
+            <p className="text-[10px] uppercase tracking-wide text-zinc-400">Top transitions</p>
             {result.links.slice(0, 12).map((l) => {
               const src = l.source.slice(l.source.indexOf(':') + 1);
               const dst = l.target.slice(l.target.indexOf(':') + 1);
@@ -496,7 +496,7 @@ function BreakdownPanel({ eventNames }: { eventNames: string[] }) {
     <div className="space-y-3">
       <EventList id="bd-events" names={eventNames} />
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 space-y-1.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">Multi-dimensional breakdown</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">Multi-dimensional breakdown</p>
         <div className="flex flex-wrap gap-1.5">
           <input list="bd-events" value={eventName} onChange={(e) => setEventName(e.target.value)}
             placeholder="event name" className={cn(INPUT, 'flex-1 min-w-[120px]')} />
@@ -531,7 +531,7 @@ function BreakdownPanel({ eventNames }: { eventNames: string[] }) {
             {result.rows.map((r, i) => (
               <div key={i} className="flex justify-between text-[11px] text-zinc-300 px-1 py-0.5">
                 <span className="truncate">{r.dimensions.join(' · ')}</span>
-                <span className="text-zinc-500">
+                <span className="text-zinc-400">
                   {r.count} events · {r.uniqueUsers} users
                 </span>
               </div>
@@ -617,7 +617,7 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
             {live ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
             {live ? 'Live' : 'Go live'}
           </button>
-          <span className="text-[10px] text-zinc-500">{matched} matched</span>
+          <span className="text-[10px] text-zinc-400">{matched} matched</span>
         </div>
       </div>
 
@@ -628,11 +628,11 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
             <div key={e.id} className="px-2.5 py-1.5 text-[11px] font-mono">
               <div className="flex items-center gap-2">
                 <span className="text-amber-300 font-semibold">{e.name}</span>
-                <span className="text-zinc-500">{e.distinctId}</span>
+                <span className="text-zinc-400">{e.distinctId}</span>
                 <span className="text-zinc-600 ml-auto">{new Date(e.at).toLocaleTimeString()}</span>
               </div>
               {Object.keys(e.properties || {}).length > 0 && (
-                <div className="text-zinc-500 mt-0.5 truncate">
+                <div className="text-zinc-400 mt-0.5 truncate">
                   {Object.entries(e.properties).map(([k, v]) => `${k}=${String(v)}`).join('  ')}
                 </div>
               )}
@@ -705,7 +705,7 @@ function AlertsPanel({ eventNames }: { eventNames: string[] }) {
     <div className="space-y-3">
       <EventList id="al-events" names={eventNames} />
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 space-y-1.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">New metric alert</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">New metric alert</p>
         <div className="flex flex-wrap gap-1.5">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="alert name" className={cn(INPUT, 'flex-1 min-w-[120px]')} />
@@ -731,7 +731,7 @@ function AlertsPanel({ eventNames }: { eventNames: string[] }) {
                 placeholder="value" className={cn(INPUT, 'w-20')} />
             </>
           )}
-          <label className="text-[11px] text-zinc-500 flex items-center gap-1">
+          <label className="text-[11px] text-zinc-400 flex items-center gap-1">
             window
             <input type="number" min={1} max={90} value={form.window}
               onChange={(e) => setForm({ ...form, window: e.target.value })} className={cn(INPUT, 'w-14')} />
@@ -745,7 +745,7 @@ function AlertsPanel({ eventNames }: { eventNames: string[] }) {
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5">
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">
           Alerts {alerts.length > 0 && <span className="text-amber-300">· {firing} firing</span>}
         </p>
         {alerts.length === 0 && <Empty text="No alerts configured yet." />}
@@ -757,7 +757,7 @@ function AlertsPanel({ eventNames }: { eventNames: string[] }) {
               <div className="flex items-center gap-2">
                 <span className={cn('w-2 h-2 rounded-full flex-shrink-0', a.firing ? 'bg-red-500' : 'bg-zinc-600')} />
                 <span className="font-semibold text-zinc-200">{a.name}</span>
-                <span className="text-zinc-500">
+                <span className="text-zinc-400">
                   {a.eventName || 'all events'} · {a.metric} · {a.kind}
                 </span>
                 <button onClick={() => remove(a.id)} aria-label={`Delete ${a.name}`}
@@ -765,7 +765,7 @@ function AlertsPanel({ eventNames }: { eventNames: string[] }) {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <p className="text-zinc-500 mt-1 pl-4">
+              <p className="text-zinc-400 mt-1 pl-4">
                 value <span className="text-zinc-300">{a.value ?? 0}</span> · {a.detail}
               </p>
             </div>
@@ -826,7 +826,7 @@ function CohortBuilder({ eventNames }: { eventNames: string[] }) {
     <div className="space-y-3">
       <EventList id="co-events" names={eventNames} />
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 space-y-1.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">Behavioral cohort — did X but not Y</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">Behavioral cohort — did X but not Y</p>
         <input value={name} onChange={(e) => setName(e.target.value)}
           placeholder="cohort name" className={cn(INPUT, 'w-full')} />
         <div className="flex flex-wrap gap-1.5">
@@ -851,7 +851,7 @@ function CohortBuilder({ eventNames }: { eventNames: string[] }) {
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
           <p className="text-[11px] text-zinc-300">
             <span className="text-amber-300 font-bold text-lg">{preview.size}</span> users
-            <span className="text-zinc-500"> of {preview.totalUsers} ({preview.pct}%)</span>
+            <span className="text-zinc-400"> of {preview.totalUsers} ({preview.pct}%)</span>
           </p>
           {preview.members.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
@@ -865,7 +865,7 @@ function CohortBuilder({ eventNames }: { eventNames: string[] }) {
       )}
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5">Saved cohorts</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Saved cohorts</p>
         {saved.length === 0 && <Empty text="No saved cohorts yet." />}
         <div className="space-y-1.5">
           {saved.map((c) => (
@@ -879,7 +879,7 @@ function CohortBuilder({ eventNames }: { eventNames: string[] }) {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <p className="text-zinc-500 mt-0.5">
+              <p className="text-zinc-400 mt-0.5">
                 did {c.includes.join(', ') || '—'}
                 {c.excludes.length > 0 && <> · not {c.excludes.join(', ')}</>}
               </p>
@@ -927,7 +927,7 @@ function RangeCompare({ eventNames }: { eventNames: string[] }) {
     <div className="space-y-3">
       <EventList id="rc-events" names={eventNames} />
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 space-y-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">Date-range comparison</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">Date-range comparison</p>
         <div className="flex flex-wrap gap-1.5">
           <input list="rc-events" value={eventName} onChange={(e) => setEventName(e.target.value)}
             placeholder="event (blank = all)" className={cn(INPUT, 'flex-1 min-w-[140px]')} />
@@ -937,11 +937,11 @@ function RangeCompare({ eventNames }: { eventNames: string[] }) {
           </select>
         </div>
         <div className="space-y-1">
-          <p className="text-[10px] text-zinc-500">Current period</p>
+          <p className="text-[10px] text-zinc-400">Current period</p>
           <DateRangeInputs range={current} onChange={setCurrent} />
         </div>
         <div className="space-y-1">
-          <p className="text-[10px] text-zinc-500">Previous period</p>
+          <p className="text-[10px] text-zinc-400">Previous period</p>
           <DateRangeInputs range={previous} onChange={setPrevious} />
         </div>
         <button onClick={run}
@@ -957,11 +957,11 @@ function RangeCompare({ eventNames }: { eventNames: string[] }) {
           <div className="grid grid-cols-3 gap-2 mb-2">
             <div className="bg-zinc-950 border border-zinc-800 rounded p-2 text-center">
               <p className="text-lg font-bold text-zinc-100">{result.previous.value.toLocaleString()}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">Previous</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Previous</p>
             </div>
             <div className="bg-zinc-950 border border-zinc-800 rounded p-2 text-center">
               <p className="text-lg font-bold text-amber-300">{result.current.value.toLocaleString()}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">Current</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Current</p>
             </div>
             <div className="bg-zinc-950 border border-zinc-800 rounded p-2 text-center">
               <p className={cn('text-lg font-bold',
@@ -969,7 +969,7 @@ function RangeCompare({ eventNames }: { eventNames: string[] }) {
                   : result.direction === 'down' ? 'text-red-400' : 'text-zinc-400')}>
                 {result.delta >= 0 ? '+' : ''}{result.pctChange}%
               </p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">
                 {result.delta >= 0 ? '+' : ''}{result.delta} delta
               </p>
             </div>

@@ -94,7 +94,7 @@ export function HrSelfServicePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -108,7 +108,7 @@ export function HrSelfServicePanel() {
       </select>
 
       {!selectedId && (
-        <p className="text-[11px] text-zinc-500 italic">Select an employee to open their self-service portal.</p>
+        <p className="text-[11px] text-zinc-400 italic">Select an employee to open their self-service portal.</p>
       )}
 
       {summary && (
@@ -116,7 +116,7 @@ export function HrSelfServicePanel() {
           {/* Profile */}
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
             <h3 className="text-base font-bold text-zinc-100">{summary.profile.name}</h3>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-400">
               {summary.profile.title || 'No title'} · {summary.profile.department} · hired {summary.profile.hireDate}
             </p>
           </div>
@@ -128,7 +128,7 @@ export function HrSelfServicePanel() {
               {summary.timeoffBalances.map((b) => (
                 <div key={b.kind} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
                   <p className="text-sm font-bold text-zinc-100">{b.remaining}</p>
-                  <p className="text-[10px] text-zinc-500 capitalize">{b.kind} left ({b.used}/{b.accrued})</p>
+                  <p className="text-[10px] text-zinc-400 capitalize">{b.kind} left ({b.used}/{b.accrued})</p>
                 </div>
               ))}
             </div>
@@ -157,7 +157,7 @@ export function HrSelfServicePanel() {
                 {summary.timeoffRequests.map((r) => (
                   <li key={r.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                     <span className="text-[11px] text-zinc-300 capitalize">{r.kind} · {r.days}d from {r.startDate}</span>
-                    <span className={cn('text-[10px] capitalize', STATUS_COLOR[r.status] || 'text-zinc-500')}>{r.status}</span>
+                    <span className={cn('text-[10px] capitalize', STATUS_COLOR[r.status] || 'text-zinc-400')}>{r.status}</span>
                   </li>
                 ))}
               </ul>
@@ -168,14 +168,14 @@ export function HrSelfServicePanel() {
           <section>
             <h4 className="text-xs font-semibold text-zinc-300 mb-2">Pay stubs</h4>
             {summary.paystubs.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">No pay stubs yet.</p>
+              <p className="text-[11px] text-zinc-400 italic">No pay stubs yet.</p>
             ) : (
               <ul className="space-y-1">
                 {summary.paystubs.map((p) => (
                   <li key={p.runId} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                     <div>
                       <p className="text-xs text-zinc-200">{p.periodLabel}</p>
-                      <p className="text-[10px] text-zinc-500">paid {p.payDate} · gross {usd(p.grossPay)}</p>
+                      <p className="text-[10px] text-zinc-400">paid {p.payDate} · gross {usd(p.grossPay)}</p>
                     </div>
                     <span className="text-xs text-emerald-300 font-semibold">{usd(p.netPay)}</span>
                   </li>
@@ -188,12 +188,12 @@ export function HrSelfServicePanel() {
           <section>
             <h4 className="text-xs font-semibold text-zinc-300 mb-2">My benefits</h4>
             {summary.benefits.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">Not enrolled in any benefits.</p>
+              <p className="text-[11px] text-zinc-400 italic">Not enrolled in any benefits.</p>
             ) : (
               <ul className="flex flex-wrap gap-1.5">
                 {summary.benefits.map((b) => (
                   <li key={b.id} className="text-[11px] px-2 py-1 rounded-lg border border-zinc-700 text-zinc-300">
-                    {b.planName} <span className="text-zinc-500">· {b.coverageTier.replace(/_/g, ' ')} · {usd(b.employeeMonthlyCost)}/mo</span>
+                    {b.planName} <span className="text-zinc-400">· {b.coverageTier.replace(/_/g, ' ')} · {usd(b.employeeMonthlyCost)}/mo</span>
                   </li>
                 ))}
               </ul>
@@ -205,7 +205,7 @@ export function HrSelfServicePanel() {
             <section>
               <h4 className="text-xs font-semibold text-zinc-300 mb-2">My training</h4>
               {summary.courses.length === 0 ? (
-                <p className="text-[11px] text-zinc-500 italic">No courses assigned.</p>
+                <p className="text-[11px] text-zinc-400 italic">No courses assigned.</p>
               ) : (
                 <ul className="space-y-1">
                   {summary.courses.map((c) => (
@@ -225,7 +225,7 @@ export function HrSelfServicePanel() {
             <section>
               <h4 className="text-xs font-semibold text-zinc-300 mb-2">My goals</h4>
               {summary.goals.length === 0 ? (
-                <p className="text-[11px] text-zinc-500 italic">No goals set.</p>
+                <p className="text-[11px] text-zinc-400 italic">No goals set.</p>
               ) : (
                 <ul className="space-y-1">
                   {summary.goals.map((g) => (

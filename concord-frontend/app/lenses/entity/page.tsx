@@ -285,7 +285,7 @@ export default function EntityLensPage() {
           </div>
           <div className="bg-black rounded p-3 h-48 overflow-y-auto font-mono text-sm text-neon-green">
             {terminalOutput.length === 0 ? (
-              <p className="text-gray-500">Terminal ready. Entity has council-gated access to system commands.</p>
+              <p className="text-gray-400">Terminal ready. Entity has council-gated access to system commands.</p>
             ) : (
               terminalOutput.map((line, i) => (
                 <div key={i} className={line.startsWith('$') ? 'text-white' : ''}>{line}</div>
@@ -368,7 +368,7 @@ export default function EntityLensPage() {
                     <div className="min-w-0">
                       <h3 className="font-semibold truncate">{resolved.displayName}</h3>
                       <p className="text-xs text-gray-400 truncate">{resolved.fullTitle} · {resolved.domain}</p>
-                      <p className="text-[10px] text-gray-600 font-mono truncate">#{resolved.shortId}</p>
+                      <p className="text-[10px] text-gray-400 font-mono truncate">#{resolved.shortId}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -615,7 +615,7 @@ function QualiaEntityPanel({ entityId, entityName, onClose }: { entityId: string
             key={s.id}
             onClick={() => setSection(s.id)}
             className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition-colors ${
-              section === s.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              section === s.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
             {s.label}
@@ -659,7 +659,7 @@ function QualiaEntityPanel({ entityId, entityName, onClose }: { entityId: string
 
       {/* Fallback when no data yet */}
       {!channelsData?.channels && !embodimentData?.embodiment && !presenceData?.presence && section !== 'os-tiers' && (
-        <div className="text-center py-8 text-zinc-500 text-sm">
+        <div className="text-center py-8 text-zinc-400 text-sm">
           Loading qualia state for {entityName}...
         </div>
       )}
@@ -721,7 +721,7 @@ function ExistentialOSHeatmap({ grouped, qualiaState }: {
   return (
     <div className="space-y-3">
       {!qualiaState && (
-        <div className="text-xs text-zinc-500 bg-zinc-900 rounded p-2">
+        <div className="text-xs text-zinc-400 bg-zinc-900 rounded p-2">
           No live qualia state for this entity. Showing registry structure.
         </div>
       )}
@@ -743,7 +743,7 @@ function ExistentialOSHeatmap({ grouped, qualiaState }: {
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-cyan-400' : 'bg-zinc-600'}`} />
                       <span className="text-xs font-medium text-white">{os.label}</span>
-                      {!isActive && <span className="text-[10px] text-zinc-600">(inactive)</span>}
+                      {!isActive && <span className="text-[10px] text-zinc-400">(inactive)</span>}
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {os.numeric_channels.map(ch => {
@@ -806,7 +806,7 @@ function AgentStatusPanel() {
           <Bot className="w-4 h-4 text-neon-cyan" />
           Active Agents
         </h3>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400" />{active} active</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400" />{paused} paused</span>
         </div>
@@ -815,7 +815,7 @@ function AgentStatusPanel() {
       {/* Research Spawning */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={researchTopic}
@@ -848,16 +848,16 @@ function AgentStatusPanel() {
 
       {/* Agent list */}
       {isLoading ? (
-        <p className="text-xs text-gray-500">Loading agents...</p>
+        <p className="text-xs text-gray-400">Loading agents...</p>
       ) : agents.length === 0 ? (
-        <p className="text-xs text-gray-500">No agents deployed. Spawn a research agent above.</p>
+        <p className="text-xs text-gray-400">No agents deployed. Spawn a research agent above.</p>
       ) : (
         <div className="space-y-1 max-h-48 overflow-y-auto">
           {agents.slice(0, 20).map((a: Record<string, unknown>) => (
             <div key={a.agentId as string} className="flex items-center gap-2 text-xs bg-zinc-900 rounded p-2 border border-zinc-800">
               <span className={`w-2 h-2 rounded-full ${a.status === 'active' ? 'bg-green-400' : 'bg-yellow-400'}`} />
               <span className="text-white font-medium capitalize">{a.type as string}</span>
-              <span className="text-gray-500 truncate flex-1">{a.territory as string}</span>
+              <span className="text-gray-400 truncate flex-1">{a.territory as string}</span>
               <span className="text-gray-600 tabular-nums">{a.runCount as number} runs</span>
               <span className="text-gray-600 tabular-nums">{a.findingsCount as number} findings</span>
             </div>
@@ -902,7 +902,7 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
       </div>
 
       {isLoading && (
-        <div className="text-center py-8 text-zinc-500 text-sm">Loading cognitive state...</div>
+        <div className="text-center py-8 text-zinc-400 text-sm">Loading cognitive state...</div>
       )}
 
       {data && (
@@ -920,12 +920,12 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
                     <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                       <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.round(w.intensity * 100)}%` }} />
                     </div>
-                    <span className="text-gray-500 tabular-nums w-8 text-right">{Math.round(w.intensity * 100)}%</span>
+                    <span className="text-gray-400 tabular-nums w-8 text-right">{Math.round(w.intensity * 100)}%</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-600">No active wants</p>
+              <p className="text-xs text-gray-400">No active wants</p>
             )}
           </div>
 
@@ -935,22 +935,22 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
             {data.trustNetwork?.trusts?.length > 0 || data.trustNetwork?.trustedBy?.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <p className="text-[10px] text-gray-500 mb-1">Trusts ({data.trustNetwork.trusts?.length || 0})</p>
+                  <p className="text-[10px] text-gray-400 mb-1">Trusts ({data.trustNetwork.trusts?.length || 0})</p>
                   {(data.trustNetwork.trusts || []).slice(0, 5).map(t => (
                     <div key={t.emergentId} className="flex items-center gap-1 text-[11px] text-gray-400">
                       <span className="truncate flex-1">{t.name}</span>
-                      <span className={`tabular-nums ${t.trust > 0.7 ? 'text-green-400' : t.trust < 0.3 ? 'text-red-400' : 'text-gray-500'}`}>
+                      <span className={`tabular-nums ${t.trust > 0.7 ? 'text-green-400' : t.trust < 0.3 ? 'text-red-400' : 'text-gray-400'}`}>
                         {(t.trust * 100).toFixed(0)}%
                       </span>
                     </div>
                   ))}
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 mb-1">Trusted By ({data.trustNetwork.trustedBy?.length || 0})</p>
+                  <p className="text-[10px] text-gray-400 mb-1">Trusted By ({data.trustNetwork.trustedBy?.length || 0})</p>
                   {(data.trustNetwork.trustedBy || []).slice(0, 5).map(t => (
                     <div key={t.emergentId} className="flex items-center gap-1 text-[11px] text-gray-400">
                       <span className="truncate flex-1">{t.name}</span>
-                      <span className={`tabular-nums ${t.trust > 0.7 ? 'text-green-400' : t.trust < 0.3 ? 'text-red-400' : 'text-gray-500'}`}>
+                      <span className={`tabular-nums ${t.trust > 0.7 ? 'text-green-400' : t.trust < 0.3 ? 'text-red-400' : 'text-gray-400'}`}>
                         {(t.trust * 100).toFixed(0)}%
                       </span>
                     </div>
@@ -958,7 +958,7 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-gray-600">No trust relationships established</p>
+              <p className="text-xs text-gray-400">No trust relationships established</p>
             )}
           </div>
 
@@ -973,7 +973,7 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
                 )}
               </div>
             ) : (
-              <p className="text-xs text-gray-600">No cultural data</p>
+              <p className="text-xs text-gray-400">No cultural data</p>
             )}
           </div>
 
@@ -985,7 +985,7 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
                 {data.pain.wounds?.slice(0, 5).map((w, i) => (
                   <div key={w.id || i} className="flex items-center gap-2 text-[11px] bg-red-950/20 rounded p-1.5 border border-red-900/20">
                     <span className="text-red-400 font-medium">{w.type}</span>
-                    <span className="text-gray-500 ml-auto tabular-nums">severity {w.severity}</span>
+                    <span className="text-gray-400 ml-auto tabular-nums">severity {w.severity}</span>
                   </div>
                 ))}
                 {data.pain.avoidances?.slice(0, 5).map((a, i) => (
@@ -997,7 +997,7 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-600">No pain memories</p>
+              <p className="text-xs text-gray-400">No pain memories</p>
             )}
           </div>
 
@@ -1007,20 +1007,20 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
             {data.subjectiveTime ? (
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="bg-zinc-900 rounded p-2 border border-zinc-800">
-                  <p className="text-gray-500">Exp. Days</p>
+                  <p className="text-gray-400">Exp. Days</p>
                   <p className="text-white font-mono">{data.subjectiveTime.experientialDays ?? '—'}</p>
                 </div>
                 <div className="bg-zinc-900 rounded p-2 border border-zinc-800">
-                  <p className="text-gray-500">Compression</p>
+                  <p className="text-gray-400">Compression</p>
                   <p className="text-white font-mono">{data.subjectiveTime.compressionRatio ?? '—'}x</p>
                 </div>
                 <div className="bg-zinc-900 rounded p-2 border border-zinc-800">
-                  <p className="text-gray-500">Epoch</p>
+                  <p className="text-gray-400">Epoch</p>
                   <p className="text-white font-mono capitalize">{data.subjectiveTime.currentEpoch ?? '—'}</p>
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-gray-600">No time data</p>
+              <p className="text-xs text-gray-400">No time data</p>
             )}
           </div>
 
@@ -1038,7 +1038,7 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
                   }`} />
                   <span className="text-gray-300 capitalize">{data.sleep.state.status || 'unknown'}</span>
                   {data.sleep.state.fatigue != null && (
-                    <span className="text-gray-500 ml-auto">fatigue: {Math.round(data.sleep.state.fatigue * 100)}%</span>
+                    <span className="text-gray-400 ml-auto">fatigue: {Math.round(data.sleep.state.fatigue * 100)}%</span>
                   )}
                 </div>
                 {data.sleep.state.dreamContent && (
@@ -1048,7 +1048,7 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
                 )}
               </div>
             ) : (
-              <p className="text-xs text-gray-600">No sleep data</p>
+              <p className="text-xs text-gray-400">No sleep data</p>
             )}
           </div>
 
@@ -1091,7 +1091,7 @@ function EntityResolutionResult({ result }: { result: Record<string, unknown> })
       <div className="flex items-center gap-2">
         <Link2 className="w-4 h-4 text-neon-cyan" />
         <h3 className="font-semibold text-sm">Entity Resolution Results</h3>
-        <span className="text-xs text-gray-500">threshold: {parameters?.threshold}</span>
+        <span className="text-xs text-gray-400">threshold: {parameters?.threshold}</span>
       </div>
 
       {/* Summary stats */}
@@ -1119,7 +1119,7 @@ function EntityResolutionResult({ result }: { result: Record<string, unknown> })
             {mergeGroups.groups.map((g) => (
               <div key={g.groupId} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-xs font-mono text-gray-500">Group {g.groupId}</span>
+                  <span className="text-xs font-mono text-gray-400">Group {g.groupId}</span>
                   <div className="flex flex-wrap gap-1">
                     {g.members.map((m) => (
                       <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 font-mono">
@@ -1130,7 +1130,7 @@ function EntityResolutionResult({ result }: { result: Record<string, unknown> })
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-neon-purple">{(g.avgConfidence * 100).toFixed(1)}%</p>
-                  <p className="text-[10px] text-gray-500">avg conf.</p>
+                  <p className="text-[10px] text-gray-400">avg conf.</p>
                 </div>
               </div>
             ))}
@@ -1148,7 +1148,7 @@ function EntityResolutionResult({ result }: { result: Record<string, unknown> })
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-mono text-white">
                     <span className="text-neon-cyan">{m.recordA}</span>
-                    <span className="text-gray-500 mx-2">↔</span>
+                    <span className="text-gray-400 mx-2">↔</span>
                     <span className="text-neon-cyan">{m.recordB}</span>
                   </span>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1250,7 +1250,7 @@ function RelationshipGraphResult({ result }: { result: Record<string, unknown> }
             style={{ width: `${Math.min(densityPct, 100)}%` }}
           />
         </div>
-        <p className="text-[10px] text-gray-500">
+        <p className="text-[10px] text-gray-400">
           {densityPct < 10 ? 'Sparse graph' : densityPct < 40 ? 'Moderate connectivity' : 'Dense graph'}
         </p>
       </div>
@@ -1280,7 +1280,7 @@ function RelationshipGraphResult({ result }: { result: Record<string, unknown> }
                   </div>
                   <span className="text-xs text-neon-cyan font-mono">{e.degree} connections</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-500">
+                <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-400">
                   <div>
                     <p className="text-gray-300 font-mono">{(e.betweennessCentrality * 100).toFixed(2)}%</p>
                     <p>Betweenness</p>
@@ -1309,7 +1309,7 @@ function RelationshipGraphResult({ result }: { result: Record<string, unknown> }
             {entities.slice(0, 15).map((e) => (
               <div key={e.id} className="flex items-center gap-3 px-3 py-2 bg-zinc-900 rounded border border-zinc-800 text-xs">
                 <span className="text-white font-medium truncate flex-1">{e.name || e.id}</span>
-                <span className="text-gray-500">deg {e.degree}</span>
+                <span className="text-gray-400">deg {e.degree}</span>
                 <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-cyan"
@@ -1335,7 +1335,7 @@ function RelationshipGraphResult({ result }: { result: Record<string, unknown> }
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {cycles.items.map((c, i) => (
               <div key={i} className="bg-zinc-900 rounded p-2 border border-yellow-500/20 text-xs font-mono text-yellow-300">
-                {c.path.join(' → ')} <span className="text-gray-500 ml-1">({c.length} edges)</span>
+                {c.path.join(' → ')} <span className="text-gray-400 ml-1">({c.length} edges)</span>
               </div>
             ))}
           </div>
@@ -1372,7 +1372,7 @@ function AttributeValidationResult({ result }: { result: Record<string, unknown>
       <div className="flex items-center gap-2">
         <ShieldCheck className="w-4 h-4 text-neon-green" />
         <h3 className="font-semibold text-sm">Attribute Validation Results</h3>
-        {entityId && <span className="text-xs text-gray-500 font-mono">{entityId}</span>}
+        {entityId && <span className="text-xs text-gray-400 font-mono">{entityId}</span>}
         <span className={`ml-auto text-xs px-2 py-0.5 rounded border font-semibold capitalize ${statusBadge}`}>
           {status || (valid ? 'valid' : 'invalid')}
         </span>
@@ -1393,17 +1393,17 @@ function AttributeValidationResult({ result }: { result: Record<string, unknown>
         <div className="grid grid-cols-3 gap-3 text-center text-xs">
           <div>
             <p className="text-lg font-bold text-white">{totalFields}</p>
-            <p className="text-gray-500">Total Fields</p>
+            <p className="text-gray-400">Total Fields</p>
           </div>
           <div>
             <p className="text-lg font-bold text-neon-green">{fieldsValid}</p>
-            <p className="text-gray-500">Valid</p>
+            <p className="text-gray-400">Valid</p>
           </div>
           <div>
             <p className={`text-lg font-bold ${errors?.count > 0 ? 'text-red-400' : 'text-gray-400'}`}>
               {errors?.count ?? 0}
             </p>
-            <p className="text-gray-500">Errors</p>
+            <p className="text-gray-400">Errors</p>
           </div>
         </div>
       </div>
@@ -1426,7 +1426,7 @@ function AttributeValidationResult({ result }: { result: Record<string, unknown>
                 </div>
                 <p className="text-xs text-gray-300">{e.message}</p>
                 {e.value && (
-                  <p className="text-[10px] font-mono text-gray-500 truncate">Value: {e.value}</p>
+                  <p className="text-[10px] font-mono text-gray-400 truncate">Value: {e.value}</p>
                 )}
               </div>
             ))}
@@ -1460,7 +1460,7 @@ function AttributeValidationResult({ result }: { result: Record<string, unknown>
             {consistencyRules.results.map((r, i) => (
               <div key={i} className="flex items-center justify-between bg-zinc-900 rounded p-2 border border-zinc-800 text-xs">
                 <span className="text-gray-300 truncate flex-1">{r.rule}</span>
-                {r.reason && <span className="text-gray-500 mx-2 text-[10px]">{r.reason}</span>}
+                {r.reason && <span className="text-gray-400 mx-2 text-[10px]">{r.reason}</span>}
                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                   r.status === 'passed' ? 'bg-neon-green/10 text-neon-green'
                   : r.status === 'skipped' ? 'bg-gray-500/10 text-gray-400'

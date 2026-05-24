@@ -136,9 +136,9 @@ export function SplitPane({
           )}
         >
           {direction === 'horizontal' ? (
-            <GripVertical className="w-3 h-3 text-gray-500 group-hover:text-neon-cyan" />
+            <GripVertical className="w-3 h-3 text-gray-400 group-hover:text-neon-cyan" />
           ) : (
-            <GripHorizontal className="w-3 h-3 text-gray-500 group-hover:text-neon-cyan" />
+            <GripHorizontal className="w-3 h-3 text-gray-400 group-hover:text-neon-cyan" />
           )}
         </div>
       )}
@@ -310,7 +310,7 @@ export function WorkspaceLayout({ panes, onClosePane, onSplitPane, className }: 
 
   if (panes.length === 0) {
     return (
-      <div className={cn('flex items-center justify-center h-full text-gray-500', className)}>
+      <div className={cn('flex items-center justify-center h-full text-gray-400', className)}>
         No panes open
       </div>
     );

@@ -83,7 +83,7 @@ export function EiaPanel() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">State</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">State</label>
             <select value={state} onChange={(e) => setState(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
               {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -96,7 +96,7 @@ export function EiaPanel() {
               <div className="flex items-end justify-between">
                 <div>
                   <div className="font-mono text-3xl font-bold text-white">{rate.latest.priceCentsPerKwh.toFixed(1)}¢</div>
-                  <div className="text-[11px] text-zinc-500">per kWh · {rate.latest.period} · residential</div>
+                  <div className="text-[11px] text-zinc-400">per kWh · {rate.latest.period} · residential</div>
                 </div>
                 {rate.yearOverYearChangePct !== null && (
                   <div className={`flex items-center gap-1 text-sm font-mono ${rate.yearOverYearChangePct >= 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
@@ -127,7 +127,7 @@ export function EiaPanel() {
 
         <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">Region</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">Region</label>
             <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
               {['US', 'CAL', 'TEX', 'NY', 'FLA', 'NW', 'SE'].map((s) => <option key={s} value={s}>{s}</option>)}
             </select>

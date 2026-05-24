@@ -89,7 +89,7 @@ export function ToneSubscriptions({
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading subscriptions…
         </div>
       ) : (
@@ -102,11 +102,11 @@ export function ToneSubscriptions({
                   className="flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-950 px-2.5 py-1 text-[11px] text-zinc-300"
                 >
                   <span className="capitalize">{s.tone}</span>
-                  <span className="font-mono text-[9px] text-zinc-500">{s.worldId}</span>
+                  <span className="font-mono text-[9px] text-zinc-400">{s.worldId}</span>
                   <button
                     type="button" onClick={() => unsubscribe(s.id)}
                     aria-label={`Unsubscribe from ${s.tone}`}
-                    className="text-zinc-500 hover:text-red-400"
+                    className="text-zinc-400 hover:text-red-400"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -114,7 +114,7 @@ export function ToneSubscriptions({
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] text-zinc-600 italic">
+            <p className="text-[11px] text-zinc-400 italic">
               No tone alerts set. Subscribe above to be notified when the goddess shifts tone.
             </p>
           )}

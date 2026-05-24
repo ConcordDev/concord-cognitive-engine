@@ -129,7 +129,7 @@ export function ArtExplorer() {
               type="button"
               onClick={() => { setSource(s); setSelected(null); }}
               className={`rounded px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                source === s ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
+                source === s ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               {s === 'met' ? 'Met' : 'Art Inst.'}
@@ -141,7 +141,7 @@ export function ArtExplorer() {
       {!selected && (
         <form onSubmit={submit} className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               type="text"
               value={queryInput}
@@ -168,7 +168,7 @@ export function ArtExplorer() {
       )}
 
       {!hasResults && !isPending && !errorMsg && !selected && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-8 text-center text-xs text-zinc-400">
           Browse 500k+ Met objects (492k public-domain) and 113k Art Institute artworks
           (~52k CC0). Click any cover to expand into the detail card with Save-as-DTU.
         </div>
@@ -234,7 +234,7 @@ function CoverCard({ source, art, onSelect }: { source: Source; art: MetObject |
       </div>
       <div className="space-y-0.5 p-2">
         <div className="line-clamp-2 text-xs text-white">{title}</div>
-        {artist && <div className="line-clamp-1 text-[10px] text-zinc-500">{artist}</div>}
+        {artist && <div className="line-clamp-1 text-[10px] text-zinc-400">{artist}</div>}
       </div>
     </button>
   );
@@ -335,7 +335,7 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
               )}
             </div>
           ) : (
-            <div className="flex aspect-video items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-zinc-500">
+            <div className="flex aspect-video items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-zinc-400">
               No image available
             </div>
           )}
@@ -344,7 +344,7 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
           <div>
             <h3 className="text-lg font-semibold text-white">{title}</h3>
             {artist && <p className="mt-1 text-sm text-cyan-300/90">{artist}</p>}
-            {isMet && met?.artistBio && <p className="text-[11px] italic text-zinc-500">{met.artistBio}</p>}
+            {isMet && met?.artistBio && <p className="text-[11px] italic text-zinc-400">{met.artistBio}</p>}
           </div>
 
           <dl className="space-y-1.5 rounded-md border border-cyan-500/15 bg-cyan-500/5 p-2.5 text-xs">
@@ -383,7 +383,7 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex justify-between gap-2">
-      <dt className="shrink-0 text-zinc-500">{label}</dt>
+      <dt className="shrink-0 text-zinc-400">{label}</dt>
       <dd className={`text-right text-zinc-200 ${mono ? 'font-mono text-[10px]' : ''}`}>{value}</dd>
     </div>
   );

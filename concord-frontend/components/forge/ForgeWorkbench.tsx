@@ -318,7 +318,7 @@ export function ForgeWorkbench() {
             onClick={() => setActivePanel(panel)}
             className={cn(
               'px-3 py-1.5 text-sm rounded-lg transition-colors capitalize',
-              activePanel === panel ? 'bg-lattice-elevated text-white' : 'text-gray-500 hover:text-gray-300'
+              activePanel === panel ? 'bg-lattice-elevated text-white' : 'text-gray-400 hover:text-gray-300'
             )}
           >
             {panel === 'config' && <Settings className="w-3.5 h-3.5 inline mr-1.5" />}
@@ -363,7 +363,7 @@ export function ForgeWorkbench() {
                       {t.price > 0 && <span className="text-xs text-orange-400">${t.price}</span>}
                       {t.price === 0 && <span className="text-xs text-green-400">Free</span>}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{t.description}</p>
+                    <p className="text-xs text-gray-400 mt-1">{t.description}</p>
                   </button>
                 ))}
               </div>
@@ -431,7 +431,7 @@ export function ForgeWorkbench() {
               </button>
               <div>
                 <span className="text-sm text-gray-300">Concord Node</span>
-                <p className="text-xs text-gray-500">Enable DTU format, mesh transport, marketplace connectivity, and collective immunity</p>
+                <p className="text-xs text-gray-400">Enable DTU format, mesh transport, marketplace connectivity, and collective immunity</p>
               </div>
             </div>
 
@@ -570,9 +570,9 @@ export function ForgeWorkbench() {
                           <span className="text-[10px] px-1 py-0.5 bg-yellow-500/20 text-yellow-400 rounded">Required</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 truncate">{section.description}</p>
+                      <p className="text-xs text-gray-400 truncate">{section.description}</p>
                     </div>
-                    <span className="text-xs text-gray-600 flex-shrink-0">{section.language}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{section.language}</span>
                   </div>
                 );
               })}
@@ -586,7 +586,7 @@ export function ForgeWorkbench() {
                   {activeSections.length + (activeSections.includes('repair') ? 0 : 1)} / {allSections.length}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Repair Cortex (Section 13) is always included. Required sections cannot be removed.
               </p>
             </div>
@@ -654,10 +654,10 @@ export function ForgeWorkbench() {
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
                   <Hammer className="w-16 h-16 mb-4 opacity-20" />
                   <p className="text-sm">Configure your app and click &quot;Generate App&quot;</p>
-                  <p className="text-xs mt-1 text-gray-600">One file. One process. Everything alive.</p>
+                  <p className="text-xs mt-1 text-gray-400">One file. One process. Everything alive.</p>
                 </div>
               )}
             </div>

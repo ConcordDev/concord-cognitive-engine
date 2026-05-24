@@ -36,7 +36,7 @@ export function PactNotifications({ notifications, unreadHigh }: PactNotificatio
         )}
       </div>
       {notifications.length === 0 ? (
-        <p className="text-xs italic text-zinc-500">No notifications — nothing expiring or due.</p>
+        <p className="text-xs italic text-zinc-400">No notifications — nothing expiring or due.</p>
       ) : (
         <ul className="space-y-1.5">
           {notifications.map((n, i) => (

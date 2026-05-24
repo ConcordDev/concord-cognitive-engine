@@ -295,7 +295,7 @@ function MetricCard({
         {trend === 'up' && <ArrowUpRight className="w-4 h-4 text-green-400" />}
         {trend === 'down' && <ArrowDownRight className="w-4 h-4 text-red-400" />}
       </div>
-      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -1138,7 +1138,7 @@ export default function EventsLensPage() {
                     {Boolean(d.endDate) && d.endDate !== d.date ? ` to ${String(d.endDate)}` : ''}
                   </p>
                   {Boolean(d.description) && (
-                    <p className="text-xs text-gray-500 line-clamp-2">{String(d.description)}</p>
+                    <p className="text-xs text-gray-400 line-clamp-2">{String(d.description)}</p>
                   )}
                 </div>
                 <ProgressBar
@@ -1154,8 +1154,8 @@ export default function EventsLensPage() {
                   </span>
                   {Boolean(d.location) && (
                     <>
-                      <MapPin className="w-3 h-3 text-gray-500 ml-1" />
-                      <span className="text-xs text-gray-500 truncate">{String(d.location)}</span>
+                      <MapPin className="w-3 h-3 text-gray-400 ml-1" />
+                      <span className="text-xs text-gray-400 truncate">{String(d.location)}</span>
                     </>
                   )}
                 </div>
@@ -1242,7 +1242,7 @@ export default function EventsLensPage() {
                 {d.date ? (
                   String(d.date)
                 ) : (
-                  <span className="text-gray-500 text-sm">Not scheduled</span>
+                  <span className="text-gray-400 text-sm">Not scheduled</span>
                 )}
                 {Boolean(d.endDate) && d.endDate !== d.date ? ` to ${String(d.endDate)}` : ''}
               </p>
@@ -1354,7 +1354,7 @@ export default function EventsLensPage() {
                       </span>
                     ))}
                     {attendees.length > 20 && (
-                      <span className="text-xs text-gray-500">+{attendees.length - 20} more</span>
+                      <span className="text-xs text-gray-400">+{attendees.length - 20} more</span>
                     )}
                   </div>
                 </div>
@@ -1377,15 +1377,15 @@ export default function EventsLensPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Tickets Sold</p>
+                    <p className="text-xs text-gray-400">Tickets Sold</p>
                     <p className="text-lg font-bold text-neon-cyan">{attendees.length}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Revenue</p>
+                    <p className="text-xs text-gray-400">Revenue</p>
                     <p className="text-lg font-bold text-neon-green">{ticketRevenue} CC</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Remaining</p>
+                    <p className="text-xs text-gray-400">Remaining</p>
                     <p className="text-lg font-bold">
                       {Math.max(0, Number(d.capacity || 0) - attendees.length)}
                     </p>
@@ -1421,7 +1421,7 @@ export default function EventsLensPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b border-lattice-border">
+                  <tr className="text-left text-gray-400 border-b border-lattice-border">
                     <th className="pb-2 pr-4">Tier</th>
                     <th className="pb-2 pr-4">Price</th>
                     <th className="pb-2 pr-4">Sold</th>
@@ -1542,7 +1542,7 @@ export default function EventsLensPage() {
                         </span>
                         <span className="text-gray-400 w-12 shrink-0">{seg.duration}min</span>
                         <span className="flex-1 text-gray-200">{seg.activity}</span>
-                        <span className="text-gray-500 text-xs">{seg.responsible}</span>
+                        <span className="text-gray-400 text-xs">{seg.responsible}</span>
                       </div>
                     ))}
                     {segments.length > 6 && (
@@ -1634,7 +1634,7 @@ export default function EventsLensPage() {
                 </div>
                 {/* Rooms */}
                 <div className="mb-2">
-                  <p className="text-xs text-gray-500 mb-1">Rooms / Areas</p>
+                  <p className="text-xs text-gray-400 mb-1">Rooms / Areas</p>
                   <div className="flex flex-wrap gap-1">
                     {rooms.slice(0, 4).map((r, i) => (
                       <span key={i} className={ds.badge('neon-cyan')}>
@@ -1648,7 +1648,7 @@ export default function EventsLensPage() {
                 </div>
                 {/* Setups */}
                 <div className="mb-3">
-                  <p className="text-xs text-gray-500 mb-1">Setup Options</p>
+                  <p className="text-xs text-gray-400 mb-1">Setup Options</p>
                   <div className="flex flex-wrap gap-1">
                     {setups.map((s, i) => {
                       const info = VENUE_SETUPS.find((vs) => vs.id === s.trim());
@@ -1662,7 +1662,7 @@ export default function EventsLensPage() {
                 </div>
                 {/* Contact */}
                 {Boolean(d.contactPhone || d.contactEmail) && (
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
                     {Boolean(d.contactPhone) && (
                       <span>
                         <Phone className="w-3 h-3 inline mr-1" />
@@ -1680,7 +1680,7 @@ export default function EventsLensPage() {
                 {/* Amenities */}
                 {Boolean(d.amenities) && (
                   <div className="mb-2">
-                    <p className="text-xs text-gray-500 mb-1">Amenities</p>
+                    <p className="text-xs text-gray-400 mb-1">Amenities</p>
                     <p className="text-xs text-gray-400">{String(d.amenities)}</p>
                   </div>
                 )}
@@ -1794,7 +1794,7 @@ export default function EventsLensPage() {
                   <div className="space-y-1 mb-3">
                     <p className={ds.textMuted}>{catInfo?.label || String(d.category)}</p>
                     <p className="text-sm text-gray-300">{String(d.contactName || '')}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
                       {Boolean(d.phone) && (
                         <span>
                           <Phone className="w-3 h-3 inline mr-1" />
@@ -1823,13 +1823,13 @@ export default function EventsLensPage() {
                         style={{ width: `${Math.min(100, paidPct)}%` }}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       {fmtCurrency(Number(d.paidAmount || 0))} of{' '}
                       {fmtCurrency(Number(d.contractCost || 0))} paid
                     </p>
                   </div>
                   {/* Times */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
                     <span>
                       <Clock className="w-3 h-3 inline mr-1" />
                       Setup: {String(d.setupTime || 'N/A')}
@@ -1857,7 +1857,7 @@ export default function EventsLensPage() {
                     )}
                   </div>
                   {Boolean(d.assignedEvent) && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       <CalendarDays className="w-3 h-3 inline mr-1" />
                       {String(d.assignedEvent)}
                     </p>
@@ -1948,7 +1948,7 @@ export default function EventsLensPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500 border-b border-lattice-border">
+                    <tr className="text-left text-gray-400 border-b border-lattice-border">
                       <th className="pb-2 pr-3 w-16">Time</th>
                       <th className="pb-2 pr-3 w-14">Dur.</th>
                       <th className="pb-2 pr-3">Activity</th>
@@ -1967,8 +1967,8 @@ export default function EventsLensPage() {
                         <td className="py-2 pr-3 text-gray-400">{seg.duration}m</td>
                         <td className="py-2 pr-3 font-medium">{seg.activity}</td>
                         <td className="py-2 pr-3 text-gray-400">{seg.responsible}</td>
-                        <td className="py-2 pr-3 text-xs text-gray-500">{seg.avCues}</td>
-                        <td className="py-2 pr-3 text-xs text-gray-500">{seg.transition}</td>
+                        <td className="py-2 pr-3 text-xs text-gray-400">{seg.avCues}</td>
+                        <td className="py-2 pr-3 text-xs text-gray-400">{seg.transition}</td>
                         <td className="py-2 text-xs text-amber-400/80">{seg.contingency}</td>
                       </tr>
                     ))}
@@ -2099,7 +2099,7 @@ export default function EventsLensPage() {
               <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500 border-b border-lattice-border">
+                    <tr className="text-left text-gray-400 border-b border-lattice-border">
                       <th className="pb-2 pr-4">Category</th>
                       <th className="pb-2 pr-4 text-right">Budgeted</th>
                       <th className="pb-2 pr-4 text-right">Actual</th>
@@ -2137,7 +2137,7 @@ export default function EventsLensPage() {
                               />
                             </div>
                           </td>
-                          <td className="py-2 text-xs text-gray-500">{cat.notes}</td>
+                          <td className="py-2 text-xs text-gray-400">{cat.notes}</td>
                         </tr>
                       );
                     })}
@@ -2175,7 +2175,7 @@ export default function EventsLensPage() {
                       >
                         <div>
                           <p className="text-sm font-medium">{sp.sponsor}</p>
-                          <p className="text-xs text-gray-500">{sp.tier}</p>
+                          <p className="text-xs text-gray-400">{sp.tier}</p>
                         </div>
                         <span className="text-sm font-semibold text-green-400">
                           {fmtCurrency(sp.amount)}
@@ -2198,7 +2198,7 @@ export default function EventsLensPage() {
                     const pl = rev - totalActual;
                     return (
                       <div className="text-right">
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           Revenue: {fmtCurrency(rev)} - Costs: {fmtCurrency(totalActual)}
                         </p>
                         <p
@@ -2299,27 +2299,27 @@ export default function EventsLensPage() {
                 {/* Summary row */}
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Revenue</p>
+                    <p className="text-xs text-gray-400">Revenue</p>
                     <p className="text-sm font-bold text-green-400">{fmtCurrency(totalRevenue)}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Sold</p>
+                    <p className="text-xs text-gray-400">Sold</p>
                     <p className="text-sm font-bold">{totalSold.toLocaleString()}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Remaining</p>
+                    <p className="text-xs text-gray-400">Remaining</p>
                     <p className="text-sm font-bold">{(totalAvail - totalSold).toLocaleString()}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Checked In</p>
+                    <p className="text-xs text-gray-400">Checked In</p>
                     <p className="text-sm font-bold">{totalCheckedIn.toLocaleString()}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Waitlist</p>
+                    <p className="text-xs text-gray-400">Waitlist</p>
                     <p className="text-sm font-bold text-amber-400">{totalWaitlist}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-500">Comps</p>
+                    <p className="text-xs text-gray-400">Comps</p>
                     <p className="text-sm font-bold">{totalComp}</p>
                   </div>
                 </div>
@@ -2360,24 +2360,24 @@ export default function EventsLensPage() {
                         />
                         <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                           <div>
-                            <span className="text-gray-500">Revenue:</span>{' '}
+                            <span className="text-gray-400">Revenue:</span>{' '}
                             <span className="text-green-400">{fmtCurrency(tierRev)}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Waitlist:</span>{' '}
+                            <span className="text-gray-400">Waitlist:</span>{' '}
                             <span className="text-amber-400">{Number(td.waitlist || 0)}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Comps:</span>{' '}
+                            <span className="text-gray-400">Comps:</span>{' '}
                             <span>{Number(td.compTickets || 0)}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Check-in:</span>{' '}
+                            <span className="text-gray-400">Check-in:</span>{' '}
                             <span>{Number(td.checkedIn || 0)}</span>
                           </div>
                         </div>
                         {Boolean(td.perks) && (
-                          <p className="text-xs text-gray-500 mt-2 line-clamp-2">
+                          <p className="text-xs text-gray-400 mt-2 line-clamp-2">
                             <Gift className="w-3 h-3 inline mr-1" />
                             {String(td.perks)}
                           </p>
@@ -2446,7 +2446,7 @@ export default function EventsLensPage() {
                 </div>
                 <div className="space-y-1 mb-3">
                   {Boolean(d.email) && <p className={ds.textMuted}>{String(d.email)}</p>}
-                  {Boolean(d.phone) && <p className="text-xs text-gray-500">{String(d.phone)}</p>}
+                  {Boolean(d.phone) && <p className="text-xs text-gray-400">{String(d.phone)}</p>}
                   {Boolean(d.dietaryRestrictions) && (
                     <p className="text-xs text-amber-400">{String(d.dietaryRestrictions)}</p>
                   )}
@@ -2619,7 +2619,7 @@ export default function EventsLensPage() {
       {mode !== 'dashboard' && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -2628,7 +2628,7 @@ export default function EventsLensPage() {
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}

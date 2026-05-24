@@ -53,7 +53,7 @@ export function HashtagPage({ tag, username, onBack, onOpenHashtag, onOpenDetail
         <Hash className="w-5 h-5 text-indigo-300" />
         <div>
           <h2 className="text-base font-semibold text-zinc-100">#{tag}</h2>
-          <p className="flex items-center gap-1 text-[11px] text-zinc-500">
+          <p className="flex items-center gap-1 text-[11px] text-zinc-400">
             <Users className="w-3 h-3" /> {contributors} contributor{contributors === 1 ? '' : 's'} ·
             {' '}{posts.length} post{posts.length === 1 ? '' : 's'}
           </p>
@@ -61,14 +61,14 @@ export function HashtagPage({ tag, username, onBack, onOpenHashtag, onOpenDetail
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 p-6 text-sm text-zinc-500">
+        <div className="flex items-center gap-2 p-6 text-sm text-zinc-400">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading #{tag}…
         </div>
       ) : posts.length === 0 ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-10 text-center">
           <Hash className="mx-auto mb-3 h-8 w-8 text-zinc-700" />
           <p className="text-sm text-zinc-400">No posts tagged #{tag} yet.</p>
-          <p className="mt-1 text-xs text-zinc-600">Post with #{tag} to start this topic.</p>
+          <p className="mt-1 text-xs text-zinc-400">Post with #{tag} to start this topic.</p>
         </div>
       ) : (
         <div className="space-y-2">

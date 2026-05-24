@@ -49,12 +49,12 @@ function PoemCard({
           className="text-left flex-1"
         >
           <p className="text-sm font-semibold text-zinc-100 italic">{poem.title}</p>
-          <p className="text-[11px] text-zinc-500">{poem.author} · {poem.lineCount} lines</p>
+          <p className="text-[11px] text-zinc-400">{poem.author} · {poem.lineCount} lines</p>
         </button>
         <button
           onClick={isFavorite ? onUnfavorite : onFavorite}
           aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
-          className={cn('p-1 rounded', isFavorite ? 'text-rose-400' : 'text-zinc-500 hover:text-rose-300')}
+          className={cn('p-1 rounded', isFavorite ? 'text-rose-400' : 'text-zinc-400 hover:text-rose-300')}
         >
           {isFavorite ? <Heart className="w-4 h-4 fill-current" /> : <Heart className="w-4 h-4" />}
         </button>
@@ -168,13 +168,13 @@ export function PoetryDiscovery() {
       {tab === 'today' && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] text-zinc-500">{potdDate || 'Featured today'}</span>
-            <button onClick={loadPotd} className="text-zinc-500 hover:text-zinc-200" aria-label="Refresh">
+            <span className="text-[11px] text-zinc-400">{potdDate || 'Featured today'}</span>
+            <button onClick={loadPotd} className="text-zinc-400 hover:text-zinc-200" aria-label="Refresh">
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
-          {loading && !potd && <Loader2 className="w-4 h-4 animate-spin text-zinc-500" />}
-          {!loading && !potd && !error && <p className="text-xs text-zinc-600 italic">No data yet.</p>}
+          {loading && !potd && <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />}
+          {!loading && !potd && !error && <p className="text-xs text-zinc-400 italic">No data yet.</p>}
           {potd && (
             <PoemCard
               poem={potd}
@@ -191,7 +191,7 @@ export function PoetryDiscovery() {
       {tab === 'themes' && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1.5">
-            {themes.length === 0 && <p className="text-xs text-zinc-600 italic">No data yet.</p>}
+            {themes.length === 0 && <p className="text-xs text-zinc-400 italic">No data yet.</p>}
             {themes.map(th => (
               <button key={th.id} onClick={() => openTheme(th.id)}
                 className={cn('px-2.5 py-1 rounded-lg text-xs border',
@@ -201,9 +201,9 @@ export function PoetryDiscovery() {
               </button>
             ))}
           </div>
-          {loading && activeTheme && <Loader2 className="w-4 h-4 animate-spin text-zinc-500" />}
+          {loading && activeTheme && <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />}
           {!loading && activeTheme && themePoems.length === 0 && !error && (
-            <p className="text-xs text-zinc-600 italic">No poems for this theme yet.</p>
+            <p className="text-xs text-zinc-400 italic">No poems for this theme yet.</p>
           )}
           <div className="space-y-2">
             {themePoems.map((p, i) => (
@@ -221,7 +221,7 @@ export function PoetryDiscovery() {
       {tab === 'favorites' && (
         <div className="space-y-2">
           {favorites.length === 0 && (
-            <p className="text-xs text-zinc-600 italic">
+            <p className="text-xs text-zinc-400 italic">
               No favorites yet — bookmark poems from Poem a Day or Collections.
             </p>
           )}
@@ -230,12 +230,12 @@ export function PoetryDiscovery() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-zinc-100 italic">{f.title}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {f.author} · saved {new Date(f.savedAt).toLocaleDateString()}
                   </p>
                 </div>
                 <button onClick={() => removeFav(f.id)} aria-label="Remove favorite"
-                  className="p-1 text-zinc-500 hover:text-rose-300">
+                  className="p-1 text-zinc-400 hover:text-rose-300">
                   <HeartOff className="w-4 h-4" />
                 </button>
               </div>
@@ -253,17 +253,17 @@ export function PoetryDiscovery() {
       {tab === 'history' && (
         <div className="space-y-1.5">
           {history.length === 0 && (
-            <p className="text-xs text-zinc-600 italic">No reading history yet — open a poem to log it.</p>
+            <p className="text-xs text-zinc-400 italic">No reading history yet — open a poem to log it.</p>
           )}
           {history.map(h => (
             <div key={h.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
               <div>
                 <p className="text-xs font-semibold text-zinc-200 italic">{h.title}</p>
-                <p className="text-[10px] text-zinc-500">{h.author}</p>
+                <p className="text-[10px] text-zinc-400">{h.author}</p>
               </div>
               <div className="text-right">
                 <p className="text-[11px] text-amber-300">read ×{h.readCount}</p>
-                <p className="text-[10px] text-zinc-600">{new Date(h.lastReadAt).toLocaleDateString()}</p>
+                <p className="text-[10px] text-zinc-400">{new Date(h.lastReadAt).toLocaleDateString()}</p>
               </div>
             </div>
           ))}

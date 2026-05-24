@@ -249,7 +249,7 @@ function DynastyTab({ onOk, onErr }: TabProps) {
           Bloodline ({chars.length})
         </h4>
         {chars.length === 0 ? (
-          <p className="text-[12px] text-zinc-500">No characters yet — add the dynasty founder above.</p>
+          <p className="text-[12px] text-zinc-400">No characters yet — add the dynasty founder above.</p>
         ) : dynastyTree ? (
           <TreeDiagram root={dynastyTree} />
         ) : null}
@@ -261,11 +261,11 @@ function DynastyTab({ onOk, onErr }: TabProps) {
           {chars.map((c) => (
             <li key={c.id} className="flex items-center justify-between rounded bg-zinc-950 px-2 py-1 text-[11px]">
               <span className="text-zinc-200">
-                {c.isRuler && '👑 '}{c.name} <span className="text-zinc-500">· {c.gender}, {c.age}{!c.alive && ' · ✝'}</span>
+                {c.isRuler && '👑 '}{c.name} <span className="text-zinc-400">· {c.gender}, {c.age}{!c.alive && ' · ✝'}</span>
                 {c.spouseId && <span className="text-pink-400"> · wed</span>}
               </span>
               <span className="flex items-center gap-2">
-                <span className="font-mono text-[10px] text-zinc-500">
+                <span className="font-mono text-[10px] text-zinc-400">
                   M{c.martial} D{c.diplomacy} S{c.stewardship} I{c.intrigue}
                 </span>
                 {c.alive && (
@@ -301,7 +301,7 @@ function DynastyTab({ onOk, onErr }: TabProps) {
         {marriages.length > 0 && (
           <ul className="mt-2 space-y-0.5">
             {marriages.map((m) => (
-              <li key={m.id} className="text-[10px] text-zinc-500">
+              <li key={m.id} className="text-[10px] text-zinc-400">
                 {nameOf(chars, m.aId)} ⚭ {nameOf(chars, m.bId)}{m.alliance && ' · alliance'}
               </li>
             ))}
@@ -351,7 +351,7 @@ function CouncilTab({ onOk, onErr }: TabProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">{openSeats} open seat{openSeats === 1 ? '' : 's'}. Each councilor pursues an agenda drawn from their best stat.</p>
+      <p className="text-[11px] text-zinc-400">{openSeats} open seat{openSeats === 1 ? '' : 's'}. Each councilor pursues an agenda drawn from their best stat.</p>
       {seats.map((s) => (
         <div key={s.seat} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
           <div className="flex items-center justify-between">
@@ -367,7 +367,7 @@ function CouncilTab({ onOk, onErr }: TabProps) {
             <div className="mt-1.5 text-[11px] text-zinc-300">
               <div className="font-medium text-white">{s.appointment.charName}</div>
               <div className="text-zinc-400">Agenda: {s.appointment.agenda}</div>
-              <div className="mt-0.5 flex gap-3 font-mono text-[10px] text-zinc-500">
+              <div className="mt-0.5 flex gap-3 font-mono text-[10px] text-zinc-400">
                 <span>competence {s.appointment.competence}</span>
                 <span>loyalty {s.appointment.loyalty}</span>
               </div>
@@ -467,7 +467,7 @@ function DiplomacyTab({ onOk, onErr }: TabProps) {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Treaties ({treaties.length})</h4>
         {treaties.length === 0 ? (
-          <p className="text-[12px] text-zinc-500">No treaties yet.</p>
+          <p className="text-[12px] text-zinc-400">No treaties yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {treaties.map((t) => (
@@ -476,7 +476,7 @@ function DiplomacyTab({ onOk, onErr }: TabProps) {
                   <span className="text-zinc-200">{t.kind.replace(/_/g, ' ')} · {t.counterparty}
                     {t.tributeAmount > 0 && <span className="text-amber-400"> · {t.tributeAmount} tribute</span>}
                   </span>
-                  <span className="font-mono text-[10px] text-zinc-500">{t.status}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">{t.status}</span>
                 </div>
                 {t.status === 'proposed' && (
                   <div className="mt-1 flex gap-1.5">
@@ -585,7 +585,7 @@ function WarTab({ onOk, onErr }: TabProps) {
             Declare
           </button>
         </div>
-        <label className="mt-2 block text-[10px] text-zinc-500">
+        <label className="mt-2 block text-[10px] text-zinc-400">
           Commander martial skill
           <input value={commanderMartial} onChange={(e) => setCommanderMartial(e.target.value.replace(/[^\d]/g, ''))}
             className="ml-2 w-16 rounded bg-zinc-950 px-2 py-0.5 text-[11px] text-white" />
@@ -593,13 +593,13 @@ function WarTab({ onOk, onErr }: TabProps) {
       </div>
 
       {wars.length === 0 ? (
-        <p className="text-[12px] text-zinc-500">No wars under way.</p>
+        <p className="text-[12px] text-zinc-400">No wars under way.</p>
       ) : (
         wars.map((w) => (
           <div key={w.id} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
             <div className="flex items-center justify-between">
               <h4 className="text-[12px] font-semibold text-rose-200">War on {w.target}</h4>
-              <span className="font-mono text-[10px] text-zinc-500">{w.status} · cb {w.casusBelli}</span>
+              <span className="font-mono text-[10px] text-zinc-400">{w.status} · cb {w.casusBelli}</span>
             </div>
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-[11px]">
               <Stat label="Our levies" value={w.attackerLevies} />
@@ -609,7 +609,7 @@ function WarTab({ onOk, onErr }: TabProps) {
             {w.battles.length > 0 && (
               <ul className="mt-2 space-y-0.5">
                 {w.battles.map((b) => (
-                  <li key={b.id} className="text-[10px] text-zinc-500">
+                  <li key={b.id} className="text-[10px] text-zinc-400">
                     {b.attackerWon ? '✓ victory' : '✗ defeat'} · −{b.attackerLosses} ours / −{b.defenderLosses} theirs · score {b.warScore}
                   </li>
                 ))}
@@ -717,7 +717,7 @@ function EconomyTab({ onOk, onErr }: TabProps) {
             <div key={kind} className="flex items-center justify-between rounded bg-zinc-950 px-2 py-1.5 text-[11px]">
               <div>
                 <div className="font-medium text-zinc-200">{spec.label}</div>
-                <div className="font-mono text-[10px] text-zinc-500">
+                <div className="font-mono text-[10px] text-zinc-400">
                   cost {spec.cost} · +{(spec.taxBonus * 100).toFixed(0)}% tax · +{spec.levyBonus} levy
                 </div>
               </div>
@@ -730,7 +730,7 @@ function EconomyTab({ onOk, onErr }: TabProps) {
           ))}
         </div>
         {economy && economy.buildings.length > 0 && (
-          <p className="mt-2 text-[10px] text-zinc-500">
+          <p className="mt-2 text-[10px] text-zinc-400">
             Built: {economy.buildings.map((b) => b.label).join(', ')}
           </p>
         )}
@@ -800,25 +800,25 @@ function IntrigueTab({ onOk, onErr }: TabProps) {
           </button>
         </div>
         {kinds[kind] && (
-          <p className="mt-1.5 text-[10px] text-zinc-500">
+          <p className="mt-1.5 text-[10px] text-zinc-400">
             Base success {(kinds[kind].baseSuccess * 100).toFixed(0)}% · discovery risk {(kinds[kind].discoveryRisk * 100).toFixed(0)}%
           </p>
         )}
       </div>
 
       {schemes.length === 0 ? (
-        <p className="text-[12px] text-zinc-500">No schemes in motion.</p>
+        <p className="text-[12px] text-zinc-400">No schemes in motion.</p>
       ) : (
         schemes.map((sc) => (
           <div key={sc.id} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
             <div className="flex items-center justify-between">
               <h4 className="text-[12px] font-semibold text-purple-200">{sc.label} → {sc.target}</h4>
-              <span className="font-mono text-[10px] text-zinc-500">{sc.status}</span>
+              <span className="font-mono text-[10px] text-zinc-400">{sc.status}</span>
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded bg-zinc-950">
               <div className="h-full bg-purple-500" style={{ width: `${sc.progress}%` }} />
             </div>
-            <div className="mt-1 flex justify-between text-[10px] text-zinc-500">
+            <div className="mt-1 flex justify-between text-[10px] text-zinc-400">
               <span>progress {sc.progress}%</span>
               <span>success {(sc.successChance * 100).toFixed(0)}%</span>
             </div>
@@ -917,7 +917,7 @@ function LawTab({ onOk, onErr }: TabProps) {
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-2.5">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 truncate text-[13px] font-semibold capitalize text-amber-100">{value}</div>
     </div>
   );
@@ -926,7 +926,7 @@ function InfoCard({ label, value }: { label: string; value: string }) {
 function Stat({ label, value, tone }: { label: string; value: number; tone?: 'good' | 'bad' }) {
   return (
     <div className="rounded bg-zinc-950 px-2 py-1">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`text-[13px] font-semibold tabular-nums ${
         tone === 'good' ? 'text-emerald-300' : tone === 'bad' ? 'text-rose-300' : 'text-zinc-100'
       }`}>{value}</div>

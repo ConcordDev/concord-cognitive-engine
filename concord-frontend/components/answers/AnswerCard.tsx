@@ -107,7 +107,7 @@ export function AnswerCard({
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">
+          <p className="text-xs uppercase tracking-wider text-gray-400 mb-1">
             Hard Problem
           </p>
           <h3 className="text-sm font-medium text-gray-200 leading-snug">
@@ -133,7 +133,7 @@ export function AnswerCard({
 
         <ChevronDown
           className={cn(
-            'h-4 w-4 flex-shrink-0 text-gray-500 transition-transform',
+            'h-4 w-4 flex-shrink-0 text-gray-400 transition-transform',
             expanded && 'rotate-180',
           )}
         />
@@ -166,7 +166,7 @@ export function AnswerCard({
 
               {entry.modules && entry.modules.length > 0 && (
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
+                  <p className="text-xs uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1.5">
                     <Code2 className="h-3 w-3" />
                     Concord Implementations
                   </p>

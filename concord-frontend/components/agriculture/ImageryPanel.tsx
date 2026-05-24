@@ -46,7 +46,7 @@ export function ImageryPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ImageIcon className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Imagery layers · drone + satellite</span>
-        <span className="ml-auto text-[10px] text-gray-500">{imagery.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{imagery.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
         <input value={form.fieldId} onChange={e => setForm({ ...form, fieldId: e.target.value })} placeholder="Field ID" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -62,9 +62,9 @@ export function ImageryPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : imagery.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><ImageIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />No imagery attached.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><ImageIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />No imagery attached.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {imagery.map(i => (
@@ -72,7 +72,7 @@ export function ImageryPanel() {
                 {i.source === 'satellite' ? <Satellite className="w-3.5 h-3.5 text-cyan-300" /> : <Plane className="w-3.5 h-3.5 text-emerald-300" />}
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white truncate">{i.url}</div>
-                  <div className="text-[10px] text-gray-500">Field {i.fieldId.slice(0, 10)} · {i.source} · {new Date(i.capturedAt).toLocaleDateString()}</div>
+                  <div className="text-[10px] text-gray-400">Field {i.fieldId.slice(0, 10)} · {i.source} · {new Date(i.capturedAt).toLocaleDateString()}</div>
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', KIND_COLOUR[i.kind])}>{i.kind}</span>
               </li>

@@ -114,7 +114,7 @@ export function DummyPresetPanel({ onApply }: { onApply: (c: AppliedDummyConfig)
       {selected && (
         <div className="mb-2 rounded bg-slate-800/40 px-2 py-1 text-[10px] text-slate-400">
           {selected.blurb}
-          <div className="mt-0.5 tabular-nums text-slate-500">
+          <div className="mt-0.5 tabular-nums text-slate-400">
             block {Math.round(selected.blockChance * 100)}% · speed {selected.moveSpeed} · {selected.counterAttack ? 'counters' : 'no counter'}
           </div>
         </div>
@@ -163,7 +163,7 @@ export function DummyPresetPanel({ onApply }: { onApply: (c: AppliedDummyConfig)
       </div>
 
       {saved.length === 0 ? (
-        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-500">
+        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-400">
           No saved dummy presets yet.
         </div>
       ) : (
@@ -172,9 +172,9 @@ export function DummyPresetPanel({ onApply }: { onApply: (c: AppliedDummyConfig)
             <li key={c.id} className="flex items-center gap-1.5 rounded bg-slate-800/60 px-2 py-1">
               <button onClick={() => loadSaved(c)} className="min-w-0 flex-1 text-left hover:text-amber-200">
                 <div className="truncate text-slate-200">{c.name}</div>
-                <div className="text-[9px] text-slate-500">{c.behaviorId} · {c.count}× {c.hp} HP</div>
+                <div className="text-[9px] text-slate-400">{c.behaviorId} · {c.count}× {c.hp} HP</div>
               </button>
-              <button onClick={() => remove(c.id)} aria-label="Delete dummy preset" className="text-slate-500 hover:text-rose-400">
+              <button onClick={() => remove(c.id)} aria-label="Delete dummy preset" className="text-slate-400 hover:text-rose-400">
                 <Trash2 className="h-3 w-3" />
               </button>
             </li>

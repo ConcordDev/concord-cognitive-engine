@@ -76,7 +76,7 @@ export function IncidentPanel({
       <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
         <GitMerge className="h-4 w-4 text-rose-400" /> Incident correlation
       </h2>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Tick related alerts on the board, then group them into one tracked incident.
         Each incident plots its member alerts on a chronological timeline.
       </p>
@@ -97,7 +97,7 @@ export function IncidentPanel({
           className="w-full resize-none rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 focus:border-rose-500 focus:outline-none"
         />
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-400">
             {selectedIds.length} alert{selectedIds.length === 1 ? '' : 's'} selected
           </span>
           <button
@@ -114,7 +114,7 @@ export function IncidentPanel({
       </div>
 
       {incidents.length === 0 ? (
-        <p className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-5 text-center text-xs italic text-zinc-600">
+        <p className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-5 text-center text-xs italic text-zinc-400">
           No incidents yet.
         </p>
       ) : (

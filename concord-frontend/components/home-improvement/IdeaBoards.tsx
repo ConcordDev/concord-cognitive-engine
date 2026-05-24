@@ -87,7 +87,7 @@ export function IdeaBoards() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <Lightbulb className="w-4 h-4 text-amber-400" /> Idea Boards
-          <span className="text-xs text-gray-500">({boards.length})</span>
+          <span className="text-xs text-gray-400">({boards.length})</span>
         </h3>
         <button onClick={() => setShowForm((v) => !v)} className="text-xs flex items-center gap-1 text-amber-400 hover:text-amber-300">
           <Plus className="w-3.5 h-3.5" /> New board
@@ -112,9 +112,9 @@ export function IdeaBoards() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading boards...</div>
+        <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading boards...</div>
       ) : boards.length === 0 ? (
-        <p className="text-xs text-gray-500">No idea boards yet. Collect inspiration for your next project.</p>
+        <p className="text-xs text-gray-400">No idea boards yet. Collect inspiration for your next project.</p>
       ) : (
         <div className="space-y-3">
           {boards.map((b) => (
@@ -122,14 +122,14 @@ export function IdeaBoards() {
               <div className="flex items-center justify-between">
                 <button onClick={() => setOpenBoard((o) => (o === b.id ? null : b.id))} className="min-w-0 text-left">
                   <p className="text-sm font-medium text-white truncate">{b.name}</p>
-                  <p className="text-xs text-gray-500">{b.room.replace(/_/g, ' ')} · {b.ideaCount} idea{b.ideaCount !== 1 ? 's' : ''}{b.description ? ` · ${b.description}` : ''}</p>
+                  <p className="text-xs text-gray-400">{b.room.replace(/_/g, ' ')} · {b.ideaCount} idea{b.ideaCount !== 1 ? 's' : ''}{b.description ? ` · ${b.description}` : ''}</p>
                 </button>
-                <button onClick={() => removeBoard(b.id)} disabled={busy} className="text-gray-500 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => removeBoard(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
 
               {openBoard === b.id && (
                 <div className="space-y-2 border-t border-lattice-border pt-2">
-                  {b.ideas.length === 0 && <p className="text-xs text-gray-500">No ideas pinned yet.</p>}
+                  {b.ideas.length === 0 && <p className="text-xs text-gray-400">No ideas pinned yet.</p>}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {b.ideas.map((idea) => (
                       <div key={idea.id} className="rounded-lg bg-lattice-deep p-2 space-y-1">
@@ -148,7 +148,7 @@ export function IdeaBoards() {
                           {idea.sourceUrl ? (
                             <a href={idea.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-neon-cyan flex items-center gap-0.5"><Link2 className="w-3 h-3" /> source</a>
                           ) : <span />}
-                          <button onClick={() => removeIdea(b.id, idea.id)} disabled={busy} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={() => removeIdea(b.id, idea.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </div>
                     ))}

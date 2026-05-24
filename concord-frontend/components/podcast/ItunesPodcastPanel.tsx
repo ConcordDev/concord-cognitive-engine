@@ -80,7 +80,7 @@ export function ItunesPodcastPanel({ className }: ItunesPodcastPanelProps) {
           type="button"
           onClick={() => void fetchData(query)}
           disabled={loading || !query.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -88,7 +88,7 @@ export function ItunesPodcastPanel({ className }: ItunesPodcastPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -106,13 +106,13 @@ export function ItunesPodcastPanel({ className }: ItunesPodcastPanelProps) {
       )}
 
       {!error && !loading && podcasts.length === 0 && query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
           No podcasts for that query.
         </div>
       )}
 
       {!error && !query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
           Search the iTunes podcast directory.
         </div>
       )}
@@ -134,15 +134,15 @@ export function ItunesPodcastPanel({ className }: ItunesPodcastPanelProps) {
                   >
                     {p.name}
                   </a>
-                  <div className="text-[10px] text-zinc-500 mt-0.5 truncate">{p.artist}</div>
-                  <div className="text-[10px] text-zinc-500 truncate">{p.primaryGenre}{p.trackCount ? ` · ${p.trackCount} eps` : ''}</div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5 truncate">{p.artist}</div>
+                  <div className="text-[10px] text-zinc-400 truncate">{p.primaryGenre}{p.trackCount ? ` · ${p.trackCount} eps` : ''}</div>
                 </div>
               </div>
               {p.feedUrl && (
                 <a
                   href={p.feedUrl}
                   target="_blank" rel="noopener noreferrer"
-                  className="text-[10px] text-zinc-500 hover:text-pink-300 flex items-center gap-1 mt-1.5"
+                  className="text-[10px] text-zinc-400 hover:text-pink-300 flex items-center gap-1 mt-1.5"
                 >
                   <Rss className="w-2.5 h-2.5" /> RSS feed
                 </a>
@@ -152,7 +152,7 @@ export function ItunesPodcastPanel({ className }: ItunesPodcastPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: iTunes Search API · {updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

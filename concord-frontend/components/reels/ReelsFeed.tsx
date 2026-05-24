@@ -74,7 +74,7 @@ export function ReelsFeed({ className }: ReelsFeedProps) {
 
   if (isLoading) {
     return (
-      <div className={cn('flex items-center gap-2 py-10 text-zinc-500 text-sm', className)}>
+      <div className={cn('flex items-center gap-2 py-10 text-zinc-400 text-sm', className)}>
         <Loader2 className="w-4 h-4 animate-spin" /> Loading reels…
       </div>
     );
@@ -84,7 +84,7 @@ export function ReelsFeed({ className }: ReelsFeedProps) {
     return (
       <>
         <div className={cn('text-center py-12 text-zinc-400', className)}>
-          <Play className="w-6 h-6 mx-auto mb-2 text-zinc-500" />
+          <Play className="w-6 h-6 mx-auto mb-2 text-zinc-400" />
           <div className="font-medium text-zinc-200">No reels yet</div>
           <div className="text-sm mt-1">Be the first to post a reel.</div>
         </div>
@@ -186,14 +186,14 @@ function ReelCard({ reel, onWatched }: { reel: Reel; onWatched: () => void }) {
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2 text-sm">
           <UserLink userId={reel.userId} prefix="@" />
-          <div className="text-[10px] text-zinc-500 font-mono">
+          <div className="text-[10px] text-zinc-400 font-mono">
             {reel.viewCount} view{reel.viewCount === 1 ? '' : 's'}
             {reel.viewCount > 0 && ` · ${ratio}% complete`}
           </div>
         </div>
         {reel.caption && <p className="text-sm text-zinc-100 whitespace-pre-wrap">{reel.caption}</p>}
         {reel.musicAttribution && (
-          <div className="text-[10px] text-zinc-500 italic">♫ {reel.musicAttribution}</div>
+          <div className="text-[10px] text-zinc-400 italic">♫ {reel.musicAttribution}</div>
         )}
         <div className="flex items-center gap-2 flex-wrap">
           <ReactionBar postId={reel.postId} compact />

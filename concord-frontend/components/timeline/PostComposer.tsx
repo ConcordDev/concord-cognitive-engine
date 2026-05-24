@@ -188,7 +188,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
             disabled={!canPost}
             className={cn(
               'px-5 py-1.5 rounded-lg font-medium text-sm transition-colors inline-flex items-center gap-1.5',
-              canPost ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-700 text-gray-500 cursor-not-allowed',
+              canPost ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-700 text-gray-400 cursor-not-allowed',
             )}
           >
             {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}

@@ -197,19 +197,19 @@ function CookingTimer() {
 function IngredientChecklist({ ingredients }: { ingredients: string[] }) {
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const toggle = (i: number) => setChecked(prev => { const s = new Set(prev); if (s.has(i)) s.delete(i); else s.add(i); return s; });
-  if (!ingredients || ingredients.length === 0) return <p className="text-xs text-gray-500 italic">No ingredients listed.</p>;
+  if (!ingredients || ingredients.length === 0) return <p className="text-xs text-gray-400 italic">No ingredients listed.</p>;
   return (
     <ul className="space-y-1.5">
       {ingredients.map((ing, i) => (
         <li key={i} onClick={() => toggle(i)} className="flex items-center gap-2 cursor-pointer group">
           {checked.has(i)
             ? <CheckSquare className="w-4 h-4 text-neon-green shrink-0" />
-            : <Square className="w-4 h-4 text-gray-500 shrink-0 group-hover:text-gray-300" />}
-          <span className={cn('text-sm transition-colors', checked.has(i) ? 'line-through text-gray-500' : 'text-gray-200')}>{ing}</span>
+            : <Square className="w-4 h-4 text-gray-400 shrink-0 group-hover:text-gray-300" />}
+          <span className={cn('text-sm transition-colors', checked.has(i) ? 'line-through text-gray-400' : 'text-gray-200')}>{ing}</span>
         </li>
       ))}
       {checked.size > 0 && (
-        <li className="text-xs text-gray-500 pt-1">{checked.size}/{ingredients.length} checked</li>
+        <li className="text-xs text-gray-400 pt-1">{checked.size}/{ingredients.length} checked</li>
       )}
     </ul>
   );
@@ -389,7 +389,7 @@ export default function CookingLensPage() {
           <div className="relative rounded-lg bg-lattice-deep border border-orange-500/20 p-3 text-xs space-y-1">
             <div className="flex items-center justify-between mb-1">
               <span className="text-orange-300 font-medium capitalize">{actionResult.action}</span>
-              <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300" aria-label="Xcircle">
+              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-gray-300" aria-label="Xcircle">
                 <XCircle className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -408,15 +408,15 @@ export default function CookingLensPage() {
                   <div className="grid grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="font-bold text-orange-400">{actionResult.result.baseServings}</p>
-                      <p className="text-[10px] text-gray-500">Original</p>
+                      <p className="text-[10px] text-gray-400">Original</p>
                     </div>
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="font-bold text-neon-green">{actionResult.result.targetServings}</p>
-                      <p className="text-[10px] text-gray-500">Target</p>
+                      <p className="text-[10px] text-gray-400">Target</p>
                     </div>
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="font-bold text-neon-cyan">{actionResult.result.scaleFactor}×</p>
-                      <p className="text-[10px] text-gray-500">Factor</p>
+                      <p className="text-[10px] text-gray-400">Factor</p>
                     </div>
                   </div>
                   {actionResult.result.recipe && (
@@ -426,7 +426,7 @@ export default function CookingLensPage() {
                     {actionResult.result.ingredients.map((ing) => (
                       <div key={ing.name} className="flex items-center justify-between text-gray-300 bg-lattice-bg px-2 py-1 rounded">
                         <span className="font-medium">{ing.name}</span>
-                        <span className="text-gray-500">{ing.original} → <span className="text-orange-400">{ing.scaled}</span></span>
+                        <span className="text-gray-400">{ing.original} → <span className="text-orange-400">{ing.scaled}</span></span>
                       </div>
                     ))}
                   </div>
@@ -439,23 +439,23 @@ export default function CookingLensPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="text-lg font-bold text-orange-400">{actionResult.result.totalCalories}</p>
-                      <p className="text-[10px] text-gray-500">Total kcal</p>
+                      <p className="text-[10px] text-gray-400">Total kcal</p>
                     </div>
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="text-lg font-bold text-neon-cyan">{actionResult.result.perServing}</p>
-                      <p className="text-[10px] text-gray-500">Per serving ({actionResult.result.servings})</p>
+                      <p className="text-[10px] text-gray-400">Per serving ({actionResult.result.servings})</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {Object.entries(actionResult.result.macros || {}).map(([macro, val]) => (
                       <div key={macro} className="p-1.5 bg-lattice-bg rounded text-center">
                         <p className="font-bold text-neon-green">{val}</p>
-                        <p className="text-[10px] text-gray-500">{macro}</p>
+                        <p className="text-[10px] text-gray-400">{macro}</p>
                       </div>
                     ))}
                   </div>
                   {actionResult.result.note && (
-                    <p className="text-[10px] text-gray-500 italic">{actionResult.result.note}</p>
+                    <p className="text-[10px] text-gray-400 italic">{actionResult.result.note}</p>
                   )}
                 </div>
               )}
@@ -466,15 +466,15 @@ export default function CookingLensPage() {
                   <div className="grid grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="font-bold text-orange-400">{actionResult.result.days}</p>
-                      <p className="text-[10px] text-gray-500">Days</p>
+                      <p className="text-[10px] text-gray-400">Days</p>
                     </div>
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="font-bold text-neon-green">${actionResult.result.dailyBudget}</p>
-                      <p className="text-[10px] text-gray-500">Daily Budget</p>
+                      <p className="text-[10px] text-gray-400">Daily Budget</p>
                     </div>
                     <div className="p-2 bg-lattice-bg rounded text-center">
                       <p className="font-bold text-neon-cyan">${actionResult.result.weeklyBudget}</p>
-                      <p className="text-[10px] text-gray-500">Weekly Total</p>
+                      <p className="text-[10px] text-gray-400">Weekly Total</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-gray-400">
@@ -486,7 +486,7 @@ export default function CookingLensPage() {
                     {actionResult.result.plan.map((day) => (
                       <div key={day.day} className="p-1 bg-lattice-bg rounded text-center">
                         <p className="text-[10px] font-medium text-orange-400">{day.dayName}</p>
-                        <p className="text-[10px] text-gray-500">{day.meals.length}m</p>
+                        <p className="text-[10px] text-gray-400">{day.meals.length}m</p>
                       </div>
                     ))}
                   </div>
@@ -510,7 +510,7 @@ export default function CookingLensPage() {
                           <span className="text-gray-200">{s.sub}</span>
                           <span className="text-neon-cyan text-[10px] font-mono">{s.ratio}</span>
                         </div>
-                        {s.note && <p className="text-[10px] text-gray-500">{s.note}</p>}
+                        {s.note && <p className="text-[10px] text-gray-400">{s.note}</p>}
                       </div>
                     ))}
                   </div>
@@ -549,7 +549,7 @@ export default function CookingLensPage() {
 
       <div className="space-y-2">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             ref={searchInputRef}
             value={search}
@@ -577,7 +577,7 @@ export default function CookingLensPage() {
             </button>
           ))}
           {(search || difficultyFilter !== 'all') && (
-            <span className="text-[10px] text-gray-500 ml-2">{recipes.length} match</span>
+            <span className="text-[10px] text-gray-400 ml-2">{recipes.length} match</span>
           )}
         </div>
       </div>
@@ -597,7 +597,7 @@ export default function CookingLensPage() {
               {/* Title row */}
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-white truncate flex-1 mr-2">{r.name}</h3>
-                <button onClick={() => remove(r.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 shrink-0">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                <button onClick={() => remove(r.id)} disabled={deleteMut.isPending} className="text-gray-400 hover:text-red-400 shrink-0">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
               </div>
 
               {/* Badges row */}
@@ -618,7 +618,7 @@ export default function CookingLensPage() {
                 {r.servings > 0 && (
                   <span className="flex items-center gap-1 text-neon-green">
                     <Users className="w-3 h-3" />{adjustedServings} serving{adjustedServings !== 1 ? 's' : ''}
-                    {mult !== 1 && <span className="text-gray-500 ml-1">(×{mult})</span>}
+                    {mult !== 1 && <span className="text-gray-400 ml-1">(×{mult})</span>}
                   </span>
                 )}
               </div>
@@ -626,7 +626,7 @@ export default function CookingLensPage() {
               {/* Serving adjuster */}
               {r.servings > 0 && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Servings:</span>
+                  <span className="text-xs text-gray-400">Servings:</span>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setServingMultipliers(p => ({ ...p, [r.id]: Math.max(0.25, (p[r.id] ?? 1) - 0.25) }))}
                       className="w-6 h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-xs">−</button>
@@ -635,7 +635,7 @@ export default function CookingLensPage() {
                       className="w-6 h-6 rounded bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-xs">+</button>
                   </div>
                   {mult !== 1 && (
-                    <button onClick={() => setServingMultipliers(p => ({ ...p, [r.id]: 1 }))} className="text-xs text-gray-600 hover:text-gray-400">reset</button>
+                    <button onClick={() => setServingMultipliers(p => ({ ...p, [r.id]: 1 }))} className="text-xs text-gray-400 hover:text-gray-400">reset</button>
                   )}
                 </div>
               )}

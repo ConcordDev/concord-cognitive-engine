@@ -243,7 +243,7 @@ function WaveformPlayer({
           <div className="flex items-center gap-2 mb-1.5">
             <FileText className="w-3.5 h-3.5 text-neon-cyan" />
             <span className="text-sm font-medium text-white truncate">{title}</span>
-            {bitrate && <span className="text-xs text-gray-500">{bitrate} kbps</span>}
+            {bitrate && <span className="text-xs text-gray-400">{bitrate} kbps</span>}
           </div>
           <div className="flex items-end gap-[2px] h-8">
             {waveform.map((h, i) => {
@@ -261,7 +261,7 @@ function WaveformPlayer({
             })}
           </div>
         </div>
-        <span className="text-xs text-gray-500 tabular-nums flex-shrink-0">{duration}</span>
+        <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">{duration}</span>
       </div>
     </motion.div>
   );
@@ -295,7 +295,7 @@ function ReleaseCard({ release }: { release: ReleaseAttachment }) {
           </p>
           <div className="mt-2 flex flex-wrap gap-1">
             {release.tracks.slice(0, 3).map((t, i) => (
-              <span key={i} className="text-[11px] text-gray-500">
+              <span key={i} className="text-[11px] text-gray-400">
                 {i + 1}. {t}
                 {i < 2 ? ',' : ''}
               </span>
@@ -994,9 +994,9 @@ export default function FeedLensPage() {
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-neon-cyan to-neon-purple flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">Your Name</p>
-              <p className="text-xs text-gray-500 truncate">@you</p>
+              <p className="text-xs text-gray-400 truncate">@you</p>
             </div>
-            <MoreHorizontal className="w-4 h-4 text-gray-500" />
+            <MoreHorizontal className="w-4 h-4 text-gray-400" />
           </div>
         </div>
       </aside>
@@ -1041,7 +1041,7 @@ export default function FeedLensPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
                   'flex-1 py-3 text-sm font-medium transition-colors relative',
-                  activeTab === tab.key ? 'text-white' : 'text-gray-500 hover:bg-lattice-surface/50'
+                  activeTab === tab.key ? 'text-white' : 'text-gray-400 hover:bg-lattice-surface/50'
                 )}
               >
                 {tab.label}
@@ -1235,7 +1235,7 @@ export default function FeedLensPage() {
                               <div className="flex-1 min-w-0">
                                 <p className="text-white font-medium truncate">{item.name}</p>
                                 {item.uniqueValue && (
-                                  <p className="text-xs text-gray-500 truncate">
+                                  <p className="text-xs text-gray-400 truncate">
                                     {item.uniqueValue}
                                   </p>
                                 )}
@@ -1250,7 +1250,7 @@ export default function FeedLensPage() {
                         }
                       )}
                     {(marketplaceListings || []).length === 0 && (
-                      <p className="text-xs text-gray-500 text-center py-2">
+                      <p className="text-xs text-gray-400 text-center py-2">
                         Type to search marketplace listings
                       </p>
                     )}
@@ -1356,9 +1356,9 @@ export default function FeedLensPage() {
                         {post.author.verified && (
                           <Verified className="w-4 h-4 text-neon-cyan fill-neon-cyan flex-shrink-0" />
                         )}
-                        <span className="text-gray-500 truncate">@{post.author.handle}</span>
+                        <span className="text-gray-400 truncate">@{post.author.handle}</span>
                         <span className="text-gray-600 flex-shrink-0">&middot;</span>
-                        <span className="text-gray-500 hover:underline cursor-pointer flex-shrink-0">
+                        <span className="text-gray-400 hover:underline cursor-pointer flex-shrink-0">
                           {formatTime(post.createdAt)}
                         </span>
                         {post.dtuSource && (
@@ -1510,7 +1510,7 @@ export default function FeedLensPage() {
                       )}
 
                       {/* Engagement Bar */}
-                      <div className="flex items-center justify-between mt-3 max-w-md text-gray-500">
+                      <div className="flex items-center justify-between mt-3 max-w-md text-gray-400">
                         <button
                           onClick={() => toggleComments(post.id)}
                           className={cn(
@@ -1659,7 +1659,7 @@ export default function FeedLensPage() {
 
                               {/* Comment list */}
                               {(postComments[post.id] || []).length === 0 ? (
-                                <p className="text-xs text-gray-500 text-center py-2">
+                                <p className="text-xs text-gray-400 text-center py-2">
                                   No comments yet. Be the first!
                                 </p>
                               ) : (
@@ -1672,7 +1672,7 @@ export default function FeedLensPage() {
                                           <span className="text-xs font-semibold text-white">
                                             {comment.userId}
                                           </span>
-                                          <span className="text-[10px] text-gray-600">
+                                          <span className="text-[10px] text-gray-400">
                                             {formatTime(comment.createdAt)}
                                           </span>
                                         </div>
@@ -1725,7 +1725,7 @@ export default function FeedLensPage() {
       <aside className="w-80 p-4 hidden lg:flex flex-col gap-4 sticky top-0 h-screen overflow-y-auto">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             ref={searchInputRef}
               type="text"
@@ -1748,9 +1748,9 @@ export default function FeedLensPage() {
               onClick={() => setSearchQuery(topic.tag.replace('#', ''))}
               className="w-full px-4 py-2.5 hover:bg-lattice-deep transition-colors text-left"
             >
-              <p className="text-[11px] text-gray-500 uppercase tracking-wider">{topic.category}</p>
+              <p className="text-[11px] text-gray-400 uppercase tracking-wider">{topic.category}</p>
               <p className="font-semibold text-white text-sm">{topic.tag}</p>
-              <p className="text-[11px] text-gray-500">{formatNumber(topic.posts)} posts</p>
+              <p className="text-[11px] text-gray-400">{formatNumber(topic.posts)} posts</p>
             </button>
           ))}
           <button
@@ -1878,7 +1878,7 @@ export default function FeedLensPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-white truncate">{rel.title}</p>
-                <p className="text-xs text-gray-500 truncate">{rel.artist}</p>
+                <p className="text-xs text-gray-400 truncate">{rel.artist}</p>
               </div>
             </button>
           ))}
@@ -1891,7 +1891,7 @@ export default function FeedLensPage() {
         </div>
 
         {/* Footer links */}
-        <div className="px-4 text-[11px] text-gray-600 leading-relaxed">
+        <div className="px-4 text-[11px] text-gray-400 leading-relaxed">
           Terms &middot; Privacy &middot; Cookies &middot; Accessibility &middot; About &middot;
           Concord &copy; 2026
         </div>
@@ -1965,7 +1965,7 @@ export default function FeedLensPage() {
             <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
               <button
                 onClick={() => setFeedActionResult(null)}
-                className="absolute top-3 right-3 text-gray-500 hover:text-white"
+                className="absolute top-3 right-3 text-gray-400 hover:text-white"
               aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
@@ -2033,7 +2033,7 @@ export default function FeedLensPage() {
                                 {p.likes}♥ {p.comments}💬 {p.shares}↗
                               </span>
                               <span
-                                className={`text-xs font-mono ${p.engagementRate > 5 ? 'text-neon-green' : p.engagementRate > 2 ? 'text-yellow-400' : 'text-gray-500'}`}
+                                className={`text-xs font-mono ${p.engagementRate > 5 ? 'text-neon-green' : p.engagementRate > 2 ? 'text-yellow-400' : 'text-gray-400'}`}
                               >
                                 {p.engagementRate}%
                               </span>
@@ -2124,7 +2124,7 @@ export default function FeedLensPage() {
                       <p className="text-xl font-bold text-neon-purple">
                         {((feedActionResult.totalFollowers as number) || 0).toLocaleString()}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-400 mt-1">
                         Growth: {feedActionResult.growthRate as string}
                       </p>
                     </div>
@@ -2225,7 +2225,7 @@ export default function FeedLensPage() {
                         </div>
                       )}
                       {feedActionResult.recommendation && (
-                        <p className="text-xs text-gray-500 italic">
+                        <p className="text-xs text-gray-400 italic">
                           {feedActionResult.recommendation as string}
                         </p>
                       )}
@@ -2303,7 +2303,7 @@ function RisingCreatorsSidebar() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-white truncate">{creator.displayName}</p>
-            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+            <div className="flex items-center gap-2 text-[11px] text-gray-400">
               <span>
                 <Users className="w-3 h-3 inline" /> {creator.followerCount}
               </span>

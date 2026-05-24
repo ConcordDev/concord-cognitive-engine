@@ -78,11 +78,11 @@ function KinematicsTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <p className="text-[11px] text-gray-500">Provide any 3 of v₀, v, a, t, x. Empty fields will be solved.</p>
+      <p className="text-[11px] text-gray-400">Provide any 3 of v₀, v, a, t, x. Empty fields will be solved.</p>
       <div className="grid grid-cols-5 gap-2">
         {(['v0','v','a','t','x'] as const).map((k) => (
           <label key={k} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-gray-500 font-mono">{k}</span>
+            <span className="text-[10px] uppercase text-gray-400 font-mono">{k}</span>
             <input type="number" value={vals[k]}
               onChange={(e) => setVals({ ...vals, [k]: e.target.value })}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -96,11 +96,11 @@ function KinematicsTab() {
         <div className="rounded border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-1 text-sm">
           {Object.entries(result.solved).map(([k, v]) => (
             <p key={k}>
-              <span className="font-mono text-gray-500">{k}:</span>{' '}
+              <span className="font-mono text-gray-400">{k}:</span>{' '}
               <span className="font-mono text-gray-100">{v == null ? '—' : v}</span>
             </p>
           ))}
-          <p className="text-[10px] text-gray-500 mt-2">{result.equations.join(' · ')}</p>
+          <p className="text-[10px] text-gray-400 mt-2">{result.equations.join(' · ')}</p>
         </div>
       )}
     </div>
@@ -135,7 +135,7 @@ function ProjectileTab() {
           ['h₀ (m)', h0, setH0],
         ] as const).map(([label, val, setter]) => (
           <label key={label} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-gray-500">{label}</span>
+            <span className="text-[10px] uppercase text-gray-400">{label}</span>
             <input type="number" value={val}
               onChange={(e) => setter(e.target.value)}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -147,12 +147,12 @@ function ProjectileTab() {
 
       {result && (
         <div className="rounded border border-indigo-500/20 bg-indigo-500/5 p-3 grid grid-cols-2 gap-2 text-xs">
-          <p><span className="text-gray-500">Time of flight:</span> <span className="font-mono text-gray-100">{result.timeOfFlight_s}s</span></p>
-          <p><span className="text-gray-500">Range:</span> <span className="font-mono text-gray-100">{result.range_m}m</span></p>
-          <p><span className="text-gray-500">Max height:</span> <span className="font-mono text-gray-100">{result.maxHeight_m}m</span></p>
-          <p><span className="text-gray-500">Time to apex:</span> <span className="font-mono text-gray-100">{result.timeToApex_s}s</span></p>
-          <p><span className="text-gray-500">Impact speed:</span> <span className="font-mono text-gray-100">{result.impactSpeed_mps} m/s</span></p>
-          <p><span className="text-gray-500">v₀x · v₀y:</span> <span className="font-mono text-gray-100">{result.v0x_mps} · {result.v0y_mps}</span></p>
+          <p><span className="text-gray-400">Time of flight:</span> <span className="font-mono text-gray-100">{result.timeOfFlight_s}s</span></p>
+          <p><span className="text-gray-400">Range:</span> <span className="font-mono text-gray-100">{result.range_m}m</span></p>
+          <p><span className="text-gray-400">Max height:</span> <span className="font-mono text-gray-100">{result.maxHeight_m}m</span></p>
+          <p><span className="text-gray-400">Time to apex:</span> <span className="font-mono text-gray-100">{result.timeToApex_s}s</span></p>
+          <p><span className="text-gray-400">Impact speed:</span> <span className="font-mono text-gray-100">{result.impactSpeed_mps} m/s</span></p>
+          <p><span className="text-gray-400">v₀x · v₀y:</span> <span className="font-mono text-gray-100">{result.v0x_mps} · {result.v0y_mps}</span></p>
         </div>
       )}
     </div>
@@ -233,7 +233,7 @@ function ConstantsTab() {
     })();
   }, []);
 
-  if (loading) return <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
+  if (loading) return <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
 
   return (
     <div className="p-3 space-y-1">
@@ -241,11 +241,11 @@ function ConstantsTab() {
         <div key={sym} className="rounded border border-white/10 bg-black/20 p-2 flex items-center justify-between text-xs">
           <div>
             <p className="font-mono text-indigo-300">{sym}</p>
-            <p className="text-[10px] text-gray-500">{c.name}</p>
+            <p className="text-[10px] text-gray-400">{c.name}</p>
           </div>
           <div className="text-right">
             <p className="font-mono text-gray-100">{c.value.toExponential(4)}</p>
-            <p className="text-[10px] text-gray-500 font-mono">{c.units}</p>
+            <p className="text-[10px] text-gray-400 font-mono">{c.units}</p>
           </div>
         </div>
       ))}

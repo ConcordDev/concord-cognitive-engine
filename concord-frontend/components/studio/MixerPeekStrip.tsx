@@ -79,7 +79,7 @@ export default function MixerPeekStrip({
     <footer className={cn('bg-zinc-950/80 backdrop-blur-sm border-t border-white/10 overflow-hidden', className)}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/10">
-        <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-500">
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-400">
           <Volume2 className="w-3 h-3" />
           Mixer
           <span className="text-zinc-600">· {tracks.length} tracks</span>
@@ -140,15 +140,15 @@ export default function MixerPeekStrip({
                 <div className="text-[10px] font-mono text-zinc-300 truncate w-full text-center">{t.name}</div>
                 <div className="flex gap-1 text-[8px]">
                   <button
-                    className={cn('px-1 py-0.5 rounded border', t.mute ? 'border-amber-400 text-amber-400 bg-amber-400/10' : 'border-zinc-700 text-zinc-500')}
+                    className={cn('px-1 py-0.5 rounded border', t.mute ? 'border-amber-400 text-amber-400 bg-amber-400/10' : 'border-zinc-700 text-zinc-400')}
                     onClick={(e) => { e.stopPropagation(); onUpdateTrack?.(t.id, { mute: !t.mute }); }}
                   >M</button>
                   <button
-                    className={cn('px-1 py-0.5 rounded border', t.solo ? 'border-yellow-400 text-yellow-400 bg-yellow-400/10' : 'border-zinc-700 text-zinc-500')}
+                    className={cn('px-1 py-0.5 rounded border', t.solo ? 'border-yellow-400 text-yellow-400 bg-yellow-400/10' : 'border-zinc-700 text-zinc-400')}
                     onClick={(e) => { e.stopPropagation(); onUpdateTrack?.(t.id, { solo: !t.solo }); }}
                   >S</button>
                   <button
-                    className={cn('px-1 py-0.5 rounded border', t.armed ? 'border-rose-400 text-rose-400 bg-rose-400/10' : 'border-zinc-700 text-zinc-500')}
+                    className={cn('px-1 py-0.5 rounded border', t.armed ? 'border-rose-400 text-rose-400 bg-rose-400/10' : 'border-zinc-700 text-zinc-400')}
                     onClick={(e) => { e.stopPropagation(); onUpdateTrack?.(t.id, { armed: !t.armed }); }}
                   >R</button>
                 </div>
@@ -164,7 +164,7 @@ export default function MixerPeekStrip({
                     <Meter level={level} color={t.mute ? 'bg-zinc-500' : 'bg-emerald-400'} />
                   </div>
                 </div>
-                <div className="text-[10px] font-mono text-zinc-500">{Math.round(vol * 100)}</div>
+                <div className="text-[10px] font-mono text-zinc-400">{Math.round(vol * 100)}</div>
                 <div className="w-full">
                   <input
                     type="range"
@@ -173,7 +173,7 @@ export default function MixerPeekStrip({
                     className="w-full accent-cyan-400 h-1"
                     aria-label={`${t.name} pan`}
                   />
-                  <div className="text-[9px] text-zinc-500 text-center">
+                  <div className="text-[9px] text-zinc-400 text-center">
                     {pan === 0 ? 'C' : pan < 0 ? `L${Math.round(-pan * 100)}` : `R${Math.round(pan * 100)}`}
                   </div>
                 </div>

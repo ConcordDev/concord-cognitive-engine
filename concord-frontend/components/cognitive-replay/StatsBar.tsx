@@ -43,7 +43,7 @@ export function StatsBar({ sinceDays }: { sinceDays: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 text-sm text-zinc-500">
+      <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 text-sm text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Computing aggregate stats…
       </div>
     );
@@ -66,11 +66,11 @@ export function StatsBar({ sinceDays }: { sinceDays: number }) {
 function Stat({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
         {icon}{label}
       </div>
       <div className="mt-1 truncate text-lg font-bold text-zinc-100" title={value}>{value}</div>
-      <div className="mt-0.5 text-[11px] text-zinc-500">{sub}</div>
+      <div className="mt-0.5 text-[11px] text-zinc-400">{sub}</div>
     </div>
   );
 }

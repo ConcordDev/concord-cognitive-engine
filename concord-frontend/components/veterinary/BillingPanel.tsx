@@ -101,11 +101,11 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500">Outstanding</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">Outstanding</p>
           <p className="font-mono text-lg text-red-300">${outstanding.toFixed(2)}</p>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500">Collected</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">Collected</p>
           <p className="font-mono text-lg text-green-300">${collected.toFixed(2)}</p>
         </div>
       </div>
@@ -170,7 +170,7 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
             <button
               onClick={() => setItems(items.filter((_, j) => j !== i))}
               aria-label="Remove line"
-              className="rounded p-1 text-zinc-500 hover:text-red-400"
+              className="rounded p-1 text-zinc-400 hover:text-red-400"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -204,11 +204,11 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
         </div>
       ) : invoices.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <Receipt className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No invoices yet.
         </div>
@@ -226,11 +226,11 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
                       {inv.status}
                     </span>
                   </p>
-                  <p className="text-xs text-zinc-500">{inv.owner || 'no owner'}</p>
+                  <p className="text-xs text-zinc-400">{inv.owner || 'no owner'}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-mono text-sm text-white">${inv.total.toFixed(2)}</p>
-                  <p className="text-[10px] text-zinc-500">due ${inv.balanceDue.toFixed(2)}</p>
+                  <p className="text-[10px] text-zinc-400">due ${inv.balanceDue.toFixed(2)}</p>
                 </div>
               </div>
               <div className="mt-2 space-y-0.5">
@@ -243,7 +243,7 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
                   </div>
                 ))}
                 {inv.tax > 0 && (
-                  <div className="flex justify-between text-[11px] text-zinc-500">
+                  <div className="flex justify-between text-[11px] text-zinc-400">
                     <span>tax</span>
                     <span className="font-mono">${inv.tax.toFixed(2)}</span>
                   </div>
@@ -278,7 +278,7 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
                     </button>
                     <button
                       onClick={() => setPayFor(null)}
-                      className="rounded px-2 py-1 text-xs text-zinc-500 hover:text-white"
+                      className="rounded px-2 py-1 text-xs text-zinc-400 hover:text-white"
                     >
                       Cancel
                     </button>

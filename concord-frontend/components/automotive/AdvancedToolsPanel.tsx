@@ -136,11 +136,11 @@ export function AdvancedToolsPanel() {
       </nav>
 
       {loadingVehicles ? (
-        <div className="py-10 text-center text-xs text-gray-500">
+        <div className="py-10 text-center text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin inline mr-1" />Loading vehicles…
         </div>
       ) : vehicles.length === 0 ? (
-        <div className="py-10 text-center text-xs text-gray-500">
+        <div className="py-10 text-center text-xs text-gray-400">
           No vehicles yet. Add one in the garage above to use these tools.
         </div>
       ) : (
@@ -184,7 +184,7 @@ function PredictiveTab({ vehicleId }: { vehicleId: string }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Projects each scheduled service forward using the mileage you accumulate. Add service schedules
         and log fill-ups in the garage to enable date forecasts.
       </p>
@@ -207,13 +207,13 @@ function PredictiveTab({ vehicleId }: { vehicleId: string }) {
                   <span className="text-xs text-white">{a.serviceType}</span>
                   <span className={cn('text-[9px] uppercase font-semibold', RISK_COLOUR[a.risk])}>{a.risk}</span>
                 </div>
-                <div className="text-[10px] text-gray-500">{a.recommendation}</div>
+                <div className="text-[10px] text-gray-400">{a.recommendation}</div>
               </div>
               <div className="text-right shrink-0">
                 <div className="text-[11px] font-mono text-gray-300">
                   {a.milesRemaining < 0 ? `${Math.abs(a.milesRemaining).toLocaleString()} mi over` : `${a.milesRemaining.toLocaleString()} mi`}
                 </div>
-                {a.predictedDate && <div className="text-[10px] text-gray-500">~{a.predictedDate}</div>}
+                {a.predictedDate && <div className="text-[10px] text-gray-400">~{a.predictedDate}</div>}
               </div>
             </li>
           ))}
@@ -261,7 +261,7 @@ function TcoTab({ vehicle }: { vehicle: Vehicle | null }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Rolls up every logged expense plus depreciation into a true cost-per-mile and cost-per-month.
         Supply the purchase + estimated resale price for a full TCO.
       </p>
@@ -286,7 +286,7 @@ function TcoTab({ vehicle }: { vehicle: Vehicle | null }) {
             <MetricCard label="Cost / month" value={`$${result.costPerMonth.toLocaleString()}`} />
             <MetricCard label="Depreciation" value={`$${result.depreciation.toLocaleString()}`} />
           </div>
-          <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-500">
+          <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-400">
             <span>Miles tracked: {result.milesTracked.toLocaleString()}</span>
             <span>Owned: {result.ownedMonths} mo</span>
             <span>Operating cost: ${result.operatingCost.toLocaleString()}</span>
@@ -341,7 +341,7 @@ function CompareTab({ vehicles }: { vehicles: Vehicle[] }) {
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+          <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
             <tr>
               <th className="text-left py-1.5">Vehicle</th>
               <th className="text-right">Odometer</th>
@@ -367,15 +367,15 @@ function CompareTab({ vehicles }: { vehicles: Vehicle[] }) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Lifetime MPG</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Lifetime MPG</div>
           <ChartKit kind="bar" data={mpgData} xKey="vehicle" series={[{ key: 'mpg', label: 'MPG', color: '#22c55e' }]} height={180} showLegend={false} />
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Cost per mile</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Cost per mile</div>
           <ChartKit kind="bar" data={cpmData} xKey="vehicle" series={[{ key: 'cpm', label: '$/mi', color: '#f59e0b' }]} height={180} showLegend={false} />
         </div>
       </div>
-      <div className="flex flex-wrap gap-3 text-[10px] text-gray-500">
+      <div className="flex flex-wrap gap-3 text-[10px] text-gray-400">
         {result.highlights.bestMpg && <span>Best MPG: <span className="text-emerald-300">{result.highlights.bestMpg}</span></span>}
         {result.highlights.lowestCostPerMile && <span>Lowest $/mi: <span className="text-emerald-300">{result.highlights.lowestCostPerMile}</span></span>}
         {result.highlights.highestSpend && <span>Highest spend: <span className="text-rose-300">{result.highlights.highestSpend}</span></span>}
@@ -476,7 +476,7 @@ function ObdTab({ vehicle }: { vehicle: Vehicle | null }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Pair a Bluetooth ELM327 OBD-II dongle to stream live engine telemetry, or enter PID values
         captured from a scan tool. Every value stored is what the dongle reported.
       </p>
@@ -506,7 +506,7 @@ function ObdTab({ vehicle }: { vehicle: Vehicle | null }) {
 
       {/* Manual PID entry */}
       <div className="rounded border border-white/10 bg-black/30 p-3">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2 flex items-center gap-1">
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2 flex items-center gap-1">
           <Activity className="w-3 h-3" />Enter scan-tool PID readings
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
@@ -531,7 +531,7 @@ function ObdTab({ vehicle }: { vehicle: Vehicle | null }) {
       ) : (
         <div className="max-h-48 overflow-y-auto">
           <table className="w-full text-xs">
-            <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+            <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
               <tr><th className="text-left py-1">Metric</th><th className="text-right">Value</th><th className="text-right">When</th></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -539,7 +539,7 @@ function ObdTab({ vehicle }: { vehicle: Vehicle | null }) {
                 <tr key={rd.id} className="hover:bg-white/[0.03]">
                   <td className="py-1 text-gray-300">{rd.metric}{!rd.known && <span className="text-[9px] text-amber-300 ml-1">custom</span>}</td>
                   <td className="text-right font-mono text-white">{rd.value}{rd.unit ? ` ${rd.unit}` : ''}</td>
-                  <td className="text-right font-mono text-gray-500">{rd.timestamp.slice(0, 19).replace('T', ' ')}</td>
+                  <td className="text-right font-mono text-gray-400">{rd.timestamp.slice(0, 19).replace('T', ' ')}</td>
                 </tr>
               ))}
             </tbody>
@@ -602,14 +602,14 @@ function PhotosTab({ vehicleId }: { vehicleId: string }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Attach photos of receipts, odometer readings or damage. Images are read locally and stored
         against the vehicle — an odometer photo also advances the recorded mileage.
       </p>
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500">Kind</label>
+            <label className="text-[10px] uppercase tracking-wider text-gray-400">Kind</label>
             <select
               className="w-full bg-zinc-900 border border-zinc-700 rounded text-xs text-gray-200 px-2 py-1"
               value={kind}
@@ -645,7 +645,7 @@ function PhotosTab({ vehicleId }: { vehicleId: string }) {
               <div className="p-1.5">
                 <div className="text-[9px] uppercase text-sky-300">{a.kind}</div>
                 <div className="text-[10px] text-gray-300 truncate">{a.caption || '—'}</div>
-                <div className="text-[9px] text-gray-500">
+                <div className="text-[9px] text-gray-400">
                   {a.date}{a.odometerReading !== null && ` · ${a.odometerReading.toLocaleString()} mi`}
                 </div>
               </div>
@@ -760,7 +760,7 @@ function ShopsTab({ vehicleId }: { vehicleId: string }) {
 
       {/* Shop locator */}
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1">
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex items-center gap-1">
           <MapPin className="w-3 h-3" />Service shops
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -790,7 +790,7 @@ function ShopsTab({ vehicleId }: { vehicleId: string }) {
           <Plus className="w-3 h-3" />Add shop
         </button>
         {shops.length === 0 ? (
-          <div className="text-[11px] text-gray-500 italic">No shops saved yet.</div>
+          <div className="text-[11px] text-gray-400 italic">No shops saved yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {shops.map((sh) => (
@@ -798,7 +798,7 @@ function ShopsTab({ vehicleId }: { vehicleId: string }) {
                 <MapPin className="w-3.5 h-3.5 text-sky-400" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white truncate">{sh.name}{sh.rating !== null && <span className="text-amber-300 ml-1">{'★'.repeat(Math.round(sh.rating))}</span>}</div>
-                  <div className="text-[10px] text-gray-500 truncate">
+                  <div className="text-[10px] text-gray-400 truncate">
                     {[sh.address, sh.phone, sh.laborRate !== null ? `$${sh.laborRate}/hr` : ''].filter(Boolean).join(' · ') || 'no details'}
                   </div>
                 </div>
@@ -813,12 +813,12 @@ function ShopsTab({ vehicleId }: { vehicleId: string }) {
 
       {/* Appointments */}
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-1">
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex items-center gap-1">
           <CalendarClock className="w-3 h-3" />Appointments
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500">Shop</label>
+            <label className="text-[10px] uppercase tracking-wider text-gray-400">Shop</label>
             <select
               className="w-full bg-zinc-900 border border-zinc-700 rounded text-xs text-gray-200 px-2 py-1"
               value={apptForm.shopId}
@@ -838,7 +838,7 @@ function ShopsTab({ vehicleId }: { vehicleId: string }) {
           <Plus className="w-3 h-3" />Book appointment
         </button>
         {appointments.length === 0 ? (
-          <div className="text-[11px] text-gray-500 italic">No appointments booked.</div>
+          <div className="text-[11px] text-gray-400 italic">No appointments booked.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {appointments.map((a) => (
@@ -846,7 +846,7 @@ function ShopsTab({ vehicleId }: { vehicleId: string }) {
                 <CalendarClock className="w-3.5 h-3.5 text-sky-400" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white truncate">{a.serviceType || 'Service'}{a.shopName && ` @ ${a.shopName}`}</div>
-                  <div className="text-[10px] text-gray-500">
+                  <div className="text-[10px] text-gray-400">
                     {a.date}{a.time && ` ${a.time}`}{a.estimatedCost !== null && ` · est. $${a.estimatedCost}`}{a.notes && ` · ${a.notes}`}
                   </div>
                 </div>
@@ -928,7 +928,7 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Track warranty, insurance and registration renewal dates — and mileage-bounded coverage like
         a powertrain warranty. Items turn amber as the reminder window opens.
       </p>
@@ -940,7 +940,7 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-gray-500">Kind</label>
+            <label className="text-[10px] uppercase tracking-wider text-gray-400">Kind</label>
             <select
               className="w-full bg-zinc-900 border border-zinc-700 rounded text-xs text-gray-200 px-2 py-1"
               value={form.kind}
@@ -971,9 +971,9 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
               <Shield className={cn('w-3.5 h-3.5', STATUS_COLOUR[r.status])} />
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-white truncate">
-                  {r.title}<span className="text-[9px] uppercase text-gray-500 ml-1">{r.kind.replace(/_/g, ' ')}</span>
+                  {r.title}<span className="text-[9px] uppercase text-gray-400 ml-1">{r.kind.replace(/_/g, ' ')}</span>
                 </div>
-                <div className="text-[10px] text-gray-500 truncate">
+                <div className="text-[10px] text-gray-400 truncate">
                   {[r.provider, r.policyNumber, r.premium !== null ? `$${r.premium}` : ''].filter(Boolean).join(' · ') || '—'}
                 </div>
               </div>
@@ -984,7 +984,7 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
                     : r.renewalDate}
                 </div>
                 {r.milesRemaining !== null && (
-                  <div className="text-[10px] text-gray-500">
+                  <div className="text-[10px] text-gray-400">
                     {r.milesRemaining < 0 ? `${Math.abs(r.milesRemaining).toLocaleString()} mi over` : `${r.milesRemaining.toLocaleString()} mi left`}
                   </div>
                 )}
@@ -996,7 +996,7 @@ function RenewalsTab({ vehicleId, vehicle }: { vehicleId: string; vehicle: Vehic
           ))}
         </ul>
       )}
-      {vehicle && <div className="text-[10px] text-gray-600">Mileage coverage compares against {vehicle.name}&apos;s odometer ({vehicle.odometer.toLocaleString()} mi).</div>}
+      {vehicle && <div className="text-[10px] text-gray-400">Mileage coverage compares against {vehicle.name}&apos;s odometer ({vehicle.odometer.toLocaleString()} mi).</div>}
     </div>
   );
 }
@@ -1008,7 +1008,7 @@ function Field({
 }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-wider text-gray-500">{label}</label>
+      <label className="text-[10px] uppercase tracking-wider text-gray-400">{label}</label>
       <input
         type={type}
         value={value}
@@ -1023,7 +1023,7 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
   const colour = tone === 'bad' ? 'text-rose-300' : tone === 'warn' ? 'text-amber-300' : tone === 'good' ? 'text-emerald-300' : 'text-white';
   return (
     <div className="rounded border border-white/10 bg-black/30 p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-gray-500 truncate">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400 truncate">{label}</div>
       <div className={cn('text-lg font-mono', colour)}>{value}</div>
     </div>
   );
@@ -1031,14 +1031,14 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
 
 function Loading() {
   return (
-    <div className="py-10 text-center text-xs text-gray-500">
+    <div className="py-10 text-center text-xs text-gray-400">
       <Loader2 className="w-4 h-4 animate-spin inline mr-1" />Loading…
     </div>
   );
 }
 
 function Empty({ label }: { label: string }) {
-  return <div className="py-8 text-center text-xs text-gray-500">{label}</div>;
+  return <div className="py-8 text-center text-xs text-gray-400">{label}</div>;
 }
 
 export default AdvancedToolsPanel;

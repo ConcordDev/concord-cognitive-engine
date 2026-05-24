@@ -20,7 +20,7 @@ interface Beneficiary { id: string; name: string; relationship: string | null; s
 
 const KINDS = ['auto', 'home', 'health', 'life', 'umbrella', 'renters', 'pet', 'travel', 'business'];
 const STATUS_COLOR: Record<string, string> = {
-  active: 'text-emerald-400', lapsed: 'text-amber-400', cancelled: 'text-zinc-500', pending: 'text-sky-400',
+  active: 'text-emerald-400', lapsed: 'text-amber-400', cancelled: 'text-zinc-400', pending: 'text-sky-400',
 };
 
 export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
@@ -99,7 +99,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Policy detail ──
@@ -124,7 +124,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
             </div>
             <p className="text-lg font-bold text-zinc-100 mt-1">{String(card.carrier)}</p>
             <p className="text-xs text-zinc-400 font-mono">{String(card.policyNumber)} · {String(card.kind)}</p>
-            <p className="text-[11px] text-zinc-500 mt-1">
+            <p className="text-[11px] text-zinc-400 mt-1">
               Effective {String(card.effectiveDate)} · Renews {String(card.renewalDate)} · Deductible ${String(card.deductible)}
             </p>
           </div>
@@ -144,7 +144,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
               className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg">Log</button>
           </div>
           {payments.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">No payments logged.</p>
+            <p className="text-[11px] text-zinc-400 italic">No payments logged.</p>
           ) : (
             <ul className="space-y-1">
               {payments.map((p) => (
@@ -196,7 +196,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
             <ul className="space-y-1">
               {beneficiaries.map((b) => (
                 <li key={b.id} className="flex items-center justify-between text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                  <span className="text-zinc-200">{b.name} <span className="text-zinc-500">{b.relationship}</span></span>
+                  <span className="text-zinc-200">{b.name} <span className="text-zinc-400">{b.relationship}</span></span>
                   <span className="text-zinc-400">{b.sharePct}%</span>
                 </li>
               ))}
@@ -240,7 +240,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {policies.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No policies yet. Add your first one.
         </div>
       ) : (
@@ -251,7 +251,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
                 <p className="text-sm font-semibold text-zinc-100">
                   {p.carrier} <span className={cn('ml-1 text-[10px] uppercase', STATUS_COLOR[p.status])}>{p.status}</span>
                 </p>
-                <p className="text-[11px] text-zinc-500 capitalize">
+                <p className="text-[11px] text-zinc-400 capitalize">
                   {p.kind} · {p.policyNumber} · ${p.annualPremium}/yr · renews {p.renewalDate}
                 </p>
               </button>

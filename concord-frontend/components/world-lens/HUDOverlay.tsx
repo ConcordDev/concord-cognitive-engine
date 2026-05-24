@@ -109,7 +109,7 @@ function NotificationToast({
       <span className="flex-1">{notification.message}</span>
       <button
         onClick={() => onDismiss(notification.id)}
-        className="text-gray-500 hover:text-white transition-colors"
+        className="text-gray-400 hover:text-white transition-colors"
       aria-label="Close">
         <X className="w-3 h-3" />
       </button>
@@ -185,8 +185,8 @@ export default function HUDOverlay({
           {/* Left: district + mode */}
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-cyan-400">{district}</span>
-            <span className="text-[10px] text-gray-600">|</span>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] text-gray-400">|</span>
+            <span className="text-[10px] text-gray-400 uppercase tracking-wider">
               {modeLabels[mode]}
             </span>
           </div>
@@ -195,7 +195,7 @@ export default function HUDOverlay({
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-300">{timeOfDay}</span>
             <WeatherDisplay weather={weather} />
-            <span className="flex items-center gap-1 text-[10px] text-gray-500">
+            <span className="flex items-center gap-1 text-[10px] text-gray-400">
               <Users className="w-3 h-3" />
               {playerCount}
             </span>
@@ -271,7 +271,7 @@ export default function HUDOverlay({
               title={tool.name}
             >
               <ToolIcon icon={tool.icon} />
-              <span className="absolute top-0.5 right-0.5 text-[8px] text-gray-600">
+              <span className="absolute top-0.5 right-0.5 text-[8px] text-gray-400">
                 {tool.keybind}
               </span>
             </button>
@@ -314,7 +314,7 @@ export default function HUDOverlay({
               <span className="text-yellow-300 font-medium">
                 {currency.concordCoin.toLocaleString()}
               </span>
-              <span className="text-[10px] text-gray-600">CC</span>
+              <span className="text-[10px] text-gray-400">CC</span>
             </span>
             {currency.pendingRoyalties > 0 && (
               <span className="flex items-center gap-1 text-[10px] text-amber-400">
@@ -336,11 +336,11 @@ export default function HUDOverlay({
           </div>
 
           {/* Keybind hints */}
-          <div className="flex items-center gap-2 text-[10px] text-gray-600">
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-500">1</kbd>
+          <div className="flex items-center gap-2 text-[10px] text-gray-400">
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400">1</kbd>
             <span>-</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-500">8</kbd>
-            <span className="text-gray-500 ml-1">Tools</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-gray-400">8</kbd>
+            <span className="text-gray-400 ml-1">Tools</span>
           </div>
         </div>
       </div>

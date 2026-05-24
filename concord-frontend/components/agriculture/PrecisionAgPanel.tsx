@@ -85,7 +85,7 @@ export default function PrecisionAgPanel() {
         <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">
           Precision-Ag Workbench
         </h2>
-        <span className="ml-auto text-[10px] text-gray-500">
+        <span className="ml-auto text-[10px] text-gray-400">
           {fields.length} field{fields.length === 1 ? '' : 's'} on record
         </span>
       </header>
@@ -101,7 +101,7 @@ export default function PrecisionAgPanel() {
                 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition',
                 active === t.id
                   ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                  : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent',
+                  : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent',
               )}
             >
               <Icon className="w-3.5 h-3.5" />

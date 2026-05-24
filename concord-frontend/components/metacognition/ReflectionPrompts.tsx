@@ -90,7 +90,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+      <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading reflection prompts...
       </div>
     );
@@ -106,7 +106,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
         <h3 className="font-semibold flex items-center gap-2">
           <Lightbulb className="w-4 h-4 text-neon-yellow" /> After-Action Review
         </h3>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           Answer the structured prompts to turn a decision into a lesson. Saving counts toward your reflection streak.
         </p>
         <input
@@ -165,7 +165,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
           )}
         </h3>
         {reflections.length === 0 ? (
-          <p className="text-center py-8 text-gray-500 text-sm">
+          <p className="text-center py-8 text-gray-400 text-sm">
             No reflections saved yet. Answer the prompts above to record your first one.
           </p>
         ) : (
@@ -179,22 +179,22 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
                     onClick={() => setExpanded(isExp ? null : r.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{r.title}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {r.answers.length} answer{r.answers.length !== 1 ? 's' : ''} · {fmtDate(r.createdAt)}
                       </p>
                     </div>
-                    {isExp ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                    {isExp ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                   </div>
                   {isExp && (
                     <div className="mt-3 pt-3 border-t border-gray-700/30 space-y-2 text-xs">
                       {r.answers.map((a, i) => (
                         <div key={i}>
-                          <p className="text-gray-500">{a.question}</p>
+                          <p className="text-gray-400">{a.question}</p>
                           <p className="text-gray-300">{a.answer}</p>
                         </div>
                       ))}
                       {r.note && (
-                        <p className="text-gray-400"><span className="text-gray-500">Note:</span> {r.note}</p>
+                        <p className="text-gray-400"><span className="text-gray-400">Note:</span> {r.note}</p>
                       )}
                     </div>
                   )}

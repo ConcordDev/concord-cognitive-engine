@@ -354,7 +354,7 @@ export function BlockEditor({
 
         <div className="flex-1" />
 
-        <span className="text-xs text-gray-500 mr-2">
+        <span className="text-xs text-gray-400 mr-2">
           {wordCount} words
         </span>
       </div>
@@ -544,7 +544,7 @@ export function SlashCommandMenu({
               </div>
               <div>
                 <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-gray-500">{item.description}</p>
+                <p className="text-xs text-gray-400">{item.description}</p>
               </div>
             </button>
           );

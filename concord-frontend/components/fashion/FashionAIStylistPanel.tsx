@@ -124,12 +124,12 @@ export function FashionAIStylistPanel({ onChange }: { onChange: () => void }) {
                 <p className="text-[11px] font-bold text-zinc-100">
                   {d.tempMax != null ? `${Math.round(d.tempMax)}°` : '—'}
                 </p>
-                <p className="text-[9px] text-zinc-500">{WEATHER_ICON[d.kind] || d.kind}</p>
+                <p className="text-[9px] text-zinc-400">{WEATHER_ICON[d.kind] || d.kind}</p>
               </button>
             ))}
           </div>
         )}
-        <label className="flex items-center gap-2 text-[11px] text-zinc-500">
+        <label className="flex items-center gap-2 text-[11px] text-zinc-400">
           <Thermometer className="w-3 h-3" /> Or set temp manually (°C):
           <input inputMode="decimal" value={manualTemp} onChange={(e) => setManualTemp(e.target.value)}
             placeholder="e.g. 18" className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-0.5 text-xs text-zinc-100" />
@@ -152,7 +152,7 @@ export function FashionAIStylistPanel({ onChange }: { onChange: () => void }) {
       {note && <p className="text-[11px] text-amber-400 italic">{note}</p>}
 
       {outfits.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-8 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-8 border border-zinc-800 rounded-xl">
           No outfits generated yet. Set the weather and occasion, then generate.
         </div>
       ) : (
@@ -162,7 +162,7 @@ export function FashionAIStylistPanel({ onChange }: { onChange: () => void }) {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-fuchsia-300">Look #{o.rank}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-zinc-500">${o.totalCost}</span>
+                  <span className="text-[11px] text-zinc-400">${o.totalCost}</span>
                   <button type="button" onClick={() => saveOutfit(o)} disabled={savedRanks.has(o.rank)}
                     className="flex items-center gap-1 text-[11px] px-2 py-0.5 bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-emerald-700 disabled:opacity-100 text-white rounded-lg">
                     <Save className="w-3 h-3" /> {savedRanks.has(o.rank) ? 'Saved' : 'Save outfit'}
@@ -172,11 +172,11 @@ export function FashionAIStylistPanel({ onChange }: { onChange: () => void }) {
               <div className="flex flex-wrap gap-1">
                 {o.items.map((it) => (
                   <span key={it.id} className="text-[11px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-200">
-                    {it.name}<span className="text-zinc-500"> · {it.category}</span>
+                    {it.name}<span className="text-zinc-400"> · {it.category}</span>
                   </span>
                 ))}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-2 italic">{o.rationale}</p>
+              <p className="text-[10px] text-zinc-400 mt-2 italic">{o.rationale}</p>
             </li>
           ))}
         </ul>

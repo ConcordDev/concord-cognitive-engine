@@ -167,7 +167,7 @@ export function PipeImporter<T = unknown>({
                 className="block w-full text-left px-2 py-1 text-[10px] text-zinc-200 hover:bg-zinc-800 rounded"
               >
                 <div className="font-mono text-zinc-100">{e.label ?? e.key}</div>
-                <div className="text-[9px] text-zinc-500">{e.key} · {ageLabel}</div>
+                <div className="text-[9px] text-zinc-400">{e.key} · {ageLabel}</div>
               </button>
             );
           })}

@@ -64,7 +64,7 @@ function AshbyTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         2D material-selection scatter from your shortlist. Material index = Y/X; the top point sits in the optimal selection corner.
       </p>
       <div className="flex flex-wrap items-end gap-2">
@@ -90,7 +90,7 @@ function AshbyTab() {
       </div>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
       {result && (result.message || result.points.length === 0) && (
-        <p className="text-xs italic text-zinc-500">{result.message || 'No plottable points.'}</p>
+        <p className="text-xs italic text-zinc-400">{result.message || 'No plottable points.'}</p>
       )}
       {result && result.points.length > 0 && (
         <div className="space-y-2">
@@ -112,8 +112,8 @@ function AshbyTab() {
             {result.points.map((p) => (
               <li key={p.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/50 px-2 py-1 text-[11px]">
                 <span className="font-semibold text-zinc-100">{p.name}</span>
-                <span className="text-zinc-500">{result.xLabel.split(' ')[0]} {p.x}</span>
-                <span className="text-zinc-500">{result.yLabel.split(' ')[0]} {p.y}</span>
+                <span className="text-zinc-400">{result.xLabel.split(' ')[0]} {p.x}</span>
+                <span className="text-zinc-400">{result.yLabel.split(' ')[0]} {p.y}</span>
                 <span className="ml-auto text-cyan-300">index {p.materialIndex}</span>
               </li>
             ))}
@@ -162,7 +162,7 @@ function RankTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Weighted-objective ranking against your design requirements. Each criterion is min-max normalised across the shortlist.
       </p>
       <div className="space-y-1.5">
@@ -212,9 +212,9 @@ function RankTab() {
             {result.rankings.map((row, i) => (
               <li key={row.id} className="rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="w-5 text-zinc-500">#{i + 1}</span>
+                  <span className="w-5 text-zinc-400">#{i + 1}</span>
                   <span className="font-semibold text-zinc-100">{row.name}</span>
-                  <span className="text-[10px] text-zinc-500">{row.category}</span>
+                  <span className="text-[10px] text-zinc-400">{row.category}</span>
                   {row.missingCriteria > 0 && (
                     <span className="text-[10px] text-amber-400">{row.missingCriteria} missing</span>
                   )}
@@ -278,7 +278,7 @@ function DatasheetTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Generate an exportable spec sheet for a shortlisted material — measured plus derived properties.
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -292,10 +292,10 @@ function DatasheetTab() {
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
           Generate
         </button>
-        <button onClick={loadShortlist} className="text-[11px] text-zinc-500 hover:text-zinc-300">refresh list</button>
+        <button onClick={loadShortlist} className="text-[11px] text-zinc-400 hover:text-zinc-300">refresh list</button>
       </div>
       {shortlist.length === 0 && (
-        <p className="text-xs italic text-zinc-500">No shortlisted materials — add candidates in the shortlist panel below.</p>
+        <p className="text-xs italic text-zinc-400">No shortlisted materials — add candidates in the shortlist panel below.</p>
       )}
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
       {result && (
@@ -303,7 +303,7 @@ function DatasheetTab() {
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-bold text-zinc-100">{result.datasheet.name}</h4>
             {result.datasheet.formula && <span className="font-mono text-[11px] text-cyan-300">{result.datasheet.formula}</span>}
-            <span className="text-[10px] text-zinc-500">{result.datasheet.category}</span>
+            <span className="text-[10px] text-zinc-400">{result.datasheet.category}</span>
             <button onClick={download}
               className="ml-auto inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-800">
               <Download className="h-3 w-3" />Export
@@ -311,7 +311,7 @@ function DatasheetTab() {
           </div>
           {result.datasheet.measuredProperties.length > 0 && (
             <div className="mt-2">
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500">Measured</p>
+              <p className="text-[10px] uppercase tracking-wide text-zinc-400">Measured</p>
               <table className="mt-1 w-full text-xs">
                 <tbody>
                   {result.datasheet.measuredProperties.map((r) => (
@@ -326,7 +326,7 @@ function DatasheetTab() {
           )}
           {result.datasheet.derivedProperties.length > 0 && (
             <div className="mt-2">
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500">Derived</p>
+              <p className="text-[10px] uppercase tracking-wide text-zinc-400">Derived</p>
               <table className="mt-1 w-full text-xs">
                 <tbody>
                   {result.datasheet.derivedProperties.map((r) => (
@@ -389,7 +389,7 @@ function ImportTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Ingest mechanical test results from CSV — header row plus data rows. Numeric columns get count / mean / min / max / stdev.
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -419,7 +419,7 @@ function ImportTab() {
           {Object.keys(result.stats).length > 0 && (
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-zinc-500">
+                <tr className="text-left text-zinc-400">
                   <th className="py-1 pr-2">Column</th>
                   <th className="py-1 px-2">N</th>
                   <th className="py-1 px-2">Mean</th>
@@ -474,7 +474,7 @@ function StandardsTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Cross-reference a material to ASTM / ISO / EN / DIN / JIS / UNS designations from a curated equivalence table.
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void lookup(material); }} className="flex items-center gap-2">
@@ -489,7 +489,7 @@ function StandardsTab() {
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
       {result?.available && !result.matched && (
-        <div className="text-[11px] text-zinc-500">
+        <div className="text-[11px] text-zinc-400">
           {result.message || result.disclaimer}
           <div className="mt-1.5 flex flex-wrap gap-1">
             {result.available.map((a) => (
@@ -555,7 +555,7 @@ function CarbonTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Embodied carbon (kg CO₂e/kg), embodied energy, and recyclability from curated ICE / industry-average data.
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void lookup(material, massKg); }} className="flex flex-wrap items-center gap-2">
@@ -573,7 +573,7 @@ function CarbonTab() {
       </form>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
       {result?.available && !result.matched && (
-        <div className="text-[11px] text-zinc-500">
+        <div className="text-[11px] text-zinc-400">
           {result.message || result.disclaimer}
           <div className="mt-1.5 flex flex-wrap gap-1">
             {result.available.map((a) => (
@@ -587,29 +587,29 @@ function CarbonTab() {
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-zinc-100">{result.material}</span>
-            <span className="text-[10px] text-zinc-500">{result.matchedKey}</span>
+            <span className="text-[10px] text-zinc-400">{result.matchedKey}</span>
             <span className={cn('ml-auto text-lg font-bold', GRADE_COLOR[result.metrics.carbonGrade] || 'text-zinc-300')}>
               {result.metrics.carbonGrade}
             </span>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
             <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2">
-              <p className="text-[10px] text-zinc-500">Embodied carbon</p>
+              <p className="text-[10px] text-zinc-400">Embodied carbon</p>
               <p className="font-bold text-zinc-100">{result.metrics.embodiedCarbonKgCO2ePerKg}</p>
-              <p className="text-[10px] text-zinc-600">kg CO₂e/kg</p>
+              <p className="text-[10px] text-zinc-400">kg CO₂e/kg</p>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2">
-              <p className="text-[10px] text-zinc-500">Embodied energy</p>
+              <p className="text-[10px] text-zinc-400">Embodied energy</p>
               <p className="font-bold text-zinc-100">{result.metrics.embodiedEnergyMJPerKg}</p>
-              <p className="text-[10px] text-zinc-600">MJ/kg</p>
+              <p className="text-[10px] text-zinc-400">MJ/kg</p>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2">
-              <p className="text-[10px] text-zinc-500">Recyclability</p>
+              <p className="text-[10px] text-zinc-400">Recyclability</p>
               <p className="font-bold text-zinc-100">{result.metrics.recyclabilityPct}%</p>
-              <p className="text-[10px] text-zinc-600">{result.metrics.renewable ? 'renewable' : 'non-renewable'}</p>
+              <p className="text-[10px] text-zinc-400">{result.metrics.renewable ? 'renewable' : 'non-renewable'}</p>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2">
-              <p className="text-[10px] text-zinc-500">Carbon rank</p>
+              <p className="text-[10px] text-zinc-400">Carbon rank</p>
               <p className="font-bold text-zinc-100">{result.metrics.carbonRank}</p>
             </div>
           </div>

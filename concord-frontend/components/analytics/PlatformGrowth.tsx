@@ -62,7 +62,7 @@ export function PlatformGrowth() {
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
             {PERIODS.map((p) => (
-              <button key={p} onClick={() => setPeriod(p)} className={`rounded px-2 py-0.5 font-mono uppercase ${period === p ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{p}</button>
+              <button key={p} onClick={() => setPeriod(p)} className={`rounded px-2 py-0.5 font-mono uppercase ${period === p ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{p}</button>
             ))}
           </div>
           {(growth.data || marketplace.data) && (
@@ -87,7 +87,7 @@ export function PlatformGrowth() {
       <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-200">Time series <span className="text-[10px] text-cyan-300">users</span> + <span className="text-[10px] text-orange-300">dtus</span></div>
         {growth.isPending ? (
-          <div className="flex items-center gap-2 py-6 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling growth series…</div>
+          <div className="flex items-center gap-2 py-6 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling growth series…</div>
         ) : (
           <div ref={hostRef} className="w-full" />
         )}
@@ -112,7 +112,7 @@ export function PlatformGrowth() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-lg text-cyan-300">{value}</div>
     </div>
   );

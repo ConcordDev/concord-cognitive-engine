@@ -43,7 +43,7 @@ export function DepartmentsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Building className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Departments</span>
-        <span className="ml-auto text-[10px] text-gray-500">{depts.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{depts.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Department name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -55,9 +55,9 @@ export function DepartmentsPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : depts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Building className="w-6 h-6 mx-auto mb-2 opacity-30" />No departments yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Building className="w-6 h-6 mx-auto mb-2 opacity-30" />No departments yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {depts.map(d => (
@@ -65,7 +65,7 @@ export function DepartmentsPanel() {
                 <div className="w-10 h-10 rounded bg-cyan-500/15 text-cyan-300 flex items-center justify-center text-[10px] font-mono font-bold">{d.shortCode || d.name.slice(0, 3).toUpperCase()}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{d.name}</div>
-                  <div className="text-[10px] text-gray-500 inline-flex items-center gap-2 truncate">
+                  <div className="text-[10px] text-gray-400 inline-flex items-center gap-2 truncate">
                     {d.head && <span>Head: {d.head}</span>}
                     {d.email && <span className="inline-flex items-center gap-0.5"><Mail className="w-2.5 h-2.5" />{d.email}</span>}
                     {d.phone && <span className="inline-flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{d.phone}</span>}

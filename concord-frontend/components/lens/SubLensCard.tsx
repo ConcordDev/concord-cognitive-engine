@@ -81,7 +81,7 @@ export function SubLensCard({
             {description && (
               <p className="mt-1 text-xs text-gray-400 line-clamp-2">{description}</p>
             )}
-            <p className="mt-2 font-mono text-[10px] text-gray-500 truncate">{id}</p>
+            <p className="mt-2 font-mono text-[10px] text-gray-400 truncate">{id}</p>
           </div>
 
           {typeof dtuCount === 'number' && (
@@ -95,7 +95,7 @@ export function SubLensCard({
           )}
         </div>
 
-        <div className="mt-3 flex items-center justify-end text-xs text-gray-500 group-hover:text-neon-purple transition-colors">
+        <div className="mt-3 flex items-center justify-end text-xs text-gray-400 group-hover:text-neon-purple transition-colors">
           <span>Open</span>
           <ArrowRight className="w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-0.5" />
         </div>

@@ -139,7 +139,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
         <div className="flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-emerald-400" />
           <span className="text-sm font-semibold text-gray-200">Saved Prompts</span>
-          <span className="text-[10px] text-gray-500 ml-1">{prompts.length}</span>
+          <span className="text-[10px] text-gray-400 ml-1">{prompts.length}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -162,7 +162,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
 
       <div className="px-3 py-2 border-b border-white/10">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
           <input
             type="text"
             value={filter}
@@ -231,17 +231,17 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading prompts…
           </div>
         ) : filtered.length === 0 && !creating ? (
           <div className="text-center py-8 px-4">
             <BookOpen className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {prompts.length === 0 ? 'No saved prompts' : 'No matches'}
             </p>
             {prompts.length === 0 && (
-              <p className="text-[10px] text-gray-600 mt-1">
+              <p className="text-[10px] text-gray-400 mt-1">
                 Save reusable prompt templates. Insert with one click.
               </p>
             )}
@@ -262,7 +262,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                       </code>
                     )}
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1 line-clamp-2 font-mono">
+                  <p className="text-[11px] text-gray-400 mt-1 line-clamp-2 font-mono">
                     {p.content}
                   </p>
                   {p.tags.length > 0 && (
@@ -286,7 +286,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                         onInsert(p.content);
                         onClose();
                       }}
-                      className="p-1 text-gray-500 hover:text-emerald-300"
+                      className="p-1 text-gray-400 hover:text-emerald-300"
                       aria-label="Insert prompt into composer"
                       title="Insert into composer"
                     >
@@ -296,7 +296,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                   <button
                     type="button"
                     onClick={() => startEdit(p)}
-                    className="p-1 text-gray-500 hover:text-cyan-300"
+                    className="p-1 text-gray-400 hover:text-cyan-300"
                     aria-label="Edit prompt"
                   >
                     <Edit3 className="w-3 h-3" />
@@ -304,7 +304,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                   <button
                     type="button"
                     onClick={() => remove(p.id)}
-                    className="p-1 text-gray-500 hover:text-rose-300"
+                    className="p-1 text-gray-400 hover:text-rose-300"
                     aria-label="Delete prompt"
                   >
                     <Trash2 className="w-3 h-3" />

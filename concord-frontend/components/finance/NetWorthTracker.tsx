@@ -103,11 +103,11 @@ export function NetWorthTracker({ range: initialRange = '1Y' }: NetWorthTrackerP
       </header>
       <div className="px-4 py-3 border-b border-white/5">
         {loading ? (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading…
           </div>
         ) : !latest ? (
-          <div className="text-xs text-gray-500">No snapshots yet. Income/expense entries on the Budget tab generate weekly snapshots.</div>
+          <div className="text-xs text-gray-400">No snapshots yet. Income/expense entries on the Budget tab generate weekly snapshots.</div>
         ) : (
           <div className="flex items-end gap-4">
             <div>
@@ -121,13 +121,13 @@ export function NetWorthTracker({ range: initialRange = '1Y' }: NetWorthTrackerP
               </div>
             </div>
             <div className="ml-auto grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-              <span className="text-gray-500">Cash:</span>
+              <span className="text-gray-400">Cash:</span>
               <span className="text-white text-right tabular-nums">${latest.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              <span className="text-gray-500">Investments:</span>
+              <span className="text-gray-400">Investments:</span>
               <span className="text-white text-right tabular-nums">${latest.investments.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              <span className="text-gray-500">Real estate:</span>
+              <span className="text-gray-400">Real estate:</span>
               <span className="text-white text-right tabular-nums">${latest.realEstate.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              <span className="text-gray-500">Crypto:</span>
+              <span className="text-gray-400">Crypto:</span>
               <span className="text-white text-right tabular-nums">${latest.crypto.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
               <span className="text-red-400">Liabilities:</span>
               <span className="text-red-300 text-right tabular-nums">−${latest.liabilities.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>

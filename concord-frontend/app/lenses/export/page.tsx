@@ -271,7 +271,7 @@ export default function ExportLensPage() {
         {/* Action Results */}
         {actionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
+            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 
@@ -296,7 +296,7 @@ export default function ExportLensPage() {
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500">MIME: {actionResult.mimeType as string} &nbsp;|&nbsp; Ext: {actionResult.extension as string}</p>
+                    <p className="text-xs text-gray-400">MIME: {actionResult.mimeType as string} &nbsp;|&nbsp; Ext: {actionResult.extension as string}</p>
                   </>
                 )}
               </div>
@@ -449,7 +449,7 @@ export default function ExportLensPage() {
               }`}
             >
               <p className="font-semibold text-sm">{fmt.label}</p>
-              <p className="text-[10px] text-gray-500">{fmt.desc}</p>
+              <p className="text-[10px] text-gray-400">{fmt.desc}</p>
             </button>
           ))}
         </div>
@@ -479,7 +479,7 @@ export default function ExportLensPage() {
                 className={`px-2 py-0.5 rounded text-xs transition-colors ${
                   singleExportFormat === fmt.id
                     ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
-                    : 'bg-lattice-deep text-gray-500 hover:text-gray-300'
+                    : 'bg-lattice-deep text-gray-400 hover:text-gray-300'
                 }`}
               >
                 {fmt.label}
@@ -489,13 +489,13 @@ export default function ExportLensPage() {
         </div>
 
         {dtus.length === 0 ? (
-          <p className="text-center text-gray-500 py-6">No DTUs to export</p>
+          <p className="text-center text-gray-400 py-6">No DTUs to export</p>
         ) : (
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {/* Imported DTUs section */}
             {importedDtus.length > 0 && (
               <>
-                <p className="text-xs text-gray-500 uppercase tracking-wider pt-2 pb-1 sticky top-0 bg-lattice-surface">
+                <p className="text-xs text-gray-400 uppercase tracking-wider pt-2 pb-1 sticky top-0 bg-lattice-surface">
                   Imported ({importedDtus.length})
                 </p>
                 {importedDtus.map((dtu) => (
@@ -513,7 +513,7 @@ export default function ExportLensPage() {
             {/* Local DTUs section */}
             {localDtus.length > 0 && (
               <>
-                <p className="text-xs text-gray-500 uppercase tracking-wider pt-2 pb-1 sticky top-0 bg-lattice-surface">
+                <p className="text-xs text-gray-400 uppercase tracking-wider pt-2 pb-1 sticky top-0 bg-lattice-surface">
                   Local ({localDtus.length})
                 </p>
                 {localDtus.slice(0, 50).map((dtu) => (
@@ -526,7 +526,7 @@ export default function ExportLensPage() {
                   />
                 ))}
                 {localDtus.length > 50 && (
-                  <p className="text-xs text-gray-500 text-center py-2">
+                  <p className="text-xs text-gray-400 text-center py-2">
                     +{localDtus.length - 50} more — use bulk export for all
                   </p>
                 )}
@@ -632,12 +632,12 @@ function DTUExportRow({ dtu, format, exporting, onExport }: {
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white truncate">{dtu.title as string || dtu.id as string}</p>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-500">{(dtu.tier as string) || 'regular'}</span>
+          <span className="text-[10px] text-gray-400">{(dtu.tier as string) || 'regular'}</span>
           {isImported && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan">imported</span>
           )}
           {((dtu.tags as string[]) || []).slice(0, 3).map((tag) => (
-            <span key={tag} className="text-[10px] text-gray-600">#{tag}</span>
+            <span key={tag} className="text-[10px] text-gray-400">#{tag}</span>
           ))}
         </div>
       </div>
@@ -674,12 +674,12 @@ function FormatCard({ icon: Icon, color, label, type, desc, size, mime }: {
         </div>
         <div>
           <h3 className="font-medium text-white">{label}</h3>
-          <span className="text-[10px] text-gray-500 uppercase tracking-wider">{type}</span>
+          <span className="text-[10px] text-gray-400 uppercase tracking-wider">{type}</span>
         </div>
       </div>
       <p className="text-xs text-gray-400 mb-3 leading-relaxed">{desc}</p>
       <div className="flex items-center justify-between pt-2 border-t border-white/5">
-        <span className="text-[10px] text-gray-600">{size} estimated</span>
+        <span className="text-[10px] text-gray-400">{size} estimated</span>
         <span className={`text-[10px] text-${color}`}>{mime}</span>
       </div>
     </div>

@@ -319,7 +319,7 @@ export function OpsActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -330,7 +330,7 @@ export function OpsActionPanel() {
           <div className="rounded-md border border-pink-500/30 bg-pink-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-pink-300 font-semibold flex items-center gap-1.5"><Phone className="w-3 h-3" /> On-call</div>
             <div className="text-sm font-semibold text-zinc-100 mt-1">{oncallResult.current}</div>
-            {oncallResult.slot && <div className="text-[10px] text-zinc-500">{oncallResult.slot.startHour}:00–{oncallResult.slot.endHour}:00 UTC</div>}
+            {oncallResult.slot && <div className="text-[10px] text-zinc-400">{oncallResult.slot.startHour}:00–{oncallResult.slot.endHour}:00 UTC</div>}
           </div>
         )}
         {runbookResult && (
@@ -355,7 +355,7 @@ export function OpsActionPanel() {
         {postmortemResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 space-y-0.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5"><FileText className="w-3 h-3" /> {postmortemResult.title} ({postmortemResult.incidentId})</div>
-            <div className="text-[10px] text-zinc-500">{postmortemResult.severity?.toUpperCase()} · duration {postmortemResult.durationMin}m</div>
+            <div className="text-[10px] text-zinc-400">{postmortemResult.severity?.toUpperCase()} · duration {postmortemResult.durationMin}m</div>
             <ol className="text-[11px] text-zinc-300 list-decimal list-inside space-y-0.5 mt-1">
               {postmortemResult.sections?.map((s, i) => <li key={i}><span className="text-purple-300 font-semibold capitalize">{s.name}:</span> <span className="text-zinc-400 italic text-[10px]">{s.placeholder}</span></li>)}
             </ol>

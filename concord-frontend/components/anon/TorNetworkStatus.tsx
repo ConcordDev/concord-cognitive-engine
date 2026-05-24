@@ -58,7 +58,7 @@ export function TorNetworkStatus() {
       </header>
 
       {summary.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Tor onionoo unreachable.</div>}
-      {summary.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling onionoo…</div>}
+      {summary.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling onionoo…</div>}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Cell label="Relays" value={relayCount.toLocaleString()} icon={Server} />
@@ -80,7 +80,7 @@ export function TorNetworkStatus() {
                     <div className="h-2 rounded-full bg-cyan-500/60" style={{ width: `${Math.max(2, pct)}%` }} />
                   </div>
                   <span className="w-16 text-right font-mono text-cyan-300">{n}</span>
-                  <span className="w-12 text-right text-zinc-500">{pct.toFixed(0)}%</span>
+                  <span className="w-12 text-right text-zinc-400">{pct.toFixed(0)}%</span>
                 </div>
               );
             })}
@@ -94,7 +94,7 @@ export function TorNetworkStatus() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-lg text-cyan-300">{value}</div>
     </div>
   );

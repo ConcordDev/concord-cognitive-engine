@@ -303,7 +303,7 @@ export default function LawLensPage() {
               {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
             </select>
             {(caseSearch || statusFilter !== 'all' || jurisdictionFilter !== 'all') && (
-              <span className="text-[10px] text-gray-500 whitespace-nowrap">
+              <span className="text-[10px] text-gray-400 whitespace-nowrap">
                 {visibleCases.length} of {caseItems.length}
               </span>
             )}
@@ -364,9 +364,9 @@ export default function LawLensPage() {
 
         <div className="space-y-2">
           {caseItems.length === 0 ? (
-            <p className="text-center py-4 text-gray-500 text-sm">No case files yet</p>
+            <p className="text-center py-4 text-gray-400 text-sm">No case files yet</p>
           ) : visibleCases.length === 0 ? (
-            <p className="text-center py-4 text-gray-500 text-sm">
+            <p className="text-center py-4 text-gray-400 text-sm">
               No cases match the current filters.
             </p>
           ) : (
@@ -385,7 +385,7 @@ export default function LawLensPage() {
                     className="flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition-colors"
                     onClick={() => setExpandedCase(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <ChevronRight className={`w-3.5 h-3.5 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      <ChevronRight className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                       <p className="font-medium text-sm">{item.title}</p>
                       {/* Jurisdiction badge */}
                       <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium flex items-center gap-1 ${JURISDICTION_COLORS[jurisdiction] || JURISDICTION_COLORS.US}`}>
@@ -411,7 +411,7 @@ export default function LawLensPage() {
                           {daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? 'Today' : 'Overdue'}
                         </span>
                       )}
-                      <span className="text-xs text-gray-500">{new Date(item.createdAt).toLocaleDateString()}</span>
+                      <span className="text-xs text-gray-400">{new Date(item.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
 
@@ -425,7 +425,7 @@ export default function LawLensPage() {
                         transition={{ duration: 0.2 }}
                         className="border-t border-white/10 px-4 py-3 overflow-hidden"
                       >
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-3">Case Timeline</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3">Case Timeline</p>
                         <div className="flex items-start gap-0">
                           {(timeline.length > 0 ? timeline : [
                             { label: 'Filed', done: true },
@@ -458,7 +458,7 @@ export default function LawLensPage() {
                                   <div className={`flex-1 h-0.5 ${arr[idx + 1]?.done ? 'bg-neon-purple' : 'bg-white/10'}`} />
                                 )}
                               </div>
-                              <p className={`text-[10px] mt-1.5 text-center ${step.done ? 'text-neon-purple' : 'text-gray-500'}`}>
+                              <p className={`text-[10px] mt-1.5 text-center ${step.done ? 'text-neon-purple' : 'text-gray-400'}`}>
                                 {step.label}
                               </p>
                             </div>
@@ -569,7 +569,7 @@ export default function LawLensPage() {
                 )}
                 {'typeBreakdown' in actionResult && Array.isArray(actionResult.typeBreakdown) && actionResult.typeBreakdown.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">By Type</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">By Type</p>
                     {(actionResult.typeBreakdown as Array<Record<string, unknown>>).map((t, i) => (
                       <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
                         <span className="text-gray-300">{String(t.type)}</span>
@@ -637,7 +637,7 @@ export default function LawLensPage() {
                 )}
                 {'attorneyBreakdown' in actionResult && Array.isArray(actionResult.attorneyBreakdown) && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">By Attorney</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">By Attorney</p>
                     {(actionResult.attorneyBreakdown as Array<Record<string, unknown>>).map((a, i) => (
                       <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
                         <span className="text-gray-300">{String(a.attorney)}</span>

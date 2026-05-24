@@ -302,7 +302,7 @@ function TimeSeriesPanel() {
           height={220}
         />
       ) : (
-        <p className="text-xs text-zinc-600 py-6 text-center">
+        <p className="text-xs text-zinc-400 py-6 text-center">
           No points in range — record an observation to populate the chart.
         </p>
       )}
@@ -312,7 +312,7 @@ function TimeSeriesPanel() {
           {(['count', 'min', 'avg', 'p95', 'max'] as const).map((k) => (
             <div key={k} className="rounded bg-zinc-900 border border-zinc-800 p-2">
               <p className="text-sm font-bold text-zinc-100">{stats[k] ?? '--'}</p>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500">{k}</p>
+              <p className="text-[10px] uppercase tracking-wide text-zinc-400">{k}</p>
             </div>
           ))}
         </div>
@@ -424,7 +424,7 @@ function AlertRulesPanel() {
           <span className="text-zinc-400">{summary.total} rules</span>
           <span className="text-rose-400">{summary.firing} firing</span>
           <span className="text-emerald-400">{summary.ok} ok</span>
-          <span className="text-zinc-500">{summary.noData} no-data</span>
+          <span className="text-zinc-400">{summary.noData} no-data</span>
           {summary.criticalFiring > 0 && (
             <span className="text-rose-300 font-semibold">
               {summary.criticalFiring} critical firing
@@ -503,7 +503,7 @@ function AlertRulesPanel() {
       <ErrLine msg={err} />
 
       {rules.length === 0 ? (
-        <p className="text-xs text-zinc-600 py-3 text-center">No alert rules defined.</p>
+        <p className="text-xs text-zinc-400 py-3 text-center">No alert rules defined.</p>
       ) : (
         <div className="space-y-1.5">
           {rules.map((r) => (
@@ -514,11 +514,11 @@ function AlertRulesPanel() {
               <div className="min-w-0">
                 <p className="text-xs font-medium text-zinc-100 truncate">
                   {r.name}{' '}
-                  <span className="text-zinc-500 font-mono">
+                  <span className="text-zinc-400 font-mono">
                     {r.metric} {r.comparator} {r.threshold}
                   </span>
                 </p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {r.aggregation} over {r.windowMinutes}m · {r.severity}
                   {r.observed !== null && r.observed !== undefined
                     ? ` · observed ${r.observed} (${r.dataPoints} pts)`
@@ -664,7 +664,7 @@ function TenantPanel() {
       <ErrLine msg={err} />
 
       {tenants.length === 0 ? (
-        <p className="text-xs text-zinc-600 py-3 text-center">No managed tenants.</p>
+        <p className="text-xs text-zinc-400 py-3 text-center">No managed tenants.</p>
       ) : (
         <div className="space-y-1.5">
           {tenants.map((t) => (
@@ -697,11 +697,11 @@ function TenantPanel() {
                     }}
                     aria-label="Quota MB"
                   />
-                  <span className="text-[10px] text-zinc-500">MB</span>
+                  <span className="text-[10px] text-zinc-400">MB</span>
                 </div>
               </div>
               {t.history.length > 0 && (
-                <p className="text-[10px] text-zinc-500 truncate">
+                <p className="text-[10px] text-zinc-400 truncate">
                   latest: {t.history[0].change} — {new Date(t.history[0].at).toLocaleString()}
                 </p>
               )}
@@ -716,7 +716,7 @@ function TenantPanel() {
 // ── Feature 4 — Log search / tail ──────────────────────────────────────────
 
 const LEVEL_COLOR: Record<string, string> = {
-  debug: 'text-zinc-500',
+  debug: 'text-zinc-400',
   info: 'text-sky-400',
   warn: 'text-amber-400',
   error: 'text-rose-400',
@@ -832,10 +832,10 @@ function LogPanel() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <span className="text-[10px] text-zinc-500">{matched} matched</span>
+        <span className="text-[10px] text-zinc-400">{matched} matched</span>
         {Object.entries(byLevel).map(([lvl, n]) =>
           n > 0 ? (
-            <span key={lvl} className={`text-[10px] ${LEVEL_COLOR[lvl] || 'text-zinc-500'}`}>
+            <span key={lvl} className={`text-[10px] ${LEVEL_COLOR[lvl] || 'text-zinc-400'}`}>
               {lvl}:{n}
             </span>
           ) : null
@@ -846,17 +846,17 @@ function LogPanel() {
 
       <div className="max-h-64 overflow-y-auto rounded-lg bg-black/40 border border-zinc-800 font-mono text-[11px]">
         {entries.length === 0 ? (
-          <p className="text-xs text-zinc-600 py-4 text-center">No log entries match.</p>
+          <p className="text-xs text-zinc-400 py-4 text-center">No log entries match.</p>
         ) : (
           entries.map((e) => (
             <div key={e.id} className="flex gap-2 px-2 py-1 border-b border-zinc-900 last:border-0">
               <span className="text-zinc-600 flex-shrink-0">
                 {new Date(e.timestamp).toLocaleTimeString()}
               </span>
-              <span className={`flex-shrink-0 uppercase ${LEVEL_COLOR[e.level] || 'text-zinc-500'}`}>
+              <span className={`flex-shrink-0 uppercase ${LEVEL_COLOR[e.level] || 'text-zinc-400'}`}>
                 {e.level}
               </span>
-              <span className="text-zinc-500 flex-shrink-0">[{e.source}]</span>
+              <span className="text-zinc-400 flex-shrink-0">[{e.source}]</span>
               <span className="text-zinc-200 break-all">{e.message}</span>
             </div>
           ))
@@ -930,7 +930,7 @@ function TracePanel() {
       <ErrLine msg={err} />
 
       {traces.length === 0 ? (
-        <p className="text-xs text-zinc-600 py-3 text-center">
+        <p className="text-xs text-zinc-400 py-3 text-center">
           No traces recorded — ingest via the traceRecord macro.
         </p>
       ) : (
@@ -943,7 +943,7 @@ function TracePanel() {
               >
                 <div className="min-w-0">
                   <p className="text-xs font-mono text-zinc-100 truncate">{tr.endpoint}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {tr.spanCount} spans
                     {tr.bottleneck
                       ? ` · bottleneck: ${tr.bottleneck.name} (${tr.bottleneck.durationMs}ms)`
@@ -972,7 +972,7 @@ function TracePanel() {
                             title={`${s.service}: ${s.durationMs}ms @ ${s.startMs}ms`}
                           />
                         </div>
-                        <span className="text-[10px] text-zinc-500 w-12 text-right flex-shrink-0">
+                        <span className="text-[10px] text-zinc-400 w-12 text-right flex-shrink-0">
                           {s.durationMs}ms
                         </span>
                       </div>
@@ -1104,7 +1104,7 @@ function FeatureFlagPanel() {
       <ErrLine msg={err} />
 
       {flags.length === 0 ? (
-        <p className="text-xs text-zinc-600 py-3 text-center">No feature flags defined.</p>
+        <p className="text-xs text-zinc-400 py-3 text-center">No feature flags defined.</p>
       ) : (
         <div className="space-y-1.5">
           {flags.map((f) => (
@@ -1115,7 +1115,7 @@ function FeatureFlagPanel() {
               <div className="min-w-0">
                 <p className="text-xs font-mono text-zinc-100 truncate">{f.key}</p>
                 {f.description && (
-                  <p className="text-[10px] text-zinc-500 truncate">{f.description}</p>
+                  <p className="text-[10px] text-zinc-400 truncate">{f.description}</p>
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -1284,7 +1284,7 @@ function IncidentPanel() {
           <span className="text-amber-400">{summary.acknowledged} acked</span>
           <span className="text-emerald-400">{summary.resolved} resolved</span>
           {summary.mttrMs != null && (
-            <span className="text-zinc-500">
+            <span className="text-zinc-400">
               MTTR {Math.round((summary.mttrMs as number) / 60000)}m
             </span>
           )}
@@ -1321,7 +1321,7 @@ function IncidentPanel() {
       <ErrLine msg={err} />
 
       {incidents.length === 0 ? (
-        <p className="text-xs text-zinc-600 py-3 text-center">No incidents.</p>
+        <p className="text-xs text-zinc-400 py-3 text-center">No incidents.</p>
       ) : (
         <div className="space-y-1.5">
           {incidents.map((inc) => (
@@ -1342,7 +1342,7 @@ function IncidentPanel() {
               </button>
               {selected === inc.id && (
                 <div className="px-2 pb-2 space-y-2">
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {inc.service} · opened {new Date(inc.openedAt).toLocaleString()}
                     {inc.acknowledgedBy ? ` · acked by ${inc.acknowledgedBy}` : ''}
                     {inc.durationMs != null
@@ -1403,7 +1403,7 @@ export function OpsConsole() {
 
   if (!ready) {
     return (
-      <div className="flex items-center justify-center py-8 text-zinc-500 text-sm">
+      <div className="flex items-center justify-center py-8 text-zinc-400 text-sm">
         <Loader2 className="w-4 h-4 animate-spin mr-2" />
         Loading ops console…
       </div>
@@ -1412,7 +1412,7 @@ export function OpsConsole() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-zinc-400">
         Datadog/Grafana-parity ops surface — time-series history, editable alerting, tenant
         administration, log search, request-trace waterfalls, feature flags, and the incident
         on-call workflow. Every panel is backed by a live admin-domain macro.

@@ -48,20 +48,20 @@ export function RevisionHistory({ questionId, answerId, onClose }: RevisionHisto
       <div className="flex items-center gap-2">
         <History className="w-4 h-4 text-orange-400" />
         <h4 className="text-sm font-semibold text-zinc-200">Revision history</h4>
-        <button onClick={onClose} aria-label="Close revision history" className="ml-auto text-zinc-500 hover:text-zinc-200">
+        <button onClick={onClose} aria-label="Close revision history" className="ml-auto text-zinc-400 hover:text-zinc-200">
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
       ) : revisions.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic py-4 text-center">No edits yet — this post is at its original version.</p>
+        <p className="text-xs text-zinc-400 italic py-4 text-center">No edits yet — this post is at its original version.</p>
       ) : (
         <ol className="space-y-2">
           {revisions.map((rev, i) => (
             <li key={rev.id} className="rounded border border-zinc-800 bg-zinc-900/50 p-2">
-              <div className="flex items-center gap-2 text-[11px] text-zinc-500 mb-1">
+              <div className="flex items-center gap-2 text-[11px] text-zinc-400 mb-1">
                 <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">rev {i + 1}</span>
                 <span>field: {rev.field}</span>
                 <span className="ml-auto">{new Date(rev.editedAt).toLocaleString()}</span>

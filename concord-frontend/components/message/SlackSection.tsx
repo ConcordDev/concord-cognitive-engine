@@ -96,17 +96,17 @@ export function SlackSection() {
           {nav === 'huddles' && (
             panelChannel
               ? <HuddlePanel channelId={panelChannel.id} channelName={panelChannel.name} />
-              : <div className="p-6 text-sm text-gray-500">No channel yet — create one to start a huddle.</div>
+              : <div className="p-6 text-sm text-gray-400">No channel yet — create one to start a huddle.</div>
           )}
           {nav === 'files' && (
             panelChannel
               ? <FilesPanel channelId={panelChannel.id} channelName={panelChannel.name} />
-              : <div className="p-6 text-sm text-gray-500">No channel yet — create one to share files.</div>
+              : <div className="p-6 text-sm text-gray-400">No channel yet — create one to share files.</div>
           )}
           {nav === 'integrations' && (
             panelChannel
               ? <IntegrationsPanel channelId={panelChannel.id} channelName={panelChannel.name} />
-              : <div className="p-6 text-sm text-gray-500">No channel yet — create one to use integrations.</div>
+              : <div className="p-6 text-sm text-gray-400">No channel yet — create one to use integrations.</div>
           )}
           {nav === 'notifications' && (
             <NotificationPrefsPanel channels={allChannels.map((c) => ({ id: c.id, name: c.name }))} />

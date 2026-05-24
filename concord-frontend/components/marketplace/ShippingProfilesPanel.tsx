@@ -146,7 +146,7 @@ export function ShippingProfilesPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Truck className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Shipping profiles</span>
-          <span className="text-[10px] text-gray-500">{profiles.length}</span>
+          <span className="text-[10px] text-gray-400">{profiles.length}</span>
           <button
             onClick={startNew}
             className="ml-auto px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 inline-flex items-center gap-1"
@@ -186,7 +186,7 @@ export function ShippingProfilesPanel() {
                 className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono"
               />
             </div>
-            <div className="text-[10px] uppercase text-gray-500">Zones</div>
+            <div className="text-[10px] uppercase text-gray-400">Zones</div>
             {draft.zones.map((z, i) => (
               <div key={i} className="grid grid-cols-12 gap-2">
                 <input
@@ -277,11 +277,11 @@ export function ShippingProfilesPanel() {
         {/* List */}
         <div className="max-h-[24rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
             </div>
           ) : profiles.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500">
+            <div className="px-3 py-10 text-center text-xs text-gray-400">
               <Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No shipping profiles yet.
             </div>
@@ -290,9 +290,9 @@ export function ShippingProfilesPanel() {
               {profiles.map((p) => (
                 <li key={p.id} className="px-4 py-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-gray-500">{p.number}</span>
+                    <span className="font-mono text-[10px] text-gray-400">{p.number}</span>
                     <span className="text-sm text-white font-medium">{p.name}</span>
-                    <span className="text-[10px] text-gray-500">
+                    <span className="text-[10px] text-gray-400">
                       {p.originCountry || 'no origin'} · {p.processingDaysMin}–{p.processingDaysMax}d
                       processing
                     </span>

@@ -75,11 +75,11 @@ export function NotificationsPanel() {
       </div>
 
       {isLoading ? (
-        <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-500">
+        <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin mx-auto" />
         </div>
       ) : (data?.total ?? 0) === 0 ? (
-        <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-500">
+        <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-400">
           <Bell className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No notifications. Reactions, comments and tags will show up here.</p>
         </div>
@@ -107,8 +107,8 @@ export function NotificationsPanel() {
                   <p className="text-sm text-gray-200">
                     <span className="font-semibold text-white">{n.actorId}</span> {meta.verb}
                   </p>
-                  {n.preview && <p className="text-xs text-gray-500 truncate">&ldquo;{n.preview}&rdquo;</p>}
-                  <p className="text-[11px] text-gray-600 mt-0.5">{timeAgo(n.at)}</p>
+                  {n.preview && <p className="text-xs text-gray-400 truncate">&ldquo;{n.preview}&rdquo;</p>}
+                  <p className="text-[11px] text-gray-400 mt-0.5">{timeAgo(n.at)}</p>
                 </div>
                 {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 mt-1" />}
               </button>

@@ -43,17 +43,17 @@ export function PrivilegePanel({ refreshKey }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+      <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
     );
   }
-  if (!data) return <p className="text-xs text-zinc-500 italic py-4 text-center">No data yet.</p>;
+  if (!data) return <p className="text-xs text-zinc-400 italic py-4 text-center">No data yet.</p>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <ShieldCheck className="w-4 h-4 text-orange-400" />
         <h4 className="text-sm font-semibold text-zinc-200">Privileges</h4>
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-zinc-400">
           {data.unlockedCount}/{data.tiers.length} unlocked · {data.reputation} rep
         </span>
       </div>
@@ -71,7 +71,7 @@ export function PrivilegePanel({ refreshKey }: { refreshKey?: number }) {
             className={`flex items-center gap-2 rounded border px-3 py-1.5 text-[12px] ${
               t.unlocked
                 ? 'border-emerald-900/40 bg-emerald-950/15 text-emerald-200'
-                : 'border-zinc-800 bg-zinc-900/40 text-zinc-500'
+                : 'border-zinc-800 bg-zinc-900/40 text-zinc-400'
             }`}
           >
             {t.unlocked ? <Unlock className="w-3.5 h-3.5 shrink-0" /> : <Lock className="w-3.5 h-3.5 shrink-0" />}

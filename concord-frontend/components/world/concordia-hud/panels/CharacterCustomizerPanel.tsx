@@ -59,7 +59,7 @@ export function CharacterCustomizerPanel() {
   }
 
   if (!profile) {
-    return <p className="text-xs text-zinc-500 italic">Loading current appearance…</p>;
+    return <p className="text-xs text-zinc-400 italic">Loading current appearance…</p>;
   }
 
   return (

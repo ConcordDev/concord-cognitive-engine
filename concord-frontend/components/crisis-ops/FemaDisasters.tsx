@@ -62,7 +62,7 @@ export function FemaDisasters() {
         </div>
       </header>
       {disasters.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">FEMA OpenAPI unreachable.</div>}
-      {disasters.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling declarations…</div>}
+      {disasters.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling declarations…</div>}
       <div className="space-y-2 max-h-[500px] overflow-y-auto">
         {(disasters.data || []).map((d) => (
           <a key={d.id} href={`https://www.fema.gov/disaster/${d.disasterNumber}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 hover:border-amber-500/40">
@@ -74,13 +74,13 @@ export function FemaDisasters() {
                   <span className="rounded bg-zinc-800 px-1 font-mono text-[10px] text-zinc-300">{d.declarationType}</span>
                 </div>
                 <p className="mt-1 line-clamp-1 text-[12px] text-zinc-200">{d.declarationTitle}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
                   <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{d.state}{d.designatedArea ? ` · ${d.designatedArea}` : ''}</span>
                   <span className="flex items-center gap-0.5"><Calendar className="h-3 w-3" />declared {d.declarationDate?.slice(0, 10)}</span>
                   {d.incidentBeginDate && <span>began {d.incidentBeginDate.slice(0, 10)}</span>}
                 </div>
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
             </div>
           </a>
         ))}

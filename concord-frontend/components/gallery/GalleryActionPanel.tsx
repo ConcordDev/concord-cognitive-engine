@@ -179,7 +179,7 @@ export function GalleryActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -195,7 +195,7 @@ export function GalleryActionPanel() {
             <div className="text-xs font-semibold text-pink-300 uppercase tracking-wider">Selected</div>
             <h4 className="text-lg font-bold text-white">{selectedArt.title}</h4>
             <div className="text-sm text-zinc-300">{selectedArt.artist} · {selectedArt.date}</div>
-            {selectedArt.medium && <div className="text-[11px] text-zinc-500">{selectedArt.medium}</div>}
+            {selectedArt.medium && <div className="text-[11px] text-zinc-400">{selectedArt.medium}</div>}
             {selectedArt.url && <a href={selectedArt.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-pink-300 underline">view source</a>}
           </div>
         </div>
@@ -212,7 +212,7 @@ export function GalleryActionPanel() {
                 <div className="w-full h-24 bg-zinc-900 rounded flex items-center justify-center"><Frame className="w-6 h-6 text-zinc-700" /></div>
               )}
               <div className="text-[10px] text-zinc-300 mt-1 line-clamp-2">{a.title}</div>
-              <div className="text-[9px] text-zinc-500">{a.artist ?? a.source}</div>
+              <div className="text-[9px] text-zinc-400">{a.artist ?? a.source}</div>
             </button>
           ))}
         </div>

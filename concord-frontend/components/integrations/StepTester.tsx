@@ -76,7 +76,7 @@ export function StepTester() {
       <div className="flex items-center gap-2">
         <FlaskConical className="w-4 h-4 text-neon-cyan" />
         <h3 className="font-semibold text-sm">Step Tester</h3>
-        <span className="text-xs text-gray-500">— validate mapping, conditions and transforms against sample data</span>
+        <span className="text-xs text-gray-400">— validate mapping, conditions and transforms against sample data</span>
       </div>
 
       <div className="flex gap-1">
@@ -95,7 +95,7 @@ export function StepTester() {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="block text-[10px] uppercase tracking-wide text-gray-500">Sample input (JSON)</label>
+          <label className="block text-[10px] uppercase tracking-wide text-gray-400">Sample input (JSON)</label>
           <textarea
             value={sample}
             onChange={(e) => setSample(e.target.value)}
@@ -109,22 +109,22 @@ export function StepTester() {
         <div className="space-y-2">
           {tab === 'map' && (
             <>
-              <label className="block text-[10px] uppercase tracking-wide text-gray-500">Mapping ($.path or literal)</label>
+              <label className="block text-[10px] uppercase tracking-wide text-gray-400">Mapping ($.path or literal)</label>
               <textarea value={mapping} onChange={(e) => setMapping(e.target.value)} rows={6}
                 className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-xs font-mono" />
             </>
           )}
           {tab === 'condition' && (
             <>
-              <label className="block text-[10px] uppercase tracking-wide text-gray-500">Condition expression</label>
+              <label className="block text-[10px] uppercase tracking-wide text-gray-400">Condition expression</label>
               <input type="text" value={condition} onChange={(e) => setCondition(e.target.value)}
                 className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-xs font-mono" />
-              <p className="text-[10px] text-gray-500">Ops: == != &gt; &lt; &gt;= &lt;= contains exists · joins: &amp;&amp; ||</p>
+              <p className="text-[10px] text-gray-400">Ops: == != &gt; &lt; &gt;= &lt;= contains exists · joins: &amp;&amp; ||</p>
             </>
           )}
           {tab === 'formatter' && (
             <>
-              <label className="block text-[10px] uppercase tracking-wide text-gray-500">Formatter op + value</label>
+              <label className="block text-[10px] uppercase tracking-wide text-gray-400">Formatter op + value</label>
               <select value={fmtOp} onChange={(e) => setFmtOp(e.target.value)}
                 className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-xs">
                 {FORMATTER_OPS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -135,10 +135,10 @@ export function StepTester() {
           )}
           {tab === 'code' && (
             <>
-              <label className="block text-[10px] uppercase tracking-wide text-gray-500">Code expression</label>
+              <label className="block text-[10px] uppercase tracking-wide text-gray-400">Code expression</label>
               <input type="text" value={expression} onChange={(e) => setExpression(e.target.value)}
                 className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-xs font-mono" />
-              <p className="text-[10px] text-gray-500">Intrinsics: concat / sum / len / upper / lower</p>
+              <p className="text-[10px] text-gray-400">Intrinsics: concat / sum / len / upper / lower</p>
             </>
           )}
         </div>

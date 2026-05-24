@@ -32,7 +32,7 @@ export function LensFeedButton({ domain, label }: { domain: string; label?: stri
         <Rss className="w-4 h-4 text-emerald-400" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold text-zinc-100">{label || 'Live data feed'}</p>
-          <p className="text-[10px] text-zinc-500">Ingests real items from a free public source as DTUs.</p>
+          <p className="text-[10px] text-zinc-400">Ingests real items from a free public source as DTUs.</p>
         </div>
         <button onClick={pull} disabled={busy}
           className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 inline-flex items-center gap-1">
@@ -44,7 +44,7 @@ export function LensFeedButton({ domain, label }: { domain: string; label?: stri
         <p className="mt-2 text-[11px] text-emerald-300 inline-flex items-center gap-1">
           <Check className="w-3 h-3" />
           Ingested {result.ingested} new DTU{result.ingested === 1 ? '' : 's'} from {result.source}
-          {result.skipped > 0 && <span className="text-zinc-500"> · {result.skipped} already seen</span>}
+          {result.skipped > 0 && <span className="text-zinc-400"> · {result.skipped} already seen</span>}
         </p>
       )}
       {err && <p className="mt-2 text-[11px] text-rose-400">{err}</p>}

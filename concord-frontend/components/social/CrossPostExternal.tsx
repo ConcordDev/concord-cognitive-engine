@@ -175,7 +175,7 @@ export function CrossPostExternal({
               className="absolute right-0 top-full mt-2 w-56 bg-lattice-surface border border-lattice-border rounded-xl shadow-xl z-50 overflow-hidden"
             >
               <div className="p-2 border-b border-lattice-border">
-                <p className="text-xs text-gray-500 px-2 py-1">Share to...</p>
+                <p className="text-xs text-gray-400 px-2 py-1">Share to...</p>
               </div>
 
               <div className="p-1">

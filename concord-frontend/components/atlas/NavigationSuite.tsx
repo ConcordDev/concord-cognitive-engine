@@ -49,7 +49,7 @@ export function NavigationSuite() {
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-medium transition ${active ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-medium transition ${active ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}
             >
               <Icon className="h-3.5 w-3.5" />
               {t.label}

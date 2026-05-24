@@ -98,7 +98,7 @@ export function GrowthProjectionPanel() {
             ] as const).map(([l, v]) => (
               <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
                 <p className="text-sm font-bold text-green-300">{v}</p>
-                <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+                <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
               </div>
             ))}
           </div>
@@ -112,13 +112,13 @@ export function GrowthProjectionPanel() {
             ]}
             height={220}
           />
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Peak mean annual increment of {result.peakMai.toLocaleString()} bf/ac/yr at age {result.biologicalRotationAge} —
             the economically optimal rotation point for {result.species.replace(/_/g, ' ')}.
           </p>
         </div>
       )}
-      {!result && !busy && <p className="text-xs text-zinc-500 italic">No projection yet. Enter stand details above.</p>}
+      {!result && !busy && <p className="text-xs text-zinc-400 italic">No projection yet. Enter stand details above.</p>}
     </div>
   );
 }

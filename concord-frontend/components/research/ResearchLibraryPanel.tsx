@@ -19,7 +19,7 @@ interface PdfAttachment { id: string; referenceId: string; url: string; filename
 
 const TYPES = ['article', 'book', 'chapter', 'conference', 'thesis', 'report', 'preprint', 'dataset'];
 const STATUS_COLOR: Record<string, string> = {
-  to_read: 'text-zinc-500', reading: 'text-amber-400', read: 'text-emerald-400',
+  to_read: 'text-zinc-400', reading: 'text-amber-400', read: 'text-emerald-400',
 };
 
 export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
@@ -107,7 +107,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   const copy = (text: string) => { try { navigator.clipboard?.writeText(text); } catch { /* ignore */ } };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Reference detail ──
@@ -120,7 +120,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <h3 className="text-base font-bold text-zinc-100">{selected.title}</h3>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             {selected.authors || 'Unknown'}{selected.year ? ` · ${selected.year}` : ''}
             {selected.journal ? ` · ${selected.journal}` : ''} · {selected.type}
           </p>
@@ -128,7 +128,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             {['to_read', 'reading', 'read'].map((st) => (
               <button key={st} type="button" onClick={() => setStatus(selected, st)}
                 className={cn('text-[10px] px-2 py-0.5 rounded border capitalize',
-                  selected.status === st ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-500')}>
+                  selected.status === st ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
                 {st.replace(/_/g, ' ')}
               </button>
             ))}
@@ -142,7 +142,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             <h4 className="text-xs font-semibold text-zinc-300">Citations</h4>
             {(['apa', 'mla', 'bibtex'] as const).map((style) => (
               <div key={style} className="flex items-start gap-2">
-                <span className="text-[10px] uppercase text-zinc-600 w-12 shrink-0 pt-0.5">{style}</span>
+                <span className="text-[10px] uppercase text-zinc-400 w-12 shrink-0 pt-0.5">{style}</span>
                 <code className="flex-1 text-[10px] text-zinc-400 break-all whitespace-pre-wrap">{citations[style]}</code>
                 <button type="button" onClick={() => copy(citations[style])} className="text-zinc-600 hover:text-zinc-300 shrink-0">
                   <Copy className="w-3 h-3" />
@@ -165,7 +165,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               className="col-span-6 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Attach PDF</button>
           </div>
           {pdfs.length === 0 ? (
-            <p className="text-[11px] text-zinc-600 italic">No PDFs attached.</p>
+            <p className="text-[11px] text-zinc-400 italic">No PDFs attached.</p>
           ) : (
             <ul className="space-y-1">
               {pdfs.map((p) => (
@@ -251,7 +251,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {references.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No references. Add papers and books to build your library.
         </div>
       ) : (
@@ -262,7 +262,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
                 <BookMarked className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100">{r.title}</p>
-                  <p className="text-[11px] text-zinc-500 truncate">
+                  <p className="text-[11px] text-zinc-400 truncate">
                     {r.authors || 'Unknown'}{r.year ? ` · ${r.year}` : ''}{r.journal ? ` · ${r.journal}` : ''}
                   </p>
                   {r.tags.length > 0 && (

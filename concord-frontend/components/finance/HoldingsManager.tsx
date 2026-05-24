@@ -87,7 +87,7 @@ export function HoldingsManager() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Briefcase className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Holdings</span>
-        <span className="ml-auto text-[10px] font-mono text-gray-500">
+        <span className="ml-auto text-[10px] font-mono text-gray-400">
           ${totalValue.toFixed(0)} <span className={cn('ml-1', totalGain >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
             {totalGain >= 0 ? '+' : ''}{totalGainPct.toFixed(2)}%
           </span>
@@ -112,12 +112,12 @@ export function HoldingsManager() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : holdings.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Briefcase className="w-6 h-6 mx-auto mb-2 opacity-30" />No holdings. Hit + to add a position.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Briefcase className="w-6 h-6 mx-auto mb-2 opacity-30" />No holdings. Hit + to add a position.</div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+            <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
               <tr><th className="text-left px-3 py-1.5">Symbol</th><th className="text-right">Shares</th><th className="text-right">Cost</th><th className="text-right">Price</th><th className="text-right">Value</th><th className="text-right pr-3">G/L</th><th /></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -128,7 +128,7 @@ export function HoldingsManager() {
                   <tr key={h.id} className="hover:bg-white/[0.03] group">
                     <td className="px-3 py-2">
                       <div className="text-white font-mono font-semibold">{h.symbol}</div>
-                      <div className="text-[10px] text-gray-500 truncate">{h.name} · {h.sector}</div>
+                      <div className="text-[10px] text-gray-400 truncate">{h.name} · {h.sector}</div>
                     </td>
                     <td className="text-right font-mono tabular-nums text-gray-300">{h.shares.toFixed(2)}</td>
                     <td className="text-right font-mono tabular-nums text-gray-300">${h.costBasis.toFixed(2)}</td>
@@ -146,7 +146,7 @@ export function HoldingsManager() {
                     <td className="text-right font-mono tabular-nums text-white">${h.value.toFixed(0)}</td>
                     <td className={cn('text-right font-mono tabular-nums pr-3', gain >= 0 ? 'text-emerald-300' : 'text-rose-300')}>{gain >= 0 ? '+' : ''}${gain.toFixed(0)} ({gainPct.toFixed(1)}%)</td>
                     <td className="pr-2 text-right">
-                      <button onClick={() => remove(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      <button onClick={() => remove(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                     </td>
                   </tr>
                 );

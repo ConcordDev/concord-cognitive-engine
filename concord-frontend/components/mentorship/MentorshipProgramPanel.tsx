@@ -51,7 +51,7 @@ export function MentorshipProgramPanel() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>;
+    return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>;
   }
   if (error || !report) {
     return <p className="text-sm text-red-400 text-center py-8">{error || 'No report available.'}</p>;
@@ -104,7 +104,7 @@ export function MentorshipProgramPanel() {
           <Users className="w-4 h-4 text-neon-cyan" /> Cohort ({report.cohort.length} mentors)
         </h4>
         {report.cohort.length === 0 ? (
-          <p className="text-xs text-zinc-500">No mentors in the program yet.</p>
+          <p className="text-xs text-zinc-400">No mentors in the program yet.</p>
         ) : (
           <div className="space-y-2">
             {report.cohort.map((c) => (

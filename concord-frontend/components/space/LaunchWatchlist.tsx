@@ -45,14 +45,14 @@ export function LaunchWatchlist() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Rocket className="w-4 h-4 text-indigo-400" />
         <h3 className="text-sm font-bold text-zinc-100">Launch Watchlist</h3>
-        <span className="text-[11px] text-zinc-500">Heavens-Above shape</span>
+        <span className="text-[11px] text-zinc-400">Heavens-Above shape</span>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
@@ -69,7 +69,7 @@ export function LaunchWatchlist() {
       </div>
 
       {items.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No tracked launches — add one above.</p>
+        <p className="text-xs text-zinc-400 italic">No tracked launches — add one above.</p>
       ) : (
         <ul className="space-y-1">
           {items.map(i => (
@@ -80,13 +80,13 @@ export function LaunchWatchlist() {
                 <Check className="w-3 h-3" />
               </button>
               <div className="min-w-0 flex-1">
-                <p className={cn('text-xs font-semibold truncate', i.watched ? 'text-zinc-500 line-through' : 'text-zinc-100')}>{i.name}</p>
-                <p className="text-[10px] text-zinc-500">{i.provider}{i.net ? ` · ${i.net}` : ''}</p>
+                <p className={cn('text-xs font-semibold truncate', i.watched ? 'text-zinc-400 line-through' : 'text-zinc-100')}>{i.name}</p>
+                <p className="text-[10px] text-zinc-400">{i.provider}{i.net ? ` · ${i.net}` : ''}</p>
               </div>
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded shrink-0',
                 i.status === 'today' ? 'bg-amber-900/50 text-amber-300'
                 : i.status === 'upcoming' ? 'bg-indigo-900/50 text-indigo-300'
-                : i.status === 'launched' ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-800 text-zinc-500')}>
+                : i.status === 'launched' ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-800 text-zinc-400')}>
                 {i.daysUntil == null ? 'TBD' : i.status === 'launched' ? 'launched' : i.status === 'today' ? 'today' : `T-${i.daysUntil}d`}
               </span>
               <button onClick={() => untrack(i.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>

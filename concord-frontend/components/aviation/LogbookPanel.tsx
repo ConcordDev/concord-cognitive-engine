@@ -59,7 +59,7 @@ export function LogbookPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BookOpen className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Pilot logbook</span>
-        <span className="ml-auto text-[10px] text-gray-500">{entries.length} flights</span>
+        <span className="ml-auto text-[10px] text-gray-400">{entries.length} flights</span>
       </header>
 
       {totals && (
@@ -96,18 +96,18 @@ export function LogbookPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : entries.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No logbook entries yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No logbook entries yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {entries.map(e => (
               <li key={e.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
-                <span className="text-[10px] font-mono text-gray-500 w-20">{e.date}</span>
+                <span className="text-[10px] font-mono text-gray-400 w-20">{e.date}</span>
                 <span className="text-xs font-mono text-cyan-300">{e.from}→{e.to}</span>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', e.conditions === 'VFR' ? 'bg-emerald-500/15 text-emerald-300' : e.conditions === 'MVFR' ? 'bg-amber-500/15 text-amber-300' : 'bg-rose-500/15 text-rose-300')}>{e.conditions}</span>
                 <span className="ml-auto font-mono text-sm tabular-nums text-white">{e.totalHours.toFixed(1)}h</span>
-                <span className="text-[10px] text-gray-500">PIC {e.pic.toFixed(1)} · {e.dayLandings + e.nightLandings} ldg</span>
+                <span className="text-[10px] text-gray-400">PIC {e.pic.toFixed(1)} · {e.dayLandings + e.nightLandings} ldg</span>
                 <button onClick={() => remove(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
@@ -121,7 +121,7 @@ export function LogbookPanel() {
 function Tile({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded bg-white/[0.03] border border-white/5 px-2 py-1.5">
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-sm font-mono tabular-nums text-white">{value}</div>
     </div>
   );

@@ -66,7 +66,7 @@ export function ContractAnalyzer() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Brain className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Contract analyzer</span>
-        <span className="ml-auto text-[10px] text-gray-500">Conscious brain · constrained-prompt</span>
+        <span className="ml-auto text-[10px] text-gray-400">Conscious brain · constrained-prompt</span>
       </header>
       <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-3">
@@ -96,14 +96,14 @@ export function ContractAnalyzer() {
             </button>
           </div>
           {error && <p className="text-xs text-red-400">{error}</p>}
-          <p className="text-[10px] text-gray-500 leading-relaxed">
+          <p className="text-[10px] text-gray-400 leading-relaxed">
             Decision-support tool, not legal advice. Consult a licensed attorney for binding decisions.
           </p>
         </div>
 
         <div>
           {!analysis ? (
-            <div className="flex items-center justify-center h-full text-xs text-gray-500 italic">
+            <div className="flex items-center justify-center h-full text-xs text-gray-400 italic">
               Paste contract text and click Analyze.
             </div>
           ) : (
@@ -112,10 +112,10 @@ export function ContractAnalyzer() {
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="w-4 h-4 text-cyan-400" />
                   <span className="text-sm font-bold text-white">{analysis.documentType}</span>
-                  {analysis.termLength && <span className="text-[10px] text-gray-500">· {analysis.termLength}</span>}
+                  {analysis.termLength && <span className="text-[10px] text-gray-400">· {analysis.termLength}</span>}
                 </div>
                 <p className="text-xs text-gray-300">{analysis.summary}</p>
-                <div className="mt-2 text-[10px] text-gray-500">
+                <div className="mt-2 text-[10px] text-gray-400">
                   {analysis.partyCount} parties · {analysis.governing.law}{analysis.governing.venue ? ` · ${analysis.governing.venue}` : ''}
                 </div>
               </div>

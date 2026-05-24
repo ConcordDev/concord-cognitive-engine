@@ -96,21 +96,21 @@ function InspectorDrawer({ entityType, entityId, onClose }: InspectorProps) {
           <Icon className="w-4 h-4 text-neon-blue" />
           <span className="text-sm font-medium text-white capitalize">{entityType} Inspector</span>
         </div>
-        <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
+        <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {isLoading ? (
-        <div className="p-4 text-gray-500 text-sm">Loading...</div>
+        <div className="p-4 text-gray-400 text-sm">Loading...</div>
       ) : isError || !data ? (
         <div className="p-4 text-red-400 text-sm">Failed to load entity</div>
       ) : (
         <div className="divide-y divide-lattice-border/50">
           {/* ID bar */}
           <div className="px-4 py-2 flex items-center justify-between text-xs">
-            <span className="font-mono text-gray-500 truncate">{entityId}</span>
-            <button onClick={copyId} className="text-gray-500 hover:text-white" aria-label="Copy">
+            <span className="font-mono text-gray-400 truncate">{entityId}</span>
+            <button onClick={copyId} className="text-gray-400 hover:text-white" aria-label="Copy">
               <Copy className="w-3 h-3" />
             </button>
           </div>
@@ -138,7 +138,7 @@ function InspectorDrawer({ entityType, entityId, onClose }: InspectorProps) {
                 )
                 .map(([key, val]) => (
                   <div key={key} className="flex items-start justify-between text-xs">
-                    <span className="text-gray-500 flex-shrink-0">{key}:</span>
+                    <span className="text-gray-400 flex-shrink-0">{key}:</span>
                     <span className="text-gray-300 text-right truncate ml-2 max-w-[200px]">
                       {typeof val === 'object' ? JSON.stringify(val) : String(val ?? '—')}
                     </span>

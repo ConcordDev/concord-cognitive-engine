@@ -63,7 +63,7 @@ export function AtlasSection() {
       badges={{ places: places.length, lists: lists.length, trips: trips.length }}
       panel={
         loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
         ) : (
           <>
             {nav === 'explore'    && <ExplorePanel onSaved={refresh} onShowOnMap={showOnMap} />}
@@ -122,13 +122,13 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 text-xs font-semibold text-gray-200">Explore (OpenStreetMap geocode)</header>
       <form onSubmit={(e) => { e.preventDefault(); search(); }} className="p-2 border-b border-white/10 flex items-center gap-1">
-        <Search className="w-3.5 h-3.5 text-gray-500" />
+        <Search className="w-3.5 h-3.5 text-gray-400" />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search any place or address…" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button type="submit" disabled={loading} className="px-2 py-1 text-xs rounded bg-teal-500 text-black font-bold hover:bg-teal-400 disabled:opacity-40">{loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Go'}</button>
       </form>
       <div className="flex-1 overflow-y-auto">
         {results.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">Search to find places. Results plot on the map.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">Search to find places. Results plot on the map.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {results.map((r, i) => (
@@ -136,7 +136,7 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
                 <MapPin className="w-3.5 h-3.5 text-teal-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white truncate">{r.name}</div>
-                  <div className="text-[10px] text-gray-500 truncate">{r.address}</div>
+                  <div className="text-[10px] text-gray-400 truncate">{r.address}</div>
                 </div>
                 <button onClick={() => save(r)} className="px-1.5 py-0.5 text-[10px] rounded bg-teal-500/15 text-teal-300 border border-teal-500/30 hover:bg-teal-500/25">Save</button>
               </li>
@@ -174,7 +174,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Saved places</span>
-        <span className="text-[10px] text-gray-500">{places.length}</span>
+        <span className="text-[10px] text-gray-400">{places.length}</span>
         <button onClick={() => onShowOnMap(places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="ml-auto text-[10px] text-teal-300 hover:text-teal-200">Show all</button>
         <button onClick={() => setCreating(v => !v)} className="p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
       </header>
@@ -194,13 +194,13 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
       )}
       <ul className="flex-1 overflow-y-auto divide-y divide-white/5">
         {places.length === 0 ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-500">No saved places. Use Explore to find some.</li>
+          <li className="px-3 py-8 text-center text-xs text-gray-400">No saved places. Use Explore to find some.</li>
         ) : places.map(p => (
           <li key={p.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-start gap-2 group cursor-pointer" onClick={() => onShowOnMap([{ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` }])}>
             <span className="text-base">{CAT_EMOJI[p.category] || '📍'}</span>
             <div className="flex-1 min-w-0">
               <div className="text-xs text-white truncate">{p.name}</div>
-              <div className="text-[10px] text-gray-500 truncate">{p.address || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}</div>
+              <div className="text-[10px] text-gray-400 truncate">{p.address || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}</div>
               {p.notes && <div className="text-[10px] text-gray-400 truncate">{p.notes}</div>}
             </div>
             {p.rating !== null && <span className="text-[10px] text-amber-300 inline-flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-current" />{p.rating}</span>}
@@ -244,7 +244,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Lists</span>
-        <span className="text-[10px] text-gray-500">{lists.length}</span>
+        <span className="text-[10px] text-gray-400">{lists.length}</span>
         <button onClick={() => setCreating(v => !v)} className="ml-auto p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
       </header>
       {creating && (
@@ -255,7 +255,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
       )}
       <ul className="flex-1 overflow-y-auto divide-y divide-white/5">
         {lists.length === 0 ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-500">No lists yet.</li>
+          <li className="px-3 py-8 text-center text-xs text-gray-400">No lists yet.</li>
         ) : lists.map(l => {
           const isOpen = expand === l.id;
           return (
@@ -264,7 +264,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
                 <button onClick={() => setExpand(isOpen ? null : l.id)}><ChevronRight className={cn('w-3 h-3 text-gray-400 transition', isOpen && 'rotate-90')} /></button>
                 <ListChecks className="w-3.5 h-3.5" style={{ color: l.color }} />
                 <span className="flex-1 text-xs text-white truncate">{l.name}</span>
-                <span className="text-[10px] text-gray-500">{l.placeCount}</span>
+                <span className="text-[10px] text-gray-400">{l.placeCount}</span>
                 <button onClick={() => onShowOnMap(l.places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="opacity-0 group-hover:opacity-100 text-[10px] text-teal-300">map</button>
                 <button onClick={() => del(l.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
               </div>
@@ -325,7 +325,7 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Trips</span>
-        <span className="text-[10px] text-gray-500">{trips.length}</span>
+        <span className="text-[10px] text-gray-400">{trips.length}</span>
       </header>
       <div className="p-2 border-b border-white/10 flex gap-1">
         <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && create()} placeholder="New trip name" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -333,7 +333,7 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
       </div>
       <ul className="flex-1 overflow-y-auto divide-y divide-white/5">
         {trips.length === 0 ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-500">No trips yet.</li>
+          <li className="px-3 py-8 text-center text-xs text-gray-400">No trips yet.</li>
         ) : trips.map(t => {
           const isOpen = expand === t.id;
           return (
@@ -342,7 +342,7 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
                 <button onClick={() => setExpand(isOpen ? null : t.id)}><ChevronRight className={cn('w-3 h-3 text-gray-400 transition', isOpen && 'rotate-90')} /></button>
                 <Route className="w-3.5 h-3.5 text-teal-400" />
                 <span className="flex-1 text-xs text-white truncate">{t.name}</span>
-                <span className="text-[10px] text-gray-500">{t.stops.length} stop(s)</span>
+                <span className="text-[10px] text-gray-400">{t.stops.length} stop(s)</span>
                 <button onClick={() => onShowOnMap(t.stops.map(st => ({ lat: st.lat, lng: st.lng, label: st.name })))} className="opacity-0 group-hover:opacity-100 text-[10px] text-teal-300">map</button>
                 <button onClick={() => del(t.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
               </div>
@@ -352,7 +352,7 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
                     <div key={st.id} className="flex items-center gap-1.5 text-[11px] text-gray-300">
                       <span className="text-teal-400 font-mono">{i + 1}.</span>
                       <span className="flex-1 truncate">{st.name}</span>
-                      <span className="text-[9px] text-gray-500">day {st.day}</span>
+                      <span className="text-[9px] text-gray-400">day {st.day}</span>
                       <button onClick={() => removeStop(t.id, st.id)} className="text-rose-300"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
@@ -482,7 +482,7 @@ function PlannerPanel({ places, onShowOnMap }: { places: Place[]; onShowOnMap: (
               </ul>
             </div>
           ))}
-          <div className="text-[10px] text-gray-500 italic">source: {result.source}</div>
+          <div className="text-[10px] text-gray-400 italic">source: {result.source}</div>
         </div>
       )}
     </div>
@@ -513,19 +513,19 @@ function RecentPanel() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Recent searches</span>
-        <span className="text-[10px] text-gray-500">{recent.length}</span>
+        <span className="text-[10px] text-gray-400">{recent.length}</span>
         {recent.length > 0 && <button onClick={clear} className="ml-auto text-[10px] text-rose-300 hover:text-rose-200">Clear</button>}
       </header>
       <ul className="flex-1 overflow-y-auto divide-y divide-white/5">
         {loading ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
+          <li className="px-3 py-8 text-center text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
         ) : recent.length === 0 ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-500">No recent searches.</li>
+          <li className="px-3 py-8 text-center text-xs text-gray-400">No recent searches.</li>
         ) : recent.map((r, i) => (
           <li key={i} className="px-3 py-2 flex items-center gap-2 text-xs text-gray-300">
-            <History className="w-3 h-3 text-gray-500" />
+            <History className="w-3 h-3 text-gray-400" />
             <span className="flex-1 truncate">{r.query}</span>
-            <span className="text-[10px] text-gray-500">{r.at.slice(0, 10)}</span>
+            <span className="text-[10px] text-gray-400">{r.at.slice(0, 10)}</span>
           </li>
         ))}
       </ul>

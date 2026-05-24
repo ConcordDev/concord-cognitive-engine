@@ -118,7 +118,7 @@ export function LaunchCountdown() {
               onClick={() => setSource(s)}
               className={cn(
                 'px-2.5 py-1 rounded text-[11px] font-medium',
-                source === s ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300',
+                source === s ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
               )}
             >
               {s === 'spacex' ? 'SpaceX' : 'All providers'}
@@ -145,7 +145,7 @@ export function LaunchCountdown() {
             <Rocket className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white">{data.name}</p>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 {[data.provider, data.rocket, data.pad].filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -167,7 +167,7 @@ export function LaunchCountdown() {
                 <p className="text-2xl font-mono font-bold text-amber-400 tabular-nums">
                   {String(Math.max(0, u.v)).padStart(2, '0')}
                 </p>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{u.l}</p>
+                <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{u.l}</p>
               </div>
             ))}
           </div>
@@ -217,7 +217,7 @@ export function LaunchCountdown() {
       )}
 
       {data && !data.found && !error && (
-        <p className="text-xs text-zinc-500 text-center py-4">No upcoming launch found.</p>
+        <p className="text-xs text-zinc-400 text-center py-4">No upcoming launch found.</p>
       )}
     </div>
   );

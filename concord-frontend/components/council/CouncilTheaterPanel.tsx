@@ -174,7 +174,7 @@ export default function CouncilTheaterPanel() {
               </div>
             ))}
             {cur.transcript.length === 0 && (
-              <div className="text-gray-500 italic text-sm">Waiting for the first voice...</div>
+              <div className="text-gray-400 italic text-sm">Waiting for the first voice...</div>
             )}
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function CouncilTheaterPanel() {
           </div>
         </div>
       ) : (
-        <div className="text-gray-500 italic text-sm">Council is in recess.</div>
+        <div className="text-gray-400 italic text-sm">Council is in recess.</div>
       )}
 
       {snap?.history && snap.history.length > 0 && (

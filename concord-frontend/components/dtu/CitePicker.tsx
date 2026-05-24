@@ -199,7 +199,7 @@ function CitePickerInner({
         aria-hidden="true"
       >
         <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-full border border-lattice-border/60 bg-lattice-bg/90 px-3 py-1.5 shadow-md backdrop-blur">
-          <label className="text-[10px] uppercase tracking-wider text-gray-500">
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">
             Authority
             <select
               value={authority}
@@ -212,7 +212,7 @@ function CitePickerInner({
               <option value="institutional">institutional</option>
             </select>
           </label>
-          <label className="text-[10px] uppercase tracking-wider text-gray-500">
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">
             Freshness
             <select
               value={freshness}

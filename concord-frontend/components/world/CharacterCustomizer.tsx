@@ -188,7 +188,7 @@ export function CharacterCustomizer({
               })}
             </div>
           </div>
-          <p className="mt-4 text-xs text-zinc-600">3D Preview</p>
+          <p className="mt-4 text-xs text-zinc-400">3D Preview</p>
         </div>
 
         {/* ── Right Panel: Slot Options Grid ── */}

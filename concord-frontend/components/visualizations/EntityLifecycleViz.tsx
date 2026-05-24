@@ -282,7 +282,7 @@ export default function EntityLifecycleViz({ entities: entitiesProp, className }
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse" />
           <h3 className="text-sm font-semibold text-white">Entity Activity Timeline</h3>
-          <span className="text-xs text-gray-500">{entities.length} entities</span>
+          <span className="text-xs text-gray-400">{entities.length} entities</span>
         </div>
         <div className="flex items-center gap-3 text-[10px]">
           {Object.entries(EVENT_COLORS).map(([type, color]) => (
@@ -319,7 +319,7 @@ export default function EntityLifecycleViz({ entities: entitiesProp, className }
             </p>
             <p className="text-xs text-gray-300 mt-0.5">{tooltip.entity.name}</p>
             {tooltip.event.detail && (
-              <p className="text-[10px] text-gray-500 mt-1">{tooltip.event.detail}</p>
+              <p className="text-[10px] text-gray-400 mt-1">{tooltip.event.detail}</p>
             )}
           </div>
         )}

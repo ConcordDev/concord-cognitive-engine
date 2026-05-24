@@ -502,7 +502,7 @@ export function LiveDbClient() {
 
           <div className="space-y-1 max-h-[280px] overflow-y-auto">
             {conns.length === 0 && (
-              <p className="text-xs text-gray-500 py-4 text-center">No connections yet — add one to begin.</p>
+              <p className="text-xs text-gray-400 py-4 text-center">No connections yet — add one to begin.</p>
             )}
             {conns.map((c) => (
               <div
@@ -519,21 +519,21 @@ export function LiveDbClient() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); testConn(c.id); }}
-                      className="p-0.5 text-gray-500 hover:text-neon-green"
+                      className="p-0.5 text-gray-400 hover:text-neon-green"
                       aria-label="Test connection"
                     >
                       <Wifi className="w-3 h-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteConn(c.id); }}
-                      className="p-0.5 text-gray-500 hover:text-red-400"
+                      className="p-0.5 text-gray-400 hover:text-red-400"
                       aria-label="Delete connection"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
+                <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
                   <span>{c.engine}</span>
                   <span>·</span>
                   <span>{c.datasetCount} tables</span>
@@ -592,7 +592,7 @@ export function LiveDbClient() {
                       </select>
                       <button
                         onClick={() => setDsCols((cs) => cs.filter((_, j) => j !== i))}
-                        className="p-0.5 text-gray-500 hover:text-red-400"
+                        className="p-0.5 text-gray-400 hover:text-red-400"
                         aria-label="Remove column"
                       >
                         <X className="w-3 h-3" />
@@ -628,7 +628,7 @@ export function LiveDbClient() {
                     </button>
                     <button
                       onClick={() => deleteDataset(d.id)}
-                      className="p-0.5 text-gray-500 hover:text-red-400"
+                      className="p-0.5 text-gray-400 hover:text-red-400"
                       aria-label="Delete dataset"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -636,7 +636,7 @@ export function LiveDbClient() {
                   </div>
                 ))}
                 {datasets.length === 0 && (
-                  <p className="text-[10px] text-gray-600 text-center py-2">No datasets in this connection.</p>
+                  <p className="text-[10px] text-gray-400 text-center py-2">No datasets in this connection.</p>
                 )}
               </div>
             </div>
@@ -663,7 +663,7 @@ export function LiveDbClient() {
           {view === 'query' && (
             <div className="space-y-3">
               {!activeConn && (
-                <p className="text-xs text-gray-500 panel p-4 text-center">
+                <p className="text-xs text-gray-400 panel p-4 text-center">
                   Select or create a connection to run live queries.
                 </p>
               )}
@@ -722,7 +722,7 @@ export function LiveDbClient() {
                         Autocomplete
                       </button>
                       {result && (
-                        <span className="text-[11px] text-gray-500 ml-auto">
+                        <span className="text-[11px] text-gray-400 ml-auto">
                           {result.op} · {result.affected ?? result.rowCount} row(s) · {result.durationMs}ms
                         </span>
                       )}
@@ -736,7 +736,7 @@ export function LiveDbClient() {
                         <h4 className="text-xs font-semibold text-neon-yellow flex items-center gap-1.5">
                           <GitBranch className="w-3.5 h-3.5" /> Query Plan — total cost {explain.totalCost}, est. {explain.estimatedRows} rows
                         </h4>
-                        <button onClick={() => setExplain(null)} className="text-gray-500 hover:text-gray-300" aria-label="Close plan">
+                        <button onClick={() => setExplain(null)} className="text-gray-400 hover:text-gray-300" aria-label="Close plan">
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -755,7 +755,7 @@ export function LiveDbClient() {
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-semibold text-neon-green flex items-center gap-1.5">
                           <Table2 className="w-3.5 h-3.5" /> Result — {result.rowCount} row(s)
-                          {canEditGrid && <span className="text-[10px] text-gray-500">· editable</span>}
+                          {canEditGrid && <span className="text-[10px] text-gray-400">· editable</span>}
                         </h4>
                         <div className="flex gap-1.5">
                           <button
@@ -831,7 +831,7 @@ export function LiveDbClient() {
                                     <td className="px-2 py-1">
                                       <button
                                         onClick={() => deleteResultRow(rid)}
-                                        className="text-gray-500 hover:text-red-400"
+                                        className="text-gray-400 hover:text-red-400"
                                         aria-label="Delete row"
                                       >
                                         <Trash2 className="w-3 h-3" />
@@ -894,9 +894,9 @@ export function LiveDbClient() {
               <h4 className="text-xs font-semibold text-neon-cyan flex items-center gap-1.5">
                 <Move className="w-3.5 h-3.5" /> ER Diagram — drag tables to reposition
               </h4>
-              {!activeConn && <p className="text-xs text-gray-500">Select a connection.</p>}
+              {!activeConn && <p className="text-xs text-gray-400">Select a connection.</p>}
               {activeConn && datasets.length === 0 && (
-                <p className="text-xs text-gray-500">No datasets — create one to see the diagram.</p>
+                <p className="text-xs text-gray-400">No datasets — create one to see the diagram.</p>
               )}
               {activeConn && datasets.length > 0 && (
                 <div
@@ -916,7 +916,7 @@ export function LiveDbClient() {
                     >
                       <div className="bg-neon-cyan/10 px-2 py-1 text-xs font-bold text-neon-cyan border-b border-neon-cyan/30 flex items-center gap-1.5">
                         <Table2 className="w-3 h-3" /> {d.name}
-                        <span className="ml-auto text-[9px] text-gray-500 font-normal">{d.rowCount} rows</span>
+                        <span className="ml-auto text-[9px] text-gray-400 font-normal">{d.rowCount} rows</span>
                       </div>
                       <div className="px-2 py-1 space-y-0.5">
                         {d.columns.map((c) => (
@@ -939,17 +939,17 @@ export function LiveDbClient() {
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold text-neon-orange">Live Query History ({history.length})</h4>
                 <div className="flex gap-2">
-                  <button onClick={loadHistory} className="text-gray-500 hover:text-gray-300" aria-label="Refresh history">
+                  <button onClick={loadHistory} className="text-gray-400 hover:text-gray-300" aria-label="Refresh history">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                   {history.length > 0 && (
-                    <button onClick={clearHistory} className="text-gray-500 hover:text-red-400 flex items-center gap-1 text-[11px]">
+                    <button onClick={clearHistory} className="text-gray-400 hover:text-red-400 flex items-center gap-1 text-[11px]">
                       <Trash2 className="w-3 h-3" /> Clear
                     </button>
                   )}
                 </div>
               </div>
-              {history.length === 0 && <p className="text-xs text-gray-500 py-4 text-center">No executed queries yet.</p>}
+              {history.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">No executed queries yet.</p>}
               <div className="space-y-1.5 max-h-[440px] overflow-y-auto">
                 {history.map((h) => (
                   <button
@@ -957,7 +957,7 @@ export function LiveDbClient() {
                     onClick={() => { setSql(h.sql); setView('query'); }}
                     className="w-full text-left bg-lattice-surface border border-lattice-border/50 rounded p-2 hover:bg-lattice-elevated"
                   >
-                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-2 text-[10px] text-gray-400">
                       <span className={h.success ? 'text-emerald-400' : 'text-rose-400'}>
                         {h.success ? '✓' : '✗'}
                       </span>

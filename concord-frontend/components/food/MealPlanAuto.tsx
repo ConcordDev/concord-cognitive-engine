@@ -204,7 +204,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
 
         {plan && (
           <div className="px-3 pb-3 space-y-2">
-            <div className="text-[10px] text-gray-500">
+            <div className="text-[10px] text-gray-400">
               {plan.meals.length} meals · {plan.recipesConsidered} recipes considered · {plan.pantryItemsUsed} pantry items used
             </div>
             {Object.entries(mealsByDate).map(([date, meals]) => (
@@ -213,7 +213,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
                 <div className="space-y-0.5">
                   {meals.map((m) => (
                     <div key={`${m.date}-${m.slot}`} className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-500 w-16 shrink-0">{m.slot}</span>
+                      <span className="text-gray-400 w-16 shrink-0">{m.slot}</span>
                       <span className="text-white flex-1 truncate">{m.title}</span>
                       {m.calories > 0 && <span className="text-orange-400">{m.calories} kcal</span>}
                     </div>
@@ -236,10 +236,10 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <Store className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Store Layout</span>
-          <span className="ml-auto text-[10px] text-gray-500">{layouts.length} saved</span>
+          <span className="ml-auto text-[10px] text-gray-400">{layouts.length} saved</span>
         </header>
         <div className="p-3 space-y-2 text-xs">
-          <p className="text-[10px] text-gray-500">
+          <p className="text-[10px] text-gray-400">
             Save your store&apos;s aisle order so shopping lists sort in walk-through order.
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -278,7 +278,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
             <ShoppingCart className="w-4 h-4 text-green-400" />
             <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shopping List</span>
             {list && (
-              <span className="ml-auto text-[10px] text-gray-500">
+              <span className="ml-auto text-[10px] text-gray-400">
                 {list.totalToBuy} to buy · {list.alreadyHave} in pantry
                 {list.storeName ? ` · ${list.storeName} order` : ''}
               </span>
@@ -286,9 +286,9 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
           </header>
           <div className="p-3">
             {listLoading ? (
-              <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Building list…</div>
+              <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Building list…</div>
             ) : list && list.byAisle.length === 0 ? (
-              <div className="py-6 text-center text-xs text-gray-500">
+              <div className="py-6 text-center text-xs text-gray-400">
                 No ingredients to buy — recipes in the plan have no ingredient data yet.
               </div>
             ) : list ? (
@@ -313,7 +313,7 @@ export function MealPlanAuto({ refreshKey = 0 }: { refreshKey?: number }) {
                               <span className={cn('flex-1', isChecked ? 'line-through text-gray-600' : 'text-white')}>
                                 {it.name}
                               </span>
-                              <span className="text-gray-500">{it.qty} {it.unit}</span>
+                              <span className="text-gray-400">{it.qty} {it.unit}</span>
                               {it.haveInPantry && <span className="text-[9px] text-green-400">in pantry</span>}
                             </button>
                           </li>

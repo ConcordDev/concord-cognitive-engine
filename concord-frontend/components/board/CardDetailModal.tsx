@@ -235,7 +235,7 @@ export function CardDetailModal({
         </div>
 
         {loading && (
-          <div className="flex items-center justify-center py-16 text-gray-500">
+          <div className="flex items-center justify-center py-16 text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         )}
@@ -254,7 +254,7 @@ export function CardDetailModal({
                   className={`px-3 py-2 text-xs font-medium capitalize border-b-2 -mb-px transition-colors ${
                     tab === t
                       ? 'border-purple-500 text-purple-300'
-                      : 'border-transparent text-gray-500 hover:text-gray-300'
+                      : 'border-transparent text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   {t}
@@ -281,7 +281,7 @@ export function CardDetailModal({
                 {/* Labels */}
                 {labelDefs.length > 0 && (
                   <div>
-                    <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 flex items-center gap-1">
+                    <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1">
                       <Tag className="w-3 h-3" /> Labels
                     </h3>
                     <div className="flex flex-wrap gap-1.5">
@@ -295,7 +295,7 @@ export function CardDetailModal({
                             className={`text-xs px-2 py-1 rounded-md border transition-colors ${
                               active
                                 ? LABEL_COLOR_CLASS[ld.color] || LABEL_COLOR_CLASS.gray
-                                : 'border-white/10 text-gray-500 hover:text-gray-300'
+                                : 'border-white/10 text-gray-400 hover:text-gray-300'
                             }`}
                           >
                             <span
@@ -313,7 +313,7 @@ export function CardDetailModal({
 
                 {/* Rich description */}
                 <div>
-                  <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">
+                  <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">
                     Description
                   </h3>
                   <textarea
@@ -325,13 +325,13 @@ export function CardDetailModal({
                     className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-500/50 resize-y"
                   />
                   {busy === 'desc' && (
-                    <span className="text-[10px] text-gray-500">Saving...</span>
+                    <span className="text-[10px] text-gray-400">Saving...</span>
                   )}
                 </div>
 
                 {/* Cover controls */}
                 <div>
-                  <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 flex items-center gap-1">
+                  <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1">
                     <ImageIcon className="w-3 h-3" /> Cover
                   </h3>
                   <div className="flex flex-wrap items-center gap-1.5 mb-2">
@@ -382,7 +382,7 @@ export function CardDetailModal({
                 {/* Checklist */}
                 {(card.checklist || []).length > 0 && (
                   <div>
-                    <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">
+                    <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">
                       Checklist ({card.checklist.filter((i) => i.done).length}/
                       {card.checklist.length})
                     </h3>
@@ -401,7 +401,7 @@ export function CardDetailModal({
                           )}
                           <span
                             className={`text-sm ${
-                              item.done ? 'text-gray-500 line-through' : 'text-gray-300'
+                              item.done ? 'text-gray-400 line-through' : 'text-gray-300'
                             }`}
                           >
                             {item.text}
@@ -415,7 +415,7 @@ export function CardDetailModal({
                 {/* Custom fields */}
                 {customFields.length > 0 && (
                   <div>
-                    <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 flex items-center gap-1">
+                    <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1">
                       <Sliders className="w-3 h-3" /> Custom Fields
                     </h3>
                     <div className="space-y-2">
@@ -467,19 +467,19 @@ export function CardDetailModal({
 
                 {/* Attachments */}
                 <div>
-                  <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 flex items-center gap-1">
+                  <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1">
                     <Paperclip className="w-3 h-3" /> Attachments ({attachments.length})
                   </h3>
                   <div className="space-y-1.5 mb-2">
                     {attachments.length === 0 && (
-                      <p className="text-xs text-gray-600">No attachments yet.</p>
+                      <p className="text-xs text-gray-400">No attachments yet.</p>
                     )}
                     {attachments.map((a) => (
                       <div
                         key={a.id}
                         className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-white/[0.03] border border-white/[0.06]"
                       >
-                        <Paperclip className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                        <Paperclip className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                         <a
                           href={a.url}
                           target="_blank"
@@ -526,12 +526,12 @@ export function CardDetailModal({
 
                 {/* Comments */}
                 <div>
-                  <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 flex items-center gap-1">
+                  <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1">
                     <MessageSquare className="w-3 h-3" /> Comments ({comments.length})
                   </h3>
                   <div className="space-y-2 mb-2">
                     {comments.length === 0 && (
-                      <p className="text-xs text-gray-600">No comments yet.</p>
+                      <p className="text-xs text-gray-400">No comments yet.</p>
                     )}
                     {comments.map((c) => (
                       <div
@@ -541,7 +541,7 @@ export function CardDetailModal({
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-gray-300">{c.author}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-600">{fmt(c.at)}</span>
+                            <span className="text-[10px] text-gray-400">{fmt(c.at)}</span>
                             <button
                               onClick={() => deleteComment(c.id)}
                               disabled={busy === `cmt-${c.id}`}
@@ -580,14 +580,14 @@ export function CardDetailModal({
             {tab === 'activity' && (
               <div className="space-y-2">
                 {activity.length === 0 && (
-                  <p className="text-xs text-gray-600 text-center py-6">No activity yet.</p>
+                  <p className="text-xs text-gray-400 text-center py-6">No activity yet.</p>
                 )}
                 {activity.map((a) => (
                   <div key={a.id} className="flex items-start gap-2 text-xs">
                     <Activity className="w-3.5 h-3.5 text-gray-600 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-gray-300">{a.action}</p>
-                      <p className="text-[10px] text-gray-600">{fmt(a.at)}</p>
+                      <p className="text-[10px] text-gray-400">{fmt(a.at)}</p>
                     </div>
                   </div>
                 ))}

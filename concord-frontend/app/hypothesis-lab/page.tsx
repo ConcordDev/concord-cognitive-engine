@@ -225,16 +225,16 @@ function EvidenceItem({ evidence, side }: { evidence: Evidence; side: 'for' | 'a
       <div className="flex-1 min-w-0">
         <p className="text-gray-200 text-xs leading-relaxed">{evidence.summary}</p>
         <div className="flex items-center gap-3 mt-1">
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-gray-400">
             Weight: {(evidence.weight * 100).toFixed(0)}%
           </span>
           {evidence.dtuId && (
-            <span className="text-[10px] text-gray-500 font-mono">
+            <span className="text-[10px] text-gray-400 font-mono">
               DTU: {evidence.dtuId.slice(0, 8)}
             </span>
           )}
           {evidence.addedAt && (
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-gray-400">
               {formatRelativeTime(evidence.addedAt)}
             </span>
           )}
@@ -269,7 +269,7 @@ function TestResultCard({ test }: { test: TestResult }) {
       <div className="flex-1 min-w-0">
         <p className="text-xs text-gray-200 truncate">{test.description || test.id}</p>
         {test.completedAt && (
-          <p className="text-[10px] text-gray-500 mt-0.5">{formatRelativeTime(test.completedAt)}</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">{formatRelativeTime(test.completedAt)}</p>
         )}
       </div>
       <span
@@ -288,7 +288,7 @@ function TestResultCard({ test }: { test: TestResult }) {
 function TimelineView({ events }: { events: TimelineEvent[] }) {
   if (!events || events.length === 0) {
     return (
-      <p className="text-xs text-gray-500 text-center py-4">No lifecycle events recorded yet.</p>
+      <p className="text-xs text-gray-400 text-center py-4">No lifecycle events recorded yet.</p>
     );
   }
 
@@ -302,7 +302,7 @@ function TimelineView({ events }: { events: TimelineEvent[] }) {
             <div className="pl-2">
               <div className="flex items-baseline gap-2">
                 <span className="text-xs font-medium text-gray-200">{evt.event}</span>
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-gray-400">
                   {formatRelativeTime(evt.timestamp)}
                 </span>
               </div>
@@ -602,7 +602,7 @@ export default function HypothesisLabPage() {
                 <stat.icon className={cn('w-5 h-5 flex-shrink-0', stat.color)} />
                 <div>
                   <p className="text-lg font-bold text-white">{stat.value}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">{stat.label}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">{stat.label}</p>
                 </div>
               </div>
             ))}
@@ -614,7 +614,7 @@ export default function HypothesisLabPage() {
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6 py-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
@@ -625,7 +625,7 @@ export default function HypothesisLabPage() {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               aria-label="Close">
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -790,7 +790,7 @@ export default function HypothesisLabPage() {
                     ? 'No hypotheses yet'
                     : 'No hypotheses match your filters'}
                 </p>
-                <p className="text-xs text-gray-600 mb-4">
+                <p className="text-xs text-gray-400 mb-4">
                   {hypotheses.length === 0
                     ? 'Create your first hypothesis to begin evidence-driven reasoning.'
                     : 'Try adjusting your filters or search query.'}
@@ -839,7 +839,7 @@ export default function HypothesisLabPage() {
                     />
                   </div>
                   {h.createdAt && (
-                    <p className="text-[10px] text-gray-600 mt-2 flex items-center gap-1">
+                    <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {formatRelativeTime(h.createdAt)}
                     </p>
@@ -867,7 +867,7 @@ export default function HypothesisLabPage() {
                             {selectedHypothesis.domain}
                           </span>
                         )}
-                        <span className="text-xs text-gray-500 font-mono">
+                        <span className="text-xs text-gray-400 font-mono">
                           ID: {selectedHypothesis.id.slice(0, 12)}
                         </span>
                       </div>
@@ -1073,7 +1073,7 @@ export default function HypothesisLabPage() {
                             </h4>
                           )}
                           {(selectedHypothesis.evidenceFor || []).length === 0 ? (
-                            <p className="text-xs text-gray-500 py-2">
+                            <p className="text-xs text-gray-400 py-2">
                               No supporting evidence yet.
                             </p>
                           ) : (
@@ -1093,7 +1093,7 @@ export default function HypothesisLabPage() {
                             </h4>
                           )}
                           {(selectedHypothesis.evidenceAgainst || []).length === 0 ? (
-                            <p className="text-xs text-gray-500 py-2">
+                            <p className="text-xs text-gray-400 py-2">
                               No contradicting evidence yet.
                             </p>
                           ) : (

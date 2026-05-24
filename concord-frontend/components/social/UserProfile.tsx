@@ -121,7 +121,7 @@ function StatCard({
   return (
     <div className="text-center">
       <div className="flex items-center justify-center gap-1 mb-0.5">
-        <Icon className="w-3.5 h-3.5 text-gray-500" />
+        <Icon className="w-3.5 h-3.5 text-gray-400" />
         <span className="text-lg font-bold text-white">{formatNumber(value)}</span>
       </div>
       <span className="text-xs text-gray-400">{label}</span>
@@ -148,7 +148,7 @@ function ContentItem({ item }: { item: FeedItem }) {
           <h4 className="text-white font-medium truncate">{item.title}</h4>
           <div className="flex items-center gap-3 mt-1">
             {item.createdAt && (
-              <span className="text-xs text-gray-500">{formatRelativeTime(item.createdAt)}</span>
+              <span className="text-xs text-gray-400">{formatRelativeTime(item.createdAt)}</span>
             )}
             {item.tier !== 'regular' && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple">
@@ -178,7 +178,7 @@ function ContentItem({ item }: { item: FeedItem }) {
 
         {/* Engagement */}
         {item.engagement && (
-          <div className="flex items-center gap-3 text-xs text-gray-500">
+          <div className="flex items-center gap-3 text-xs text-gray-400">
             <span className="flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {formatNumber(item.engagement.views)}
@@ -230,7 +230,7 @@ function FollowList({
         </div>
         <div className="overflow-y-auto max-h-[calc(60vh-56px)]">
           {users.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No users yet</div>
+            <div className="p-8 text-center text-gray-400">No users yet</div>
           ) : (
             users.map((user) => (
               <button
@@ -248,7 +248,7 @@ function FollowList({
                 </div>
                 <div>
                   <div className="text-white text-sm font-medium">{user.displayName}</div>
-                  <div className="text-xs text-gray-500">@{user.userId}</div>
+                  <div className="text-xs text-gray-400">@{user.userId}</div>
                 </div>
               </button>
             ))
@@ -508,7 +508,7 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
         {profile.bio && <p className="text-gray-300 text-sm leading-relaxed mb-3">{profile.bio}</p>}
 
         {/* Meta info */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 mb-4">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 mb-4">
           {profile.website && (
             <a
               href={profile.website}

@@ -207,7 +207,7 @@ export function RoboticsActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -218,7 +218,7 @@ export function RoboticsActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">{kinResult.type}</div>
             <div className="text-2xl font-bold text-blue-300">{kinResult.degreesOfFreedom}-DOF</div>
-            <div className="text-[10px] text-zinc-500">reach {kinResult.maxReach} · {kinResult.workspace}</div>
+            <div className="text-[10px] text-zinc-400">reach {kinResult.maxReach} · {kinResult.workspace}</div>
             {kinResult.joints.slice(0, 3).map(j => <div key={j.joint} className="text-[10px] text-blue-200 mt-0.5">J{j.joint} {j.type} {j.angle}° / {j.length}mm</div>)}
           </div>
         )}
@@ -226,7 +226,7 @@ export function RoboticsActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Path · {pathResult.waypoints} wp</div>
             <div className="text-2xl font-bold text-purple-300">{pathResult.totalDistance} <span className="text-xs text-zinc-400">mm</span></div>
-            <div className="text-[10px] text-zinc-500">{pathResult.estimatedTime}</div>
+            <div className="text-[10px] text-zinc-400">{pathResult.estimatedTime}</div>
             <div className="text-[10px] text-purple-200 italic mt-0.5">{pathResult.collisionCheck}</div>
           </div>
         )}
@@ -234,7 +234,7 @@ export function RoboticsActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Fusion · {fuseResult.sensorCount} sensors</div>
             <div className="text-2xl font-bold text-cyan-300">{fuseResult.fusedValue}</div>
-            <div className="text-[10px] text-zinc-500">{fuseResult.fusedConfidence}% confidence · {fuseResult.method}</div>
+            <div className="text-[10px] text-zinc-400">{fuseResult.fusedConfidence}% confidence · {fuseResult.method}</div>
             {fuseResult.sensors.slice(0, 3).map(s => <div key={s.sensor} className="text-[10px] text-cyan-200 mt-0.5">{s.sensor}: {s.value} (c={s.confidence})</div>)}
           </div>
         )}
@@ -242,8 +242,8 @@ export function RoboticsActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Battery · {batResult.batteryCapacity}</div>
             <div className="text-2xl font-bold text-green-300">{batResult.estimatedRuntime}</div>
-            <div className="text-[10px] text-zinc-500">safe {batResult.safeRuntime}</div>
-            <div className="text-[10px] text-zinc-500">draw {batResult.totalPowerDraw}</div>
+            <div className="text-[10px] text-zinc-400">safe {batResult.safeRuntime}</div>
+            <div className="text-[10px] text-zinc-400">draw {batResult.totalPowerDraw}</div>
             <div className="text-[10px] text-green-200 italic mt-0.5">{batResult.recommendation}</div>
           </div>
         )}

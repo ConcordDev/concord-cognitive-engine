@@ -72,7 +72,7 @@ export function BlochSphere({ vector, size = 120 }: { vector: BlochVector; size?
       </svg>
       <div className="text-center">
         <p className="text-[10px] font-mono text-neon-purple">q[{vector.qubit}]</p>
-        <p className="text-[9px] font-mono text-zinc-500">
+        <p className="text-[9px] font-mono text-zinc-400">
           ({vector.x.toFixed(2)}, {vector.y.toFixed(2)}, {vector.z.toFixed(2)})
         </p>
         <p className={`text-[9px] ${vector.mixed ? 'text-amber-400' : 'text-emerald-400'}`}>

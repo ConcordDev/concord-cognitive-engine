@@ -48,12 +48,12 @@ const SEV_COLOR: Record<number, string> = {
 };
 
 function Spinner() {
-  return <Loader2 className="h-4 w-4 animate-spin text-zinc-500" aria-hidden />;
+  return <Loader2 className="h-4 w-4 animate-spin text-zinc-400" aria-hidden />;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+    <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
       {children}
     </div>
   );
@@ -333,10 +333,10 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       <h3 className="flex items-center gap-2 text-sm font-medium text-white">
         <GitPullRequest className="h-4 w-4 text-amber-400" aria-hidden /> Run detectors against a diff
       </h3>
-      <p className="text-xs text-zinc-500">Paste a unified diff (git diff / PR patch). Detectors run over the added lines.</p>
+      <p className="text-xs text-zinc-400">Paste a unified diff (git diff / PR patch). Detectors run over the added lines.</p>
       <div className="flex flex-wrap items-center gap-2">
         <CodebasePicker codebases={codebases} value={codebaseId} onChange={setCodebaseId} />
-        <span className="text-[11px] text-zinc-600">Optional — uses the codebase&apos;s detector config if selected.</span>
+        <span className="text-[11px] text-zinc-400">Optional — uses the codebase&apos;s detector config if selected.</span>
       </div>
       <textarea
         value={diff}
@@ -376,7 +376,7 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
                   <div className="flex items-center gap-2">
                     <span className={`rounded border px-1.5 py-0.5 text-[10px] ${SEV_COLOR[f.severity]}`}>S{f.severity}</span>
                     <span className="text-xs text-zinc-200">{f.detectorLabel}</span>
-                    <span className="ml-auto font-mono text-[10px] text-zinc-500">{f.path}:{f.line}</span>
+                    <span className="ml-auto font-mono text-[10px] text-zinc-400">{f.path}:{f.line}</span>
                   </div>
                   <code className="mt-1 block text-[11px] text-zinc-400">{f.snippet}</code>
                 </li>
@@ -456,7 +456,7 @@ function SearchTab({
           {loading && <Spinner />}
           {result && (
             <div className="space-y-1.5">
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 {result.matchCount} match(es) across {result.fileCount} file(s){result.truncated ? ' — truncated at 200' : ''}
               </p>
               {result.results.length > 0 ? (
@@ -579,7 +579,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
               ['Findings', dash.totalFindings],
             ].map(([k, v]) => (
               <div key={String(k)} className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1.5">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">{k}</div>
                 <div className="font-mono text-lg text-amber-300">{v}</div>
               </div>
             ))}
@@ -589,7 +589,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
           ) : (
             <>
               <div>
-                <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Severity trend</div>
+                <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Severity trend</div>
                 <ChartKit
                   kind="bar"
                   height={180}
@@ -599,7 +599,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
                 />
               </div>
               <div>
-                <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Per-codebase risk</div>
+                <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Per-codebase risk</div>
                 <ul className="space-y-1">
                   {dash.perCodebase.map((c) => (
                     <li key={c.codebaseId} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-xs">
@@ -615,7 +615,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
               </div>
               {dash.topDetectors.length > 0 && (
                 <div>
-                  <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Top detectors</div>
+                  <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Top detectors</div>
                   <ul className="space-y-1">
                     {dash.topDetectors.map((d) => (
                       <li key={d.detectorId} className="flex justify-between rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[11px]">
@@ -698,7 +698,7 @@ function DetectorsTab({
                     />
                     <span className={`rounded border px-1.5 py-0.5 text-[10px] ${SEV_COLOR[d.severity]}`}>S{d.severity}</span>
                     <span className="text-xs text-zinc-200">{d.label}</span>
-                    <span className="ml-auto font-mono text-[10px] text-zinc-600">{d.id}</span>
+                    <span className="ml-auto font-mono text-[10px] text-zinc-400">{d.id}</span>
                   </li>
                 ))}
               </ul>
@@ -773,14 +773,14 @@ function AnalyticsTab() {
               ['Acceptance rate', `${Math.round(data.acceptanceRate * 100)}%`],
             ].map(([k, v]) => (
               <div key={String(k)} className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1.5">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">{k}</div>
                 <div className="font-mono text-lg text-amber-300">{v}</div>
               </div>
             ))}
           </div>
           {data.topFiring.length > 0 && (
             <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Most-firing detectors</div>
+              <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Most-firing detectors</div>
               <ChartKit
                 kind="bar"
                 height={180}
@@ -792,7 +792,7 @@ function AnalyticsTab() {
           )}
           {data.acceptanceTrend.length > 0 && (
             <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Fix-acceptance rate over time</div>
+              <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Fix-acceptance rate over time</div>
               <ChartKit
                 kind="line"
                 height={180}
@@ -847,7 +847,7 @@ function CiTab({
       <h3 className="flex items-center gap-2 text-sm font-medium text-white">
         <Workflow className="h-4 w-4 text-amber-400" aria-hidden /> CI integration
       </h3>
-      <p className="text-xs text-zinc-500">Generate a GitHub Action that runs the detector pass as a pre-merge gate.</p>
+      <p className="text-xs text-zinc-400">Generate a GitHub Action that runs the detector pass as a pre-merge gate.</p>
       {codebases.length === 0 ? (
         <Empty>Index a codebase first to generate its CI workflow.</Empty>
       ) : (

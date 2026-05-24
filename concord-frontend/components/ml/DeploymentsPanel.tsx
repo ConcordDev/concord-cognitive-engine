@@ -69,7 +69,7 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
       {loading ? (
         <div className="py-10 text-center text-gray-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
       ) : deployments.length === 0 ? (
-        <div className="panel p-12 text-center text-gray-500">
+        <div className="panel p-12 text-center text-gray-400">
           <Rocket className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p>No deployments yet</p>
           <p className="text-sm mt-1">Deploy a model to expose a callable endpoint</p>
@@ -81,7 +81,7 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h4 className="font-semibold">{dep.modelName}</h4>
-                  <p className="text-xs text-gray-500">v{dep.version} · {dep.modelId}</p>
+                  <p className="text-xs text-gray-400">v{dep.version} · {dep.modelId}</p>
                 </div>
                 <span className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded ${STATUS[dep.status]}`}>
                   <CheckCircle className="w-3 h-3" />{dep.status}

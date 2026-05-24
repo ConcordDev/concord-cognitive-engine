@@ -88,7 +88,7 @@ export function OrgKeysPanel() {
           {creating ? 'cancel' : 'new group'}
         </button>
       </div>
-      <p className="text-[11px] text-zinc-500 mb-3">
+      <p className="text-[11px] text-zinc-400 mb-3">
         Share a provider key across a team without exposing the plaintext. The owner&apos;s
         encrypted key stays put — the group is an access list of who may route through it.
       </p>
@@ -120,7 +120,7 @@ export function OrgKeysPanel() {
       )}
 
       {loaded && orgs.length === 0 && !creating && (
-        <div className="text-xs text-zinc-500 rounded-md border border-dashed border-zinc-800 p-6 text-center">
+        <div className="text-xs text-zinc-400 rounded-md border border-dashed border-zinc-800 p-6 text-center">
           No org key groups yet. Create one to share a provider key with a team.
         </div>
       )}
@@ -131,7 +131,7 @@ export function OrgKeysPanel() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-medium text-zinc-200">{org.label}</div>
-                <div className="text-[10px] text-zinc-500 font-mono">
+                <div className="text-[10px] text-zinc-400 font-mono">
                   {org.provider} · {org.memberCount} member{org.memberCount === 1 ? '' : 's'} · you are {org.myRole}
                 </div>
               </div>
@@ -153,7 +153,7 @@ export function OrgKeysPanel() {
               {org.members.map((m) => (
                 <li key={m.memberId} className="flex items-center gap-2 text-[11px]">
                   <span className="font-mono text-zinc-400 flex-1 truncate">{m.memberId}</span>
-                  <span className={`font-mono ${m.role === 'owner' ? 'text-amber-300' : 'text-zinc-500'}`}>
+                  <span className={`font-mono ${m.role === 'owner' ? 'text-amber-300' : 'text-zinc-400'}`}>
                     {m.role}
                   </span>
                   {canManage(org) && m.role !== 'owner' && (

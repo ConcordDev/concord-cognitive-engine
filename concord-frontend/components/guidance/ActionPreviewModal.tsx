@@ -84,7 +84,7 @@ function ActionPreviewModal({
             <Shield className="w-4 h-4 text-neon-blue" />
             <span className="text-sm font-medium text-white">Action Preview</span>
           </div>
-          <button onClick={onCancel} className="text-gray-500 hover:text-white" aria-label="Close">
+          <button onClick={onCancel} className="text-gray-400 hover:text-white" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -101,7 +101,7 @@ function ActionPreviewModal({
           ) : preview ? (
             <div className="space-y-3">
               {/* Action summary */}
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-400">
                 <span className="font-mono bg-gray-800 px-1 py-0.5 rounded">{action}</span>
                 {' on '}
                 <span className="text-gray-400">
@@ -170,7 +170,7 @@ function ActionPreviewModal({
               )}
 
               {!hasChanges && !hasWarnings && (
-                <p className="text-xs text-gray-500">No changes detected for this action.</p>
+                <p className="text-xs text-gray-400">No changes detected for this action.</p>
               )}
             </div>
           ) : null}

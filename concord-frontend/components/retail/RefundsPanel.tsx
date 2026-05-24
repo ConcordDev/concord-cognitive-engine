@@ -46,7 +46,7 @@ export function RefundsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <RotateCcw className="w-4 h-4 text-rose-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Refunds & returns</span>
-        <span className="ml-auto text-[10px] text-gray-500">{refunds.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{refunds.length}</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
@@ -71,19 +71,19 @@ export function RefundsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : refunds.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><RotateCcw className="w-6 h-6 mx-auto mb-2 opacity-30" />No refunds processed yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><RotateCcw className="w-6 h-6 mx-auto mb-2 opacity-30" />No refunds processed yet.</div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5"><tr><th className="text-left px-3 py-1.5">Order</th><th className="text-left">Reason</th><th className="text-right">Amount</th><th className="text-right pr-3">When</th></tr></thead>
+            <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5"><tr><th className="text-left px-3 py-1.5">Order</th><th className="text-left">Reason</th><th className="text-right">Amount</th><th className="text-right pr-3">When</th></tr></thead>
             <tbody className="divide-y divide-white/5">
               {refunds.map(r => (
                 <tr key={r.id} className="hover:bg-white/[0.03]">
                   <td className="px-3 py-2 font-mono text-emerald-300">{r.orderNumber}</td>
                   <td className="text-gray-300 capitalize">{r.reason.replace('_', ' ')}{r.restock && <span className="ml-1 text-[10px] text-emerald-400">(restocked)</span>}</td>
                   <td className="text-right font-mono tabular-nums text-rose-300">-${r.amount.toFixed(2)}</td>
-                  <td className="text-right text-gray-500 text-[10px] pr-3">{new Date(r.processedAt).toLocaleDateString()}</td>
+                  <td className="text-right text-gray-400 text-[10px] pr-3">{new Date(r.processedAt).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

@@ -89,7 +89,7 @@ export function CrtCommentsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const comments = result?.comments ?? [];
@@ -153,7 +153,7 @@ export function CrtCommentsPanel() {
       </div>
 
       {comments.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No comments yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No comments yet.</p>
       ) : (
         <ul className="space-y-2">
           {comments.map((c) => (
@@ -174,7 +174,7 @@ export function CrtCommentsPanel() {
                       c.status === 'open' && 'text-amber-400',
                       c.status === 'replied' && 'text-sky-400',
                       c.status === 'resolved' && 'text-emerald-400',
-                      c.status === 'hidden' && 'text-zinc-500'
+                      c.status === 'hidden' && 'text-zinc-400'
                     )}>· {c.status}</span>
                   </p>
                   <p className="text-xs text-zinc-300 mt-0.5">{c.body}</p>
@@ -247,7 +247,7 @@ function Stat({ label, value, accent }: { label: string; value: string | number;
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       <p className={cn('text-lg font-bold', accent)}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase">{label}</p>
     </div>
   );
 }

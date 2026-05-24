@@ -53,10 +53,10 @@ export function PropublicaSearch() {
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <span className="font-medium text-white">{o.name}</span>
-                <span className="font-mono text-[10px] text-zinc-500">EIN {o.ein}</span>
+                <span className="font-mono text-[10px] text-zinc-400">EIN {o.ein}</span>
                 {o.nteeCode && <span className="rounded bg-zinc-800 px-1.5 text-[9px] font-mono text-cyan-300">NTEE {o.nteeCode}</span>}
               </div>
-              <div className="text-[11px] text-zinc-500">
+              <div className="text-[11px] text-zinc-400">
                 {o.city ? `${o.city}, ` : ''}{o.state}{o.rulingYear ? ` · 501(c)(3) since ${o.rulingYear}` : ''}
               </div>
             </div>
@@ -69,7 +69,7 @@ export function PropublicaSearch() {
               extraTags={['nonprofit', '990', 'propublica', o.state?.toLowerCase() || 'us']}
               rawData={o}
             />
-            <a href={`https://projects.propublica.org/nonprofits/organizations/${o.ein.replace(/-/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"><ExternalLink className="h-3 w-3" /></a>
+            <a href={`https://projects.propublica.org/nonprofits/organizations/${o.ein.replace(/-/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"><ExternalLink className="h-3 w-3" /></a>
           </motion.div>
         ))}
       </div>

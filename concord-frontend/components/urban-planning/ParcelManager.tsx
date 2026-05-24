@@ -225,11 +225,11 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading parcels…
         </div>
       ) : parcels.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-500">
+        <div className="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-400">
           No parcels yet. Add one above to map it and model its build-out envelope.
         </div>
       ) : (
@@ -244,13 +244,13 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                 <div className="flex items-start justify-between">
                   <div>
                     <h4 className="text-sm font-semibold text-white">{p.apn}</h4>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-zinc-400">
                       {p.address || 'no address'} · {p.zoneType} ·{' '}
                       {p.lotSizeSqFt.toLocaleString()} sqft
                       {p.district ? ` · ${p.district}` : ''}
                     </p>
                     {p.lat != null && p.lng != null && (p.lat !== 0 || p.lng !== 0) && (
-                      <p className="text-[10px] text-zinc-600">
+                      <p className="text-[10px] text-zinc-400">
                         {p.lat.toFixed(4)}, {p.lng.toFixed(4)}
                         {p.owner ? ` · ${p.owner}` : ''}
                       </p>
@@ -285,7 +285,7 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                         key={label as string}
                         className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1"
                       >
-                        <div className="text-[9px] uppercase tracking-wider text-zinc-500">
+                        <div className="text-[9px] uppercase tracking-wider text-zinc-400">
                           {label}
                         </div>
                         <div className="font-mono text-sm text-emerald-300">

@@ -34,7 +34,7 @@ export function FmTrendingPanel({ onOpenTopic }: { onOpenTopic?: (id: string) =>
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const maxHot = trending.reduce((m, t) => Math.max(m, t.hotScore), 0.001);
@@ -54,7 +54,7 @@ export function FmTrendingPanel({ onOpenTopic }: { onOpenTopic?: (id: string) =>
 
       {affinity.length > 0 && (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5">Your tag affinity</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Your tag affinity</p>
           <div className="flex flex-wrap gap-1.5">
             {affinity.map((a) => (
               <span key={a.tag} className="text-[10px] text-amber-300 bg-amber-950/40 border border-amber-900/50 rounded-full px-2 py-0.5">
@@ -66,7 +66,7 @@ export function FmTrendingPanel({ onOpenTopic }: { onOpenTopic?: (id: string) =>
       )}
 
       {trending.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No trending topics yet. Post and vote to populate the ranking.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No trending topics yet. Post and vote to populate the ranking.</p>
       ) : (
         <ol className="space-y-1.5">
           {trending.map((t, i) => (
@@ -92,7 +92,7 @@ export function FmTrendingPanel({ onOpenTopic }: { onOpenTopic?: (id: string) =>
                     <div className={cn('h-full rounded-full', t.hotScore >= 0 ? 'bg-orange-500' : 'bg-zinc-600')}
                       style={{ width: `${Math.max(4, Math.min(100, (t.hotScore / maxHot) * 100))}%` }} />
                   </div>
-                  <span className="text-[10px] text-zinc-500 w-12 text-right">{t.hotScore.toFixed(2)}</span>
+                  <span className="text-[10px] text-zinc-400 w-12 text-right">{t.hotScore.toFixed(2)}</span>
                 </div>
                 {t.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1 pl-8">

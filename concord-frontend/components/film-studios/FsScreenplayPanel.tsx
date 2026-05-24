@@ -73,7 +73,7 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
   const delLine = (i: number) => { setScript(script.filter((_, j) => j !== i)); setDirty(true); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -84,13 +84,13 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
           {scenes.length === 0 && <option value="">No scenes — add scenes in the Script tab</option>}
           {scenes.map((s) => <option key={s.id} value={s.id}>{s.number} · {s.slugline}</option>)}
         </select>
-        <span className="text-[11px] text-zinc-500">Screenplay · {pageCount} pages</span>
+        <span className="text-[11px] text-zinc-400">Screenplay · {pageCount} pages</span>
       </div>
 
       {activeScene && (
         <>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-zinc-500">Location</span>
+            <span className="text-[11px] text-zinc-400">Location</span>
             <select value={locationId} onChange={(e) => { setLocationId(e.target.value); setDirty(true); }}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
               <option value="">— none —</option>
@@ -104,7 +104,7 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
 
           {/* Script editor */}
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-1.5">
-            {script.length === 0 && <p className="text-[11px] text-zinc-500 italic">Empty scene. Add a line below.</p>}
+            {script.length === 0 && <p className="text-[11px] text-zinc-400 italic">Empty scene. Add a line below.</p>}
             {script.map((el, i) => (
               <div key={i} className="flex items-start gap-1.5">
                 <select value={el.type} onChange={(e) => { setScript(script.map((x, j) => (j === i ? { ...x, type: e.target.value } : x))); setDirty(true); }}
@@ -131,7 +131,7 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
           {/* Preview */}
           {script.length > 0 && (
             <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 font-serif text-sm space-y-1.5">
-              <p className="flex items-center gap-1 text-[10px] text-zinc-600 uppercase font-sans mb-1"><FileText className="w-3 h-3" /> Preview</p>
+              <p className="flex items-center gap-1 text-[10px] text-zinc-400 uppercase font-sans mb-1"><FileText className="w-3 h-3" /> Preview</p>
               {script.map((el, i) => <p key={i} className={EL_STYLE[el.type] || 'text-zinc-200'}>{el.text || ' '}</p>)}
             </div>
           )}

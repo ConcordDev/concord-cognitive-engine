@@ -171,7 +171,7 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
           )}
         </div>
         {subs.length === 0 ? (
-          <p className="py-6 text-center text-xs italic text-zinc-500">
+          <p className="py-6 text-center text-xs italic text-zinc-400">
             No subscriptions yet — add one above to get notified of predicted severe events.
           </p>
         ) : (
@@ -189,11 +189,11 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
                     <span className="text-xs text-zinc-100">
                       {KINDS.find((k) => k.value === s.kind)?.label ?? s.kind}
                       {s.weatherKinds.length > 0 && (
-                        <span className="text-zinc-500"> · {s.weatherKinds.join(', ')}</span>
+                        <span className="text-zinc-400"> · {s.weatherKinds.join(', ')}</span>
                       )}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-zinc-500">
+                      <span className="font-mono text-[10px] text-zinc-400">
                         ≥{(s.minConfidence * 100).toFixed(0)}%
                       </span>
                       <button
@@ -206,7 +206,7 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
                     </div>
                   </div>
                   {s.lastFiredAt && (
-                    <p className="mt-0.5 font-mono text-[10px] text-zinc-600">
+                    <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
                       last fired {new Date(s.lastFiredAt * 1000).toLocaleString()}
                     </p>
                   )}
@@ -227,7 +227,7 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
           </ul>
         )}
         {checked && triggered && triggered.length === 0 && (
-          <p className="mt-2 text-[11px] text-zinc-500">
+          <p className="mt-2 text-[11px] text-zinc-400">
             Checked — no subscriptions tripped by the current forecast.
           </p>
         )}

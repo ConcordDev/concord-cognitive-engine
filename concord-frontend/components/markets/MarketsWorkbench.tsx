@@ -67,7 +67,7 @@ export function MarketsWorkbench({ open, onClose }: Props) {
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Markets Workbench</span>
-          <span className="text-[10px] text-gray-500">derivatives + global markets</span>
+          <span className="text-[10px] text-gray-400">derivatives + global markets</span>
         </div>
         <button type="button" onClick={onClose}
           className="p-1 rounded-md hover:bg-white/5 text-gray-400" aria-label="Close">
@@ -152,7 +152,7 @@ function OptionsTab() {
       {chain.length > 0 && (
         <div className="border border-white/10 rounded overflow-x-auto">
           <table className="w-full text-[11px] font-mono">
-            <thead className="bg-black/40 text-gray-500 uppercase">
+            <thead className="bg-black/40 text-gray-400 uppercase">
               <tr>
                 <th className="text-right px-2 py-1 text-emerald-400">Call Δ</th>
                 <th className="text-right px-2 py-1 text-emerald-400">Call</th>
@@ -179,7 +179,7 @@ function OptionsTab() {
           </table>
         </div>
       )}
-      <p className="text-[10px] text-gray-600">Greeks via Black-Scholes (Abramowitz-Stegun normCdf). IV is required input.</p>
+      <p className="text-[10px] text-gray-400">Greeks via Black-Scholes (Abramowitz-Stegun normCdf). IV is required input.</p>
     </div>
   );
 }
@@ -199,14 +199,14 @@ function FuturesTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+  if (loading) return <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
 
   return (
     <div className="p-3">
-      <p className="text-[10px] text-gray-600 mb-2">CME continuous front-month via Yahoo Finance (live, server-side fetch, no key). 15-minute delay during market hours per Yahoo&apos;s ToS.</p>
+      <p className="text-[10px] text-gray-400 mb-2">CME continuous front-month via Yahoo Finance (live, server-side fetch, no key). 15-minute delay during market hours per Yahoo&apos;s ToS.</p>
       <div className="border border-white/10 rounded overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="bg-black/40 text-gray-500 uppercase text-[10px]">
+          <thead className="bg-black/40 text-gray-400 uppercase text-[10px]">
             <tr>
               <th className="text-left px-2 py-1">Symbol</th>
               <th className="text-left px-2 py-1">Contract</th>
@@ -220,7 +220,7 @@ function FuturesTab() {
             {contracts.map((c) => (
               <tr key={c.symbol} className="border-t border-white/5">
                 <td className="px-2 py-1 font-mono text-cyan-300">{c.symbol}</td>
-                <td className="px-2 py-1 font-mono text-gray-500">{c.frontContract}</td>
+                <td className="px-2 py-1 font-mono text-gray-400">{c.frontContract}</td>
                 <td className="px-2 py-1 text-gray-200">{c.name}</td>
                 <td className="px-2 py-1 text-right font-mono text-gray-100">{c.last}</td>
                 <td className={cn('px-2 py-1 text-right font-mono', c.change >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
@@ -250,19 +250,19 @@ function ForexTab() {
     })();
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+  if (loading) return <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
 
   return (
     <div className="p-3">
       <div className="border border-white/10 rounded overflow-hidden">
         <table className="w-full text-xs">
-          <thead className="bg-black/40 text-gray-500 uppercase text-[10px]">
+          <thead className="bg-black/40 text-gray-400 uppercase text-[10px]">
             <tr><th className="text-left px-2 py-1">Pair</th><th className="text-right px-2 py-1">Bid</th><th className="text-right px-2 py-1">Ask</th><th className="text-right px-2 py-1">Spread</th><th className="text-right px-2 py-1">Pip value</th></tr>
           </thead>
           <tbody>
             {quotes.map((q) => (
               <tr key={q.pair} className="border-t border-white/5">
-                <td className="px-2 py-1 font-mono text-cyan-300">{q.pair}<p className="text-[9px] text-gray-500 font-sans">{q.name}</p></td>
+                <td className="px-2 py-1 font-mono text-cyan-300">{q.pair}<p className="text-[9px] text-gray-400 font-sans">{q.name}</p></td>
                 <td className="px-2 py-1 text-right font-mono text-gray-100">{q.bid}</td>
                 <td className="px-2 py-1 text-right font-mono text-gray-100">{q.ask}</td>
                 <td className="px-2 py-1 text-right text-gray-400">{q.spreadPips}p</td>
@@ -329,7 +329,7 @@ function DepthTab() {
       )}
 
       {book && (
-        <p className="text-center text-[11px] text-gray-500">Spread: <span className="font-mono text-gray-300">{book.spread}</span></p>
+        <p className="text-center text-[11px] text-gray-400">Spread: <span className="font-mono text-gray-300">{book.spread}</span></p>
       )}
     </div>
   );
@@ -398,14 +398,14 @@ function AlertsTab() {
         </div>
       )}
 
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        alerts.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No alerts.</p> :
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+        alerts.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No alerts.</p> :
         alerts.map((a) => (
           <div key={a.id} className="rounded border border-white/10 bg-black/20 p-3 group">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-mono text-gray-100">{a.symbol} {a.condition.replace('_', ' ')} <span className="text-cyan-300">{a.threshold}</span></p>
-                <p className="text-[10px] text-gray-500">{a.status} · {new Date(a.createdAt).toLocaleString()}</p>
+                <p className="text-[10px] text-gray-400">{a.status} · {new Date(a.createdAt).toLocaleString()}</p>
               </div>
               {a.status === 'active' && (
                 <button type="button" onClick={() => cancel(a.id)}

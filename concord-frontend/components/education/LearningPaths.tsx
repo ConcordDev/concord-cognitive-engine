@@ -106,11 +106,11 @@ export function LearningPaths() {
             className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-xs text-white"
           />
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
               Pick courses in prerequisite order ({picked.length} selected)
             </p>
             {courses.length === 0 ? (
-              <p className="text-xs text-gray-500">No courses exist yet. Create courses first.</p>
+              <p className="text-xs text-gray-400">No courses exist yet. Create courses first.</p>
             ) : (
               <div className="max-h-48 overflow-y-auto space-y-1">
                 {courses.map(c => {
@@ -147,11 +147,11 @@ export function LearningPaths() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500 py-6">
+        <div className="flex items-center gap-2 text-xs text-gray-400 py-6">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading paths…
         </div>
       ) : paths.length === 0 ? (
-        <p className="text-sm text-gray-500 py-8 text-center">No learning paths yet. Sequence courses into a prerequisite track.</p>
+        <p className="text-sm text-gray-400 py-8 text-center">No learning paths yet. Sequence courses into a prerequisite track.</p>
       ) : (
         <div className="space-y-4">
           {paths.map(path => (
@@ -159,13 +159,13 @@ export function LearningPaths() {
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="text-sm font-bold text-white">{path.title}</h4>
-                  {path.description && <p className="text-xs text-gray-500">{path.description}</p>}
+                  {path.description && <p className="text-xs text-gray-400">{path.description}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={cn('text-xs font-bold', path.complete ? 'text-neon-green' : 'text-gray-400')}>
                     {path.completedSteps}/{path.totalSteps} · {path.progressPct}%
                   </span>
-                  <button onClick={() => deletePath(path.id)} className="text-gray-500 hover:text-red-400">
+                  <button onClick={() => deletePath(path.id)} className="text-gray-400 hover:text-red-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -193,7 +193,7 @@ export function LearningPaths() {
                       <div className="text-xs font-bold text-white truncate">
                         {idx + 1}. {step.courseTitle}
                       </div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-gray-400">
                         {step.completedLessons}/{step.totalLessons} lessons · {step.progressPct}%
                         {!step.unlocked && ' · locked until prior step complete'}
                       </div>
@@ -202,14 +202,14 @@ export function LearningPaths() {
                       <button
                         onClick={() => reorder(path, idx, -1)}
                         disabled={idx === 0}
-                        className="text-gray-500 hover:text-white disabled:opacity-20"
+                        className="text-gray-400 hover:text-white disabled:opacity-20"
                       >
                         <ArrowUp className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => reorder(path, idx, 1)}
                         disabled={idx === path.steps.length - 1}
-                        className="text-gray-500 hover:text-white disabled:opacity-20"
+                        className="text-gray-400 hover:text-white disabled:opacity-20"
                       >
                         <ArrowDown className="w-3 h-3" />
                       </button>

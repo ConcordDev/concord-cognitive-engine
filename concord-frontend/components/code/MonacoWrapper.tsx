@@ -203,7 +203,7 @@ export default function MonacoWrapper({
           ...(options || {}),
         }}
         loading={
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
             Loading editor…
           </div>
         }

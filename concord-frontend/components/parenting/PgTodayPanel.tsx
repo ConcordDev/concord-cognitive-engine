@@ -65,7 +65,7 @@ export function PgTodayPanel({ childId }: { childId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -113,7 +113,7 @@ export function PgTodayPanel({ childId }: { childId: string }) {
           <Clock className="w-3.5 h-3.5 text-rose-400" /> Today's timeline
         </h3>
         {events.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">Nothing logged yet today.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">Nothing logged yet today.</p>
         ) : (
           <ul className="space-y-1">
             {events.map((e, i) => {
@@ -122,7 +122,7 @@ export function PgTodayPanel({ childId }: { childId: string }) {
                 <li key={i} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                   <Icon className={`w-3.5 h-3.5 ${TYPE_COLOR[e.type] || 'text-zinc-400'}`} />
                   <span className="text-xs text-zinc-200 capitalize flex-1">{e.type} · {e.label}</span>
-                  <span className="text-[10px] text-zinc-500 font-mono">{timeOf(e.at)}</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">{timeOf(e.at)}</span>
                 </li>
               );
             })}
@@ -137,7 +137,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       <p className="text-lg font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

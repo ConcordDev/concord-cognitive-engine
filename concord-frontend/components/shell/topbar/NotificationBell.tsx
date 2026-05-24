@@ -85,7 +85,7 @@ export function NotificationBell() {
           </div>
           <div className="overflow-y-auto flex-1">
             {events.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-500 text-sm">
+              <div className="px-4 py-8 text-center text-gray-400 text-sm">
                 No recent notifications
               </div>
             ) : (
@@ -109,7 +109,7 @@ export function NotificationBell() {
                           event.type ||
                           'System event'}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5">
                         {event.type && <span className="text-gray-400">{event.type}</span>}
                         {(event.created_at || event.timestamp) && (
                           <span className="ml-2">

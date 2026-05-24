@@ -335,7 +335,7 @@ export function CADConsole() {
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-zinc-800 bg-zinc-900 p-2.5">
               <p className={cn('text-xl font-bold', s.tone)}>{s.value}</p>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500">{s.label}</p>
+              <p className="text-[10px] uppercase tracking-wide text-zinc-400">{s.label}</p>
             </div>
           ))}
         </div>
@@ -366,7 +366,7 @@ export function CADConsole() {
                   P{a.priority}
                 </span>
                 <span className="flex-1 truncate text-zinc-200">{a.summary}</span>
-                <span className="text-[10px] text-zinc-500">{a.ageMinutes}m · {a.kind}</span>
+                <span className="text-[10px] text-zinc-400">{a.ageMinutes}m · {a.kind}</span>
                 {a.slaBreached && <span className="font-bold text-rose-400">SLA</span>}
               </button>
             ))}
@@ -442,7 +442,7 @@ export function CADConsole() {
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
           <ListChecks className="h-3.5 w-3.5 text-amber-400" /> Triage Queue ({queue.length})
         </p>
-        {queue.length === 0 && <p className="py-3 text-center text-[11px] text-zinc-600">No open incidents.</p>}
+        {queue.length === 0 && <p className="py-3 text-center text-[11px] text-zinc-400">No open incidents.</p>}
         <div className="space-y-1.5">
           {queue.map((q) => (
             <div
@@ -463,7 +463,7 @@ export function CADConsole() {
                 <button onClick={() => loadDetail(q.id)} className="flex-1 truncate text-left text-zinc-200 hover:text-white">
                   {q.summary}
                 </button>
-                <span className="text-[10px] text-zinc-500">{q.kind} · {q.ageMinutes}m</span>
+                <span className="text-[10px] text-zinc-400">{q.kind} · {q.ageMinutes}m</span>
                 <span className="font-mono text-[10px] text-cyan-400" title="dispatch score">⌖{q.dispatchScore}</span>
                 {q.slaBreached && <span className="text-[10px] font-bold text-rose-400">SLA BREACH</span>}
                 <span className={cn('rounded px-1.5 py-0.5 text-[10px]', UNIT_STATUS_TONE[q.status] || 'bg-zinc-700 text-zinc-300')}>
@@ -484,9 +484,9 @@ export function CADConsole() {
 
           {/* Nearest-unit recommendation */}
           <div>
-            <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-500">Nearest available units</p>
-            {!nearest && <p className="text-[11px] text-zinc-600">No map position on incident — add lat/lng to enable dispatch routing.</p>}
-            {nearest && nearest.ranked.length === 0 && <p className="text-[11px] text-zinc-600">No available geo-located units.</p>}
+            <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-400">Nearest available units</p>
+            {!nearest && <p className="text-[11px] text-zinc-400">No map position on incident — add lat/lng to enable dispatch routing.</p>}
+            {nearest && nearest.ranked.length === 0 && <p className="text-[11px] text-zinc-400">No available geo-located units.</p>}
             <div className="space-y-1">
               {nearest?.ranked.slice(0, 4).map((u, i) => (
                 <div key={u.id} className={cn(
@@ -494,7 +494,7 @@ export function CADConsole() {
                   i === 0 ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-900/60',
                 )}>
                   {i === 0 && <span className="rounded bg-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold text-emerald-200">RECOMMEND</span>}
-                  <span className="flex-1 text-zinc-200">{u.name} <span className="text-zinc-500">({u.kind})</span></span>
+                  <span className="flex-1 text-zinc-200">{u.name} <span className="text-zinc-400">({u.kind})</span></span>
                   <span className="text-[10px] text-zinc-400">{u.distanceKm} km · ETA {u.etaMinutes}m</span>
                   <button
                     onClick={() => dispatch(selectedIncident.id, u.id)}
@@ -511,7 +511,7 @@ export function CADConsole() {
           {/* Incident timeline */}
           {timelineEvents.length > 0 && (
             <div>
-              <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-500">Incident timeline</p>
+              <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-400">Incident timeline</p>
               <TimelineView events={timelineEvents} height={110} />
             </div>
           )}
@@ -523,7 +523,7 @@ export function CADConsole() {
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
           <Activity className="h-3.5 w-3.5 text-emerald-400" /> Unit Roster ({units.length})
         </p>
-        {units.length === 0 && <p className="py-3 text-center text-[11px] text-zinc-600">No units on roster.</p>}
+        {units.length === 0 && <p className="py-3 text-center text-[11px] text-zinc-400">No units on roster.</p>}
         <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
           {units.map((u) => {
             const nextOptions = NEXT_STATUS[u.status] || [];
@@ -531,7 +531,7 @@ export function CADConsole() {
               <div key={u.id} className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="flex-1 truncate font-medium text-zinc-200">{u.name}</span>
-                  <span className="text-[10px] text-zinc-500">{u.kind}</span>
+                  <span className="text-[10px] text-zinc-400">{u.kind}</span>
                   <span className={cn('rounded px-1.5 py-0.5 text-[10px]', UNIT_STATUS_TONE[u.status] || 'bg-zinc-700 text-zinc-300')}>
                     {u.status}
                   </span>

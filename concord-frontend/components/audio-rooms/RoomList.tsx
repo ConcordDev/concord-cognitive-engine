@@ -99,7 +99,7 @@ export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Radio className="w-4 h-4 text-rose-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">Spaces · live now</h3>
-        <span className="text-[10px] text-zinc-500 font-mono">{rooms.length}</span>
+        <span className="text-[10px] text-zinc-400 font-mono">{rooms.length}</span>
         {currentUserId && (
           <button
             type="button"
@@ -134,7 +134,7 @@ export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
       )}
 
       {isLoading && (
-        <div className="px-3 py-6 text-center text-zinc-500">
+        <div className="px-3 py-6 text-center text-zinc-400">
           <Loader2 className="w-4 h-4 animate-spin mx-auto" />
         </div>
       )}
@@ -160,11 +160,11 @@ export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
                       <span className="text-[10px] inline-flex items-center gap-0.5 text-rose-300" title="Recording"><Lock className="w-2.5 h-2.5" /> REC</span>
                     )}
                   </div>
-                  <div className="text-[10px] text-zinc-500 flex items-center gap-2 mt-0.5">
+                  <div className="text-[10px] text-zinc-400 flex items-center gap-2 mt-0.5">
                     <span>Host:</span>
                     <UserLink userId={room.hostUserId} prefix="@" className="text-[10px]" />
                   </div>
-                  <div className="text-[10px] text-zinc-500 flex items-center gap-3 mt-1">
+                  <div className="text-[10px] text-zinc-400 flex items-center gap-3 mt-1">
                     <span className="inline-flex items-center gap-0.5"><Mic className="w-2.5 h-2.5" /> {room.speakers?.length || 0}</span>
                     <span className="inline-flex items-center gap-0.5"><Users className="w-2.5 h-2.5" /> {room.listenerCount}</span>
                     {room.handsRaised?.length > 0 && <span className="text-amber-300">✋ {room.handsRaised.length}</span>}
@@ -178,7 +178,7 @@ export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
                   className={cn(
                     'text-xs px-2 py-1 rounded border font-medium transition-colors',
                     isHosting
-                      ? 'border-zinc-700 text-zinc-500 cursor-default'
+                      ? 'border-zinc-700 text-zinc-400 cursor-default'
                       : 'border-rose-500/40 text-rose-200 bg-rose-700/30 hover:bg-rose-700/50',
                     'disabled:opacity-40',
                   )}
@@ -191,7 +191,7 @@ export function RoomList({ className, currentUserId, onJoin }: RoomListProps) {
         })}
       </ul>
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40 flex items-start gap-1">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40 flex items-start gap-1">
         <AlertTriangle className="w-3 h-3 mt-0.5 text-amber-400/80 flex-shrink-0" />
         <span>WebRTC is peer-to-peer. Strict-NAT clients need a TURN server (set CONCORD_TURN_URL).</span>
       </footer>

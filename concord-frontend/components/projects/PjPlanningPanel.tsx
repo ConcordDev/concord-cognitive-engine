@@ -68,7 +68,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -89,7 +89,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
               <li key={m.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-semibold text-zinc-100 flex-1">{m.name}</span>
-                  {m.dueDate && <span className="text-[10px] text-zinc-500">{m.dueDate}</span>}
+                  {m.dueDate && <span className="text-[10px] text-zinc-400">{m.dueDate}</span>}
                   <button type="button"
                     onClick={() => lensRun('projects', 'milestone-complete', { id: m.id, reopen: m.status === 'completed' }).then(refresh)}
                     className={cn('text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1',
@@ -103,7 +103,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                   <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                     <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${m.progressPct}%` }} />
                   </div>
-                  <span className="text-[10px] text-zinc-500">{m.doneCount}/{m.taskCount}</span>
+                  <span className="text-[10px] text-zinc-400">{m.doneCount}/{m.taskCount}</span>
                 </div>
               </li>
             ))}
@@ -133,7 +133,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
               <li key={r.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className={cn('text-[10px] font-bold uppercase w-14', SEVERITY_COLOR[r.severity])}>{r.severity}</span>
                 <span className="text-xs text-zinc-200 flex-1 truncate">{r.name}</span>
-                <span className="text-[10px] text-zinc-500">L{r.likelihood}×I{r.impact} = {r.score}</span>
+                <span className="text-[10px] text-zinc-400">L{r.likelihood}×I{r.impact} = {r.score}</span>
                 <button type="button" onClick={() => lensRun('projects', 'risk-delete', { id: r.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
@@ -163,7 +163,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                   <input type="number" defaultValue={g.current}
                     onBlur={(e) => lensRun('projects', 'goal-update-progress', { id: g.id, current: Number(e.target.value) }).then(refresh)}
                     className="w-16 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
-                  <span className="text-[10px] text-zinc-500">/ {g.target} {g.metric}</span>
+                  <span className="text-[10px] text-zinc-400">/ {g.target} {g.metric}</span>
                   <button type="button" onClick={() => lensRun('projects', 'goal-delete', { id: g.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
@@ -182,5 +182,5 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
 const inp = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
 const btn = 'flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg';
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-500 italic">{text}</p>;
+  return <p className="text-[11px] text-zinc-400 italic">{text}</p>;
 }

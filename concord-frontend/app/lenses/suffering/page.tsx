@@ -262,7 +262,7 @@ function EngineWellbeing({
             <div className="h-2 bg-lattice-deep rounded-full overflow-hidden mb-2">
               <div className="h-full" style={{ width: `${c.value * 100}%`, backgroundColor: c.color }} />
             </div>
-            <p className="text-xs text-gray-500">{c.desc}</p>
+            <p className="text-xs text-gray-400">{c.desc}</p>
           </div>
         ))}
       </div>

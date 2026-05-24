@@ -113,7 +113,7 @@ function HeartbeatPulse({ isLive, lastTickTime }: { isLive: boolean; lastTickTim
         <p className="text-sm font-medium" style={{ color: isLive ? '#00ffc8' : '#6b7280' }}>
           {isLive ? 'Live' : 'Paused'}
         </p>
-        <p className="text-[10px] text-gray-600 font-mono">
+        <p className="text-[10px] text-gray-400 font-mono">
           {lastTickTime ? `Last: ${new Date(lastTickTime).toLocaleTimeString()}` : 'Waiting...'}
         </p>
       </div>
@@ -578,28 +578,28 @@ export default function TickLensPage() {
           <Zap className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{stats.totalTicks}</p>
-            <p className="text-xs text-gray-500">Ticks Processed</p>
+            <p className="text-xs text-gray-400">Ticks Processed</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Gauge className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{formatMs(stats.avgInterval)}</p>
-            <p className="text-xs text-gray-500">Avg Interval</p>
+            <p className="text-xs text-gray-400">Avg Interval</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Eye className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{Object.keys(stats.organBreakdown).length}</p>
-            <p className="text-xs text-gray-500">Active Watchers</p>
+            <p className="text-xs text-gray-400">Active Watchers</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Heart className="w-5 h-5 text-neon-pink" />
           <div>
             <p className="text-lg font-bold">{healthStatus.score}%</p>
-            <p className="text-xs text-gray-500">Health Score</p>
+            <p className="text-xs text-gray-400">Health Score</p>
           </div>
         </motion.div>
       </div>
@@ -674,7 +674,7 @@ export default function TickLensPage() {
             <div className="h-40 rounded-lg overflow-hidden border border-white/5">
               <HeartbeatLineCanvas ticks={tickHistory} isLive={isLive} />
             </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
+            <div className="flex justify-between text-xs text-gray-400 mt-2">
               <span>Oldest</span>
               <span className="text-gray-600">
                 {isLive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-neon-green mr-1 animate-pulse" />}
@@ -702,7 +702,7 @@ export default function TickLensPage() {
                 />
               ))}
             </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
+            <div className="flex justify-between text-xs text-gray-400 mt-2">
               <span>Oldest</span>
               <span>Most Recent</span>
             </div>
@@ -758,7 +758,7 @@ export default function TickLensPage() {
               <Zap className="w-5 h-5 text-neon-green mb-2" />
               <p className="text-2xl font-bold">{(stats.avgSignal * 100).toFixed(1)}%</p>
               <p className="text-sm text-gray-400">Avg Signal</p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Min: {(stats.minSignal * 100).toFixed(0)}% / Max: {(stats.maxSignal * 100).toFixed(0)}%
               </p>
             </div>
@@ -766,7 +766,7 @@ export default function TickLensPage() {
               <Activity className="w-5 h-5 text-neon-pink mb-2" />
               <p className="text-2xl font-bold">{(stats.avgStress * 100).toFixed(1)}%</p>
               <p className="text-sm text-gray-400">Avg Stress</p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Min: {(stats.minStress * 100).toFixed(0)}% / Max: {(stats.maxStress * 100).toFixed(0)}%
               </p>
             </div>
@@ -774,7 +774,7 @@ export default function TickLensPage() {
               <Timer className="w-5 h-5 text-neon-blue mb-2" />
               <p className="text-2xl font-bold">{formatMs(stats.avgInterval)}</p>
               <p className="text-sm text-gray-400">Avg Interval</p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Min: {formatMs(stats.minInterval)} / Max: {formatMs(stats.maxInterval)}
               </p>
             </div>
@@ -782,7 +782,7 @@ export default function TickLensPage() {
               <AlertTriangle className="w-5 h-5 text-neon-orange mb-2" />
               <p className="text-2xl font-bold">{stats.missedTicks}</p>
               <p className="text-sm text-gray-400">Missed Ticks</p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Gap &gt; 3x avg interval
               </p>
             </div>
@@ -808,7 +808,7 @@ export default function TickLensPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-xs font-mono text-gray-500 w-16 text-right">
+                      <span className="text-xs font-mono text-gray-400 w-16 text-right">
                         {count} ({pct.toFixed(0)}%)
                       </span>
                     </div>
@@ -837,7 +837,7 @@ export default function TickLensPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-xs font-mono text-gray-500 w-16 text-right">
+                      <span className="text-xs font-mono text-gray-400 w-16 text-right">
                         {count} ({pct.toFixed(0)}%)
                       </span>
                     </div>
@@ -861,7 +861,7 @@ export default function TickLensPage() {
             <div className="h-64 rounded-lg overflow-hidden border border-white/5">
               <EventTimelineCanvas ticks={tickHistory} />
             </div>
-            <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-500">
+            <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-400">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-neon-green" /> Signal (upper)
               </span>
@@ -904,11 +904,11 @@ export default function TickLensPage() {
                         isGap ? 'border-l-2 border-yellow-500/30' : ''
                       }`}>
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-mono text-gray-600 w-20">
+                          <span className="text-[10px] font-mono text-gray-400 w-20">
                             {new Date(tick.timestamp).toLocaleTimeString()}
                           </span>
                           <span className="text-xs font-medium text-gray-300">{tick.type}</span>
-                          <span className="text-[10px] text-gray-600">{tick.organ}</span>
+                          <span className="text-[10px] text-gray-400">{tick.organ}</span>
                         </div>
                         <div className="flex items-center gap-3 text-xs font-mono">
                           <span className="text-neon-cyan">{(tick.signal * 100).toFixed(0)}%</span>
@@ -964,7 +964,7 @@ export default function TickLensPage() {
                 }`}>
                   {healthStatus.score}
                 </p>
-                <p className="text-xs text-gray-500">Health Score</p>
+                <p className="text-xs text-gray-400">Health Score</p>
               </div>
             </div>
           </div>
@@ -1036,7 +1036,7 @@ export default function TickLensPage() {
                   <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <p className="text-[10px] text-gray-600 mt-2">
+                  <p className="text-[10px] text-gray-400 mt-2">
                     {pct >= 70 ? indicator.good : indicator.bad}
                   </p>
                 </div>

@@ -1457,7 +1457,7 @@ export default function StudioLensPage() {
           <div className="flex items-center gap-2">
             <Headphones className="w-6 h-6 text-neon-cyan" />
             <h1 className="text-xl font-bold">Studio</h1>
-            <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-0.5 rounded">DAW</span>
+            <span className="text-[10px] text-gray-400 bg-white/5 px-2 py-0.5 rounded">DAW</span>
           </div>
           <div className="flex items-center gap-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
@@ -1498,7 +1498,7 @@ export default function StudioLensPage() {
                 <div key={i} className="p-3 bg-white/5 rounded-lg border border-white/10">
                   <f.icon className="w-5 h-5 text-neon-cyan mb-1" />
                   <p className="text-xs font-medium">{f.label}</p>
-                  <p className="text-[10px] text-gray-500">{f.desc}</p>
+                  <p className="text-[10px] text-gray-400">{f.desc}</p>
                 </div>
               ))}
             </div>
@@ -1516,7 +1516,7 @@ export default function StudioLensPage() {
           <div className="border-t border-white/10 px-4 py-2 flex items-center gap-2">
             <Sparkles className="w-3 h-3 text-neon-purple flex-shrink-0" />
             <div className="flex-1 overflow-hidden">
-              <span className="text-[10px] text-gray-500">
+              <span className="text-[10px] text-gray-400">
                 {dtuEvents.length} DTU events captured &middot; Last: {dtuEvents.at(-1)?.type} (
                 {dtuEvents.at(-1)?.action})
               </span>
@@ -1777,7 +1777,7 @@ export default function StudioLensPage() {
 
           {/* Beat Pads */}
           <div className="flex items-center gap-1">
-            <span className="text-[10px] text-gray-500 mr-1">PADS</span>
+            <span className="text-[10px] text-gray-400 mr-1">PADS</span>
             {BEAT_PAD_FREQUENCIES.map((pad, i) => (
               <button
                 key={pad.note}
@@ -1955,14 +1955,14 @@ export default function StudioLensPage() {
           )}
 
           {studioView === 'sampler' && (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <Music className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Sampler</p>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Load audio files, map across keys, set loop points and velocity zones
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-400 mt-2">
                   No audio DTUs loaded yet. Drag audio DTUs from the soundboard to begin.
                 </p>
               </div>
@@ -2249,7 +2249,7 @@ export default function StudioLensPage() {
                   >
                     <h3 className="font-semibold">{mod.title}</h3>
                     <p className="text-xs text-gray-400 mt-1">{mod.desc}</p>
-                    <p className="text-[10px] text-gray-500 mt-2">{mod.lessons} lessons</p>
+                    <p className="text-[10px] text-gray-400 mt-2">{mod.lessons} lessons</p>
                     <div className="mt-2 w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className={`h-full bg-${mod.color} rounded-full`}
@@ -2323,9 +2323,9 @@ export default function StudioLensPage() {
       {/* DTU Activity Bar */}
       <div className="h-6 bg-black/60 border-t border-white/10 flex items-center px-3 gap-3 flex-shrink-0">
         <Sparkles className="w-3 h-3 text-neon-purple" />
-        <span className="text-[9px] text-gray-500">{dtuEvents.length} DTU events</span>
+        <span className="text-[9px] text-gray-400">{dtuEvents.length} DTU events</span>
         {dtuEvents.length > 0 && (
-          <span className="text-[9px] text-gray-600 truncate">
+          <span className="text-[9px] text-gray-400 truncate">
             Latest: {dtuEvents.at(-1)?.type} &middot; {dtuEvents.at(-1)?.action} &middot;{' '}
             {new Date(dtuEvents.at(-1)?.timestamp || 0).toLocaleTimeString()}
           </span>
@@ -2344,7 +2344,7 @@ export default function StudioLensPage() {
         {/* Lens Features toggle */}
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="flex items-center gap-1 text-[9px] text-gray-500 hover:text-white"
+          className="flex items-center gap-1 text-[9px] text-gray-400 hover:text-white"
         >
           <Layers className="w-3 h-3" />
           {showFeatures ? 'Hide' : 'Features'}
@@ -2783,7 +2783,7 @@ function DawWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20'
-                : 'text-gray-500 hover:text-violet-300 hover:bg-violet-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-violet-300 hover:bg-violet-900/10 border border-transparent')
             }
           >
             {t.label}

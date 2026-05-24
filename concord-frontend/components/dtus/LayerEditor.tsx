@@ -85,7 +85,7 @@ export function LayerEditor({
 
   if (!dtuId) {
     return (
-      <div className="flex h-44 flex-col items-center justify-center rounded-xl border border-lattice-border bg-lattice-deep text-gray-500">
+      <div className="flex h-44 flex-col items-center justify-center rounded-xl border border-lattice-border bg-lattice-deep text-gray-400">
         <FileText className="mb-2 h-7 w-7" />
         <p className="text-sm">Select a DTU to edit its four layers.</p>
       </div>
@@ -98,7 +98,7 @@ export function LayerEditor({
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <FileText className="h-4 w-4 text-neon-blue" /> 4-Layer Editor
           {source && (
-            <span className="rounded bg-lattice-surface px-1.5 py-0.5 text-[10px] text-gray-500">
+            <span className="rounded bg-lattice-surface px-1.5 py-0.5 text-[10px] text-gray-400">
               {source}
             </span>
           )}
@@ -125,7 +125,7 @@ export function LayerEditor({
       {layers &&
         LAYER_META.filter((m) => m.key === active).map((m) => (
           <div key={m.key} className="space-y-1.5">
-            <p className="text-[11px] text-gray-500">{m.hint}</p>
+            <p className="text-[11px] text-gray-400">{m.hint}</p>
             <textarea
               value={layers[m.key]}
               onChange={(e) => {
@@ -156,7 +156,7 @@ export function LayerEditor({
             <Check className="h-3 w-3" /> Saved {new Date(savedAt).toLocaleTimeString()}
           </span>
         ) : (
-          <span className="text-[11px] text-gray-600">
+          <span className="text-[11px] text-gray-400">
             {dirty ? 'Unsaved changes' : ' '}
           </span>
         )}

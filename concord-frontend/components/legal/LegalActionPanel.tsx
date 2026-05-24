@@ -193,7 +193,7 @@ export function LegalActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -222,7 +222,7 @@ export function LegalActionPanel() {
           <div className={cn('rounded-md border p-2.5', (auditResult.complianceScore ?? 0) >= 80 ? 'border-emerald-500/40 bg-emerald-500/5' : (auditResult.complianceScore ?? 0) >= 50 ? 'border-amber-500/40 bg-amber-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold">Compliance</div>
             <div className="text-2xl font-bold text-zinc-100">{auditResult.complianceScore}<span className="text-xs text-zinc-400">/100</span></div>
-            {auditResult.findings?.length ? <div className="text-[10px] text-zinc-500">{auditResult.findings.length} findings</div> : null}
+            {auditResult.findings?.length ? <div className="text-[10px] text-zinc-400">{auditResult.findings.length} findings</div> : null}
           </div>
         )}
       </div>

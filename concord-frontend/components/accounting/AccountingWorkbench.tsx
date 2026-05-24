@@ -168,7 +168,7 @@ function ChartOfAccountsTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+      <div className="flex items-center justify-center py-8 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
       </div>
     );
@@ -237,7 +237,7 @@ function ChartOfAccountsTab() {
         if (grouped[cat].length === 0) return null;
         return (
           <div key={cat} className="space-y-1">
-            <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mt-3">
+            <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mt-3">
               {CATEGORY_LABEL[cat]}
             </h3>
             {grouped[cat].map((a) => (
@@ -246,7 +246,7 @@ function ChartOfAccountsTab() {
                 className="flex items-center justify-between px-3 py-1.5 rounded border border-white/5 bg-black/20 hover:bg-white/5 group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <code className="text-[11px] text-gray-500 font-mono">{a.code}</code>
+                  <code className="text-[11px] text-gray-400 font-mono">{a.code}</code>
                   <span className="text-sm text-gray-200 truncate">{a.name}</span>
                 </div>
                 <button
@@ -359,7 +359,7 @@ function JournalEntryTab() {
 
       <div className="border border-white/10 rounded overflow-hidden">
         <table className="w-full text-xs">
-          <thead className="bg-black/40 text-gray-500 uppercase text-[10px] tracking-wider">
+          <thead className="bg-black/40 text-gray-400 uppercase text-[10px] tracking-wider">
             <tr>
               <th className="text-left px-2 py-1.5">Account</th>
               <th className="text-right px-2 py-1.5 w-24">Debit</th>
@@ -419,7 +419,7 @@ function JournalEntryTab() {
           </tbody>
           <tfoot className="bg-black/40 border-t border-white/10">
             <tr className="text-xs">
-              <td className="px-2 py-1.5 text-gray-500">Totals</td>
+              <td className="px-2 py-1.5 text-gray-400">Totals</td>
               <td className="px-2 py-1.5 text-right font-mono text-gray-200">{totalDebit.toFixed(2)}</td>
               <td className="px-2 py-1.5 text-right font-mono text-gray-200">{totalCredit.toFixed(2)}</td>
               <td />
@@ -532,15 +532,15 @@ function LedgerTab() {
       </select>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : rows.length === 0 ? (
-        <p className="text-center text-xs text-gray-500 py-8">No entries posted yet.</p>
+        <p className="text-center text-xs text-gray-400 py-8">No entries posted yet.</p>
       ) : (
         <div className="border border-white/10 rounded overflow-hidden">
           <table className="w-full text-xs">
-            <thead className="bg-black/40 text-gray-500 uppercase text-[10px] tracking-wider">
+            <thead className="bg-black/40 text-gray-400 uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="text-left px-2 py-1.5">Date</th>
                 <th className="text-left px-2 py-1.5">Entry</th>
@@ -608,7 +608,7 @@ function BalanceSheetTab() {
   return (
     <div className="p-3 space-y-3">
       <div className="flex items-center gap-2">
-        <label className="text-xs text-gray-500">As of</label>
+        <label className="text-xs text-gray-400">As of</label>
         <input
           type="date"
           value={asOf}
@@ -618,11 +618,11 @@ function BalanceSheetTab() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Computing…
         </div>
       ) : !bs ? (
-        <p className="text-xs text-gray-500">No data</p>
+        <p className="text-xs text-gray-400">No data</p>
       ) : (
         <div className="space-y-3">
           {bs.balanced ? (
@@ -645,11 +645,11 @@ function BalanceSheetTab() {
                 {section.title}
               </div>
               {section.items.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-gray-600">(none)</p>
+                <p className="px-3 py-2 text-xs text-gray-400">(none)</p>
               ) : (
                 section.items.map((a) => (
                   <div key={a.id} className="flex justify-between px-3 py-1 text-xs border-t border-white/5">
-                    <span className="text-gray-300"><code className="text-gray-500 mr-2">{a.code}</code>{a.name}</span>
+                    <span className="text-gray-300"><code className="text-gray-400 mr-2">{a.code}</code>{a.name}</span>
                     <span className="font-mono text-gray-200">{fmt(a.balance)}</span>
                   </div>
                 ))
@@ -759,7 +759,7 @@ function AgingTab() {
   return (
     <div className="p-3 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-400">
           Total open: <span className="font-mono text-gray-200">${fmt(totalOpen)}</span>
         </span>
         <button
@@ -815,7 +815,7 @@ function AgingTab() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : (
@@ -826,13 +826,13 @@ function AgingTab() {
               <span className="font-mono text-xs text-gray-200">${fmt(b.total)}</span>
             </div>
             {b.invoices.length === 0 ? (
-              <p className="px-3 py-2 text-[11px] text-gray-600">(no open invoices in this bucket)</p>
+              <p className="px-3 py-2 text-[11px] text-gray-400">(no open invoices in this bucket)</p>
             ) : (
               b.invoices.map((inv) => (
                 <div key={inv.id} className="px-3 py-1.5 text-xs border-t border-white/5 flex items-center justify-between group">
                   <div className="min-w-0">
                     <p className="text-gray-200 truncate">{inv.customerName}</p>
-                    <p className="text-[10px] text-gray-500">{inv.number} · due {inv.dueAt} · {inv.daysPastDue > 0 ? `${inv.daysPastDue}d past due` : 'not yet due'}</p>
+                    <p className="text-[10px] text-gray-400">{inv.number} · due {inv.dueAt} · {inv.daysPastDue > 0 ? `${inv.daysPastDue}d past due` : 'not yet due'}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-gray-200">${fmt(inv.total)}</span>
@@ -863,7 +863,7 @@ function AgingTab() {
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-cyan-200">Send Stripe payment link</span>
-            <button type="button" onClick={() => setLinkPrompt(null)} className="text-zinc-500 hover:text-zinc-300">
+            <button type="button" onClick={() => setLinkPrompt(null)} className="text-zinc-400 hover:text-zinc-300">
               <X className="w-3 h-3" />
             </button>
           </div>

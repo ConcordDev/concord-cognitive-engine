@@ -85,7 +85,7 @@ export function RelayPanel() {
       <h2 className="text-indigo-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <Radio className="w-4 h-4" /> Relay subscriptions
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Subscribe to a relay to discover peers beyond your direct neighbours.
         Poll a relay to run a discovery pass.
       </p>
@@ -117,9 +117,9 @@ export function RelayPanel() {
       {err && <div className="text-rose-300 text-xs mb-2">{err}</div>}
 
       {loading ? (
-        <p className="text-xs text-gray-500 italic">Loading relays…</p>
+        <p className="text-xs text-gray-400 italic">Loading relays…</p>
       ) : !data || data.relays.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">No relay subscriptions.</p>
+        <p className="text-xs text-gray-400 italic">No relay subscriptions.</p>
       ) : (
         <ul className="space-y-2">
           {data.relays.map((r) => (
@@ -131,8 +131,8 @@ export function RelayPanel() {
                     {r.status}
                   </span>
                 </div>
-                <div className="text-[11px] text-gray-500 truncate">{r.url}</div>
-                <div className="text-[10px] text-gray-600 mt-1">
+                <div className="text-[11px] text-gray-400 truncate">{r.url}</div>
+                <div className="text-[10px] text-gray-400 mt-1">
                   discovered peers: {r.discoveredPeers} · last pull:{' '}
                   {r.lastPullAt ? new Date(r.lastPullAt).toLocaleString() : 'never'}
                 </div>

@@ -161,7 +161,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
         <div className="flex items-center gap-2">
           <Hammer className="w-4 h-4 text-amber-400" />
           <h3 className="text-sm font-semibold text-zinc-100">Marathons</h3>
-          <span className="text-[10px] text-zinc-500">long-running tasks</span>
+          <span className="text-[10px] text-zinc-400">long-running tasks</span>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -217,7 +217,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <button
             onClick={() => { setSelectedId(null); setDetail(null); }}
-            className="text-xs text-zinc-500 hover:text-zinc-300 mb-3"
+            className="text-xs text-zinc-400 hover:text-zinc-300 mb-3"
           >
             ← back to list
           </button>
@@ -228,7 +228,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
             </span>
           </div>
           <p className="text-xs text-zinc-400 mb-3 leading-relaxed">{detail.goal}</p>
-          <div className="flex items-center gap-3 text-[10px] text-zinc-500 mb-4">
+          <div className="flex items-center gap-3 text-[10px] text-zinc-400 mb-4">
             <span>{detail.total_turns} / {detail.max_turns} turns</span>
             <span>updated {fmtRelative(detail.updated_at)}</span>
           </div>
@@ -249,7 +249,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
               </button>
             )}
             {detail.status === 'running' && busy && (
-              <span className="flex items-center gap-1 text-xs text-zinc-500">
+              <span className="flex items-center gap-1 text-xs text-zinc-400">
                 <Loader2 className="w-3 h-3 animate-spin" /> ticking…
               </span>
             )}
@@ -261,7 +261,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
                   : t.role === 'assistant' ? 'bg-zinc-900/60 text-zinc-200'
                   : 'bg-zinc-800/40 text-zinc-400'
               }`}>
-                <div className="text-[10px] text-zinc-500 mb-1">
+                <div className="text-[10px] text-zinc-400 mb-1">
                   turn {t.turn_index} · {t.role}{t.provider && t.provider !== 'concord_default' ? ` · ${t.provider}` : ''}
                 </div>
                 <div className="whitespace-pre-wrap leading-relaxed">{(t.content || '').slice(0, 1500)}</div>
@@ -272,7 +272,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
       ) : (
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {sessions.length === 0 ? (
-            <div className="text-center text-xs text-zinc-500 mt-12 px-4">
+            <div className="text-center text-xs text-zinc-400 mt-12 px-4">
               <p className="mb-2">No marathons yet.</p>
               <p className="text-zinc-600">
                 Start one with the + button. The agent works toward your goal across hours/days,
@@ -297,7 +297,7 @@ export default function MarathonPanel({ onClose }: MarathonPanelProps) {
                           {badge.label}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+                      <div className="flex items-center gap-2 text-[10px] text-zinc-400">
                         <span>{s.total_turns}/{s.max_turns} turns</span>
                         <span>{fmtRelative(s.updated_at)}</span>
                         {s.status === 'completed' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}

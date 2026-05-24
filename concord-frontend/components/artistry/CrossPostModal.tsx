@@ -112,7 +112,7 @@ function CrossPostModal({
             <ArrowRight className="w-4 h-4 text-neon-cyan" />
             <h2 className="text-sm font-semibold">Promote on Artistry</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -126,7 +126,7 @@ function CrossPostModal({
               <p>
                 Artistry is free discovery. <strong>No citations, no downloads.</strong>
               </p>
-              <p className="text-gray-500 mt-0.5">
+              <p className="text-gray-400 mt-0.5">
                 Viewers can only browse and click through to the {sourceLens} lens.
               </p>
             </div>
@@ -162,7 +162,7 @@ function CrossPostModal({
               rows={3}
               maxLength={500}
             />
-            <span className="text-[10px] text-gray-600 float-right">{description.length}/500</span>
+            <span className="text-[10px] text-gray-400 float-right">{description.length}/500</span>
           </div>
 
           {/* Tags */}
@@ -177,7 +177,7 @@ function CrossPostModal({
                   <Tag className="w-2.5 h-2.5" /> {tag}
                   <button
                     onClick={() => setTags(tags.filter((t) => t !== tag))}
-                    className="text-gray-500 hover:text-white ml-0.5"
+                    className="text-gray-400 hover:text-white ml-0.5"
                   aria-label="Close">
                     <X className="w-2 h-2" />
                   </button>
@@ -254,7 +254,7 @@ function CrossPostModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/5 bg-white/[0.02]">
-          <span className="text-[10px] text-gray-500">Free to post · No cost to browse</span>
+          <span className="text-[10px] text-gray-400">Free to post · No cost to browse</span>
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">
               Cancel

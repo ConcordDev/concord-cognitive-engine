@@ -82,20 +82,20 @@ export function SchedulingCalendarPanel() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading week…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading week…</div>
       ) : !data ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No schedule data yet.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No schedule data yet.</div>
       ) : (
         <div className="p-3 space-y-3">
-          <p className="text-[10px] text-gray-500">Drag an unscheduled job onto an hour cell to book it. {data.totalScheduled} jobs scheduled this week.</p>
+          <p className="text-[10px] text-gray-400">Drag an unscheduled job onto an hour cell to book it. {data.totalScheduled} jobs scheduled this week.</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[680px] border-separate border-spacing-0.5">
               <thead>
                 <tr>
-                  <th className="text-left px-2 py-1 text-[9px] uppercase text-gray-600 w-12">Hr</th>
+                  <th className="text-left px-2 py-1 text-[9px] uppercase text-gray-400 w-12">Hr</th>
                   {data.days.map(d => (
-                    <th key={d.date} className="text-center px-1 py-1 text-[9px] uppercase text-gray-500">
-                      {d.weekday}<div className="text-[8px] text-gray-600 font-mono">{d.date.slice(5)}</div>
+                    <th key={d.date} className="text-center px-1 py-1 text-[9px] uppercase text-gray-400">
+                      {d.weekday}<div className="text-[8px] text-gray-400 font-mono">{d.date.slice(5)}</div>
                     </th>
                   ))}
                 </tr>
@@ -103,7 +103,7 @@ export function SchedulingCalendarPanel() {
               <tbody>
                 {SLOTS.map(slot => (
                   <tr key={slot}>
-                    <td className="px-2 py-1 text-[9px] font-mono text-gray-600 align-top">{slot}{slot < 12 ? 'a' : 'p'}</td>
+                    <td className="px-2 py-1 text-[9px] font-mono text-gray-400 align-top">{slot}{slot < 12 ? 'a' : 'p'}</td>
                     {data.days.map(d => {
                       const job = d.jobs.find(j => j.slot === slot);
                       return (
@@ -137,7 +137,7 @@ export function SchedulingCalendarPanel() {
           <div className="border-t border-white/10 pt-2">
             <div className="text-[10px] uppercase tracking-wider text-amber-400 mb-1">Unscheduled · {data.unscheduled.length}</div>
             {data.unscheduled.length === 0 ? (
-              <p className="text-[10px] text-gray-600">All open jobs are scheduled.</p>
+              <p className="text-[10px] text-gray-400">All open jobs are scheduled.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {data.unscheduled.map(j => (

@@ -308,11 +308,11 @@ export function ReplicationPanel({
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Local docs</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Local docs</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-200">{docs.length}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Dirty (unpushed)</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Dirty (unpushed)</div>
           <div
             className={`mt-0.5 font-mono text-lg ${dirtyCount > 0 ? 'text-amber-400' : 'text-zinc-200'}`}
           >
@@ -320,13 +320,13 @@ export function ReplicationPanel({
           </div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Server seq</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Server seq</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-200">
             {serverStatus?.updateSeq ?? '—'}
           </div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Checkpoint</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Checkpoint</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-200">{sinceSeq}</div>
         </div>
       </div>
@@ -342,14 +342,14 @@ export function ReplicationPanel({
           onChange={(e) => setDraftId(e.target.value)}
           disabled={!!editing}
           placeholder="document id (e.g. note:trip-plan)"
-          className="mb-2 w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-600 disabled:opacity-60"
+          className="mb-2 w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-400 disabled:opacity-60"
         />
         <textarea
           value={draftBody}
           onChange={(e) => setDraftBody(e.target.value)}
           rows={4}
           placeholder='{"title": "...", "value": 42}'
-          className="mb-2 w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 font-mono text-[11px] text-white placeholder:text-zinc-600"
+          className="mb-2 w-full rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 font-mono text-[11px] text-white placeholder:text-zinc-400"
         />
         <div className="flex gap-2">
           <button
@@ -408,7 +408,7 @@ export function ReplicationPanel({
           <Trash2 className="h-3.5 w-3.5" />
           Wipe local
         </button>
-        <span className="flex items-center text-[11px] text-zinc-500">
+        <span className="flex items-center text-[11px] text-zinc-400">
           local store {(localSize / 1024).toFixed(1)} KB
         </span>
       </div>
@@ -425,7 +425,7 @@ export function ReplicationPanel({
           Local documents
         </div>
         {docs.length === 0 && (
-          <div className="rounded border border-dashed border-zinc-800 px-3 py-4 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 px-3 py-4 text-center text-[11px] text-zinc-400">
             <CloudOff className="mx-auto mb-1 h-4 w-4" />
             No local documents. Write one above — it persists in IndexedDB even
             with no network.
@@ -450,7 +450,7 @@ export function ReplicationPanel({
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 truncate font-mono text-[10px] text-zinc-500">
+              <p className="mt-0.5 truncate font-mono text-[10px] text-zinc-400">
                 {JSON.stringify(d.body)}
               </p>
             </div>

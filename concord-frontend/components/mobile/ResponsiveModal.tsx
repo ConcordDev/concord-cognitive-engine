@@ -75,7 +75,7 @@ export function ResponsiveModal({
             <button
               type="button"
               onClick={onClose}
-              className="text-zinc-500 hover:text-zinc-200 p-1"
+              className="text-zinc-400 hover:text-zinc-200 p-1"
               aria-label="Close"
             >
               <X className="w-4 h-4" />

@@ -173,16 +173,16 @@ export function VoiceprintEnroll() {
       )}
 
       <div>
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Enrolled voice-prints</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Enrolled voice-prints</p>
         {prints.length === 0 ? (
-          <p className="text-xs text-zinc-600 italic">No voice-prints yet. Enroll a speaker to enable auto speaker labels.</p>
+          <p className="text-xs text-zinc-400 italic">No voice-prints yet. Enroll a speaker to enable auto speaker labels.</p>
         ) : (
           <ul className="space-y-1">
             {prints.map(p => (
               <li key={p.id} className="flex items-center gap-2 bg-zinc-900/40 rounded px-2 py-1.5 text-xs">
                 <Fingerprint className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                 <span className="flex-1 truncate text-zinc-200 font-medium">{p.name}</span>
-                <span className="text-zinc-500">{p.sampleCount} sample{p.sampleCount !== 1 ? 's' : ''} · {p.dimensions}-d</span>
+                <span className="text-zinc-400">{p.sampleCount} sample{p.sampleCount !== 1 ? 's' : ''} · {p.dimensions}-d</span>
                 <button onClick={() => del(p.id)} className="p-0.5 text-rose-400 hover:text-rose-300" aria-label={`Delete ${p.name}`}>
                   <Trash2 className="w-3 h-3" />
                 </button>

@@ -67,7 +67,7 @@ export function CdsOrderCheckPanel({ patientId }: { patientId: string }) {
       <div className="p-3">
         {error && <div className="text-xs text-rose-300 px-2 py-1.5 bg-rose-500/10 rounded">{error}</div>}
         {!error && !result && (
-          <div className="text-xs text-gray-500 text-center py-8">Enter a proposed order to screen it for advisories before placing it.</div>
+          <div className="text-xs text-gray-400 text-center py-8">Enter a proposed order to screen it for advisories before placing it.</div>
         )}
         {result && result.clean && (
           <div className="flex items-center gap-2 text-xs text-emerald-300 px-2 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded">

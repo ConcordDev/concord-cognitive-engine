@@ -86,7 +86,7 @@ export function TripPlannerPanel() {
             )}
             <div className="flex-1">
               <h3 className="text-base font-semibold text-white">{country.name}</h3>
-              <p className="text-[11px] text-zinc-500">{country.officialName} · {country.iso2}/{country.iso3} · {country.region}{country.subregion ? ` · ${country.subregion}` : ''}</p>
+              <p className="text-[11px] text-zinc-400">{country.officialName} · {country.iso2}/{country.iso3} · {country.region}{country.subregion ? ` · ${country.subregion}` : ''}</p>
             </div>
             <SaveAsDtuButton
               compact
@@ -126,12 +126,12 @@ export function TripPlannerPanel() {
             {convert ? (
               <div className="text-center">
                 <div className="font-mono text-2xl text-cyan-300">{convert.converted.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm text-zinc-400">{convert.to}</span></div>
-                <p className="mt-1 text-[10px] text-zinc-500">${convert.amount} {convert.from} @ {convert.rate?.toFixed(4)} (ECB · {convert.date})</p>
+                <p className="mt-1 text-[10px] text-zinc-400">${convert.amount} {convert.from} @ {convert.rate?.toFixed(4)} (ECB · {convert.date})</p>
               </div>
             ) : country.currencies[0]?.code === 'USD' ? (
-              <div className="text-center text-[11px] text-zinc-500">USD is the local currency.</div>
+              <div className="text-center text-[11px] text-zinc-400">USD is the local currency.</div>
             ) : (
-              <div className="text-center text-[11px] text-zinc-500">FX not available.</div>
+              <div className="text-center text-[11px] text-zinc-400">FX not available.</div>
             )}
           </div>
           <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
@@ -156,7 +156,7 @@ export function TripPlannerPanel() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-sm text-cyan-300">{value}</div>
     </div>
   );

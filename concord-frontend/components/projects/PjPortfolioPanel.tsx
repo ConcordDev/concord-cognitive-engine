@@ -39,7 +39,7 @@ export function PjPortfolioPanel() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const active = projects.filter((p) => !p.archived);
@@ -49,15 +49,15 @@ export function PjPortfolioPanel() {
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-emerald-300">{byHealth.on_track || 0}</p>
-          <p className="text-[10px] text-zinc-500 uppercase">On track</p>
+          <p className="text-[10px] text-zinc-400 uppercase">On track</p>
         </div>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-amber-300">{byHealth.at_risk || 0}</p>
-          <p className="text-[10px] text-zinc-500 uppercase">At risk</p>
+          <p className="text-[10px] text-zinc-400 uppercase">At risk</p>
         </div>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-rose-300">{byHealth.off_track || 0}</p>
-          <p className="text-[10px] text-zinc-500 uppercase">Off track</p>
+          <p className="text-[10px] text-zinc-400 uppercase">Off track</p>
         </div>
       </div>
 
@@ -65,7 +65,7 @@ export function PjPortfolioPanel() {
         <Briefcase className="w-3.5 h-3.5 text-indigo-400" /> All projects ({active.length} active)
       </h3>
       {projects.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No projects yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No projects yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {projects.map((p) => (
@@ -75,13 +75,13 @@ export function PjPortfolioPanel() {
                 <span className="text-sm font-semibold text-zinc-100 flex-1">{p.name}</span>
                 <span className={cn('text-[10px] uppercase', STATUS_COLOR[p.status])}>{p.status}</span>
                 <span className={cn('text-[10px] uppercase', HEALTH_COLOR[p.health])}>{p.health.replace(/_/g, ' ')}</span>
-                {p.targetDate && <span className="text-[10px] text-zinc-500">{p.targetDate}</span>}
+                {p.targetDate && <span className="text-[10px] text-zinc-400">{p.targetDate}</span>}
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
                   <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${p.progressPct}%` }} />
                 </div>
-                <span className="text-[10px] text-zinc-500">{p.doneTasks}/{p.totalTasks} · {p.points}pt</span>
+                <span className="text-[10px] text-zinc-400">{p.doneTasks}/{p.totalTasks} · {p.points}pt</span>
               </div>
             </li>
           ))}

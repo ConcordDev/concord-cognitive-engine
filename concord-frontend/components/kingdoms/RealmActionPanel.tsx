@@ -296,7 +296,7 @@ export function RealmActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -307,7 +307,7 @@ export function RealmActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5"><Map className="w-3 h-3" /> Realms on the map ({realmList.length})</div>
           {realmList.slice(0, 20).map(r => (
             <button key={r.id} onClick={() => setTargetRealmId(r.id)} className="block w-full text-left text-[11px] text-zinc-300 hover:text-cyan-200 py-0.5">
-              <span className="font-mono text-cyan-300">{r.id.slice(0, 8)}</span> {r.name} <span className="text-zinc-500">{r.capital ? `· ${r.capital}` : ''} {r.loyalty != null ? `· loyalty ${r.loyalty}` : ''}</span>
+              <span className="font-mono text-cyan-300">{r.id.slice(0, 8)}</span> {r.name} <span className="text-zinc-400">{r.capital ? `· ${r.capital}` : ''} {r.loyalty != null ? `· loyalty ${r.loyalty}` : ''}</span>
             </button>
           ))}
         </div>

@@ -50,7 +50,7 @@ export function GhsaAdvisories() {
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
             {(['all', 'critical', 'high'] as const).map((s) => (
-              <button key={s} onClick={() => setSeverity(s)} className={`rounded px-2 py-0.5 font-mono uppercase ${severity === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{s}</button>
+              <button key={s} onClick={() => setSeverity(s)} className={`rounded px-2 py-0.5 font-mono uppercase ${severity === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{s}</button>
             ))}
           </div>
           {(advisories.data?.length ?? 0) > 0 && (
@@ -67,7 +67,7 @@ export function GhsaAdvisories() {
         </div>
       </header>
       {advisories.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub advisories unreachable.</div>}
-      {advisories.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling advisories…</div>}
+      {advisories.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling advisories…</div>}
       <div className="space-y-2 max-h-[500px] overflow-y-auto">
         {(advisories.data || []).map((a) => {
           const cls = SEV_COLOR[a.severity] || SEV_COLOR.low;
@@ -90,9 +90,9 @@ export function GhsaAdvisories() {
                       ))}
                     </div>
                   )}
-                  <div className="mt-1 text-[10px] text-zinc-500">published {new Date(a.published_at).toLocaleDateString()}</div>
+                  <div className="mt-1 text-[10px] text-zinc-400">published {new Date(a.published_at).toLocaleDateString()}</div>
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
               </div>
             </a>
           );

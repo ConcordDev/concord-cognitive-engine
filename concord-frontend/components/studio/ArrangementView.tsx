@@ -113,12 +113,12 @@ export function ArrangementView({
       {/* Toolbar */}
       <div className="h-8 bg-black/40 border-b border-white/10 flex items-center px-3 gap-3 flex-shrink-0">
         <div className="flex items-center gap-1 text-[10px]">
-          <span className="text-gray-500">Snap:</span>
+          <span className="text-gray-400">Snap:</span>
           {(['off', '1/1', '1/2', '1/4', '1/8', '1/16'] as SnapMode[]).map(s => (
             <button
               key={s}
               onClick={() => onSnapChange(s)}
-              className={cn('px-1.5 py-0.5 rounded', snap === s ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-500 hover:text-white')}
+              className={cn('px-1.5 py-0.5 rounded', snap === s ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white')}
             >
               {s}
             </button>
@@ -126,7 +126,7 @@ export function ArrangementView({
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1 text-[10px]">
-          <span className="text-gray-500">Zoom:</span>
+          <span className="text-gray-400">Zoom:</span>
           <input
             type="range"
             min={0.25}
@@ -145,7 +145,7 @@ export function ArrangementView({
         <div className="flex-shrink-0 flex flex-col" style={{ width: TRACK_HEADER_WIDTH }}>
           {/* Corner / ruler gutter */}
           <div className="border-b border-r border-white/10 bg-black/60 flex items-center justify-center" style={{ height: RULER_HEIGHT }}>
-            <span className="text-[9px] text-gray-500 font-mono">TRACKS</span>
+            <span className="text-[9px] text-gray-400 font-mono">TRACKS</span>
           </div>
           {/* Track headers */}
           <div className="flex-1 overflow-y-auto no-scrollbar">
@@ -171,19 +171,19 @@ export function ArrangementView({
                 <div className="flex items-center gap-0.5 mt-1">
                   <button
                     onClick={e => { e.stopPropagation(); onUpdateTrack(track.id, { mute: !track.mute }); }}
-                    className={cn('px-1 py-0.5 text-[8px] rounded font-bold', track.mute ? 'bg-red-500/30 text-red-400' : 'bg-white/10 text-gray-500')}
+                    className={cn('px-1 py-0.5 text-[8px] rounded font-bold', track.mute ? 'bg-red-500/30 text-red-400' : 'bg-white/10 text-gray-400')}
                   >
                     M
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); onUpdateTrack(track.id, { solo: !track.solo }); }}
-                    className={cn('px-1 py-0.5 text-[8px] rounded font-bold', track.solo ? 'bg-yellow-500/30 text-yellow-400' : 'bg-white/10 text-gray-500')}
+                    className={cn('px-1 py-0.5 text-[8px] rounded font-bold', track.solo ? 'bg-yellow-500/30 text-yellow-400' : 'bg-white/10 text-gray-400')}
                   >
                     S
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); onUpdateTrack(track.id, { armed: !track.armed }); }}
-                    className={cn('px-1 py-0.5 text-[8px] rounded font-bold', track.armed ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-500')}
+                    className={cn('px-1 py-0.5 text-[8px] rounded font-bold', track.armed ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-400')}
                   >
                     R
                   </button>
@@ -204,7 +204,7 @@ export function ArrangementView({
             {/* Add track button */}
             <button
               onClick={onAddTrack}
-              className="w-full py-2 border-b border-r border-white/10 flex items-center justify-center gap-1.5 text-gray-500 hover:text-white hover:bg-white/5"
+              className="w-full py-2 border-b border-r border-white/10 flex items-center justify-center gap-1.5 text-gray-400 hover:text-white hover:bg-white/5"
             >
               <Plus className="w-3 h-3" />
               <span className="text-[10px]">Add Track</span>
@@ -244,7 +244,7 @@ export function ArrangementView({
             {Array.from({ length: lengthBars }).map((_, i) => (
               <div
                 key={i}
-                className="absolute bottom-0 text-[9px] text-gray-500 border-l border-white/10 pl-1"
+                className="absolute bottom-0 text-[9px] text-gray-400 border-l border-white/10 pl-1"
                 style={{ left: i * beatsPerBar * beatWidth, height: RULER_HEIGHT / 2 }}
               >
                 {i + 1}

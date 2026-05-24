@@ -110,17 +110,17 @@ export function ReviewsPanel() {
               const pct = summary.totalReviews > 0 ? (count / summary.totalReviews) * 100 : 0;
               return (
                 <div key={star} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 w-6">{star}★</span>
+                  <span className="text-[10px] text-gray-400 w-6">{star}★</span>
                   <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                     <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="text-[10px] text-gray-500 w-6 text-right">{count}</span>
+                  <span className="text-[10px] text-gray-400 w-6 text-right">{count}</span>
                 </div>
               );
             })}
           </div>
           {summary.topRated.length > 0 && (
-            <p className="text-[10px] text-gray-500 mt-2">
+            <p className="text-[10px] text-gray-400 mt-2">
               Top rated: {summary.topRated.slice(0, 3).map(t => `${t.productName} (★${t.avgRating})`).join(' · ')}
             </p>
           )}
@@ -152,9 +152,9 @@ export function ReviewsPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : reviews.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Star className="w-6 h-6 mx-auto mb-2 opacity-30" />No reviews yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Star className="w-6 h-6 mx-auto mb-2 opacity-30" />No reviews yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {reviews.map(r => (
@@ -163,14 +163,14 @@ export function ReviewsPanel() {
                   <Stars n={r.rating} />
                   <span className="text-xs text-white font-medium truncate">{r.title || r.productName}</span>
                   {r.verified && <span className="inline-flex items-center gap-0.5 text-[9px] text-emerald-300"><BadgeCheck className="w-3 h-3" />verified</span>}
-                  <span className="ml-auto text-[10px] text-gray-500">{r.authorName}</span>
-                  <button onClick={() => moderate(r.id, r.status === 'published' ? 'hidden' : 'published')} disabled={busy} className="p-1 text-gray-500 hover:text-amber-300">
+                  <span className="ml-auto text-[10px] text-gray-400">{r.authorName}</span>
+                  <button onClick={() => moderate(r.id, r.status === 'published' ? 'hidden' : 'published')} disabled={busy} className="p-1 text-gray-400 hover:text-amber-300">
                     {r.status === 'published' ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
-                  <button onClick={() => remove(r.id)} disabled={busy} className="p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(r.id)} disabled={busy} className="p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 {r.body && <p className="text-[11px] text-gray-400 mt-0.5">{r.body}</p>}
-                <p className="text-[10px] text-gray-600">{r.productName} · {new Date(r.createdAt).toLocaleDateString()}</p>
+                <p className="text-[10px] text-gray-400">{r.productName} · {new Date(r.createdAt).toLocaleDateString()}</p>
               </li>
             ))}
           </ul>

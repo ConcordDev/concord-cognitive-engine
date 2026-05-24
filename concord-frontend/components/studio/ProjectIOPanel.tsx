@@ -86,7 +86,7 @@ export function ProjectIOPanel({ projectId }: { projectId?: string }) {
               <div className="text-emerald-400 mb-1">{job.stemCount} stems · {job.format} @ {job.sampleRate}Hz</div>
               <ul className="space-y-0.5">
                 {job.stems.map((s) => (
-                  <li key={s.trackId} className="font-mono text-[10px] text-gray-500 truncate">{String(s.index + 1).padStart(2, '0')} {s.trackName} — {s.outputUrl}</li>
+                  <li key={s.trackId} className="font-mono text-[10px] text-gray-400 truncate">{String(s.index + 1).padStart(2, '0')} {s.trackName} — {s.outputUrl}</li>
                 ))}
               </ul>
             </div>
@@ -113,7 +113,7 @@ export function ProjectIOPanel({ projectId }: { projectId?: string }) {
         </section>
 
         {err && <div className="text-[11px] text-rose-400">{err}</div>}
-        {!projectId && <div className="text-[10px] text-gray-500">Open a project to export stems or its project file.</div>}
+        {!projectId && <div className="text-[10px] text-gray-400">Open a project to export stems or its project file.</div>}
       </div>
     </div>
   );

@@ -118,7 +118,7 @@ export function StorefrontManager() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <div className="p-3 space-y-3">
           {/* Configure */}
@@ -141,9 +141,9 @@ export function StorefrontManager() {
 
           {/* SKU publish picker */}
           <div>
-            <p className="text-[10px] uppercase text-gray-500 mb-1">Published products {publishedSet.size > 0 && `(${publishedSet.size} selected)`}</p>
+            <p className="text-[10px] uppercase text-gray-400 mb-1">Published products {publishedSet.size > 0 && `(${publishedSet.size} selected)`}</p>
             {products.length === 0 ? (
-              <p className="text-[11px] text-gray-500">No products in catalog yet.</p>
+              <p className="text-[11px] text-gray-400">No products in catalog yet.</p>
             ) : (
               <div className="flex flex-wrap gap-1">
                 {products.map(p => (
@@ -153,16 +153,16 @@ export function StorefrontManager() {
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-gray-500 mt-1">No products selected = whole catalog is exposed.</p>
+            <p className="text-[10px] text-gray-400 mt-1">No products selected = whole catalog is exposed.</p>
           </div>
 
           {/* Buyer preview */}
           <div className="border-t border-white/10 pt-3">
-            <p className="text-[10px] uppercase text-gray-500 mb-2 flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Buyer preview {storefront?.published ? '' : '(publish to enable)'}</p>
+            <p className="text-[10px] uppercase text-gray-400 mb-2 flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Buyer preview {storefront?.published ? '' : '(publish to enable)'}</p>
             {!storefront?.published ? (
-              <p className="text-[11px] text-gray-500">Storefront is not published.</p>
+              <p className="text-[11px] text-gray-400">Storefront is not published.</p>
             ) : catalog.length === 0 ? (
-              <p className="text-[11px] text-gray-500">No products published yet.</p>
+              <p className="text-[11px] text-gray-400">No products published yet.</p>
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -170,7 +170,7 @@ export function StorefrontManager() {
                     <div key={p.sku} className="flex items-center gap-2 p-2 rounded bg-lattice-deep border border-lattice-border">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white truncate">{p.name}</p>
-                        <p className="text-[10px] text-gray-500">
+                        <p className="text-[10px] text-gray-400">
                           ${p.price.toFixed(2)} · {p.inStock ? `${p.stock} in stock` : 'out of stock'}
                           {p.avgRating != null && ` · ★ ${p.avgRating} (${p.reviewCount})`}
                         </p>

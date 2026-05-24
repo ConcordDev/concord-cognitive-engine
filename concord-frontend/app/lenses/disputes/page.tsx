@@ -449,7 +449,7 @@ function AdminResolutionPanel({ dispute, onSuccess }: { dispute: Dispute; onSucc
             onChange={e => setPartialPercent(Number(e.target.value))}
             className="w-full accent-neon-blue"
           />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <div className="flex justify-between text-xs text-gray-400 mt-1">
             <span>1%</span><span>50%</span><span>99%</span>
           </div>
         </div>
@@ -529,7 +529,7 @@ function DisputeCard({
             <p className="text-white font-medium text-sm">
               {TYPE_LABELS[fullDispute.dispute_type] || fullDispute.dispute_type}
             </p>
-            <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+            <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
               <span className="font-mono">{fullDispute.id}</span>
               <span>{fullDispute.opened_at ? new Date(fullDispute.opened_at).toLocaleDateString() : ''}</span>
               {fullDispute.metadata?.amount != null && (
@@ -550,7 +550,7 @@ function DisputeCard({
             {dispute.userRole}
           </span>
           <StatusBadge status={fullDispute.status as DisputeStatus} />
-          {expanded ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+          {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
         </div>
       </button>
 
@@ -569,14 +569,14 @@ function DisputeCard({
 
               {/* Buyer statement */}
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Buyer Statement</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Buyer Statement</p>
                 <p className="text-gray-300 text-sm">{fullDispute.description}</p>
               </div>
 
               {/* Evidence */}
               {fullDispute.evidence && fullDispute.evidence.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Evidence</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Evidence</p>
                   <div className="space-y-1">
                     {fullDispute.evidence.map((e, i) => (
                       <a
@@ -596,7 +596,7 @@ function DisputeCard({
               {/* Resolution info */}
               {parsedResolution && (
                 <div className="bg-lattice-elevated rounded-lg p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Resolution</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Resolution</p>
                   <p className="text-white font-medium text-sm">
                     {parsedResolution.type === 'seller_refund' && 'Seller issued a voluntary refund.'}
                     {parsedResolution.type === 'auto_refund' && 'Auto-refunded (seller did not respond within 48 hours).'}
@@ -606,12 +606,12 @@ function DisputeCard({
                   </p>
                   {parsedResolution.sellerStatement && (
                     <div className="mt-2">
-                      <p className="text-xs text-gray-500">Seller Response</p>
+                      <p className="text-xs text-gray-400">Seller Response</p>
                       <p className="text-gray-400 text-sm">{parsedResolution.sellerStatement}</p>
                     </div>
                   )}
                   {parsedResolution.notes && (
-                    <p className="text-xs text-gray-500 mt-2">{parsedResolution.notes}</p>
+                    <p className="text-xs text-gray-400 mt-2">{parsedResolution.notes}</p>
                   )}
                   {parsedResolution.refundAmount > 0 && (
                     <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
@@ -619,7 +619,7 @@ function DisputeCard({
                     </p>
                   )}
                   {fullDispute.resolved_at && (
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       Resolved {new Date(fullDispute.resolved_at).toLocaleDateString()}
                     </p>
                   )}
@@ -785,19 +785,19 @@ export default function DisputesPage() {
             <div className="grid grid-cols-4 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-blue">{String(actionResult.parties ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Parties</p>
+                <p className="text-[10px] text-gray-400">Parties</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-xs font-bold text-neon-cyan capitalize">{String(actionResult.complexity ?? '—')}</p>
-                <p className="text-[10px] text-gray-500">Complexity</p>
+                <p className="text-[10px] text-gray-400">Complexity</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-xs font-bold text-yellow-400 capitalize">{String(actionResult.valueTier ?? '—').replace('-', ' ')}</p>
-                <p className="text-[10px] text-gray-500">Value Tier</p>
+                <p className="text-[10px] text-gray-400">Value Tier</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-sm font-bold text-neon-green">${String(actionResult.disputeAmount ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Amount</p>
+                <p className="text-[10px] text-gray-400">Amount</p>
               </div>
             </div>
             {!!actionResult.preferredMethod && (
@@ -812,7 +812,7 @@ export default function DisputesPage() {
                 {(actionResult.recommendedMethods as Array<{method:string;cost:string;timeWeeks:number;binding?:boolean}>).map((m, i) => (
                   <div key={i} className="p-2 bg-white/[0.02] border border-white/5 rounded text-xs">
                     <p className="text-gray-200 font-semibold">{m.method}</p>
-                    <div className="flex gap-2 text-gray-500 mt-0.5">
+                    <div className="flex gap-2 text-gray-400 mt-0.5">
                       <span>{m.cost}</span>
                       <span>{m.timeWeeks}w</span>
                       {m.binding && <span className="text-orange-400">Binding</span>}
@@ -830,22 +830,22 @@ export default function DisputesPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalEvents)}</p>
-                <p className="text-[10px] text-gray-500">Events</p>
+                <p className="text-[10px] text-gray-400">Events</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-yellow-400">{String(actionResult.daysElapsed)}</p>
-                <p className="text-[10px] text-gray-500">Days Elapsed</p>
+                <p className="text-[10px] text-gray-400">Days Elapsed</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-xs font-bold capitalize ${actionResult.status === 'protracted' ? 'text-red-400' : actionResult.status === 'extended' ? 'text-yellow-400' : 'text-neon-green'}`}>{String(actionResult.status ?? '—')}</p>
-                <p className="text-[10px] text-gray-500">Status</p>
+                <p className="text-[10px] text-gray-400">Status</p>
               </div>
             </div>
             {Array.isArray(actionResult.events) && (actionResult.events as Array<{date:string;event:string;party:string}>).length > 0 && (
               <div className="space-y-1 max-h-36 overflow-y-auto">
                 {(actionResult.events as Array<{date:string;event:string;party:string}>).map((e, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs">
-                    <span className="text-gray-500 font-mono shrink-0">{e.date}</span>
+                    <span className="text-gray-400 font-mono shrink-0">{e.date}</span>
                     <span className="text-gray-300 flex-1">{e.event}</span>
                     <span className="text-neon-blue shrink-0">{e.party}</span>
                   </div>
@@ -861,20 +861,20 @@ export default function DisputesPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">${String(actionResult.expectedValue ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Expected Value</p>
+                <p className="text-[10px] text-gray-400">Expected Value</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-lg font-bold ${Number(actionResult.netAfterCosts) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>${String(actionResult.netAfterCosts ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Net After Costs</p>
+                <p className="text-[10px] text-gray-400">Net After Costs</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-yellow-400">{String(actionResult.winProbability ?? 0)}%</p>
-                <p className="text-[10px] text-gray-500">Win Probability</p>
+                <p className="text-[10px] text-gray-400">Win Probability</p>
               </div>
             </div>
             {!!actionResult.settlementZone && (
               <div className="p-2 bg-neon-green/5 border border-neon-green/20 rounded text-xs space-y-1">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Settlement Zone</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Settlement Zone</p>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Min: <span className="text-neon-green">${String((actionResult.settlementZone as Record<string,number>).min)}</span></span>
                   <span className="text-gray-400">Mid: <span className="text-neon-cyan">${String((actionResult.settlementZone as Record<string,number>).midpoint)}</span></span>
@@ -896,15 +896,15 @@ export default function DisputesPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalPieces ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Evidence Items</p>
+                <p className="text-[10px] text-gray-400">Evidence Items</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-green">{String(actionResult.avgStrength ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Avg Strength</p>
+                <p className="text-[10px] text-gray-400">Avg Strength</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-xs font-bold capitalize ${actionResult.caseStrength === 'strong' ? 'text-neon-green' : actionResult.caseStrength === 'moderate' ? 'text-yellow-400' : 'text-red-400'}`}>{String(actionResult.caseStrength)}</p>
-                <p className="text-[10px] text-gray-500">Case Strength</p>
+                <p className="text-[10px] text-gray-400">Case Strength</p>
               </div>
             </div>
             {!!actionResult.strongestEvidence && (
@@ -917,9 +917,9 @@ export default function DisputesPage() {
                 {(actionResult.evidence as Array<{item:string;type:string;score:number;reliability:number}>).slice(0, 5).map((e, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     <span className="text-gray-300 flex-1 truncate">{e.item}</span>
-                    <span className="text-gray-500 capitalize">{e.type}</span>
+                    <span className="text-gray-400 capitalize">{e.type}</span>
                     <span className="text-neon-cyan">{e.score}</span>
-                    <span className="text-gray-500">{e.reliability}%</span>
+                    <span className="text-gray-400">{e.reliability}%</span>
                   </div>
                 ))}
               </div>
@@ -970,7 +970,7 @@ export default function DisputesPage() {
                 'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
                 statusFilter === s
                   ? (config ? cn(config.bgClass, config.textClass) : 'bg-white/10 text-white')
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-lattice-elevated',
+                  : 'text-gray-400 hover:text-gray-300 hover:bg-lattice-elevated',
               )}
             >
               {s === 'all' ? 'All' : config?.label}
@@ -983,8 +983,8 @@ export default function DisputesPage() {
       <div className="space-y-3">
         {isLoading ? (
           <div className={cn(ds.panel, 'flex items-center justify-center py-16')}>
-            <Loader2 size={20} className="animate-spin text-gray-500" />
-            <span className="ml-2 text-gray-500">Loading disputes...</span>
+            <Loader2 size={20} className="animate-spin text-gray-400" />
+            <span className="ml-2 text-gray-400">Loading disputes...</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className={cn(ds.panel, 'flex flex-col items-center justify-center py-16')}>

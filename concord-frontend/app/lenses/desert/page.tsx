@@ -236,7 +236,7 @@ export default function DesertLensPage() {
             onClick={() => setActiveMode(key)}
             className={cn(
               'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
             )}
           >
             <Icon className="w-4 h-4" /> {label}
@@ -282,7 +282,7 @@ export default function DesertLensPage() {
       {!isFeatureTab && (
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               ref={searchInputRef}
               value={searchQuery}
@@ -332,7 +332,7 @@ export default function DesertLensPage() {
             <div key={s.label} className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
               <p className={`text-2xl font-bold text-${s.color}-400`}>{s.value}</p>
               <p className="text-xs text-gray-400">{s.label}</p>
-              <p className="text-xs text-gray-600">of {s.total} total</p>
+              <p className="text-xs text-gray-400">of {s.total} total</p>
             </div>
           ))}
         </div>
@@ -368,13 +368,13 @@ export default function DesertLensPage() {
                   e.stopPropagation();
                   handleAction('analyze', item.id);
                 }}
-                className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan"
+                className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-neon-cyan"
               aria-label="Activate">
                 <Zap className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => remove(item.id)}
-                className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400"
+                className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-red-400"
               aria-label="Delete">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -382,7 +382,7 @@ export default function DesertLensPage() {
           </motion.div>
         ))}
         {items.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-400">
             <Sun className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p>No {currentType.toLowerCase()}s found</p>
           </div>

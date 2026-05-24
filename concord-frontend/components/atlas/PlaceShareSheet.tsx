@@ -253,7 +253,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
           <div className="flex-1 min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Share / act</div>
             <h3 className="text-sm font-semibold text-white truncate">{place.displayName}</h3>
-            <div className="text-[11px] text-gray-500 font-mono mt-0.5">
+            <div className="text-[11px] text-gray-400 font-mono mt-0.5">
               {place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}
               {place.category && <span className="ml-2 text-gray-400">· {place.category}</span>}
             </div>

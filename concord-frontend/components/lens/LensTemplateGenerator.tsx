@@ -106,12 +106,12 @@ function LensTemplateGenerator() {
             Failed to load templates
           </div>
         ) : templates.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No templates available</p>
+          <p className="text-sm text-gray-400 italic">No templates available</p>
         ) : (
           <div className="space-y-4">
             {Object.entries(byCategory).map(([category, catTemplates]) => (
               <div key={category}>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
                   {category}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -132,7 +132,7 @@ function LensTemplateGenerator() {
                         )}
                       </div>
                       {t.description && (
-                        <p className="text-xs text-gray-500 line-clamp-2">{t.description}</p>
+                        <p className="text-xs text-gray-400 line-clamp-2">{t.description}</p>
                       )}
                     </button>
                   ))}

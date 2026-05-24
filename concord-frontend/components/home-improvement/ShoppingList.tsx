@@ -93,7 +93,7 @@ export function ShoppingList() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <ShoppingCart className="w-4 h-4 text-neon-green" /> Materials Shopping List
-          <span className="text-xs text-gray-500">({result?.count || 0})</span>
+          <span className="text-xs text-gray-400">({result?.count || 0})</span>
         </h3>
       </div>
 
@@ -130,9 +130,9 @@ export function ShoppingList() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading list...</div>
+        <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading list...</div>
       ) : items.length === 0 ? (
-        <p className="text-xs text-gray-500">No items yet. Build a shopping list with vendor links and price tracking.</p>
+        <p className="text-xs text-gray-400">No items yet. Build a shopping list with vendor links and price tracking.</p>
       ) : (
         <div className="space-y-2">
           {items.map((it) => {
@@ -158,7 +158,7 @@ export function ShoppingList() {
                   {it.vendorUrl && (
                     <a href={it.vendorUrl} target="_blank" rel="noopener noreferrer" className="text-neon-cyan p-1"><ExternalLink className="w-3.5 h-3.5" /></a>
                   )}
-                  <button onClick={() => remove(it.id)} disabled={busy} className="text-gray-500 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => remove(it.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <input

@@ -91,7 +91,7 @@ export function StandPolygonPanel() {
       <div className="flex items-center gap-2 mb-3">
         <MapIcon className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-bold text-zinc-100">GIS Stand Mapping</h3>
-        <span className="ml-auto text-[10px] text-zinc-500">
+        <span className="ml-auto text-[10px] text-zinc-400">
           {polygons.length} polygon{polygons.length === 1 ? '' : 's'} · {totalAcres.toLocaleString()} ac
         </span>
       </div>
@@ -122,18 +122,18 @@ export function StandPolygonPanel() {
           <div key={p.id} className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-2.5 py-1.5">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-zinc-100 truncate">{p.name}</p>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 {p.acres.toLocaleString()} ac · {(p.perimeterM / 1000).toFixed(2)} km · {p.vertices.length} vertices
                 {p.standId ? ` · stand ${p.standId}` : ''}
               </p>
             </div>
             <button onClick={() => del(p.id)} aria-label="Delete polygon"
-              className="p-1 text-zinc-500 hover:text-rose-400">
+              className="p-1 text-zinc-400 hover:text-rose-400">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
-        {polygons.length === 0 && <p className="text-xs text-zinc-500 italic">No polygons mapped yet.</p>}
+        {polygons.length === 0 && <p className="text-xs text-zinc-400 italic">No polygons mapped yet.</p>}
       </div>
     </div>
   );

@@ -121,7 +121,7 @@ export default function QuoteChart({ symbol, quotes, isLive, lastUpdated, classN
       <header className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-zinc-900/60 to-zinc-900/20 flex items-center justify-between gap-4">
         <div className="flex items-baseline gap-3 min-w-0">
           <span className="text-xl font-bold text-zinc-100 font-mono">{symbol.replace('^', '')}</span>
-          {q?.exchange && <span className="text-[10px] text-zinc-500 uppercase">{q.exchange}</span>}
+          {q?.exchange && <span className="text-[10px] text-zinc-400 uppercase">{q.exchange}</span>}
           {q && (
             <>
               <span className="text-2xl font-light text-zinc-100">
@@ -146,7 +146,7 @@ export default function QuoteChart({ symbol, quotes, isLive, lastUpdated, classN
               <Wifi className="w-3 h-3 animate-pulse" /><span>live</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
               <WifiOff className="w-3 h-3" /><span>offline</span>
             </span>
           )}
@@ -156,10 +156,10 @@ export default function QuoteChart({ symbol, quotes, isLive, lastUpdated, classN
       {/* Chart */}
       <div className="p-3">
         {buffer.length < 2 ? (
-          <div className="h-60 flex flex-col items-center justify-center text-zinc-500 text-xs gap-2">
+          <div className="h-60 flex flex-col items-center justify-center text-zinc-400 text-xs gap-2">
             <Maximize2 className="w-6 h-6 opacity-40" />
             <span>Collecting session ticks… ({buffer.length} so far)</span>
-            <span className="text-[10px] text-zinc-600">Feed updates every ~75s. Chart appears after the second tick.</span>
+            <span className="text-[10px] text-zinc-400">Feed updates every ~75s. Chart appears after the second tick.</span>
           </div>
         ) : (
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-60" role="img" aria-label={`${symbol} session chart`}>

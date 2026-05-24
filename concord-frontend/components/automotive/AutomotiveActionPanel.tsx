@@ -190,7 +190,7 @@ export function AutomotiveActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -201,15 +201,15 @@ export function AutomotiveActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">{vinResult.year} {vinResult.make} {vinResult.model}</div>
             <div className="text-[11px] text-zinc-300">{vinResult.trim} · {vinResult.bodyClass}</div>
-            <div className="text-[10px] text-zinc-500 mt-1">{vinResult.engineDisplacementL}L {vinResult.engineCylinders}-cyl {vinResult.fuelType} · {vinResult.transmission} · {vinResult.driveType}</div>
-            <div className="text-[10px] text-zinc-500">{vinResult.manufacturer} · {vinResult.plantCountry}</div>
+            <div className="text-[10px] text-zinc-400 mt-1">{vinResult.engineDisplacementL}L {vinResult.engineCylinders}-cyl {vinResult.fuelType} · {vinResult.transmission} · {vinResult.driveType}</div>
+            <div className="text-[10px] text-zinc-400">{vinResult.manufacturer} · {vinResult.plantCountry}</div>
             {vinResult.electrificationLevel && <div className="text-[10px] text-emerald-300">⚡ {vinResult.electrificationLevel}{vinResult.batteryKWh ? ` · ${vinResult.batteryKWh} kWh` : ''}</div>}
           </div>
         )}
         {recallResult && (
           <div className={cn('rounded-md border p-2.5 max-h-48 overflow-y-auto', (recallResult.count ?? 0) > 0 ? 'border-red-500/30 bg-red-500/5' : 'border-green-500/30 bg-green-500/5')}>
             <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: (recallResult.count ?? 0) > 0 ? '#fca5a5' : '#86efac' }}>Recalls · {recallResult.count ?? recallResult.recalls?.length ?? 0}</div>
-            {(recallResult.recalls ?? []).slice(0, 3).map((r, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1.5 pb-1.5 border-b border-red-900/30 last:border-0"><strong className="text-red-200">{r.component}</strong> · <span className="font-mono text-zinc-500">{r.nhtsaId}</span><div className="text-[10px] text-zinc-400 line-clamp-2">{r.summary}</div></div>)}
+            {(recallResult.recalls ?? []).slice(0, 3).map((r, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1.5 pb-1.5 border-b border-red-900/30 last:border-0"><strong className="text-red-200">{r.component}</strong> · <span className="font-mono text-zinc-400">{r.nhtsaId}</span><div className="text-[10px] text-zinc-400 line-clamp-2">{r.summary}</div></div>)}
           </div>
         )}
         {maintResult && (
@@ -223,7 +223,7 @@ export function AutomotiveActionPanel() {
           <div className={cn('rounded-md border p-2.5', SEV_COLOR[diagResult.severity ?? 'medium'] === 'text-red-300' ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">OBD · {diagResult.code}</div>
             <div className={cn('text-sm font-semibold', SEV_COLOR[diagResult.severity ?? 'medium'])}>{diagResult.description}</div>
-            <div className="text-[10px] text-zinc-500">{diagResult.category} · {diagResult.severity}</div>
+            <div className="text-[10px] text-zinc-400">{diagResult.category} · {diagResult.severity}</div>
             {(diagResult.commonCauses ?? []).slice(0, 3).map((c, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5">→ {c}</div>)}
             {diagResult.estimatedCost && <div className="text-[10px] text-amber-300">est. {diagResult.estimatedCost}</div>}
           </div>

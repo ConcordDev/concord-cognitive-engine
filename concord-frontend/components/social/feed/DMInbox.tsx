@@ -102,11 +102,11 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
             </button>
           </div>
           {loadingInbox ? (
-            <div className="flex items-center gap-2 p-4 text-xs text-zinc-500">
+            <div className="flex items-center gap-2 p-4 text-xs text-zinc-400">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading inbox…
             </div>
           ) : threads.length === 0 ? (
-            <p className="p-4 text-xs text-zinc-600 italic">No conversations yet. Start one with the + button.</p>
+            <p className="p-4 text-xs text-zinc-400 italic">No conversations yet. Start one with the + button.</p>
           ) : (
             <ul>
               {threads.map((t) => (
@@ -124,11 +124,11 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                       {t.unread > 0 && (
                         <span className="rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">{t.unread}</span>
                       )}
-                      <span className="ml-auto text-[10px] text-zinc-600">
+                      <span className="ml-auto text-[10px] text-zinc-400">
                         {t.lastMessage ? relTime(t.lastMessage.createdAt) : ''}
                       </span>
                     </div>
-                    <p className="truncate text-[11px] text-zinc-500">
+                    <p className="truncate text-[11px] text-zinc-400">
                       {t.lastMessage?.body || 'No messages'}
                     </p>
                   </button>
@@ -141,7 +141,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
         {/* conversation pane */}
         <div className={cn('flex flex-col', !activeWith && !composing && 'hidden sm:flex')}>
           {!activeWith && !composing ? (
-            <div className="flex flex-1 items-center justify-center text-xs text-zinc-600">
+            <div className="flex flex-1 items-center justify-center text-xs text-zinc-400">
               Select a conversation.
             </div>
           ) : composing && !activeWith ? (
@@ -176,11 +176,11 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto p-3">
                 {loadingThread ? (
-                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <div className="flex items-center gap-2 text-xs text-zinc-400">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
                   </div>
                 ) : messages.length === 0 ? (
-                  <p className="text-xs text-zinc-600 italic">No messages yet — say hello.</p>
+                  <p className="text-xs text-zinc-400 italic">No messages yet — say hello.</p>
                 ) : (
                   messages.map((m) => {
                     const mine = m.from === currentUserId;
@@ -191,7 +191,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                           mine ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-200',
                         )}>
                           <p className="whitespace-pre-wrap">{m.body}</p>
-                          <p className={cn('mt-0.5 text-[9px]', mine ? 'text-indigo-200' : 'text-zinc-500')}>
+                          <p className={cn('mt-0.5 text-[9px]', mine ? 'text-indigo-200' : 'text-zinc-400')}>
                             {relTime(m.createdAt)}
                           </p>
                         </div>

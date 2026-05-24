@@ -186,7 +186,7 @@ function StatCard({
       <div className="mt-4">
         <p className="dashboard-stat">{value}</p>
         <p className="dashboard-label">{label}</p>
-        {subValue && <p className="text-xs text-gray-500 mt-1">{subValue}</p>}
+        {subValue && <p className="text-xs text-gray-400 mt-1">{subValue}</p>}
       </div>
     </motion.div>
   );
@@ -675,7 +675,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">System Health</p>
-              <p className="text-xs text-gray-500">All subsystems monitored in real-time</p>
+              <p className="text-xs text-gray-400">All subsystems monitored in real-time</p>
             </div>
           </div>
           <div className="flex gap-4">
@@ -933,11 +933,11 @@ export default function AdminDashboardPage() {
                 <span className="text-neon-purple font-mono">{String(log.type)}</span>
                 <span className="text-gray-400">{String(log.message)}</span>
               </div>
-              <span className="text-xs text-gray-500">{String(log.at)}</span>
+              <span className="text-xs text-gray-400">{String(log.at)}</span>
             </div>
           ))}
           {(!logs?.logs || logs.logs.length === 0) && (
-            <p className="text-gray-500 text-center py-4">No recent activity</p>
+            <p className="text-gray-400 text-center py-4">No recent activity</p>
           )}
         </div>
 
@@ -1100,7 +1100,7 @@ export default function AdminDashboardPage() {
             <Download className="w-4 h-4" />
             Install Concord Browser Extension
           </a>
-          <span className="text-xs text-gray-500">v0.1.0 — Chrome / Firefox (Manifest V3)</span>
+          <span className="text-xs text-gray-400">v0.1.0 — Chrome / Firefox (Manifest V3)</span>
         </div>
       </div>
 
@@ -1199,7 +1199,7 @@ export default function AdminDashboardPage() {
                   <div>
                     <p className="text-sm text-white font-medium">{org.name}</p>
                     {org.memberCount !== undefined && (
-                      <p className="text-xs text-gray-500">{org.memberCount} members</p>
+                      <p className="text-xs text-gray-400">{org.memberCount} members</p>
                     )}
                   </div>
                   <button
@@ -1221,7 +1221,7 @@ export default function AdminDashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500 p-3">No organizations found.</p>
+              <p className="text-sm text-gray-400 p-3">No organizations found.</p>
             )}
           </div>
         )}
@@ -1248,7 +1248,7 @@ export default function AdminDashboardPage() {
                 {JSON.stringify(qualityData, null, 2)}
               </pre>
             ) : (
-              <p className="text-sm text-gray-500 p-3">Loading quality thresholds...</p>
+              <p className="text-sm text-gray-400 p-3">Loading quality thresholds...</p>
             )}
             {flywheelData && (
               <div className="p-3 bg-black/30 rounded-lg border border-white/5">
@@ -1274,7 +1274,7 @@ export default function AdminDashboardPage() {
                       idx: number
                     ) => (
                       <div key={idx} className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500">
+                        <span className="text-gray-400">
                           {entry.timestamp ?? entry.date ?? `Entry ${idx + 1}`}
                         </span>
                         <span className="text-white font-medium">
@@ -1315,11 +1315,11 @@ export default function AdminDashboardPage() {
                 >
                   <div>
                     <p className="text-sm text-white font-medium">{exec.name ?? exec.id}</p>
-                    {exec.startedAt && <p className="text-xs text-gray-500">{exec.startedAt}</p>}
+                    {exec.startedAt && <p className="text-xs text-gray-400">{exec.startedAt}</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     {exec.duration !== undefined && (
-                      <span className="text-xs text-gray-500">{exec.duration}ms</span>
+                      <span className="text-xs text-gray-400">{exec.duration}ms</span>
                     )}
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${
@@ -1370,7 +1370,7 @@ export default function AdminDashboardPage() {
             >
               <div className="px-4 pb-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     Analyzes audit log entries for anomalies — detects rapid-fire bursts, frequency
                     spikes, dormancy alerts, failed access patterns, and suspicious IP diversity.
                   </p>
@@ -1430,7 +1430,7 @@ export default function AdminDashboardPage() {
             >
               <div className="px-4 pb-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     Builds and analyzes a role-permission matrix — finds over-privileged roles,
                     redundant role pairs, separation-of-duty violations, and orphan assignments.
                   </p>
@@ -1490,7 +1490,7 @@ export default function AdminDashboardPage() {
             >
               <div className="px-4 pb-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     Computes weighted system health scores from CPU, memory, disk, latency, and
                     error-rate metrics with trend analysis and threshold alerts.
                   </p>
@@ -1595,7 +1595,7 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
     return (
       <div className="text-center py-8">
         <DollarSign className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-        <p className="text-gray-500 text-sm">Loading treasury data...</p>
+        <p className="text-gray-400 text-sm">Loading treasury data...</p>
       </div>
     );
   }
@@ -1633,7 +1633,7 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
           <div className="mt-4">
             <p className="dashboard-stat">${data.totalDistributed.toLocaleString()}</p>
             <p className="dashboard-label">Total Distributed</p>
-            <p className="text-xs text-gray-500 mt-1">{data.distributionCount} distributions</p>
+            <p className="text-xs text-gray-400 mt-1">{data.distributionCount} distributions</p>
           </div>
         </div>
 
@@ -1739,7 +1739,7 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
               );
             })}
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-2">
+          <div className="flex justify-between text-xs text-gray-400 mt-2">
             <span>
               {data.revenueHistory[Math.max(0, data.revenueHistory.length - 30)]?.date || ''}
             </span>
@@ -1802,7 +1802,7 @@ function PluginManagerPanel() {
 
       {/* Plugin list */}
       {plugins.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">No plugins installed</p>
+        <p className="text-sm text-gray-400 text-center py-4">No plugins installed</p>
       ) : (
         <div className="space-y-2">
           {plugins.map(
@@ -1828,7 +1828,7 @@ function PluginManagerPanel() {
                       {plugin.name || plugin.id}
                     </span>
                     {plugin.version && (
-                      <span className="text-xs text-gray-500">v{plugin.version}</span>
+                      <span className="text-xs text-gray-400">v{plugin.version}</span>
                     )}
                     {plugin.isEmergentGen && (
                       <span className="text-xs px-1.5 py-0.5 bg-neon-purple/20 text-neon-purple rounded">
@@ -1836,7 +1836,7 @@ function PluginManagerPanel() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-gray-400 truncate">
                     {plugin.description ||
                       `${(plugin.macros || []).length} macros, ${(plugin.hooks || []).length} hooks`}
                   </p>
@@ -1909,7 +1909,7 @@ function MacroExplorerPanel() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text"
           value={macroSearch}
@@ -1922,7 +1922,7 @@ function MacroExplorerPanel() {
       {/* Grouped macro list */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {grouped.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">No macros match your search</p>
+          <p className="text-sm text-gray-400 text-center py-4">No macros match your search</p>
         ) : (
           grouped.map(([domain, domainMacros]) => (
             <div key={domain}>
@@ -1931,7 +1931,7 @@ function MacroExplorerPanel() {
                 <span className="text-xs font-medium text-neon-cyan uppercase tracking-wider">
                   {domain}
                 </span>
-                <span className="text-xs text-gray-600">({domainMacros.length})</span>
+                <span className="text-xs text-gray-400">({domainMacros.length})</span>
               </div>
               <div className="space-y-1 ml-5">
                 {domainMacros.map((m) => (
@@ -1942,7 +1942,7 @@ function MacroExplorerPanel() {
                     <div className="flex-1 min-w-0">
                       <span className="text-sm text-white font-mono">{m.name}</span>
                       {m.description && (
-                        <span className="text-xs text-gray-500 ml-2 truncate">{m.description}</span>
+                        <span className="text-xs text-gray-400 ml-2 truncate">{m.description}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -2042,7 +2042,7 @@ function ApiKeysPanel() {
             >
               <div>
                 <p className="text-sm text-white font-medium">{k.name}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {k.prefix ? `${k.prefix}...` : k.id.slice(0, 8)}
                 </p>
               </div>
@@ -2056,7 +2056,7 @@ function ApiKeysPanel() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-500">No API keys yet.</p>
+        <p className="text-sm text-gray-400">No API keys yet.</p>
       )}
     </div>
   );
@@ -2129,7 +2129,7 @@ function AuditLogResultPanel({ result }: { result: Record<string, unknown> }) {
 
       {/* Time Span */}
       {timeSpan && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           <Clock className="w-3 h-3" />
           <span>
             Analysis window: {new Date(timeSpan.from).toLocaleString()} to{' '}
@@ -2226,7 +2226,7 @@ function AuditLogResultPanel({ result }: { result: Record<string, unknown> }) {
                   <span className="text-red-400 font-medium">
                     {fa.failureRate as number}% failure rate
                   </span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-400">
                     Resources: {((fa.resources as string[]) || []).join(', ')}
                   </span>
                 </div>
@@ -2263,14 +2263,14 @@ function AuditLogResultPanel({ result }: { result: Record<string, unknown> }) {
           <CheckCircle className="w-5 h-5 text-green-400" />
           <div>
             <p className="text-sm text-green-400 font-medium">No anomalies detected</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               All access patterns are within normal parameters.
             </p>
           </div>
         </div>
       )}
 
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-gray-400">
         Analyzed at{' '}
         {result.analyzedAt ? new Date(result.analyzedAt as string).toLocaleString() : 'unknown'}
       </p>
@@ -2333,13 +2333,13 @@ function PermissionMatrixResultPanel({ result }: { result: Record<string, unknow
           <table className="w-full text-xs">
             <thead>
               <tr>
-                <th className="text-left p-1.5 text-gray-500 font-medium sticky left-0 bg-black/30">
+                <th className="text-left p-1.5 text-gray-400 font-medium sticky left-0 bg-black/30">
                   Role
                 </th>
                 {permNames.map((p) => (
                   <th
                     key={p}
-                    className="p-1.5 text-gray-500 font-medium text-center whitespace-nowrap"
+                    className="p-1.5 text-gray-400 font-medium text-center whitespace-nowrap"
                   >
                     <span className="inline-block -rotate-45 origin-bottom-left translate-y-1">
                       {p}
@@ -2410,9 +2410,9 @@ function PermissionMatrixResultPanel({ result }: { result: Record<string, unknow
               className="flex items-center gap-3 p-2.5 rounded-lg bg-yellow-500/5 border border-yellow-500/15 text-xs"
             >
               <span className="text-white font-medium">{r.subset as string}</span>
-              <ChevronRight className="w-3 h-3 text-gray-500" />
+              <ChevronRight className="w-3 h-3 text-gray-400" />
               <span className="text-white font-medium">{r.superset as string}</span>
-              <span className="text-gray-500 ml-auto">
+              <span className="text-gray-400 ml-auto">
                 {r.subsetSize as number} vs {r.supersetSize as number} perms
               </span>
             </div>
@@ -2432,7 +2432,7 @@ function PermissionMatrixResultPanel({ result }: { result: Record<string, unknow
               <div className="flex items-center gap-2">
                 <XCircle className="w-4 h-4 text-red-400" />
                 <span className="text-sm text-white">{v.userId as string}</span>
-                <span className="text-xs text-gray-500">Rule: {v.rule as string}</span>
+                <span className="text-xs text-gray-400">Rule: {v.rule as string}</span>
               </div>
               <span className="text-xs text-red-400 font-mono">
                 {((v.conflictingPermissions as string[]) || []).join(' + ')}
@@ -2467,14 +2467,14 @@ function PermissionMatrixResultPanel({ result }: { result: Record<string, unknow
             <CheckCircle className="w-5 h-5 text-green-400" />
             <div>
               <p className="text-sm text-green-400 font-medium">Permission model is clean</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 No over-privileged roles, redundancies, or SoD violations detected.
               </p>
             </div>
           </div>
         )}
 
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-gray-400">
         Analyzed at{' '}
         {result.analyzedAt ? new Date(result.analyzedAt as string).toLocaleString() : 'unknown'}
       </p>
@@ -2607,7 +2607,7 @@ function SystemHealthResultPanel({ result }: { result: Record<string, unknown> }
           <p className={`text-xl font-bold capitalize ${statusColor(healthStatus)}`}>
             {healthStatus}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             Composite health score based on {result.dataPoints as number} data points
           </p>
         </div>
@@ -2630,7 +2630,7 @@ function SystemHealthResultPanel({ result }: { result: Record<string, unknown> }
                 <div className="flex items-center gap-2">
                   <MetricIcon className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-white font-medium">{meta.label}</span>
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-gray-400">
                     weight: {((weight || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
@@ -2647,7 +2647,7 @@ function SystemHealthResultPanel({ result }: { result: Record<string, unknown> }
                     </span>
                   )}
                   <span
-                    className={`font-bold ${scoreVal !== null && scoreVal !== undefined ? (scoreVal >= 80 ? 'text-green-400' : scoreVal >= 60 ? 'text-yellow-400' : scoreVal >= 30 ? 'text-orange-400' : 'text-red-400') : 'text-gray-500'}`}
+                    className={`font-bold ${scoreVal !== null && scoreVal !== undefined ? (scoreVal >= 80 ? 'text-green-400' : scoreVal >= 60 ? 'text-yellow-400' : scoreVal >= 30 ? 'text-orange-400' : 'text-red-400') : 'text-gray-400'}`}
                   >
                     {scoreVal !== null && scoreVal !== undefined ? scoreVal.toFixed(1) : 'N/A'}
                   </span>
@@ -2708,12 +2708,12 @@ function SystemHealthResultPanel({ result }: { result: Record<string, unknown> }
           <CheckCircle className="w-5 h-5 text-green-400" />
           <div>
             <p className="text-sm text-green-400 font-medium">No active alerts</p>
-            <p className="text-xs text-gray-500">All metrics are within configured thresholds.</p>
+            <p className="text-xs text-gray-400">All metrics are within configured thresholds.</p>
           </div>
         </div>
       )}
 
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-gray-400">
         Analyzed at{' '}
         {result.analyzedAt ? new Date(result.analyzedAt as string).toLocaleString() : 'unknown'}
       </p>

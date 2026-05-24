@@ -24,7 +24,7 @@ function PipelineTrailInner({ trail }: PipelineTrailProps) {
 
   return (
     <div className="space-y-1">
-      <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Pipeline</h4>
+      <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Pipeline</h4>
       <div className="flex items-center gap-1 flex-wrap">
         {trail.map((step, i) => (
           <Fragment key={i}>
@@ -37,7 +37,7 @@ function PipelineTrailInner({ trail }: PipelineTrailProps) {
             >
               {step.domain}
               {step.action && (
-                <span className="text-zinc-500">{step.action.replace(/-/g, ' ')}</span>
+                <span className="text-zinc-400">{step.action.replace(/-/g, ' ')}</span>
               )}
             </Link>
           </Fragment>

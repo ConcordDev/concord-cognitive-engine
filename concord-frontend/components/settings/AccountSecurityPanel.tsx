@@ -230,7 +230,7 @@ export function AccountSecurityPanel() {
             onChange={(e) => setCurrentPw(e.target.value)}
             placeholder="Current password"
             aria-label="Current password"
-            className="w-full px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="w-full px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
           <input
             type="password"
@@ -238,7 +238,7 @@ export function AccountSecurityPanel() {
             onChange={(e) => setNewPw(e.target.value)}
             placeholder="New password (8+ chars, letters & numbers)"
             aria-label="New password"
-            className="w-full px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="w-full px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
           <button
             onClick={submitPassword}
@@ -356,7 +356,7 @@ export function AccountSecurityPanel() {
             placeholder="Handle / username"
             aria-label="Account handle"
             maxLength={64}
-            className="flex-1 px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="flex-1 px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
           <button
             onClick={connect}

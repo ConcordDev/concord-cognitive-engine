@@ -78,7 +78,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
   const delGoal = async (id: string) => { await lensRun('energy', 'goal-delete', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -88,7 +88,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
       {/* Rate */}
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Utility rate</h3>
-        <p className="text-[11px] text-zinc-500 mb-2">
+        <p className="text-[11px] text-zinc-400 mb-2">
           Current: <span className="text-zinc-200">${rate?.ratePerKwh}/kWh</span>
           {rate?.utility ? ` · ${rate.utility}` : ''}{isDefaultRate ? ' (default — set yours below)' : ''}
         </p>
@@ -110,7 +110,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
           </h3>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
             <p className="text-2xl font-bold text-zinc-100">${bill.estimatedBill}</p>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-400">
               {bill.netKwh} net kWh ({bill.consumedKwh} used − {bill.solarKwh} solar) at ${bill.ratePerKwh}/kWh
             </p>
             {bill.solarSavings > 0 && (
@@ -126,20 +126,20 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
           <TrendingUp className="w-3.5 h-3.5 text-lime-400" /> Month-end projection
         </h3>
         {!projection || !projection.hasData ? (
-          <p className="text-[11px] text-zinc-500 italic">
+          <p className="text-[11px] text-zinc-400 italic">
             Log readings this month to project the full bill.
           </p>
         ) : (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
             <div className="flex items-baseline gap-2">
               <p className="text-2xl font-bold text-lime-400">${projection.projectedBill}</p>
-              <span className="text-[10px] text-zinc-500 uppercase">projected bill</span>
+              <span className="text-[10px] text-zinc-400 uppercase">projected bill</span>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-0.5">
+            <p className="text-[11px] text-zinc-400 mt-0.5">
               ${projection.billSoFar} so far · {projection.loggedKwh} kWh over {projection.distinctDays} day(s)
               · ~{projection.dailyAvgKwh} kWh/day
             </p>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-400">
               Projected {projection.projectedKwh} kWh ({projection.projectedNetKwh} net) over {projection.daysInMonth} days.
             </p>
             <span className={cn('inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wide',
@@ -172,7 +172,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {goals.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No savings goals.</p>
+          <p className="text-[11px] text-zinc-400 italic">No savings goals.</p>
         ) : (
           <ul className="space-y-2">
             {goals.map((g) => (
@@ -187,7 +187,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
                   <div className={cn('h-full rounded-full', g.overBudget ? 'bg-rose-500' : 'bg-lime-500')}
                     style={{ width: `${Math.min(100, g.pct)}%` }} />
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">
+                <p className="text-[10px] text-zinc-400 mt-1">
                   {g.usedKwh} / {g.targetKwh} kWh ({g.pct}%){g.overBudget ? ' · over budget' : ''}
                 </p>
               </li>

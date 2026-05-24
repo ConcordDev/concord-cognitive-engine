@@ -33,7 +33,7 @@ export function QuestNotification({ quest, type, onDismiss }: QuestNotificationP
         </div>
         <div className="text-xs text-gray-200 font-medium">{quest.title}</div>
         {type === 'new' && (
-          <div className="text-[10px] text-gray-500 mt-0.5">{quest.giverName}</div>
+          <div className="text-[10px] text-gray-400 mt-0.5">{quest.giverName}</div>
         )}
         {type === 'completed' && (
           <div className="flex items-center gap-2 mt-1 text-[10px]">

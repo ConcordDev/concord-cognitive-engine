@@ -119,7 +119,7 @@ export default function LensHubPage() {
                 Every lens is a specialized workspace — from AI reasoning to healthcare management.
               </p>
             </div>
-            <div className="hidden md:flex items-center gap-2 text-xs text-gray-500">
+            <div className="hidden md:flex items-center gap-2 text-xs text-gray-400">
               <span className="px-2 py-1 rounded bg-neon-cyan/10 text-neon-cyan font-mono">{totalCount}</span>
               <span>lenses</span>
             </div>
@@ -128,7 +128,7 @@ export default function LensHubPage() {
           {/* Search + View Toggle */}
           <div className="mt-6 flex items-center gap-3">
             <div className="relative flex-1 max-w-xl">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={search}
@@ -140,7 +140,7 @@ export default function LensHubPage() {
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   aria-label="Clear search"
                 >
                   <X className="w-4 h-4" />
@@ -150,14 +150,14 @@ export default function LensHubPage() {
             <div className="flex items-center bg-lattice-deep border border-lattice-border rounded-lg overflow-hidden">
               <button
                 onClick={() => setViewMode('grid')}
-                className={cn('p-2.5 transition-colors', viewMode === 'grid' ? 'bg-lattice-elevated text-white' : 'text-gray-500 hover:text-gray-300')}
+                className={cn('p-2.5 transition-colors', viewMode === 'grid' ? 'bg-lattice-elevated text-white' : 'text-gray-400 hover:text-gray-300')}
                 aria-label="Grid view"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('compact')}
-                className={cn('p-2.5 transition-colors', viewMode === 'compact' ? 'bg-lattice-elevated text-white' : 'text-gray-500 hover:text-gray-300')}
+                className={cn('p-2.5 transition-colors', viewMode === 'compact' ? 'bg-lattice-elevated text-white' : 'text-gray-400 hover:text-gray-300')}
                 aria-label="Compact view"
               >
                 <Grid3X3 className="w-4 h-4" />
@@ -167,7 +167,7 @@ export default function LensHubPage() {
 
           {/* Search result count */}
           {search && (
-            <p className="mt-3 text-xs text-gray-500">
+            <p className="mt-3 text-xs text-gray-400">
               {filteredCount} of {totalCount} lenses match &ldquo;{search}&rdquo;
             </p>
           )}
@@ -225,10 +225,10 @@ export default function LensHubPage() {
                     <h2 className={cn('text-sm font-semibold uppercase tracking-wider', catMeta?.color || 'text-gray-400')}>
                       {catMeta?.label || category}
                     </h2>
-                    <span className="text-xs text-gray-600">({displayLenses.length})</span>
+                    <span className="text-xs text-gray-400">({displayLenses.length})</span>
                   </div>
                   {desc && !search && (
-                    <p className="text-xs text-gray-600 mt-0.5">{desc}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
                   )}
                 </div>
               </div>
@@ -267,7 +267,7 @@ export default function LensHubPage() {
 
         {/* Footer stats */}
         <div className="border-t border-lattice-border pt-6 pb-8 text-center">
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-400">
             {totalCount} lenses &middot; {Object.keys(LENS_CATEGORIES).length} categories &middot; Sovereign by design
           </p>
         </div>
@@ -298,7 +298,7 @@ function CoreLensHeroCard({ core }: { core: CoreLensConfig }) {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-white">{core.name}</h3>
-          <p className="text-[10px] text-gray-500">{core.tagline}</p>
+          <p className="text-[10px] text-gray-400">{core.tagline}</p>
         </div>
         <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
       </div>
@@ -308,12 +308,12 @@ function CoreLensHeroCard({ core }: { core: CoreLensConfig }) {
       {absorbed.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-auto">
           {absorbed.slice(0, 4).map(lens => (
-            <span key={lens.id} className="px-1.5 py-0.5 rounded text-[10px] bg-lattice-deep text-gray-500">
+            <span key={lens.id} className="px-1.5 py-0.5 rounded text-[10px] bg-lattice-deep text-gray-400">
               {lens.tabLabel || lens.name}
             </span>
           ))}
           {absorbed.length > 4 && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-lattice-deep text-gray-600">
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-lattice-deep text-gray-400">
               +{absorbed.length - 4}
             </span>
           )}
@@ -337,12 +337,12 @@ function LensCard({ lens }: { lens: LensEntry }) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-white truncate">{lens.name}</span>
           {lens.coreLens && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-lattice-deep text-gray-600 flex-shrink-0">
+            <span className="text-[9px] px-1 py-0.5 rounded bg-lattice-deep text-gray-400 flex-shrink-0">
               {lens.coreLens}
             </span>
           )}
         </div>
-        <p className="text-xs text-gray-500 truncate mt-0.5">{lens.description}</p>
+        <p className="text-xs text-gray-400 truncate mt-0.5">{lens.description}</p>
       </div>
     </Link>
   );
@@ -355,7 +355,7 @@ function LensCardCompact({ lens }: { lens: LensEntry }) {
       href={lens.path}
       className="group flex items-center gap-2 px-2.5 py-2 rounded-md border border-lattice-border/40 hover:bg-lattice-surface/60 hover:border-gray-600 transition-all"
     >
-      <Icon className="w-3.5 h-3.5 text-gray-500 group-hover:text-white transition-colors flex-shrink-0" />
+      <Icon className="w-3.5 h-3.5 text-gray-400 group-hover:text-white transition-colors flex-shrink-0" />
       <span className="text-xs text-gray-300 group-hover:text-white truncate">{lens.name}</span>
     </Link>
   );

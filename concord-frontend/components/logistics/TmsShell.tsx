@@ -104,10 +104,10 @@ export function TmsShell({
           <header className="px-3 py-2 bg-white/[0.03] border-b border-white/10 flex items-center gap-2">
             <Package className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Active shipments</span>
-            <span className="ml-auto text-[10px] text-gray-500">{shipments.length}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{shipments.length}</span>
           </header>
           {shipments.length === 0 ? (
-            <div className="p-4 text-center text-xs text-gray-500">No shipments.</div>
+            <div className="p-4 text-center text-xs text-gray-400">No shipments.</div>
           ) : (
             <ul className="divide-y divide-white/5 max-h-72 overflow-y-auto">
               {shipments.slice(0, 8).map(s => {
@@ -121,7 +121,7 @@ export function TmsShell({
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-200">
                       <span className="truncate flex-1">{s.origin}</span>
-                      <ArrowRight className="w-3 h-3 text-gray-500" />
+                      <ArrowRight className="w-3 h-3 text-gray-400" />
                       <span className="truncate flex-1">{s.destination}</span>
                     </div>
                   </li>
@@ -136,17 +136,17 @@ export function TmsShell({
           <header className="px-3 py-2 bg-white/[0.03] border-b border-white/10 flex items-center gap-2">
             <Truck className="w-3.5 h-3.5 text-violet-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Fleet status</span>
-            <span className="ml-auto text-[10px] text-gray-500">{vehicles.length}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{vehicles.length}</span>
           </header>
           {vehicles.length === 0 ? (
-            <div className="p-4 text-center text-xs text-gray-500">No vehicles.</div>
+            <div className="p-4 text-center text-xs text-gray-400">No vehicles.</div>
           ) : (
             <ul className="divide-y divide-white/5 max-h-72 overflow-y-auto">
               {vehicles.slice(0, 8).map(v => (
                 <li key={v.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-2">
                   <span className={cn('w-2 h-2 rounded-full', VEHICLE_STATUS[v.status] || 'bg-gray-500')} />
                   <span className="text-xs font-mono text-white">{v.number}</span>
-                  <span className="text-[10px] text-gray-500">{v.kind.replace('_', ' ')}</span>
+                  <span className="text-[10px] text-gray-400">{v.kind.replace('_', ' ')}</span>
                   <span className="ml-auto text-[10px] uppercase text-gray-400">{v.status.replace('_', ' ')}</span>
                 </li>
               ))}
@@ -159,10 +159,10 @@ export function TmsShell({
           <header className="px-3 py-2 bg-white/[0.03] border-b border-white/10 flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Dock appts</span>
-            <span className="ml-auto text-[10px] text-gray-500">{appointments.length}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{appointments.length}</span>
           </header>
           {appointments.length === 0 ? (
-            <div className="p-4 text-center text-xs text-gray-500">No appointments.</div>
+            <div className="p-4 text-center text-xs text-gray-400">No appointments.</div>
           ) : (
             <ul className="divide-y divide-white/5 max-h-72 overflow-y-auto">
               {appointments.slice(0, 8).map(a => (
@@ -170,10 +170,10 @@ export function TmsShell({
                   <div className="flex items-center gap-2">
                     <Clock className="w-3 h-3 text-amber-300" />
                     <span className="text-xs font-mono text-white">{a.startTime}</span>
-                    <span className="text-[10px] text-gray-500">{a.dockName}</span>
+                    <span className="text-[10px] text-gray-400">{a.dockName}</span>
                     <span className={cn('ml-auto text-[9px] uppercase px-1.5 py-0.5 rounded', a.kind === 'pickup' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-violet-500/15 text-violet-300')}>{a.kind}</span>
                   </div>
-                  <div className="text-[10px] text-gray-500 ml-5">{a.truckNumber || '—'} · {a.date}</div>
+                  <div className="text-[10px] text-gray-400 ml-5">{a.truckNumber || '—'} · {a.date}</div>
                 </li>
               ))}
             </ul>
@@ -196,10 +196,10 @@ function Metric({ icon: Icon, label, value, caption, tone }: { icon: typeof Pack
     <div className={cn('rounded-lg border bg-white/[0.02] p-2.5', TILE_TONE[tone])}>
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className="w-3 h-3" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-lg font-mono font-bold tabular-nums text-white">{value}</div>
-      <div className="text-[10px] text-gray-500">{caption}</div>
+      <div className="text-[10px] text-gray-400">{caption}</div>
     </div>
   );
 }

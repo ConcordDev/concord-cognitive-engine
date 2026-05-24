@@ -44,7 +44,7 @@ export function SpectatorBar({ t }: { t: Tournament }) {
           <Radio className="h-3 w-3 animate-pulse" /> {liveCount} live bout{liveCount === 1 ? '' : 's'}
         </span>
       )}
-      <code className="hidden flex-1 truncate rounded bg-slate-950 px-2 py-1 text-[10px] text-slate-500 sm:block">
+      <code className="hidden flex-1 truncate rounded bg-slate-950 px-2 py-1 text-[10px] text-slate-400 sm:block">
         {shareLink}
       </code>
       <button

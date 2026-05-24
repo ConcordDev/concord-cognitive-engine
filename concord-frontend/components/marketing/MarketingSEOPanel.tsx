@@ -74,7 +74,7 @@ export function MarketingSEOPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -83,7 +83,7 @@ export function MarketingSEOPanel() {
 
       <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
         <Globe className="w-3.5 h-3.5 text-orange-400" /> On-page SEO audit
-        {audits.length > 0 && <span className="text-[10px] text-zinc-500">· avg score {avgScore}</span>}
+        {audits.length > 0 && <span className="text-[10px] text-zinc-400">· avg score {avgScore}</span>}
       </h3>
 
       {/* Audit input form */}
@@ -118,7 +118,7 @@ export function MarketingSEOPanel() {
       </div>
 
       {audits.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No audits yet. Run an on-page analysis above.</p>
+        <p className="text-[11px] text-zinc-400 italic">No audits yet. Run an on-page analysis above.</p>
       ) : (
         <ul className="space-y-2">
           {audits.map((a) => (
@@ -126,7 +126,7 @@ export function MarketingSEOPanel() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{a.url}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {a.wordCount} words · {a.keyword ? `"${a.keyword}" ${a.keywordDensity}%` : 'no keyword'} · {a.passed}/{a.total} checks
                   </p>
                 </div>

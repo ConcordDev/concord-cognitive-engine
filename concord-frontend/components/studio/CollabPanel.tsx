@@ -105,9 +105,9 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
         {joined && <span className="ml-auto text-[10px] text-emerald-400">Live</span>}
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !projectId ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">Open a project to start a collaboration session.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">Open a project to start a collaboration session.</div>
       ) : (
         <div className="p-3 space-y-3">
           {!joined && (
@@ -117,7 +117,7 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
                 <button onClick={startSession} className="px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold inline-flex items-center justify-center gap-1"><Play className="w-3 h-3" />Start session</button>
                 <button onClick={joinSession} disabled={!session} className="px-3 py-1.5 text-xs rounded bg-white/[0.06] disabled:opacity-40 text-gray-200 inline-flex items-center justify-center gap-1"><LogIn className="w-3 h-3" />Join session</button>
               </div>
-              {!session && <div className="text-[10px] text-gray-500">No active session — start one to invite collaborators.</div>}
+              {!session && <div className="text-[10px] text-gray-400">No active session — start one to invite collaborators.</div>}
             </div>
           )}
 
@@ -130,8 +130,8 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
                     <li key={c.userId} className="flex items-center gap-2 text-[11px] text-gray-300">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.colour }} />
                       <span className="text-white">{c.displayName}</span>
-                      <span className="text-[9px] text-gray-500 uppercase">{c.role}</span>
-                      <span className="ml-auto text-[9px] text-gray-500">@ beat {c.cursorBeats}</span>
+                      <span className="text-[9px] text-gray-400 uppercase">{c.role}</span>
+                      <span className="ml-auto text-[9px] text-gray-400">@ beat {c.cursorBeats}</span>
                     </li>
                   ))}
                 </ul>
@@ -140,7 +140,7 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
                 <div className="text-[10px] uppercase text-violet-300 font-semibold mb-1">Edit log ({entries.length})</div>
                 <div className="max-h-40 overflow-y-auto space-y-0.5">
                   {entries.length === 0 ? (
-                    <div className="text-[10px] text-gray-500">No edits yet.</div>
+                    <div className="text-[10px] text-gray-400">No edits yet.</div>
                   ) : entries.slice().reverse().map((e) => (
                     <div key={e.seq} className="text-[10px] text-gray-400 font-mono">
                       #{e.seq} <span className="text-violet-300">{e.userId}</span> {e.op}{e.target ? ` ${e.target}` : ''}

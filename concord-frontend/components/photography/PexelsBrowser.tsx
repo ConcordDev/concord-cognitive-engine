@@ -40,7 +40,7 @@ export function PexelsBrowser() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="mountain · sunrise · cyberpunk · macro flower…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -61,7 +61,7 @@ export function PexelsBrowser() {
               </div>
               <div className="space-y-0.5 p-2 text-[10px]">
                 <div className="line-clamp-1 text-white">{p.alt || `Photo ${p.id}`}</div>
-                <div className="flex items-center justify-between text-zinc-500">
+                <div className="flex items-center justify-between text-zinc-400">
                   <span>{p.photographer}</span>
                   <SaveAsDtuButton
                     compact

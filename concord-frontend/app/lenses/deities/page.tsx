@@ -229,7 +229,7 @@ export default function DeitiesPage() {
             </div>
 
             {deities.length === 0 ? (
-              <div className="py-8 text-center italic text-zinc-500">
+              <div className="py-8 text-center italic text-zinc-400">
                 No deities match. {query || toneAxis || minPilgrims ? 'Loosen the filter or' : 'Be the first to'} compose one.
               </div>
             ) : (
@@ -241,14 +241,14 @@ export default function DeitiesPage() {
                         <div>
                           <h3 className="text-base font-bold text-zinc-100">{d.name}</h3>
                           {d.domainTitle && <p className="text-[11px] text-purple-300">{d.domainTitle}</p>}
-                          <p className="mt-0.5 font-mono text-[10px] text-zinc-500">by {d.author_user_id.slice(0, 8)}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-zinc-400">by {d.author_user_id.slice(0, 8)}</p>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-purple-300">{d.pilgrim_count}</div>
-                          <div className="text-[10px] uppercase tracking-wider text-zinc-500">pilgrims</div>
+                          <div className="text-[10px] uppercase tracking-wider text-zinc-400">pilgrims</div>
                         </div>
                       </div>
-                      <p className="mt-2 text-[10px] text-zinc-500">
+                      <p className="mt-2 text-[10px] text-zinc-400">
                         born {new Date(d.created_at * 1000).toLocaleDateString()}
                         {d.originPeer ? ` · federated ⇄ ${d.originPeer}` : ''}
                       </p>

@@ -173,7 +173,7 @@ export function OnboardingWizard({ isOpen, onClose, onComplete, onAction }: Onbo
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 text-gray-500 hover:text-white transition-colors z-10"
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white transition-colors z-10"
               aria-label="Skip onboarding"
             >
               <X className="w-5 h-5" />
@@ -226,7 +226,7 @@ export function OnboardingWizard({ isOpen, onClose, onComplete, onAction }: Onbo
 
                   {/* Sub-lenses included */}
                   {step.shortcut && (
-                    <p className="text-xs text-gray-500 mb-6">
+                    <p className="text-xs text-gray-400 mb-6">
                       Includes: <span className="text-gray-400">{step.shortcut}</span>
                     </p>
                   )}
@@ -265,7 +265,7 @@ export function OnboardingWizard({ isOpen, onClose, onComplete, onAction }: Onbo
               </button>
 
               {/* Step counter */}
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {currentStep + 1} / {STEPS.length}
               </span>
 

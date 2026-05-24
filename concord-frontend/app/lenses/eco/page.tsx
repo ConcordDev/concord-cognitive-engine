@@ -120,7 +120,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 const MITIGATION_COLORS: Record<string, string> = {
-  not_started: 'text-gray-500',
+  not_started: 'text-gray-400',
   planned: 'text-neon-blue',
   in_progress: 'text-neon-orange',
   completed: 'text-neon-green',
@@ -368,7 +368,7 @@ export default function EcoLensPage() {
                   </span>
                 </div>
                 <p className="text-2xl font-bold text-neon-cyan">{org.count.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">Population</p>
+                <p className="text-xs text-gray-400">Population</p>
               </div>
             ))}
           </div>
@@ -404,14 +404,14 @@ export default function EcoLensPage() {
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           {CLIMATE.map((point) => (
             <div key={point.month} className="text-center">
-              <p className="text-xs text-gray-500 mb-1">{point.month}</p>
+              <p className="text-xs text-gray-400 mb-1">{point.month}</p>
               <p className={cn(
                 'text-lg font-bold',
                 point.temperature > 10 ? 'text-neon-orange' : point.temperature > 0 ? 'text-neon-cyan' : 'text-neon-blue'
               )}>
                 {point.temperature > 0 ? '+' : ''}{point.temperature.toFixed(1)}
               </p>
-              <p className="text-xs text-gray-500">{point.precipitation}mm</p>
+              <p className="text-xs text-gray-400">{point.precipitation}mm</p>
             </div>
           ))}
         </div>
@@ -426,7 +426,7 @@ export default function EcoLensPage() {
       {/* Search and Filter */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             ref={searchInputRef}
               type="text"
@@ -436,7 +436,7 @@ export default function EcoLensPage() {
             className="w-full pl-10 pr-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:outline-none focus:border-neon-green/50"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -483,8 +483,8 @@ export default function EcoLensPage() {
                   )}
                   style={{ height: `${normalizedHeight}%` }}
                 />
-                <CategoryIcon className="w-3 h-3 text-gray-500" />
-                <span className="text-[9px] text-gray-500 truncate max-w-full text-center">{pop.species.split(' ').pop()}</span>
+                <CategoryIcon className="w-3 h-3 text-gray-400" />
+                <span className="text-[9px] text-gray-400 truncate max-w-full text-center">{pop.species.split(' ').pop()}</span>
               </div>
             );
           })}
@@ -498,7 +498,7 @@ export default function EcoLensPage() {
             <Eye className="w-4 h-4 text-neon-cyan" />
             Species Tracking Table
           </h2>
-          <p className="text-xs text-gray-500 mt-1">{filteredPopulations.length} species tracked</p>
+          <p className="text-xs text-gray-400 mt-1">{filteredPopulations.length} species tracked</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -538,7 +538,7 @@ export default function EcoLensPage() {
                         {pop.conservationStatus}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{pop.lastSurveyed}</td>
+                    <td className="px-4 py-3 text-gray-400 text-xs">{pop.lastSurveyed}</td>
                   </tr>
                 );
               })}
@@ -563,7 +563,7 @@ export default function EcoLensPage() {
           <div className="w-full h-full flex items-end gap-2 relative">
             {/* Zero line */}
             <div className="absolute left-0 right-0 border-t border-dashed border-gray-600" style={{ bottom: '50%' }} />
-            <span className="absolute -left-1 text-[10px] text-gray-500" style={{ bottom: 'calc(50% - 6px)' }}>0</span>
+            <span className="absolute -left-1 text-[10px] text-gray-400" style={{ bottom: 'calc(50% - 6px)' }}>0</span>
             {CLIMATE.map((point) => {
               const normalizedTemp = ((point.temperature + 10) / 30) * 100;
               return (
@@ -576,7 +576,7 @@ export default function EcoLensPage() {
                     )}
                     style={{ height: `${Math.max(4, normalizedTemp)}%` }}
                   />
-                  <span className="text-xs text-gray-500">{point.month}</span>
+                  <span className="text-xs text-gray-400">{point.month}</span>
                 </div>
               );
             })}
@@ -599,7 +599,7 @@ export default function EcoLensPage() {
                   className="w-full bg-gradient-to-t from-neon-blue/80 to-neon-blue/20 rounded-t"
                   style={{ height: `${(point.precipitation / 100) * 100}%` }}
                 />
-                <span className="text-[10px] text-gray-500">{point.month}</span>
+                <span className="text-[10px] text-gray-400">{point.month}</span>
               </div>
             ))}
           </div>
@@ -618,7 +618,7 @@ export default function EcoLensPage() {
                   className="w-full bg-gradient-to-t from-neon-cyan/80 to-neon-cyan/20 rounded-t"
                   style={{ height: `${point.humidity}%` }}
                 />
-                <span className="text-[10px] text-gray-500">{point.month}</span>
+                <span className="text-[10px] text-gray-400">{point.month}</span>
               </div>
             ))}
           </div>
@@ -637,7 +637,7 @@ export default function EcoLensPage() {
               const pct = ((point.co2Level - 415) / 10) * 100;
               return (
                 <div key={point.month} className="flex items-center gap-3">
-                  <span className="w-8 text-xs text-gray-500">{point.month}</span>
+                  <span className="w-8 text-xs text-gray-400">{point.month}</span>
                   <div className="flex-1 h-3 bg-lattice-surface rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-neon-orange/60 to-red-400/60 rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
                   </div>
@@ -656,7 +656,7 @@ export default function EcoLensPage() {
           <div className="space-y-3">
             {CLIMATE.map((point) => (
               <div key={point.month} className="flex items-center gap-3">
-                <span className="w-8 text-xs text-gray-500">{point.month}</span>
+                <span className="w-8 text-xs text-gray-400">{point.month}</span>
                 <div className="flex-1 h-3 bg-lattice-surface rounded-full overflow-hidden">
                   <div
                     className={cn(
@@ -706,7 +706,7 @@ export default function EcoLensPage() {
                   title={`Evenness: ${zone.evenness}`}
                 />
               </div>
-              <span className="text-[9px] text-gray-500 text-center truncate max-w-full">{zone.zone.split(' ')[0]}</span>
+              <span className="text-[9px] text-gray-400 text-center truncate max-w-full">{zone.zone.split(' ')[0]}</span>
             </div>
           ))}
         </div>
@@ -754,7 +754,7 @@ export default function EcoLensPage() {
                       {zone.trend}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{zone.lastAssessed}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400">{zone.lastAssessed}</td>
                 </tr>
               ))}
             </tbody>
@@ -804,7 +804,7 @@ export default function EcoLensPage() {
             <div key={sev} className="lens-card">
               <p className={cn('text-xs uppercase font-medium mb-1', SEVERITY_COLORS[sev].split(' ')[0])}>{sev}</p>
               <p className="text-2xl font-bold">{count}</p>
-              <p className="text-xs text-gray-500">assessments</p>
+              <p className="text-xs text-gray-400">assessments</p>
             </div>
           );
         })}
@@ -829,7 +829,7 @@ export default function EcoLensPage() {
                   })} />
                   <div>
                     <p className="font-medium">{impact.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-400 mt-0.5">
                       {impact.type.replace('_', ' ')} &middot; {impact.affectedArea} ha &middot; Since {impact.startDate}
                     </p>
                   </div>
@@ -841,7 +841,7 @@ export default function EcoLensPage() {
                   <span className={cn('text-xs', MITIGATION_COLORS[impact.mitigationStatus])}>
                     {impact.mitigationStatus.replace('_', ' ')}
                   </span>
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
+                  {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                 </div>
               </button>
               {isExpanded && (
@@ -849,19 +849,19 @@ export default function EcoLensPage() {
                   <p className="text-sm text-gray-300">{impact.description}</p>
                   <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
-                      <p className="text-xs text-gray-500">Type</p>
+                      <p className="text-xs text-gray-400">Type</p>
                       <p className="text-sm font-medium capitalize">{impact.type.replace('_', ' ')}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Affected Area</p>
+                      <p className="text-xs text-gray-400">Affected Area</p>
                       <p className="text-sm font-medium">{impact.affectedArea} hectares</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Severity</p>
+                      <p className="text-xs text-gray-400">Severity</p>
                       <p className={cn('text-sm font-medium capitalize', SEVERITY_COLORS[impact.severity].split(' ')[0])}>{impact.severity}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Mitigation</p>
+                      <p className="text-xs text-gray-400">Mitigation</p>
                       <p className={cn('text-sm font-medium capitalize', MITIGATION_COLORS[impact.mitigationStatus])}>
                         {impact.mitigationStatus.replace('_', ' ')}
                       </p>
@@ -869,7 +869,7 @@ export default function EcoLensPage() {
                   </div>
                   {/* Impact severity progress bar */}
                   <div className="mt-3">
-                    <p className="text-xs text-gray-500 mb-1">Mitigation Progress</p>
+                    <p className="text-xs text-gray-400 mb-1">Mitigation Progress</p>
                     <div className="h-2 bg-lattice-surface rounded-full overflow-hidden">
                       <div
                         className={cn('h-full rounded-full transition-all', {
@@ -925,7 +925,7 @@ export default function EcoLensPage() {
                 onClick={() => setSimulationSpeed(speed)}
                 className={cn(
                   'text-xs px-2 py-1 rounded transition-colors capitalize',
-                  simulationSpeed === speed ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-500 hover:text-white'
+                  simulationSpeed === speed ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
                 )}
               >
                 {speed}
@@ -1039,19 +1039,19 @@ export default function EcoLensPage() {
             <div className="grid grid-cols-4 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-green">{String(actionResult.totalEmissionsTonneCO2e ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Tonnes CO₂e</p>
+                <p className="text-[10px] text-gray-400">Tonnes CO₂e</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-lg font-bold ${Number(actionResult.netEmissionsKgCO2e) <= 0 ? 'text-neon-green' : 'text-red-400'}`}>{String(actionResult.netEmissionsKgCO2e ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Net kg CO₂e</p>
+                <p className="text-[10px] text-gray-400">Net kg CO₂e</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.offsetPercentage ?? 0)}%</p>
-                <p className="text-[10px] text-gray-500">Offset %</p>
+                <p className="text-[10px] text-gray-400">Offset %</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className={`text-xs font-bold ${actionResult.carbonNeutral ? 'text-neon-green' : 'text-red-400'}`}>{actionResult.carbonNeutral ? 'NEUTRAL' : 'NOT NEUTRAL'}</p>
-                <p className="text-[10px] text-gray-500">Status</p>
+                <p className="text-[10px] text-gray-400">Status</p>
               </div>
             </div>
             {!!actionResult.scopeBreakdown && (
@@ -1059,8 +1059,8 @@ export default function EcoLensPage() {
                 {Object.entries(actionResult.scopeBreakdown as Record<string, {kgCO2e:number;percentage:number;label:string}>).map(([scope, data]) => (
                   <div key={scope} className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{data.percentage}%</p>
-                    <p className="text-[10px] text-gray-500">{data.label}</p>
-                    <p className="text-[10px] text-gray-600">{data.kgCO2e} kg</p>
+                    <p className="text-[10px] text-gray-400">{data.label}</p>
+                    <p className="text-[10px] text-gray-400">{data.kgCO2e} kg</p>
                   </div>
                 ))}
               </div>
@@ -1069,21 +1069,21 @@ export default function EcoLensPage() {
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="p-2 bg-white/[0.02] rounded text-center">
                   <p className="text-neon-green font-bold">{String((actionResult.equivalencies as Record<string,number>).treesNeededToOffset)}</p>
-                  <p className="text-[10px] text-gray-500">Trees Needed</p>
+                  <p className="text-[10px] text-gray-400">Trees Needed</p>
                 </div>
                 <div className="p-2 bg-white/[0.02] rounded text-center">
                   <p className="text-neon-cyan font-bold">{String((actionResult.equivalencies as Record<string,number>).carKmEquivalent)} km</p>
-                  <p className="text-[10px] text-gray-500">Car Equivalent</p>
+                  <p className="text-[10px] text-gray-400">Car Equivalent</p>
                 </div>
                 <div className="p-2 bg-white/[0.02] rounded text-center">
                   <p className="text-yellow-400 font-bold">{String((actionResult.equivalencies as Record<string,number>).londonToNewYorkFlights)} flights</p>
-                  <p className="text-[10px] text-gray-500">LHR→JFK</p>
+                  <p className="text-[10px] text-gray-400">LHR→JFK</p>
                 </div>
               </div>
             )}
             {Array.isArray(actionResult.categoryBreakdown) && (
               <div className="space-y-1">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Category Breakdown</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Category Breakdown</p>
                 {(actionResult.categoryBreakdown as Array<{category:string;emissionsKgCO2e:number;percentage:number}>).slice(0, 4).map((c, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-gray-300 text-xs flex-1 capitalize">{c.category}</span>
@@ -1091,7 +1091,7 @@ export default function EcoLensPage() {
                     <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden">
                       <div className="h-full bg-neon-green rounded-full" style={{ width: `${c.percentage}%` }} />
                     </div>
-                    <span className="text-gray-500 text-[10px] w-8 text-right">{c.percentage}%</span>
+                    <span className="text-gray-400 text-[10px] w-8 text-right">{c.percentage}%</span>
                   </div>
                 ))}
               </div>
@@ -1105,19 +1105,19 @@ export default function EcoLensPage() {
             <div className="grid grid-cols-4 gap-2">
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-green">{String(actionResult.speciesRichness)}</p>
-                <p className="text-[10px] text-gray-500">Species</p>
+                <p className="text-[10px] text-gray-400">Species</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalIndividuals)}</p>
-                <p className="text-[10px] text-gray-500">Individuals</p>
+                <p className="text-[10px] text-gray-400">Individuals</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-purple">{String((actionResult.diversityIndices as Record<string,number>).shannonH ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Shannon H</p>
+                <p className="text-[10px] text-gray-400">Shannon H</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-yellow-400">{String((actionResult.diversityIndices as Record<string,number>).simpsonsDiversity ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Simpson D</p>
+                <p className="text-[10px] text-gray-400">Simpson D</p>
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -1145,15 +1145,15 @@ export default function EcoLensPage() {
                 <p className={`text-2xl font-bold ${Number(actionResult.overallScore) >= 80 ? 'text-neon-green' : Number(actionResult.overallScore) >= 60 ? 'text-neon-cyan' : Number(actionResult.overallScore) >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
                   {String(actionResult.overallScore ?? '—')}
                 </p>
-                <p className="text-[10px] text-gray-500">ESG Score</p>
+                <p className="text-[10px] text-gray-400">ESG Score</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-xs font-bold text-neon-purple">{String(actionResult.maturityLevel)}</p>
-                <p className="text-[10px] text-gray-500">Maturity</p>
+                <p className="text-[10px] text-gray-400">Maturity</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-cyan">{String(actionResult.dataCompleteness ?? 0)}%</p>
-                <p className="text-[10px] text-gray-500">Data Coverage</p>
+                <p className="text-[10px] text-gray-400">Data Coverage</p>
               </div>
             </div>
             <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -1167,14 +1167,14 @@ export default function EcoLensPage() {
                       {data.score !== null ? data.score : '—'}
                     </p>
                     <p className="text-[10px] text-gray-400 capitalize">{pillar}</p>
-                    <p className="text-[10px] text-gray-600">{data.dataCompleteness}% covered</p>
+                    <p className="text-[10px] text-gray-400">{data.dataCompleteness}% covered</p>
                   </div>
                 ))}
               </div>
             )}
             {Array.isArray(actionResult.recommendations) && (actionResult.recommendations as string[]).length > 0 && (
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Recommendations</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Recommendations</p>
                 <ul className="space-y-0.5">
                   {(actionResult.recommendations as string[]).slice(0, 3).map((rec, i) => (
                     <li key={i} className="text-xs text-gray-300 flex items-start gap-1">
@@ -1198,28 +1198,28 @@ export default function EcoLensPage() {
           <Recycle className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{totalImpactArea.toLocaleString()}</p>
-            <p className="text-xs text-gray-500">Carbon Offset (ha)</p>
+            <p className="text-xs text-gray-400">Carbon Offset (ha)</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Leaf className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{avgBiodiversity.toFixed(2)}</p>
-            <p className="text-xs text-gray-500">Green Score</p>
+            <p className="text-xs text-gray-400">Green Score</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{IMPACTS.filter(i => i.mitigationStatus === 'completed' || i.mitigationStatus === 'in_progress').length}</p>
-            <p className="text-xs text-gray-500">Eco Actions Done</p>
+            <p className="text-xs text-gray-400">Eco Actions Done</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400" />
           <div>
             <p className="text-lg font-bold">{criticalCount}</p>
-            <p className="text-xs text-gray-500">At Risk Species</p>
+            <p className="text-xs text-gray-400">At Risk Species</p>
           </div>
         </motion.div>
       </div>

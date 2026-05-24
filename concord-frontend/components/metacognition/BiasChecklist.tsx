@@ -38,7 +38,7 @@ export function BiasChecklist() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+      <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading bias checklist...
       </div>
     );
@@ -60,7 +60,7 @@ export function BiasChecklist() {
           <RotateCcw className="w-3.5 h-3.5" /> Reset
         </button>
       </div>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Run this before committing to a decision. Tick each bias once you have
         genuinely asked yourself the question.
       </p>
@@ -89,10 +89,10 @@ export function BiasChecklist() {
             >
               {on
                 ? <CheckSquare className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
-                : <Square className="w-4 h-4 text-gray-500 shrink-0 mt-0.5" />}
+                : <Square className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />}
               <div>
                 <p className="text-sm font-medium text-gray-200">{b.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{b.prompt}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{b.prompt}</p>
               </div>
             </button>
           );

@@ -57,7 +57,7 @@ export function EnergyInsightsPanel({ onChange }: { onChange: () => void }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const chartData = mergeSeries(cmp);
@@ -69,7 +69,7 @@ export function EnergyInsightsPanel({ onChange }: { onChange: () => void }) {
           <BellRing className="w-3.5 h-3.5 text-lime-400" /> Usage alerts
         </h3>
         {alerts.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No alerts — your usage looks stable.</p>
+          <p className="text-[11px] text-zinc-400 italic">No alerts — your usage looks stable.</p>
         ) : (
           <ul className="space-y-1.5">
             {alerts.map((al, i) => (
@@ -87,7 +87,7 @@ export function EnergyInsightsPanel({ onChange }: { onChange: () => void }) {
           <CalendarRange className="w-3.5 h-3.5 text-lime-400" /> This month vs last month
         </h3>
         {!cmp || !cmp.hasData ? (
-          <p className="text-[11px] text-zinc-500 italic">Log readings across two months to compare.</p>
+          <p className="text-[11px] text-zinc-400 italic">Log readings across two months to compare.</p>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-2">
@@ -141,7 +141,7 @@ function DeltaCard({ label, unit, cur, d, prefix = false, invert = false }: {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
       <p className="text-base font-bold text-zinc-100">{prefix ? '$' : ''}{cur}{prefix ? '' : ` ${unit}`}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
       <p className={`text-[10px] font-medium ${tone}`}>
         {arrow} {prefix ? '$' : ''}{Math.abs(d.abs)}{d.pct != null ? ` (${Math.abs(d.pct)}%)` : ''}
       </p>

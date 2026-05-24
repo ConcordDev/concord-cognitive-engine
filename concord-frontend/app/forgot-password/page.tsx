@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-indigo-400">CONCORD</h1>
-          <p className="text-zinc-500 mt-2">Reset your password</p>
+          <p className="text-zinc-400 mt-2">Reset your password</p>
         </div>
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
@@ -101,7 +101,7 @@ export default function ForgotPasswordPage() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="text-zinc-500 hover:text-zinc-400 text-sm"
+                  className="text-zinc-400 hover:text-zinc-400 text-sm"
                 >
                   Back to login
                 </Link>

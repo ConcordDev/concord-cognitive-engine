@@ -217,7 +217,7 @@ export function EngineeringActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -228,7 +228,7 @@ export function EngineeringActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Tolerance stack-up</div>
             <div className="text-2xl font-bold text-blue-300">{tolResult.stackUp.nominal}<span className="text-xs text-zinc-400"> ±{tolResult.stackUp.worstCaseTolerance}</span></div>
-            <div className="text-[10px] text-zinc-500">RSS ±{tolResult.stackUp.rssTolerance} · range {tolResult.stackUp.worstCaseMin}–{tolResult.stackUp.worstCaseMax}</div>
+            <div className="text-[10px] text-zinc-400">RSS ±{tolResult.stackUp.rssTolerance} · range {tolResult.stackUp.worstCaseMin}–{tolResult.stackUp.worstCaseMax}</div>
             {tolResult.parts.map((p, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono text-blue-200">{p.part}</span> {p.nominal} ±{p.tolerance} · {p.toleranceClass}</div>)}
           </div>
         )}
@@ -236,17 +236,17 @@ export function EngineeringActionPanel() {
           <div className={cn('rounded-md border p-2.5', stressResult.safetyFactor >= 3 ? 'border-emerald-500/30 bg-emerald-500/5' : stressResult.safetyFactor >= 1.5 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">Stress · SF {stressResult.safetyFactor}</div>
             <div className={cn('text-2xl font-bold', STATUS_COLOR[stressResult.status] ?? 'text-red-300')}>{stressResult.appliedStress}</div>
-            <div className="text-[10px] text-zinc-500">/ yield {stressResult.yieldStrength}</div>
+            <div className="text-[10px] text-zinc-400">/ yield {stressResult.yieldStrength}</div>
             <div className={cn('text-[11px] font-semibold', STATUS_COLOR[stressResult.status] ?? 'text-red-300')}>{stressResult.status}</div>
-            <div className="text-[10px] text-zinc-500 italic mt-0.5">{stressResult.recommendation}</div>
+            <div className="text-[10px] text-zinc-400 italic mt-0.5">{stressResult.recommendation}</div>
           </div>
         )}
         {bomResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">BOM</div>
             <div className="text-2xl font-bold text-amber-300">${bomResult.totalCost.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">{bomResult.totalLineItems} SKUs · {bomResult.totalParts} parts · {bomResult.uniqueSuppliers} suppliers</div>
-            <div className="text-[10px] text-zinc-500">CP: <span className="text-amber-200 font-mono">{bomResult.criticalPath}</span></div>
+            <div className="text-[10px] text-zinc-400">{bomResult.totalLineItems} SKUs · {bomResult.totalParts} parts · {bomResult.uniqueSuppliers} suppliers</div>
+            <div className="text-[10px] text-zinc-400">CP: <span className="text-amber-200 font-mono">{bomResult.criticalPath}</span></div>
             {bomResult.bom.slice(0, 4).map((b, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono">{b.partNumber}</span> ×{b.quantity} = ${b.extendedCost}</div>)}
           </div>
         )}

@@ -112,16 +112,16 @@ export default function BillingDashboardPage() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card title="CC balance">
           <div className="text-3xl font-medium">{balance == null ? "—" : balance.toFixed(2)}</div>
-          <div className="text-xs text-zinc-500 mt-1">Concord Coin</div>
+          <div className="text-xs text-zinc-400 mt-1">Concord Coin</div>
           <Link href="/lenses/wallet" className="text-xs underline">Top up via Stripe →</Link>
         </Card>
         <Card title="Spend (last 7d)">
           <div className="text-3xl font-medium">{totalCost7d.toFixed(2)}</div>
-          <div className="text-xs text-zinc-500 mt-1">{totalCalls7d.toLocaleString()} macro calls</div>
+          <div className="text-xs text-zinc-400 mt-1">{totalCalls7d.toLocaleString()} macro calls</div>
         </Card>
         <Card title="Quota now">
           <div className="text-3xl font-medium">{quota.length}</div>
-          <div className="text-xs text-zinc-500 mt-1">macros tracked this minute</div>
+          <div className="text-xs text-zinc-400 mt-1">macros tracked this minute</div>
         </Card>
       </section>
 
@@ -129,7 +129,7 @@ export default function BillingDashboardPage() {
         <h2 className="text-lg font-medium mb-2">Daily spend</h2>
         <div className="rounded border border-zinc-800 p-3">
           {days.length === 0 ? (
-            <p className="text-zinc-500">No macro calls in the last 7 days.</p>
+            <p className="text-zinc-400">No macro calls in the last 7 days.</p>
           ) : (
             <table className="w-full">
               <thead>
@@ -160,7 +160,7 @@ export default function BillingDashboardPage() {
         <h2 className="text-lg font-medium mb-2">Top macros (last 7d)</h2>
         <div className="rounded border border-zinc-800 p-3">
           {topMacros.length === 0 ? (
-            <p className="text-zinc-500">No data yet.</p>
+            <p className="text-zinc-400">No data yet.</p>
           ) : (
             <table className="w-full">
               <thead>
@@ -188,7 +188,7 @@ export default function BillingDashboardPage() {
         <h2 className="text-lg font-medium mb-2">Current-minute quota</h2>
         <div className="rounded border border-zinc-800 p-3">
           {quota.length === 0 ? (
-            <p className="text-zinc-500">No macros consumed in this minute.</p>
+            <p className="text-zinc-400">No macros consumed in this minute.</p>
           ) : (
             <table className="w-full">
               <thead>

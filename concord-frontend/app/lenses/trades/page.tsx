@@ -819,7 +819,7 @@ export default function TradesLensPage() {
                       d.setDate(d.getDate() + i);
                       const isWeekStart = d.getDay() === 1;
                       return isWeekStart ? (
-                        <div key={i} className="absolute text-[10px] text-gray-500" style={{ left: `${(i / totalDays) * 100}%` }}>
+                        <div key={i} className="absolute text-[10px] text-gray-400" style={{ left: `${(i / totalDays) * 100}%` }}>
                           {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
                       ) : null;
@@ -868,10 +868,10 @@ export default function TradesLensPage() {
                         <div className="absolute left-0 top-1/2 w-2 h-px bg-neon-cyan" />
                       )}
                     </div>
-                    <button onClick={() => toggleMilestone(phase.id)} className={cn(ds.btnSmall, 'text-gray-500 hover:text-yellow-400 opacity-0 group-hover:opacity-100')} aria-label="Favorite">
+                    <button onClick={() => toggleMilestone(phase.id)} className={cn(ds.btnSmall, 'text-gray-400 hover:text-yellow-400 opacity-0 group-hover:opacity-100')} aria-label="Favorite">
                       <Star className="w-3 h-3" />
                     </button>
-                    <button onClick={() => setPhases(prev => prev.filter(p => p.id !== phase.id))} className={cn(ds.btnSmall, 'text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100')} aria-label="Close">
+                    <button onClick={() => setPhases(prev => prev.filter(p => p.id !== phase.id))} className={cn(ds.btnSmall, 'text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100')} aria-label="Close">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -1061,7 +1061,7 @@ export default function TradesLensPage() {
             </div>
           </div>
         ) : (
-          <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+          <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
             <p>No estimate line items yet. Add items to build your estimate.</p>
           </div>
         )}
@@ -1645,13 +1645,13 @@ export default function TradesLensPage() {
                             <div>
                               <p className="text-sm text-white">{entry.location}</p>
                               <p className={ds.textMuted}>{entry.date}</p>
-                              {entry.notes && <p className="text-xs text-gray-500 mt-1">{entry.notes}</p>}
+                              {entry.notes && <p className="text-xs text-gray-400 mt-1">{entry.notes}</p>}
                             </div>
-                            <button onClick={() => setPhotoEntries(prev => prev.filter(p => p.id !== entry.id))} className={cn(ds.btnSmall, 'text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100')} aria-label="Delete">
+                            <button onClick={() => setPhotoEntries(prev => prev.filter(p => p.id !== entry.id))} className={cn(ds.btnSmall, 'text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100')} aria-label="Delete">
                               <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
-                          <p className={cn(ds.textMono, 'text-[10px] text-gray-600 mt-1')}>{entry.filename}</p>
+                          <p className={cn(ds.textMono, 'text-[10px] text-gray-400 mt-1')}>{entry.filename}</p>
                         </div>
                       ))}
                     </div>
@@ -2008,19 +2008,19 @@ export default function TradesLensPage() {
         <div className={ds.grid3}>
           <div className="p-4 rounded-lg bg-lattice-elevated/30 text-center">
             <p className="text-sm text-gray-400 mb-1">0-30 Days</p>
-            <p className={cn('text-2xl font-bold', dashboardMetrics.aging30 > 0 ? 'text-yellow-400' : 'text-gray-500')}>
+            <p className={cn('text-2xl font-bold', dashboardMetrics.aging30 > 0 ? 'text-yellow-400' : 'text-gray-400')}>
               ${dashboardMetrics.aging30.toLocaleString()}
             </p>
           </div>
           <div className="p-4 rounded-lg bg-lattice-elevated/30 text-center">
             <p className="text-sm text-gray-400 mb-1">31-60 Days</p>
-            <p className={cn('text-2xl font-bold', dashboardMetrics.aging60 > 0 ? 'text-orange-400' : 'text-gray-500')}>
+            <p className={cn('text-2xl font-bold', dashboardMetrics.aging60 > 0 ? 'text-orange-400' : 'text-gray-400')}>
               ${dashboardMetrics.aging60.toLocaleString()}
             </p>
           </div>
           <div className="p-4 rounded-lg bg-lattice-elevated/30 text-center">
             <p className="text-sm text-gray-400 mb-1">61-90+ Days</p>
-            <p className={cn('text-2xl font-bold', dashboardMetrics.aging90 > 0 ? 'text-red-400' : 'text-gray-500')}>
+            <p className={cn('text-2xl font-bold', dashboardMetrics.aging90 > 0 ? 'text-red-400' : 'text-gray-400')}>
               ${dashboardMetrics.aging90.toLocaleString()}
             </p>
           </div>
@@ -2094,7 +2094,7 @@ export default function TradesLensPage() {
                 </div>
                 {renderStatusBadge(d.status)}
                 {d.value > 0 && <span className={cn(ds.textMono, 'text-green-400')}>${d.value.toLocaleString()}</span>}
-                <ArrowUpRight className="w-4 h-4 text-gray-500" />
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
               </div>
             );
           })}
@@ -2379,7 +2379,7 @@ export default function TradesLensPage() {
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap',
                 subView === sv.id
                   ? 'bg-slate-700/40 text-teal-300 border border-slate-600/50'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'
+                  : 'text-slate-400 hover:text-slate-300 hover:bg-slate-700/30'
               )}
             >
               <sv.icon className="w-3.5 h-3.5" />
@@ -2422,26 +2422,26 @@ export default function TradesLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-gray-400">${Number(actionResult.subtotal).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Subtotal</p>
+                    <p className="text-[10px] text-gray-400">Subtotal</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-amber-400">+${Number(actionResult.markupAmount).toLocaleString()} ({String(actionResult.markupPct)}%)</p>
-                    <p className="text-[10px] text-gray-500">Markup</p>
+                    <p className="text-[10px] text-gray-400">Markup</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.grandTotal).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Grand Total</p>
+                    <p className="text-[10px] text-gray-400">Grand Total</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-gray-400">${Number(actionResult.taxAmount).toLocaleString()} ({Number(actionResult.taxRate) * 100}%)</p>
-                    <p className="text-[10px] text-gray-500">Tax</p>
+                    <p className="text-[10px] text-gray-400">Tax</p>
                   </div>
                   {Number(actionResult.discountAmount) > 0 && (
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-green-400">-${Number(actionResult.discountAmount).toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-500">Discount</p>
+                      <p className="text-[10px] text-gray-400">Discount</p>
                     </div>
                   )}
                 </div>
@@ -2459,15 +2459,15 @@ export default function TradesLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String((actionResult as {status:string}).status)}</p>
-                    <p className="text-[10px] text-gray-500">Status</p>
+                    <p className="text-[10px] text-gray-400">Status</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String((actionResult as {requestedDate:string}).requestedDate)}</p>
-                    <p className="text-[10px] text-gray-500">Date</p>
+                    <p className="text-[10px] text-gray-400">Date</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500">Permit: {String((actionResult as {permitType:string}).permitType)} &bull; Stage: {String((actionResult as {stageName:string}).stageName)}</p>
-                <p className="text-[10px] text-gray-500 font-mono">{String(actionResult.inspectionId)}</p>
+                <p className="text-[10px] text-gray-400">Permit: {String((actionResult as {permitType:string}).permitType)} &bull; Stage: {String((actionResult as {stageName:string}).stageName)}</p>
+                <p className="text-[10px] text-gray-400 font-mono">{String(actionResult.inspectionId)}</p>
               </div>
             )}
             {/* materialsCost */}
@@ -2476,15 +2476,15 @@ export default function TradesLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.grandTotal).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Total Cost</p>
+                    <p className="text-[10px] text-gray-400">Total Cost</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.jobsIncluded)}</p>
-                    <p className="text-[10px] text-gray-500">Jobs</p>
+                    <p className="text-[10px] text-gray-400">Jobs</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan capitalize">{String(actionResult.statusFilter)}</p>
-                    <p className="text-[10px] text-gray-500">Filter</p>
+                    <p className="text-[10px] text-gray-400">Filter</p>
                   </div>
                 </div>
                 {!!actionResult.topMaterial && (
@@ -2587,7 +2587,7 @@ function ServiceTitanWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
-                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
             }
           >
             {t.label}

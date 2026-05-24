@@ -107,7 +107,7 @@ export function PlaylistView({
             </>
           )}
 
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-400">
             {playlist.creatorName} · {playlist.tracks.length} tracks · {formatDuration(playlist.totalDuration)}
           </div>
 
@@ -143,7 +143,7 @@ export function PlaylistView({
       </div>
 
       {/* Track list header */}
-      <div className="flex items-center gap-4 px-3 py-2 text-[10px] text-gray-500 uppercase border-b border-white/5">
+      <div className="flex items-center gap-4 px-3 py-2 text-[10px] text-gray-400 uppercase border-b border-white/5">
         <span className="w-8 text-center">#</span>
         <span className="flex-1">Title</span>
         <span className="w-24 text-right">Added</span>
@@ -174,7 +174,7 @@ export function PlaylistView({
         ))}
 
         {tracks.length === 0 && (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-gray-400">
             <ListMusic className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No tracks in this playlist yet</p>
             <p className="text-xs mt-1">Browse the Music Lens and add tracks</p>

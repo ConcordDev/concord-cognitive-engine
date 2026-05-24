@@ -74,7 +74,7 @@ export function PoemWorkspace() {
     if (r.data?.ok) setAnalysis(r.data.result?.analysis as Analysis);
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -88,13 +88,13 @@ export function PoemWorkspace() {
 
       <div className="grid sm:grid-cols-[170px_1fr] gap-3">
         <ul className="space-y-1">
-          {poems.length === 0 && <li className="text-[11px] text-zinc-600 italic">No poems yet.</li>}
+          {poems.length === 0 && <li className="text-[11px] text-zinc-400 italic">No poems yet.</li>}
           {poems.map(p => (
             <li key={p.id} className="group flex items-center gap-1">
               <button onClick={() => open(p.id)}
                 className={cn('flex-1 text-left rounded-lg px-2 py-1.5 border', active?.id === p.id ? 'bg-violet-600/15 border-violet-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-[11px] font-semibold text-zinc-100 truncate">{p.title}</p>
-                <p className="text-[9px] text-zinc-500">{p.form} · {p.lineCount} lines · {p.status}</p>
+                <p className="text-[9px] text-zinc-400">{p.form} · {p.lineCount} lines · {p.status}</p>
               </button>
               <button onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -139,7 +139,7 @@ export function PoemWorkspace() {
                 <span>Rhyme: <strong className="text-zinc-100">{analysis.rhymeScheme || '—'}</strong></span>
                 <span>Detected: <strong className="text-violet-300">{analysis.detectedForm}</strong></span>
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1">Syllables/line: {analysis.syllablesPerLine.join(' · ')}</p>
+              <p className="text-[10px] text-zinc-400 mt-1">Syllables/line: {analysis.syllablesPerLine.join(' · ')}</p>
             </div>
           )}
         </div>

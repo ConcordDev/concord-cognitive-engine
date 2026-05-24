@@ -420,10 +420,10 @@ export function FoundryCanvas() {
           }`}
         >
           {selected.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-slate-500">
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-slate-400">
               <FileStack className="h-8 w-8 text-slate-700" />
               <p className="text-sm">Drag systems from the left, or click <span className="text-slate-300">+</span> to add them.</p>
-              <p className="max-w-xs text-xs text-slate-600">
+              <p className="max-w-xs text-xs text-slate-400">
                 Every system you add is configured per-world and travels with the lattice once published.
               </p>
             </div>
@@ -461,14 +461,14 @@ export function FoundryCanvas() {
                               soon
                             </span>
                           )}
-                          <span className="rounded bg-slate-800 px-1 py-px text-[9px] text-slate-500">{sys.category}</span>
+                          <span className="rounded bg-slate-800 px-1 py-px text-[9px] text-slate-400">{sys.category}</span>
                         </div>
                       </button>
                       <button
                         type="button"
                         onClick={() => removeSystem(s.id)}
                         aria-label={`Remove ${sys.displayName}`}
-                        className="rounded p-1 text-slate-500 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="rounded p-1 text-slate-400 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -491,7 +491,7 @@ export function FoundryCanvas() {
           {/* My worlds strip */}
           {myWorlds.length > 0 && (
             <div className="mt-6 border-t border-slate-800 pt-3">
-              <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">My worlds</h3>
+              <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">My worlds</h3>
               <div className="flex flex-wrap gap-1.5">
                 {myWorlds.map((w) => (
                   <button

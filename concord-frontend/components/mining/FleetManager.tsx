@@ -172,17 +172,17 @@ export function FleetManager() {
         <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1">
           <Gauge className="w-3 h-3" /> Fleet units ({dash?.units.length ?? 0})
         </div>
-        {(!dash || dash.units.length === 0) && <div className="text-[11px] text-zinc-600 py-2">No equipment registered.</div>}
+        {(!dash || dash.units.length === 0) && <div className="text-[11px] text-zinc-400 py-2">No equipment registered.</div>}
         {dash?.units.map((u) => (
           <div key={u.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/40 p-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-[12px] font-semibold text-white">
                 <Truck className="w-3 h-3 text-sky-400" /> {u.name}
-                <span className="text-[10px] text-zinc-500">· {u.kind.replace(/_/g, ' ')}</span>
+                <span className="text-[10px] text-zinc-400">· {u.kind.replace(/_/g, ' ')}</span>
               </div>
-              <div className="text-[10px] text-zinc-500">
+              <div className="text-[10px] text-zinc-400">
                 {u.engineHours}h engine · util {u.utilization}% · fuel {u.fuelLitres}L ·{' '}
-                <span className={u.serviceDue ? 'text-red-400' : 'text-zinc-500'}>
+                <span className={u.serviceDue ? 'text-red-400' : 'text-zinc-400'}>
                   {u.serviceDue ? 'service overdue' : `${u.hoursToService}h to service`}
                 </span>
               </div>
@@ -193,7 +193,7 @@ export function FleetManager() {
               {busy === `st-${u.id}` ? '…' : u.status}
             </button>
             <button type="button" onClick={() => delEquipment(u.id)} disabled={!!busy}
-              className="p-1 text-zinc-500 hover:text-red-400" aria-label="Delete unit">
+              className="p-1 text-zinc-400 hover:text-red-400" aria-label="Delete unit">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -236,17 +236,17 @@ export function FleetManager() {
             </div>
             <ChartKit kind="area" data={schedule.dailyPlan as unknown as Array<Record<string, unknown>>} xKey="day"
               series={[{ key: 'cumulativeTonnes', label: 'Cumulative tonnes', color: '#8b5cf6' }]} height={180} showLegend={false} />
-            <div className="text-[9px] text-zinc-600">X = production day. Curve plateaus once the target tonnage is moved.</div>
+            <div className="text-[9px] text-zinc-400">X = production day. Curve plateaus once the target tonnage is moved.</div>
           </div>
         )}
 
         {savedSchedules.length > 0 && (
           <div className="space-y-1">
-            <div className="text-[9px] uppercase tracking-wide text-zinc-500">Saved schedules ({savedSchedules.length})</div>
+            <div className="text-[9px] uppercase tracking-wide text-zinc-400">Saved schedules ({savedSchedules.length})</div>
             {savedSchedules.map((s) => (
               <div key={s.id} className="flex items-center justify-between text-[11px] bg-zinc-900/60 rounded px-2 py-1">
                 <span className="text-zinc-300">{s.name}</span>
-                <span className="font-mono text-zinc-500">
+                <span className="font-mono text-zinc-400">
                   {s.targetTonnage.toLocaleString()} t ·{' '}
                   <span className={s.feasible ? 'text-emerald-400' : 'text-red-400'}>{s.daysToTarget} days</span>
                 </span>
@@ -262,7 +262,7 @@ export function FleetManager() {
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="text-[9px] text-zinc-500 block mb-0.5">{label}</label>
+      <label className="text-[9px] text-zinc-400 block mb-0.5">{label}</label>
       <input value={value} onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))}
         className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" />
     </div>
@@ -272,7 +272,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
 function Stat({ label, value, accent = '#e4e4e7' }: { label: string; value: string; accent?: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
-      <div className="text-[9px] uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wide text-zinc-400">{label}</div>
       <div className="text-[13px] font-bold truncate" style={{ color: accent }}>{value}</div>
     </div>
   );

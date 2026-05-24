@@ -278,7 +278,7 @@ export default function IngestLensPage() {
             <div key={stage.stage} className="flex items-center gap-2 flex-1">
               <div className="flex-1 bg-lattice-deep rounded-lg p-3 text-center border border-white/5">
                 <p className={`text-xl font-bold font-mono ${stage.textColor}`}>{stage.count}</p>
-                <p className="text-xs text-gray-500">{stage.stage}</p>
+                <p className="text-xs text-gray-400">{stage.stage}</p>
               </div>
               {i < 3 && <div className="w-4 h-px bg-white/20 flex-shrink-0" />}
             </div>
@@ -286,7 +286,7 @@ export default function IngestLensPage() {
         </div>
         {/* Source type badges */}
         <div className="flex items-center gap-2 mt-3 flex-wrap">
-          <span className="text-xs text-gray-500">Sources:</span>
+          <span className="text-xs text-gray-400">Sources:</span>
           {[
             { label: '.txt', icon: FileText, color: 'text-neon-cyan bg-neon-cyan/10' },
             { label: '.json', icon: FileJson, color: 'text-neon-purple bg-neon-purple/10' },
@@ -314,9 +314,9 @@ export default function IngestLensPage() {
               dragOver ? 'border-neon-cyan bg-neon-cyan/5' : 'border-lattice-border hover:border-gray-600'
             )}
           >
-            <Upload className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+            <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
             <p className="text-sm text-gray-300">Drag & drop a text file here</p>
-            <p className="text-xs text-gray-500 mt-1">or</p>
+            <p className="text-xs text-gray-400 mt-1">or</p>
             <label className="inline-block mt-2 px-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-gray-300 hover:text-white hover:border-gray-500 cursor-pointer transition-colors">
               Browse files
               <input type="file" className="hidden" accept=".txt,.md,.csv,.json" onChange={handleFileInput} />
@@ -429,13 +429,13 @@ export default function IngestLensPage() {
                       )}>{job.status}</span>
                     </div>
                     {job.dtusCreated != null && (
-                      <span className="text-gray-500">{job.dtusCreated} DTUs created</span>
+                      <span className="text-gray-400">{job.dtusCreated} DTUs created</span>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-500 text-center py-4">No ingestion history yet</p>
+              <p className="text-xs text-gray-400 text-center py-4">No ingestion history yet</p>
             )}
           </div>
 
@@ -447,11 +447,11 @@ export default function IngestLensPage() {
               {recentDtus.slice(0, 10).map((d: Record<string, unknown>) => (
                 <div key={d.id as string} className="p-2 rounded bg-lattice-deep text-xs">
                   <p className="text-white truncate">{(d.title as string) || (d.summary as string)?.slice(0, 40) || (d.id as string).slice(0, 8)}</p>
-                  <p className="text-gray-500">{d.tier as string || 'regular'}</p>
+                  <p className="text-gray-400">{d.tier as string || 'regular'}</p>
                 </div>
               ))}
               {recentDtus.length === 0 && (
-                <p className="text-xs text-gray-500 text-center py-4">No DTUs yet</p>
+                <p className="text-xs text-gray-400 text-center py-4">No DTUs yet</p>
               )}
             </div>
           </div>
@@ -482,7 +482,7 @@ export default function IngestLensPage() {
           <p className="text-xs text-gray-400">
             Drop multiple files or an entire folder to batch-ingest into the DTU pipeline.
           </p>
-          <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+          <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
             <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> .txt .md</span>
             <span className="flex items-center gap-1"><FileJson className="w-3 h-3" /> .json .csv</span>
             <span className="flex items-center gap-1"><ImageIcon className="w-3 h-3" /> .png .jpg</span>
@@ -503,7 +503,7 @@ export default function IngestLensPage() {
           Ingest Analysis Actions
         </h2>
         {!ingestArtifacts[0]?.id && (
-          <p className="text-xs text-gray-500">Create an ingest job to run AI actions.</p>
+          <p className="text-xs text-gray-400">Create an ingest job to run AI actions.</p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
@@ -584,19 +584,19 @@ export default function IngestLensPage() {
                 </div>
                 {(d.emails || []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <span className="text-xs text-gray-500 mr-1">Emails:</span>
+                    <span className="text-xs text-gray-400 mr-1">Emails:</span>
                     {d.emails.slice(0, 3).map((e, i) => <span key={i} className="text-xs px-2 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded">{e}</span>)}
                   </div>
                 )}
                 {(d.urls || []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <span className="text-xs text-gray-500 mr-1">URLs:</span>
+                    <span className="text-xs text-gray-400 mr-1">URLs:</span>
                     {d.urls.slice(0, 2).map((u, i) => <span key={i} className="text-xs px-2 py-0.5 bg-neon-purple/10 text-neon-purple rounded truncate max-w-32">{u}</span>)}
                   </div>
                 )}
                 {(d.dates || []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <span className="text-xs text-gray-500 mr-1">Dates:</span>
+                    <span className="text-xs text-gray-400 mr-1">Dates:</span>
                     {d.dates.slice(0, 4).map((dt, i) => <span key={i} className="text-xs px-2 py-0.5 bg-neon-green/10 text-neon-green rounded">{dt}</span>)}
                   </div>
                 )}

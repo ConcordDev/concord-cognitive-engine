@@ -65,7 +65,7 @@ export function CreativeBoardsSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-amber-600/15 to-transparent">
         <LayoutDashboard className="w-5 h-5 text-amber-400" />
         <h2 className="text-sm font-bold text-zinc-100">Creative Boards</h2>
-        <span className="text-[11px] text-zinc-500">Milanote shape · visual boards for ideas</span>
+        <span className="text-[11px] text-zinc-400">Milanote shape · visual boards for ideas</span>
       </header>
 
       <div className="p-4">
@@ -95,9 +95,9 @@ export function CreativeBoardsSection() {
             </section>
 
             {loading ? (
-              <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
             ) : boards.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic py-6 text-center">No boards yet. Create one or start from a template.</p>
+              <p className="text-[11px] text-zinc-400 italic py-6 text-center">No boards yet. Create one or start from a template.</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {boards.map((b) => (
@@ -107,11 +107,11 @@ export function CreativeBoardsSection() {
                         <LayoutDashboard className="w-6 h-6 text-amber-500/50" />
                       </div>
                       <p className="text-xs font-medium text-zinc-100 truncate">{b.title}</p>
-                      <p className="text-[10px] text-zinc-500">{b.cardCount} cards</p>
+                      <p className="text-[10px] text-zinc-400">{b.cardCount} cards</p>
                     </button>
                     <div className="flex items-center gap-2 mt-1.5">
                       <button type="button" onClick={() => dupBoard(b.id)}
-                        className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300">
+                        className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-300">
                         <Copy className="w-3 h-3" /> Duplicate
                       </button>
                       <div className="flex-1" />

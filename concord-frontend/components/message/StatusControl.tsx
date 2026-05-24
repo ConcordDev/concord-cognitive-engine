@@ -81,7 +81,7 @@ export function StatusControl() {
             ))}
           </div>
           <div>
-            <div className="text-[10px] text-gray-500 mb-1">Presence</div>
+            <div className="text-[10px] text-gray-400 mb-1">Presence</div>
             <div className="flex gap-1">
               {PRESENCE.map(p => (
                 <button key={p} onClick={() => setPresence(p)}

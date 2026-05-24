@@ -89,7 +89,7 @@ export function DatamusePanel({ domain, className }: DatamusePanelProps) {
           type="button"
           onClick={() => void fetchData(word, kind)}
           disabled={loading || !word.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -98,7 +98,7 @@ export function DatamusePanel({ domain, className }: DatamusePanelProps) {
 
       <div className="px-3 py-2 border-b border-zinc-800/40 flex gap-2 items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
           <input
             type="search"
             value={word}
@@ -123,11 +123,11 @@ export function DatamusePanel({ domain, className }: DatamusePanelProps) {
       )}
 
       {!error && !loading && results.length === 0 && word.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No matches for that word.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No matches for that word.</div>
       )}
 
       {!error && !word.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">Type a word, pick a relationship.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Type a word, pick a relationship.</div>
       )}
 
       {results.length > 0 && (
@@ -139,13 +139,13 @@ export function DatamusePanel({ domain, className }: DatamusePanelProps) {
               title={r.tags.length > 0 ? r.tags.join(', ') : undefined}
             >
               {r.word}
-              {r.numSyllables ? <span className="text-[9px] text-zinc-500 font-mono">{r.numSyllables}σ</span> : null}
+              {r.numSyllables ? <span className="text-[9px] text-zinc-400 font-mono">{r.numSyllables}σ</span> : null}
             </span>
           ))}
         </div>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Datamuse · word-relationship API
       </footer>
     </section>

@@ -46,7 +46,7 @@ function formatLaunchDate(iso: string | null): string {
 
 const STATUS_COLOR: Record<string, string> = {
   Go: 'text-emerald-400',
-  TBD: 'text-zinc-500',
+  TBD: 'text-zinc-400',
   TBC: 'text-amber-400',
   Hold: 'text-rose-400',
   Success: 'text-emerald-400',
@@ -98,7 +98,7 @@ export function UpcomingLaunchesPanel({ domain, className }: UpcomingLaunchesPan
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -112,7 +112,7 @@ export function UpcomingLaunchesPanel({ domain, className }: UpcomingLaunchesPan
       )}
 
       {!error && !loading && launches.length === 0 && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No upcoming launches.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No upcoming launches.</div>
       )}
 
       {launches.length > 0 && (
@@ -128,7 +128,7 @@ export function UpcomingLaunchesPanel({ domain, className }: UpcomingLaunchesPan
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-zinc-200 font-medium truncate">{l.name}</span>
                     {l.statusAbbrev && (
-                      <span className={cn('text-[10px] font-mono', STATUS_COLOR[l.statusAbbrev] || 'text-zinc-500')}>
+                      <span className={cn('text-[10px] font-mono', STATUS_COLOR[l.statusAbbrev] || 'text-zinc-400')}>
                         {l.statusAbbrev}
                       </span>
                     )}
@@ -141,12 +141,12 @@ export function UpcomingLaunchesPanel({ domain, className }: UpcomingLaunchesPan
                   <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     {formatLaunchDate(l.net)}
                   </div>
-                  <div className="text-[10px] text-zinc-500 truncate">
+                  <div className="text-[10px] text-zinc-400 truncate">
                     {l.launchProvider && `${l.launchProvider} · `}
                     {l.rocket}
                   </div>
                   {(l.padName || l.padLocation) && (
-                    <div className="text-[10px] text-zinc-500 truncate">
+                    <div className="text-[10px] text-zinc-400 truncate">
                       📍 {l.padName}{l.padLocation && `, ${l.padLocation}`}
                     </div>
                   )}
@@ -157,7 +157,7 @@ export function UpcomingLaunchesPanel({ domain, className }: UpcomingLaunchesPan
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Launch Library 2 (theSpaceDevs)
       </footer>
     </section>

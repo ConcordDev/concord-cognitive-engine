@@ -239,7 +239,7 @@ export default function TransferLensPage() {
                 {JSON.stringify(results, null, 2)}
               </pre>
             ) : (
-              <p className="text-center py-8 text-gray-500 text-sm">Run an operation to see results</p>
+              <p className="text-center py-8 text-gray-400 text-sm">Run an operation to see results</p>
             )}
           </div>
 
@@ -254,7 +254,7 @@ export default function TransferLensPage() {
                   <p className="text-gray-400">{(t.target as string) || (t.domain as string)}</p>
                 </motion.div>
               )) : (
-                <p className="text-center py-4 text-gray-500 text-sm">No transfers yet</p>
+                <p className="text-center py-4 text-gray-400 text-sm">No transfers yet</p>
               )}
             </div>
           </div>

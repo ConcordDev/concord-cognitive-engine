@@ -49,7 +49,7 @@ export function AircraftPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Plane className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Aircraft fleet</span>
-        <span className="ml-auto text-[10px] text-gray-500">{aircraft.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{aircraft.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
         <input value={form.tail} onChange={e => setForm({ ...form, tail: e.target.value.toUpperCase() })} placeholder="N12345" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -67,9 +67,9 @@ export function AircraftPanel() {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : aircraft.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Plane className="w-6 h-6 mx-auto mb-2 opacity-30" />No aircraft. Add yours above.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Plane className="w-6 h-6 mx-auto mb-2 opacity-30" />No aircraft. Add yours above.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {aircraft.map(a => (
@@ -77,7 +77,7 @@ export function AircraftPanel() {
                 <Plane className="w-4 h-4 text-cyan-300" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-mono font-semibold text-white">{a.tail}</div>
-                  <div className="text-[10px] text-gray-500">{a.year} {a.make} {a.model} · {a.kind.replace(/_/g, ' ')}</div>
+                  <div className="text-[10px] text-gray-400">{a.year} {a.make} {a.model} · {a.kind.replace(/_/g, ' ')}</div>
                 </div>
                 <span className="text-[10px] text-gray-400 inline-flex items-center gap-1"><Fuel className="w-2.5 h-2.5" />{a.fuelBurnGph}gph</span>
                 <span className="text-[10px] text-gray-400 inline-flex items-center gap-1"><Weight className="w-2.5 h-2.5" />{a.maxTakeoffWeightLbs || '—'}lbs</span>

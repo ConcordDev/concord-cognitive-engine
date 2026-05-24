@@ -73,7 +73,7 @@ export function ProposalBuilder() {
     await refresh();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="space-y-3">
@@ -85,14 +85,14 @@ export function ProposalBuilder() {
       </div>
 
       <ul className="space-y-1.5">
-        {proposals.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No proposals yet.</li>}
+        {proposals.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No proposals yet.</li>}
         {proposals.map(p => (
           <li key={p.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <FileSignature className="w-4 h-4 text-indigo-400 shrink-0" />
               <button onClick={() => setExpanded(expanded === p.id ? null : p.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{p.title}</p>
-                <p className="text-[10px] text-zinc-500">{p.client} · ${p.value.toLocaleString()} · {p.completeness}% complete · {p.status}</p>
+                <p className="text-[10px] text-zinc-400">{p.client} · ${p.value.toLocaleString()} · {p.completeness}% complete · {p.status}</p>
               </button>
               {p.signature ? (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold">SIGNED</span>
@@ -115,7 +115,7 @@ export function ProposalBuilder() {
                 {p.sections.map(sec => (
                   <div key={sec.key}>
                     <p className="text-[11px] font-semibold text-zinc-300 capitalize">{sec.key.replace(/-/g, ' ')}</p>
-                    <p className="text-[10px] text-zinc-600 mb-1">{sec.prompt}</p>
+                    <p className="text-[10px] text-zinc-400 mb-1">{sec.prompt}</p>
                     <textarea
                       defaultValue={sec.content}
                       onBlur={e => { if (e.target.value !== sec.content) void saveSection(p.id, sec.key, e.target.value); }}
@@ -141,7 +141,7 @@ export function ProposalBuilder() {
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
               <input value={value} onChange={e => setValue(e.target.value)} placeholder="Estimated value ($)"
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-              <p className="text-[10px] text-zinc-500 uppercase mt-2">Sections</p>
+              <p className="text-[10px] text-zinc-400 uppercase mt-2">Sections</p>
               <div className="grid grid-cols-2 gap-1">
                 {templates.map(t => (
                   <label key={t.key} className="flex items-center gap-1.5 text-[11px] text-zinc-300 cursor-pointer">
@@ -165,7 +165,7 @@ export function ProposalBuilder() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSignFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-bold text-zinc-100 mb-1">E-signature acceptance</h4>
-            <p className="text-[10px] text-zinc-500 mb-3">Typing a name records a binding acceptance with a timestamp.</p>
+            <p className="text-[10px] text-zinc-400 mb-3">Typing a name records a binding acceptance with a timestamp.</p>
             <input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Signer full name"
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 mb-3" />
             <div className="flex justify-end gap-2">

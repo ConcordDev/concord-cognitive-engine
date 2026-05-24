@@ -69,7 +69,7 @@ export function InventoryAlertsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Inventory alerts</span>
-          <label className="ml-auto text-[10px] text-gray-500 flex items-center gap-1.5">
+          <label className="ml-auto text-[10px] text-gray-400 flex items-center gap-1.5">
             Low-stock threshold
             <input
               type="number"
@@ -89,11 +89,11 @@ export function InventoryAlertsPanel() {
         </header>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-12 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Scanning inventory…
           </div>
         ) : !result || result.total === 0 ? (
-          <div className="px-3 py-12 text-center text-xs text-gray-500">
+          <div className="px-3 py-12 text-center text-xs text-gray-400">
             <PackageX className="w-7 h-7 mx-auto mb-2 opacity-30" />
             No stock alerts. Every tracked listing is above the threshold.
           </div>
@@ -110,7 +110,7 @@ export function InventoryAlertsPanel() {
                 <div className="text-xl font-bold text-amber-200">{result.lowStock}</div>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5">
-                <div className="text-[10px] uppercase text-gray-500">Total flagged</div>
+                <div className="text-[10px] uppercase text-gray-400">Total flagged</div>
                 <div className="text-xl font-bold text-gray-200">{result.total}</div>
               </div>
             </div>
@@ -138,7 +138,7 @@ export function InventoryAlertsPanel() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate">{a.title}</div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-[10px] text-gray-400">
                       {a.scope}
                       {a.sku && ` · ${a.sku}`}
                     </div>

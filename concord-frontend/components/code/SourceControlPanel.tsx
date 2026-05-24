@@ -97,7 +97,7 @@ export function SourceControlPanel({ tabs, savedScripts, onJumpToTab, onCommitAl
       <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
         <GitBranch className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Source control</span>
-        <span className="ml-auto text-[10px] text-gray-500" title="DTU snapshots in your corpus">
+        <span className="ml-auto text-[10px] text-gray-400" title="DTU snapshots in your corpus">
           {snapshotCount !== null ? `${snapshotCount} snapshot${snapshotCount === 1 ? '' : 's'}` : ''}
         </span>
         <button
@@ -131,14 +131,14 @@ export function SourceControlPanel({ tabs, savedScripts, onJumpToTab, onCommitAl
           )}
         </div>
         {dirtyTabs.length === 0 && newTabs.length === 0 && (
-          <p className="text-[10px] text-gray-500 inline-flex items-center gap-1">
+          <p className="text-[10px] text-gray-400 inline-flex items-center gap-1">
             <AlertCircle className="w-3 h-3" /> Working tree clean
           </p>
         )}
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col">
-        <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 border-b border-white/5">
+        <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 border-b border-white/5">
           Changes ({dirtyTabs.length + newTabs.length})
         </div>
         <ul className="max-h-44 overflow-y-auto">
@@ -153,7 +153,7 @@ export function SourceControlPanel({ tabs, savedScripts, onJumpToTab, onCommitAl
                     selectedTabId === t.id && 'bg-cyan-500/10 text-cyan-200'
                   )}
                 >
-                  <FileText className="w-3.5 h-3.5 text-gray-500" />
+                  <FileText className="w-3.5 h-3.5 text-gray-400" />
                   <span className="truncate flex-1">{t.name}</span>
                   <span className={cn('text-[9px] font-bold', isNew ? 'text-green-400' : 'text-yellow-400')}>
                     {isNew ? 'U' : 'M'}
@@ -166,13 +166,13 @@ export function SourceControlPanel({ tabs, savedScripts, onJumpToTab, onCommitAl
 
         {selectedTab && (
           <div className="flex-1 min-h-0 flex flex-col border-t border-white/10">
-            <div className="px-3 py-1 text-[10px] text-gray-500 flex items-center gap-3 border-b border-white/5">
+            <div className="px-3 py-1 text-[10px] text-gray-400 flex items-center gap-3 border-b border-white/5">
               <span className="truncate">{selectedTab.name}</span>
               <span className="text-green-400">+{changedLines.added}</span>
               <span className="text-red-400">−{changedLines.removed}</span>
               <button
                 onClick={() => setSelectedTabId(null)}
-                className="ml-auto text-gray-500 hover:text-white"
+                className="ml-auto text-gray-400 hover:text-white"
               >
                 <Save className="w-3 h-3" />
               </button>

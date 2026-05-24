@@ -32,7 +32,7 @@ export function MemoriesPanel() {
         <div className="flex items-center gap-2">
           <History className="w-5 h-5 text-amber-400" />
           <h3 className="font-semibold text-white">On This Day</h3>
-          {data?.onThisDay && <span className="text-xs text-gray-500">{data.onThisDay}</span>}
+          {data?.onThisDay && <span className="text-xs text-gray-400">{data.onThisDay}</span>}
         </div>
         <input
           type="date"
@@ -43,11 +43,11 @@ export function MemoriesPanel() {
       </div>
 
       {isLoading ? (
-        <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-500">
+        <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin mx-auto" />
         </div>
       ) : (data?.count ?? 0) === 0 ? (
-        <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-500">
+        <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-400">
           <Clock className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No memories on this day. Posts you make today will resurface here in future years.</p>
         </div>
@@ -58,7 +58,7 @@ export function MemoriesPanel() {
               <div className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
                 {m.yearsAgo} year{m.yearsAgo === 1 ? '' : 's'} ago
               </div>
-              <span className="text-xs text-gray-500">{new Date(m.createdAt).toLocaleDateString()}</span>
+              <span className="text-xs text-gray-400">{new Date(m.createdAt).toLocaleDateString()}</span>
             </div>
             <p className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</p>
             <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400">

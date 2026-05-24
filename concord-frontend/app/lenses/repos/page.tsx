@@ -301,28 +301,28 @@ export default function ReposLensPage() {
                 <GitBranch className="w-5 h-5 text-blue-400" />
                 <div>
                   <p className="text-lg font-bold">{repos?.length || 0}</p>
-                  <p className="text-xs text-gray-500">Total Repos</p>
+                  <p className="text-xs text-gray-400">Total Repos</p>
                 </div>
               </motion.div>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="p-3 bg-[#161b22] border border-gray-700 rounded-lg flex items-center gap-3">
                 <Hash className="w-5 h-5 text-yellow-400" />
                 <div>
                   <p className="text-lg font-bold">{new Set(repos?.map((r: Repository) => r.language).filter(Boolean)).size}</p>
-                  <p className="text-xs text-gray-500">Languages</p>
+                  <p className="text-xs text-gray-400">Languages</p>
                 </div>
               </motion.div>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="p-3 bg-[#161b22] border border-gray-700 rounded-lg flex items-center gap-3">
                 <Activity className="w-5 h-5 text-green-400" />
                 <div>
                   <p className="text-lg font-bold">{commits?.length || 0}</p>
-                  <p className="text-xs text-gray-500">Total Commits</p>
+                  <p className="text-xs text-gray-400">Total Commits</p>
                 </div>
               </motion.div>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="p-3 bg-[#161b22] border border-gray-700 rounded-lg flex items-center gap-3">
                 <Star className="w-5 h-5 text-orange-400" />
                 <div>
                   <p className="text-lg font-bold">{repos?.reduce((s: number, r: Repository) => s + (r.stars || 0), 0) || 0}</p>
-                  <p className="text-xs text-gray-500">Total Stars</p>
+                  <p className="text-xs text-gray-400">Total Stars</p>
                 </div>
               </motion.div>
             </div>
@@ -399,7 +399,7 @@ export default function ReposLensPage() {
               >
                 ← Back
               </button>
-              <ChevronRight className="w-4 h-4 text-gray-500" />
+              <ChevronRight className="w-4 h-4 text-gray-400" />
               <span className="text-white font-semibold">
                 {repos?.find((r: Repository) => r.id === selectedRepo)?.name}
               </span>
@@ -512,7 +512,7 @@ export default function ReposLensPage() {
                           <p className="text-gray-300 truncate hover:text-blue-400 cursor-pointer">
                             {commit.message}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             {commit.author} committed {formatTime(commit.date)}
                           </p>
                         </div>
@@ -566,7 +566,7 @@ export default function ReposLensPage() {
                               </span>
                             ))}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-400 mt-1">
                             #{issue.number} opened {formatTime(issue.createdAt)} by {issue.author}
                           </p>
                         </div>

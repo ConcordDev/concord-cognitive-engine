@@ -84,15 +84,15 @@ export function MealPlanner() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-gray-500 w-20">Slot</th>
+                <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-gray-400 w-20">Slot</th>
                 {days.map(d => (
-                  <th key={d.toISOString()} className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-500 min-w-[110px]">
+                  <th key={d.toISOString()} className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-400 min-w-[110px]">
                     <div>{d.toLocaleDateString(undefined, { weekday: 'short' })}</div>
                     <div className="text-gray-400 normal-case">{d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}</div>
                   </th>
@@ -110,10 +110,10 @@ export function MealPlanner() {
                         {meal ? (
                           <div className={cn('p-2 rounded bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] cursor-pointer')}>
                             <div className="text-xs text-white truncate">{meal.title}</div>
-                            {meal.calories && <div className="text-[9px] text-gray-500 tabular-nums">{Math.round(meal.calories)} kcal</div>}
+                            {meal.calories && <div className="text-[9px] text-gray-400 tabular-nums">{Math.round(meal.calories)} kcal</div>}
                           </div>
                         ) : (
-                          <div className="h-12 border border-dashed border-white/10 rounded text-center text-[10px] text-gray-600 flex items-center justify-center">
+                          <div className="h-12 border border-dashed border-white/10 rounded text-center text-[10px] text-gray-400 flex items-center justify-center">
                             +
                           </div>
                         )}
@@ -133,13 +133,13 @@ export function MealPlanner() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             {groceryList.map(g => (
               <div key={g.aisle}>
-                <h4 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{g.aisle}</h4>
+                <h4 className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">{g.aisle}</h4>
                 <ul className="space-y-1">
                   {g.items.map((it, i) => (
                     <li key={i} className="flex items-center gap-2">
                       <input type="checkbox" className="accent-cyan-500" />
                       <span className="text-white flex-1">{it.name}</span>
-                      <span className="text-gray-500 tabular-nums">{it.qty} {it.unit}</span>
+                      <span className="text-gray-400 tabular-nums">{it.qty} {it.unit}</span>
                     </li>
                   ))}
                 </ul>

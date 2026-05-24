@@ -102,7 +102,7 @@ export function StakePositions({
   };
 
   if (!data) {
-    return <div className="text-xs text-zinc-500 py-3">Loading positions…</div>;
+    return <div className="text-xs text-zinc-400 py-3">Loading positions…</div>;
   }
 
   return (
@@ -118,7 +118,7 @@ export function StakePositions({
         <SummaryStat label="Accruing" value={`${data.totalAccruedYieldCc} CC`} tone="text-emerald-300" />
       </div>
       {data.positions.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 px-3 py-6 text-center text-xs italic text-zinc-500">
+        <div className="rounded-lg border border-zinc-800 px-3 py-6 text-center text-xs italic text-zinc-400">
           No positions yet. Open a stake above.
         </div>
       ) : (
@@ -138,7 +138,7 @@ export function StakePositions({
                       </span>
                     )}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
+                  <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
                     {(p.yieldRateBps / 100).toFixed(2)}% APR · accrued {p.accruedYieldCc} CC ·{' '}
                     {p.unlocked
                       ? 'UNLOCKED'
@@ -222,7 +222,7 @@ function SummaryStat({
 }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-sm ${tone}`}>{value}</div>
     </div>
   );
