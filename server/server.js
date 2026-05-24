@@ -7258,6 +7258,27 @@ async function tryInitWebSockets(server) {
   // seasons, embodied/signals). Both names point at the same REALTIME object.
   globalThis.__CONCORD_REALTIME__ = REALTIME;
 
+  // Yjs CRDT sync layer — handles `yjs:sync-request` + `yjs:update`
+  // events on the main io connection. Used by Code Live Share + Collab
+  // co-editing to merge concurrent overlapping edits structurally
+  // (replaces the prior lamport-clock last-write-wins layer).
+  try {
+    const { attachYjsSync } = await import("./lib/yjs-realtime.js");
+    attachYjsSync(io);
+  } catch (yjsErr) {
+    structuredLog("warn", "yjs_realtime_attach_failed", { error: String(yjsErr?.message || yjsErr) });
+  }
+
+  // WebRTC signalling layer — pure SDP/ICE relay for in-lens video
+  // calls (telehealth, future Spaces audio, Live Share cursors).
+  // Server never terminates media or holds keys.
+  try {
+    const { attachWebRTCSignalling } = await import("./lib/webrtc-signalling.js");
+    attachWebRTCSignalling(io);
+  } catch (rtcErr) {
+    structuredLog("warn", "webrtc_signalling_attach_failed", { error: String(rtcErr?.message || rtcErr) });
+  }
+
   // DX Platform Phase A3 — attach the /dx namespace for editor-plugin
   // clients. Plugin clients connect with a JWT or a `csk_*` API key,
   // join `codebase:${id}` rooms, and receive detector/repair events

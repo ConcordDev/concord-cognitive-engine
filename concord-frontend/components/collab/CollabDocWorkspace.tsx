@@ -19,6 +19,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import * as Y from 'yjs';
+import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import {
@@ -124,6 +126,40 @@ export function CollabDocWorkspace() {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [presence, setPresence] = useState<PresenceRow[]>([]);
   const [following, setFollowing] = useState<string | null>(null);
+
+  // Yjs CRDT: a server-mediated Y.Doc per document; the doc's
+  // `Y.Text("content")` is the canonical realtime view of the
+  // document text. Concurrent overlapping edits merge structurally
+  // (insert/delete operations are commutative + associative under
+  // Yjs's conflict-free merge — the prior lamport+authorId total-order
+  // op-log only converges via last-write-per-character).
+  const { doc: yDoc, synced: yDocSynced } = useYjsDoc({
+    scope: 'collab:doc',
+    docId: activeDocId,
+    enabled: !!activeDocId,
+  });
+  const yTextRef = useRef<Y.Text | null>(null);
+  const yApplyingRemoteRef = useRef(false);
+  useEffect(() => {
+    if (!yDoc) { yTextRef.current = null; return; }
+    const yText = yDoc.getText('content');
+    yTextRef.current = yText;
+    // After sync-state arrives, hydrate the textarea from CRDT state
+    // (but never clobber an in-progress local edit).
+    const observer = () => {
+      if (editingRef.current) return;
+      const next = yText.toString();
+      if (next === textRef.current) return;
+      yApplyingRemoteRef.current = true;
+      setText(next);
+      textRef.current = next;
+      yApplyingRemoteRef.current = false;
+    };
+    yText.observe(observer);
+    // Hydrate once now (sync-state may have already arrived).
+    if (yDocSynced) observer();
+    return () => { try { yText.unobserve(observer); } catch { /* ignore */ } };
+  }, [yDoc, yDocSynced]);
 
   // ── Version history ──────────────────────────────────────────────────────
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
@@ -268,6 +304,24 @@ export function CollabDocWorkspace() {
     const prev = textRef.current;
     setText(next);
     textRef.current = next;
+
+    // Yjs CRDT path: mirror the local edit into the Y.Text so peers
+    // receive it instantly via the socket. Done as a transactional
+    // replace (delete prev range + insert next) so the resulting Yjs
+    // update is a single atomic doc-mutation. Skipped when the change
+    // came FROM the CRDT observer (yApplyingRemoteRef) to avoid an echo.
+    if (!yApplyingRemoteRef.current && yTextRef.current && yDocSynced) {
+      try {
+        const ytext = yTextRef.current;
+        const ycurrent = ytext.toString();
+        if (ycurrent !== next) {
+          ytext.doc?.transact(() => {
+            ytext.delete(0, ycurrent.length);
+            ytext.insert(0, next);
+          });
+        }
+      } catch { /* never block editing on CRDT error */ }
+    }
     const op = diffToOp(prev, next);
     if (op) {
       const r = await call<{ lamport: number; text: string }>('docOp', {

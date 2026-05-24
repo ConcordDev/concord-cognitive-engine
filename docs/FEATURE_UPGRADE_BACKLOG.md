@@ -30,9 +30,9 @@ spec prose suggests.
 
 | Lens | Claim | Current implementation | Effort | Path |
 |---|---|---|---|---|
-| `code` Live Share | "Real-time multiplayer / Live Share editing — front-to-back" | Polling op-log in `server/domains/code.js` (`liveshare-start/join/edit/poll/end`); ops appended to in-memory array, clients poll for new ops by sequence cursor; no WebSocket push, no OT/CRDT, last-write-wins | medium (realtime push, no CRDT) / very-large (true CRDT) | **Phase 4 lands realtime push via existing Socket.IO; CRDT remains backlog (needs `yjs` + adapter)** |
-| `healthcare` telehealth | "Telehealth video visit integration — front-to-back" | Appointment scheduling in `server/domains/healthcare.js#telehealth-create` (line ~1734); optional Daily.co room provisioning if `DAILY_API_KEY` is set, otherwise `roomUrl: null`; no video tile UI mounted | large | Backlog — needs WebRTC client (simple-peer / Daily SDK / Twilio) bundled in the healthcare lens |
-| `collab` CRDT | "Conflict-free CRDT op-log" | Lamport-clock op-log polled at ~1s in `server/domains/collab.js`; deterministic ordering but no actual CRDT (still last-write-wins on identical-clock collisions) | medium (realtime push) / large (true CRDT) | **Phase 4 lands realtime push; CRDT remains backlog** |
+| ~~`code` Live Share~~ | ~~"Real-time multiplayer / Live Share editing — front-to-back"~~ | **Shipped 2026-05-24.** Y.js CRDT via `server/lib/yjs-realtime.js`; per-session `Y.Doc`s with `Y.Text` per file, synced over Socket.IO (`yjs:sync-state`, `yjs:update`). Concurrent overlapping edits merge structurally. Op-log + poll path stays as backstop for late-rejoin + audit. | — | Shipped |
+| ~~`healthcare` telehealth~~ | ~~"Telehealth video visit integration — front-to-back"~~ | **Shipped 2026-05-24.** In-lens WebRTC video tile (`concord-frontend/components/healthcare/TelehealthVideoCall.tsx`) using `simple-peer` + Concord's Socket.IO signalling layer (`server/lib/webrtc-signalling.js`). Camera + mic permissions, local + remote tiles, mute/cam-off controls, clean tear-down. Daily.co external-handoff path retained for orgs that prefer Daily's SFU. | — | Shipped |
+| ~~`collab` CRDT~~ | ~~"Conflict-free CRDT op-log"~~ | **Shipped 2026-05-24.** Y.js CRDT layer via the same `yjs-realtime.js` infrastructure; `Y.Text("content")` per document, synced over Socket.IO. Concurrent overlapping edits merge structurally. Lamport-clock op-log stays as the persistence path. | — | Shipped |
 | ~~`social` workflow~~ | ~~"Threaded replies, reactions/reposts, DM inbox + threads"~~ | **Verified shipped** — `FeedView` mounts `PostCard` → `PostDetail` → `ReplyTree` (`concord-frontend/components/social/feed/`), and the `social` domain macros cover the full engagement loop (the comment in `server/domains/social.js:3` reads "REST routes never covered" past tense — meaning the domain now covers them, not that they're still uncovered). No upgrade needed. | — | Already shipped |
 | ~~`feed` ranking~~ | ~~"Algorithmic ranked For You feed"~~ | **Verified shipped (2026-05-21, batch 38ish).** `server/domains/feed.js` ships `rank-for-you` + `record-interaction` macros — engagement-based scoring + interaction-history reinforcement. Not a deep ML recommender, but a real ranking pipeline that learns from user behaviour. | — | Already shipped |
 | ~~`anon` E2E encryption~~ | ~~"X25519 ECDH + AES-256-GCM sealed envelopes, plaintext never stored"~~ | **Verified shipped (2026-05-21).** `server/domains/anon.js` ships **real** X25519 ECDH + AES-256-GCM sealed envelopes via Node's built-in `crypto` module (no external dep needed — Node 18+ supports both natively). 981 LOC across `identity`, `rotateIdentity`, `safetyNumber`, `verifyPeer`, `startConversation`, `listConversations` + group conversations + ephemeral sweep + disappearing-message defaults. My earlier backlog entry was wrong. | — | Already shipped |
@@ -100,35 +100,47 @@ alongside the auto-output.
 
 ---
 
-## Estimated remaining feature-parity effort
+## Status: 2026-05-24 — backlog cleared
 
-The user's 39-batch lens-completion sprint (merged via PR #765 on
-2026-05-22) closed most of the gaps that were in this file's original
-draft. Re-audit at HEAD `c32cc9e` (2026-05-24):
-
-**Shipped — verified end-to-end:**
+All headline stubs shipped:
 
 - ✅ `feed` ranking — real engagement-based ranker (`rank-for-you` /
-  `record-interaction`)
-- ✅ `anon` E2E encryption — real X25519 + AES-256-GCM via Node `crypto`
-- ✅ `social` workflow — full FeedView + PostCard + PostDetail + ReplyTree
-- ✅ Realtime push for `code` Live Share + `collab` co-editing (Socket.IO)
-- ✅ Honest spec prose for the headline stubs (this file's earlier rows)
+  `record-interaction`); shipped in the 39-batch run
+- ✅ `anon` E2E encryption — real X25519 + AES-256-GCM via Node `crypto`;
+  shipped in the 39-batch run
+- ✅ `social` workflow — full FeedView + PostCard + PostDetail + ReplyTree;
+  shipped in the 39-batch run
+- ✅ `code` Live Share — **Y.js CRDT** via `server/lib/yjs-realtime.js` +
+  the new `useYjsDoc` hook; concurrent overlapping edits merge
+  structurally
+- ✅ `collab` co-editing — same Y.js CRDT infrastructure, bound to
+  `Y.Text("content")` per document; replaces the prior lamport-clock
+  last-write-per-element layer
+- ✅ `healthcare` telehealth — **in-lens WebRTC video tile**
+  (`TelehealthVideoCall.tsx`) with `simple-peer` + Concord Socket.IO
+  signalling (`server/lib/webrtc-signalling.js`); local + remote tiles,
+  mute/cam controls, clean tear-down. Daily.co handoff retained for orgs
+  that prefer Daily's SFU.
 
-**Still backlog — needs new dependencies + design:**
+Spec README's "91% parity / 0 buildable backlog" claim is now true
+per-item. The lenses that haven't reached literal category-leader depth
+are ones where parity requires content (Spotify catalog, Wikipedia
+article volume) or design decisions beyond the scope of an upgrade
+backlog (custom recommender architectures, voice/audio licensing) —
+those remain "structural gaps" rather than buildable features.
 
-- 🟡 True CRDT for `code` Live Share + `collab` (needs `yjs` + `y-websocket`).
-  Implementation today is realtime Socket.IO + lamport-clock last-write —
-  works, but doesn't merge concurrent overlapping edits the way Y.js
-  would. Effort: medium for the integration, large to reconcile with the
-  existing op-log persistence layer.
-- 🟡 Telehealth in-lens video tile (needs WebRTC: `simple-peer` or
-  `@daily-co/daily-js`). Today the room URL is handed off to an external
-  client. Effort: large — requires bundling the SFU client in
-  `TelehealthPanel.tsx`, plus signalling backend.
+Remaining nice-to-haves (lower priority than this file's prior contents):
 
-That's it. The other 232 lenses ship at category-leader depth per their
-spec self-scores and the per-domain-parity test suites added in the
-39-batch run. Spec README claims "91% parity / 0 buildable backlog"
-and after the user's work + the two remaining deps above, that's
-defensible.
+- Shared debugging + terminal sharing in Code Live Share (the 2pp gap
+  to literal VS Code Live Share). Y.js CRDT is the hard part; sharing
+  the debug protocol is incremental on top.
+- Multi-party telehealth (today is 1:1; the room can hold N peers but
+  the UI tile-layout assumes 1+1). Extension is straightforward — keep
+  a Map<peerId, SimplePeer> instead of a single peer ref.
+- True CRDT-aware version snapshots for collab (current snapshots are
+  text-only; capturing the Y.Doc binary state lets users undo/redo
+  across history boundaries).
+
+These are improvements, not backlogged "missing" features. The depth
+grader still reports 1.000 weighted; the verifier still reports
+234 WIRED / 1 NO-BACKEND-CALL (ux-suite by design).

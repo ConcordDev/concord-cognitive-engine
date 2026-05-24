@@ -87,9 +87,12 @@
     "recharts": "^3.8.1",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
+    "simple-peer": "^9.11.1",
     "socket.io-client": "^4.7.4",
     "tailwind-merge": "^2.2.0",
     "three": "^0.160.0",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.30",
     "zod": "^3.22.4",
     "zustand": "^4.5.0"
   },

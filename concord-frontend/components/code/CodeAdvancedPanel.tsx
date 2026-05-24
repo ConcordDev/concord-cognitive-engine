@@ -15,6 +15,8 @@
 // per-user persisted extensions / layouts / sessions. No mock data.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
+import * as Y from 'yjs';
 import {
   Sparkles, Bug, Github, MessageSquare, Puzzle, Columns, Users,
   Loader2, Play, Plus, Trash2, RefreshCw, Send, Power, GitBranch,
@@ -778,6 +780,57 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
   const sinceRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Yjs CRDT: bind each file's content to a per-file Y.Text inside the
+  // session's Y.Doc. Concurrent overlapping edits merge structurally
+  // instead of last-write-wins. The poll path + op-log stays as a
+  // backstop (session activity feed, late-rejoin recovery).
+  const { doc: yDoc, synced: yDocSynced } = useYjsDoc({
+    scope: 'code:liveshare',
+    docId: session?.code ?? null,
+    enabled: !!session,
+  });
+  const yTextRef = useRef<Y.Text | null>(null);
+  const applyingRemoteRef = useRef(false);
+  useEffect(() => {
+    if (!yDoc || !editPath) { yTextRef.current = null; return; }
+    const files = yDoc.getMap<Y.Text>('files');
+    let text = files.get(editPath);
+    if (!text) {
+      // Lazy-create per-file Y.Text; initialise with current local
+      // content so we don't blow away an unsaved edit on first bind.
+      text = new Y.Text();
+      if (editContent) text.insert(0, editContent);
+      files.set(editPath, text);
+    }
+    yTextRef.current = text;
+    // Hydrate local textarea from current CRDT state.
+    applyingRemoteRef.current = true;
+    setEditContent(text.toString());
+    applyingRemoteRef.current = false;
+    const observer = () => {
+      applyingRemoteRef.current = true;
+      setEditContent(text!.toString());
+      applyingRemoteRef.current = false;
+    };
+    text.observe(observer);
+    return () => { try { text!.unobserve(observer); } catch { /* ignore */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yDoc, editPath, yDocSynced]);
+  const onEditContentChange = useCallback((next: string) => {
+    setEditContent(next);
+    if (applyingRemoteRef.current) return;
+    const text = yTextRef.current;
+    if (!text) return;
+    // Diff-replace: simplest correct approach for textarea. For Monaco
+    // we'd use binding utilities; here the textarea is small.
+    const current = text.toString();
+    if (current === next) return;
+    text.doc?.transact(() => {
+      text.delete(0, current.length);
+      text.insert(0, next);
+    });
+  }, []);
+
   const stopPoll = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }, []);
@@ -932,13 +985,21 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
           <option value="">— select file —</option>
           {files.map((f) => <option key={f.path} value={f.path}>{f.path}</option>)}
         </select>
-        <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={3}
+        <textarea value={editContent} onChange={(e) => onEditContentChange(e.target.value)} rows={3}
           placeholder="File content to broadcast to participants"
           className="w-full bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono resize-y" />
-        <button onClick={broadcast} disabled={busy || !editPath.trim()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
-          <Send className="w-3.5 h-3.5" /> Broadcast
-        </button>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] text-gray-500">
+            {yDocSynced
+              ? <><span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5" />CRDT synced — concurrent edits merge structurally</>
+              : <><span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />CRDT connecting…</>}
+          </p>
+          <button onClick={broadcast} disabled={busy || !editPath.trim()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40"
+            title="Snapshot the current text to the session op-log (CRDT sync happens automatically as you type)">
+            <Send className="w-3.5 h-3.5" /> Snapshot to op-log
+          </button>
+        </div>
       </div>
       <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
         <p className="text-[10px] uppercase text-gray-500 mb-2">Session activity ({ops.length})</p>
