@@ -879,8 +879,7 @@ export default function LogisticsLensPage() {
             <div
               key={item.id}
               className={cn(ds.panelHover, 'space-y-3')}
-              onClick={() => setDetailId(item.id)}
-            >
+              onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className={ds.heading3}>{item.title}</h3>
@@ -1123,8 +1122,7 @@ export default function LogisticsLensPage() {
                         <div
                           key={item.id}
                           className={cn(ds.panelHover, 'text-sm space-y-2')}
-                          onClick={() => setDetailId(item.id)}
-                        >
+                          onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div className="flex items-center justify-between">
                             <span className="font-medium">{item.title}</span>
                             {col.key !== 'delivered' && (
@@ -1182,8 +1180,7 @@ export default function LogisticsLensPage() {
                 <div
                   key={item.id}
                   className={cn(ds.panelHover, 'flex items-center gap-4')}
-                  onClick={() => setDetailId(item.id)}
-                >
+                  onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{item.title}</span>
@@ -1346,8 +1343,7 @@ export default function LogisticsLensPage() {
                 <div
                   key={item.id}
                   className={cn(ds.panelHover, 'space-y-3')}
-                  onClick={() => setDetailId(item.id)}
-                >
+                  onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className={ds.heading3}>{item.title}</h3>
@@ -1575,8 +1571,7 @@ export default function LogisticsLensPage() {
             {/* Route Header */}
             <div
               className="flex items-start justify-between cursor-pointer"
-              onClick={() => setRouteExpanded(expanded ? null : item.id)}
-            >
+              onClick={() => setRouteExpanded(expanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center gap-3">
                 <button
                   className={ds.btnGhost}
@@ -1829,8 +1824,7 @@ export default function LogisticsLensPage() {
                       'flex items-center gap-3 p-3 rounded-lg',
                       'bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer'
                     )}
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     {result === 'pass' ? (
                       <CheckCircle className="w-4 h-4 text-green-400" />
                     ) : result === 'fail' ? (
@@ -1879,8 +1873,7 @@ export default function LogisticsLensPage() {
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer'
                     )}
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <CheckCircle className="w-4 h-4 text-green-400" />
                     <div className="flex-1">
                       <span className="text-sm font-medium">{item.title}</span>
@@ -1918,8 +1911,7 @@ export default function LogisticsLensPage() {
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer'
                     )}
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     {String(d.result) === 'fail' ? (
                       <XCircle className="w-4 h-4 text-red-400" />
                     ) : (
@@ -1998,8 +1990,7 @@ export default function LogisticsLensPage() {
                   <div
                     key={item.id}
                     className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer"
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <FileText className="w-4 h-4 text-neon-purple" />
                     <div className="flex-1">
                       <span className="text-sm font-medium">{item.title}</span>
@@ -2033,7 +2024,7 @@ export default function LogisticsLensPage() {
         const status = item.meta?.status || 'active';
         const color = STATUS_COLORS[status] || 'gray-400';
         return (
-          <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+          <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between mb-2">
               <h3 className={cn(ds.heading3, 'truncate flex-1')}>{item.title}</h3>
               <span className={ds.badge(color)}>{String(status).replace(/_/g, ' ')}</span>
@@ -2478,7 +2469,7 @@ export default function LogisticsLensPage() {
           const d = item.data as Record<string, unknown>;
           return (
             <>
-              <div className={ds.modalBackdrop} onClick={() => setDetailId(null)} />
+              <div className={ds.modalBackdrop} onClick={() => setDetailId(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
               <div className={ds.modalContainer}>
                 <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[80vh] flex flex-col')}>
                   <div className="flex items-center justify-between p-4 border-b border-lattice-border shrink-0">
@@ -2582,7 +2573,7 @@ export default function LogisticsLensPage() {
       {/* Editor modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

@@ -447,9 +447,9 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
 
       {cmdOpen && (
         <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 pt-24"
-          onClick={() => setCmdOpen(false)}>
+          onClick={() => setCmdOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-zinc-800">
               <Command className="w-4 h-4 text-violet-400" />
               <input ref={cmdInputRef} value={cmdQuery} onChange={(e) => setCmdQuery(e.target.value)}

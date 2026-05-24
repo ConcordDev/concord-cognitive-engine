@@ -159,7 +159,7 @@ export function ListingsBrowser({
                   <div className="w-20 h-16 bg-gradient-to-br from-emerald-900/30 to-cyan-900/20 rounded flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-6 h-6 text-cyan-500/40" />
                   </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)}>
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-baseline gap-2">
                       <span className="text-base font-mono font-semibold text-white">${l.price.toLocaleString()}</span>
                       <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{l.status.replace('_', ' ')}</span>

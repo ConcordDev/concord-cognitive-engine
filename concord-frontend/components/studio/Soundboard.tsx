@@ -257,8 +257,7 @@ export function Soundboard({
                 className="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan/20 cursor-pointer group transition-colors"
                 onClick={() => handleLoadItem(item.type, item.data)}
                 draggable
-                onDragStart={() => onDragToTrack(item.type, item.data)}
-              >
+                onDragStart={() => onDragToTrack(item.type, item.data)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center gap-2 mb-1">
                   {typeIcon(item.type)}
                   <span className="text-[11px] font-medium truncate flex-1">{item.title}</span>

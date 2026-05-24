@@ -277,8 +277,7 @@ export default function NotificationFeed({
                   className={`px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer ${
                     !notif.read ? 'bg-white/[0.02]' : ''
                   }`}
-                  onClick={() => !notif.read && onRead(notif.id)}
-                >
+                  onClick={() => !notif.read && onRead(notif.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex items-start gap-2.5">
                     {/* Unread dot */}
                     <div className="mt-1 flex-shrink-0 w-4 flex justify-center">

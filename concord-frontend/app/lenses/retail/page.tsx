@@ -1399,7 +1399,7 @@ export default function RetailLensPage() {
   const renderCard = (item: LensItem<ArtifactData>) => {
     const d = item.data as unknown as Record<string, unknown>;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => setSelectedItemId(selectedItemId === item.id ? null : item.id)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => setSelectedItemId(selectedItemId === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.sectionHeader}>
           <h3 className={ds.heading3}>{item.title}</h3>
           {renderStatusBadge(item.meta.status)}
@@ -1636,8 +1636,7 @@ export default function RetailLensPage() {
                               className={cn('flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors',
                                 'bg-lattice-elevated border-lattice-border hover:border-neon-cyan/50'
                               )}
-                              onClick={() => setSelectedItemId(item.id)}
-                            >
+                              onClick={() => setSelectedItemId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                               <div>
                                 <p className="text-sm font-medium text-white">Order #{d.orderNumber || item.title}</p>
                                 <p className={ds.textMuted}>{d.customer} | {formatCurrency(d.total || 0)}</p>
@@ -1972,9 +1971,9 @@ export default function RetailLensPage() {
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>

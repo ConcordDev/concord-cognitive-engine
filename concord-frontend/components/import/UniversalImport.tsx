@@ -259,8 +259,7 @@ export function UniversalImport({
             isDragOver
               ? 'border-neon-cyan bg-neon-cyan/5 scale-[1.01]'
               : 'border-lattice-border hover:border-gray-500 hover:bg-lattice-deep/30'
-          )}
-        >
+          )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <input
             ref={fileInputRef}
             type="file"

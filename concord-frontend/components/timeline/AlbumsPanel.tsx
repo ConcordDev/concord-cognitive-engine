@@ -155,12 +155,10 @@ export function AlbumsPanel() {
       {active && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setOpenAlbum(null)}
-        >
+          onClick={() => setOpenAlbum(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
             className="bg-[#242526] border border-gray-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
               <div>
                 <h3 className="font-bold text-white">{active.name}</h3>

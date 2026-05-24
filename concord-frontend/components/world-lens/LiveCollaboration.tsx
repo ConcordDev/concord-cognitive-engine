@@ -450,8 +450,7 @@ export default function LiveCollaboration({
                     className={`relative pl-5 py-1.5 pr-2 rounded text-[10px] transition-colors cursor-pointer ${
                       selectedVersion === v.id ? 'bg-white/10' : 'hover:bg-white/5'
                     }`}
-                    onClick={() => setSelectedVersion(selectedVersion === v.id ? null : v.id)}
-                  >
+                    onClick={() => setSelectedVersion(selectedVersion === v.id ? null : v.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     {/* Timeline line */}
                     {i < versionTimeline.length - 1 && (
                       <div className="absolute left-[9px] top-5 bottom-0 w-px bg-white/10" />

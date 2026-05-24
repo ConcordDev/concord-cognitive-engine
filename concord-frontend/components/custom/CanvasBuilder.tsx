@@ -363,7 +363,7 @@ export function CanvasBuilder() {
             <div key={c.id}
               className={`group flex items-center justify-between rounded px-2 py-1.5 text-sm cursor-pointer ${
                 activeId === c.id ? 'bg-neon-purple/20 border border-neon-purple/40' : 'hover:bg-white/5'}`}
-              onClick={() => openCanvas(c.id)}>
+              onClick={() => openCanvas(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <span className="truncate flex items-center gap-1">
                 {isPublished(c.id) && <Rocket className="w-3 h-3 text-emerald-400 shrink-0" />}
                 {c.name}
@@ -443,7 +443,7 @@ export function CanvasBuilder() {
                       className={`relative rounded-lg border p-2 cursor-pointer overflow-hidden ${
                         selectedWidget === w.id
                           ? 'border-neon-cyan ring-1 ring-neon-cyan bg-neon-cyan/5'
-                          : 'border-lattice-edge bg-lattice-deep hover:border-neon-purple/40'}`}>
+                          : 'border-lattice-edge bg-lattice-deep hover:border-neon-purple/40'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1 truncate">
                           {def?.icon} {String(w.props.title || w.props.label || def?.label || w.type)}

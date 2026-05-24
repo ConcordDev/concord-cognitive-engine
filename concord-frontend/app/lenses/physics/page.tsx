@@ -1542,8 +1542,7 @@ export default function PhysicsLensPage() {
                   onClick={() => setSelectedBody(body.id)}
                   className={`flex items-center justify-between text-sm py-1 px-2 rounded cursor-pointer transition-colors ${
                     selectedBody === body.id ? 'bg-neon-purple/20' : 'hover:bg-white/5'
-                  }`}
-                >
+                  }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: body.color }} />
                     <span className="text-gray-300">{body.name}</span>
@@ -1583,8 +1582,7 @@ export default function PhysicsLensPage() {
                     if (d.constraints) setConstraints(d.constraints as Constraint[]);
                     if (d.forceFields) setForceFields(d.forceFields as ForceField[]);
                     if (d.settings) setSettings(d.settings as SimSettings);
-                  }}
-                >
+                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <span className="text-gray-300 truncate">{sim.title}</span>
                   <button
                     onClick={e => { e.stopPropagation(); removeSim(sim.id); }}

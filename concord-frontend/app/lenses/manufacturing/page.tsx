@@ -256,8 +256,7 @@ function BOMTreeNode({ node, depth = 0 }: { node: BOMNode; depth?: number }) {
           depth === 0 && 'bg-lattice-elevated/30'
         )}
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
-        onClick={() => hasChildren && setExpanded(!expanded)}
-      >
+        onClick={() => hasChildren && setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         {hasChildren ? (
           expanded ? (
             <ChevronDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
@@ -1139,8 +1138,7 @@ export default function ManufacturingLensPage() {
             >
               <div
                 className="flex items-start justify-between mb-3 cursor-pointer"
-                onClick={() => setDetailItem(isDetail ? null : item.id)}
-              >
+                onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className={ds.heading3}>{item.title}</h3>
@@ -1413,7 +1411,7 @@ export default function ManufacturingLensPage() {
           const d = item.data as Record<string, unknown>;
           const status = item.meta?.status || 'active';
           return (
-            <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+            <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between mb-2">
                 <h3 className={cn(ds.heading3, 'truncate flex-1')}>{item.title}</h3>
                 <span className={ds.badge(STATUS_COLORS[status as string])}>
@@ -1530,8 +1528,7 @@ export default function ManufacturingLensPage() {
           <div key={item.id} className={ds.panel}>
             <div
               className="flex items-start justify-between mb-3 cursor-pointer"
-              onClick={() => setDetailItem(isDetail ? null : item.id)}
-            >
+              onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <h3 className={ds.heading3}>{item.title}</h3>
@@ -1878,8 +1875,7 @@ export default function ManufacturingLensPage() {
           >
             <div
               className="flex items-start justify-between mb-3 cursor-pointer"
-              onClick={() => setDetailItem(isDetail ? null : item.id)}
-            >
+              onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center gap-3">
                 <div
                   className={cn(
@@ -2219,8 +2215,7 @@ export default function ManufacturingLensPage() {
             >
               <div
                 className="flex items-start justify-between mb-2 cursor-pointer"
-                onClick={() => setDetailItem(isDetail ? null : item.id)}
-              >
+                onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className={ds.heading3}>{item.title}</h3>
@@ -2610,7 +2605,7 @@ export default function ManufacturingLensPage() {
       {/* Editor Modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

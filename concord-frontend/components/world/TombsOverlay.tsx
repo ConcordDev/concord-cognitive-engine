@@ -180,12 +180,10 @@ function LegacyModal({ legacy, onClose }: { legacy: LegacyDetail; onClose: () =>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/55"
       style={{ pointerEvents: 'auto' }}
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="bg-zinc-950 border border-zinc-800 rounded-lg p-6 max-w-lg text-zinc-200 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <h2 className="text-lg font-medium mb-2">
           {legacy.archetype || 'NPC'} — last words
         </h2>

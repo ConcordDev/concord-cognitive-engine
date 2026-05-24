@@ -997,8 +997,7 @@ export default function EventsLensPage() {
                   onClick={() => {
                     setMode('events');
                     setDetailId(evt.id);
-                  }}
-                >
+                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <EvtIcon className="w-5 h-5 text-neon-pink shrink-0" />
                   <span className={cn(ds.textMono, 'w-24 text-neon-cyan shrink-0')}>
                     {String(d.date || '').slice(5)}
@@ -1609,7 +1608,7 @@ export default function EventsLensPage() {
               .split(',')
               .filter(Boolean);
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-neon-cyan" />
@@ -1784,7 +1783,7 @@ export default function EventsLensPage() {
               const payColor = STATUS_COLORS[String(d.paymentStatus)] || 'gray-400';
               const paidPct = pct(Number(d.paidAmount || 0), Number(d.contractCost || 1));
               return (
-                <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+                <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <CatIcon className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2344,8 +2343,7 @@ export default function EventsLensPage() {
                       <div
                         key={t.id}
                         className={cn(ds.panelHover, 'relative')}
-                        onClick={() => openEdit(t.id)}
-                      >
+                        onClick={() => openEdit(t.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         {soldOut && (
                           <div className="absolute top-2 right-2">
                             <span className={ds.badge('red-400')}>SOLD OUT</span>
@@ -2438,7 +2436,7 @@ export default function EventsLensPage() {
             const d = item.data as Record<string, unknown>;
             const st = item.meta?.status as string;
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <Users className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2704,7 +2702,7 @@ export default function EventsLensPage() {
       {/* Editor modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[90vh] flex flex-col')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border shrink-0">

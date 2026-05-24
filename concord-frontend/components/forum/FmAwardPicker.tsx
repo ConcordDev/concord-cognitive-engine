@@ -46,9 +46,9 @@ export function FmAwardPicker({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl"
-        onClick={(e) => e.stopPropagation()}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
           <h3 className="flex items-center gap-2 text-sm font-bold text-zinc-100">
             <Award className="w-4 h-4 text-amber-400" /> Give an award

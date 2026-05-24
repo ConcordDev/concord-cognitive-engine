@@ -96,8 +96,7 @@ export default function DistrictTimeline({ districtId: _districtId }: DistrictTi
               }`}
               style={{ height: `${Math.max(4, h)}%` }}
               onClick={() => setSelectedWeek(i)}
-              title={`Week ${i + 1}: ${s.populationCapacity} pop`}
-            />
+              title={`Week ${i + 1}: ${s.populationCapacity} pop`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           );
         })}
       </div>

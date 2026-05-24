@@ -98,11 +98,10 @@ export function ResidueDetail({
   const stageIndex = data?.stageIndex ?? 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-violet-700/40 bg-[#0e1320] p-6 text-gray-100 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between">
           <h2 className="text-xl font-semibold text-violet-300">Residue Investigation</h2>
           <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-200">✕</button>

@@ -279,8 +279,7 @@ function HeatmapPanel() {
           <p className="text-xs text-gray-300">{study.question}</p>
           <div
             onClick={onCanvasClick}
-            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center"
-          >
+            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <span className="text-[11px] text-gray-500">Click anywhere — green box = success target</span>
             {study.target && (
               <div
@@ -951,7 +950,7 @@ function PrototypePanel() {
                 className={`text-[11px] px-2 py-1 rounded ${activeFrame === f.id ? 'bg-neon-cyan text-black font-medium' : 'bg-zinc-800 text-gray-400'}`}>{f.name}</button>
             ))}
           </div>
-          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center">
+          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <span className="text-[11px] text-gray-500 text-center px-4">Click the frame to record an interaction — outer edge counts as a misclick</span>
             {frameHot && (
               <div className="absolute inset-0 grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(6, 1fr)' }}>

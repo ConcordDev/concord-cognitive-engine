@@ -385,12 +385,10 @@ function UnderstandingDetailModal({
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="bg-black/95 border border-violet-500/30 rounded-2xl p-5 w-full max-w-xl max-h-[85vh] overflow-y-auto text-white"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-3">
           <h3 className="text-base font-bold">Understanding</h3>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close"><X className="w-4 h-4" /></button>

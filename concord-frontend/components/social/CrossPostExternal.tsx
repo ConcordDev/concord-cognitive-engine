@@ -166,8 +166,7 @@ export function CrossPostExternal({
             {/* Backdrop */}
             <div
               className="fixed inset-0 z-40"
-              onClick={() => setExpanded(false)}
-            />
+              onClick={() => setExpanded(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
 
             <motion.div
               initial={{ opacity: 0, y: -5, scale: 0.95 }}

@@ -354,8 +354,8 @@ export function GCalSection() {
 
       {/* Event modal */}
       {editEvent && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditEvent(null)}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-blue-500/30 rounded-lg w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditEvent(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-blue-500/30 rounded-lg w-full max-w-md overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <CalIcon className="w-4 h-4 text-blue-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{editEvent._new ? 'New event' : 'Edit event'}</span>
@@ -410,7 +410,7 @@ function MonthGrid({ grid, cursor, today, eventsForDay, calById, onDayClick, onE
         const isToday = sameDay(d, today);
         const dayEvents = eventsForDay(d);
         return (
-          <div key={i} onClick={() => onDayClick(d)} className={cn('border-r border-b border-white/5 p-1 overflow-hidden cursor-pointer hover:bg-white/[0.02]', !inMonth && 'bg-black/30')}>
+          <div key={i} onClick={() => onDayClick(d)} className={cn('border-r border-b border-white/5 p-1 overflow-hidden cursor-pointer hover:bg-white/[0.02]', !inMonth && 'bg-black/30')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className={cn('text-[11px] font-mono mb-0.5 w-5 h-5 flex items-center justify-center rounded-full', isToday ? 'bg-blue-500 text-white' : inMonth ? 'text-gray-300' : 'text-gray-600')}>{d.getDate()}</div>
             <div className="space-y-0.5">
               {dayEvents.slice(0, 4).map(e => {
@@ -444,7 +444,7 @@ function DayColumns({ days, today, eventsForDay, calById, onEventClick, onDayCli
         const dayEvents = eventsForDay(d);
         return (
           <div key={i} className="border-r border-white/5 flex flex-col">
-            <div onClick={() => onDayClick(d)} className={cn('px-2 py-1.5 border-b border-white/5 cursor-pointer hover:bg-white/[0.03]', isToday && 'bg-blue-500/[0.06]')}>
+            <div onClick={() => onDayClick(d)} className={cn('px-2 py-1.5 border-b border-white/5 cursor-pointer hover:bg-white/[0.03]', isToday && 'bg-blue-500/[0.06]')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="text-[10px] uppercase text-gray-500">{d.toLocaleDateString(undefined, { weekday: 'short' })}</div>
               <div className={cn('text-sm font-mono', isToday ? 'text-blue-300' : 'text-gray-300')}>{d.getDate()}</div>
             </div>

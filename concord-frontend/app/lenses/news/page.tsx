@@ -533,8 +533,7 @@ export default function NewsLensPage() {
                   className="flex items-center gap-3 px-4 py-3 hover:bg-lattice-elevated cursor-pointer transition-colors"
                   onClick={() =>
                     setExpandedArticle(expandedArticle === article.id ? null : article.id)
-                  }
-                >
+                  } role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   {article.trending && <TrendingUp className="w-3 h-3 text-neon-pink shrink-0" />}
                   {article.importance && (
                     <span
@@ -793,8 +792,7 @@ export default function NewsLensPage() {
                     <div
                       key={topic.id}
                       className="flex items-center gap-3 p-2 rounded-lg hover:bg-lattice-elevated cursor-pointer transition-colors"
-                      onClick={() => setSearchText(String(topicData.name ?? topic.title ?? ''))}
-                    >
+                      onClick={() => setSearchText(String(topicData.name ?? topic.title ?? ''))} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <span className="text-gray-500 text-sm w-6 text-right font-mono">
                         {index + 1}
                       </span>

@@ -146,8 +146,7 @@ function Minimap({
   return (
     <div
       className={`${panel} w-[200px] h-[200px] relative overflow-hidden cursor-crosshair`}
-      onClick={handleClick}
-    >
+      onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       {/* Buildings as amber dots */}
       {buildings.map((b) => (
         <div
@@ -249,8 +248,7 @@ function DistrictMap({
 
       <div
         className="relative min-w-full min-h-full cursor-crosshair"
-        onClick={handleClick}
-      >
+        onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         {/* Infrastructure lines */}
         {infraLayers.water && (
           <div className="absolute inset-0 opacity-30">

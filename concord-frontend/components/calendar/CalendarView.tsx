@@ -145,8 +145,7 @@ export function CalendarView({
           'hover:bg-lattice-surface/50',
           isSelected && 'ring-2 ring-neon-cyan',
           isToday && 'bg-neon-cyan/5'
-        )}
-      >
+        )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between mb-1">
           <span className={cn(
             'text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full',

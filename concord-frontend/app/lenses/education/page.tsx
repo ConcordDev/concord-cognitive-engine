@@ -1838,7 +1838,7 @@ export default function EducationLensPage() {
                 const summary = attendanceSummary[item.id];
                 const attendanceRate = summary ? Math.round(((summary.present + summary.tardy) / summary.total) * 100) : null;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedStudent(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedStudent(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -1902,7 +1902,7 @@ export default function EducationLensPage() {
               {filtered.map(item => {
                 const d = item.data as unknown as EducationArtifact;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedCourse(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedCourse(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2099,7 +2099,7 @@ export default function EducationLensPage() {
               {filtered.map(item => {
                 const d = item.data as unknown as EducationArtifact;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2326,7 +2326,7 @@ export default function EducationLensPage() {
                     const d = item.data as unknown as EducationArtifact;
                     const gradeKey = d.score != null ? getGradeColorKey(d.score) : '';
                     return (
-                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2576,7 +2576,7 @@ export default function EducationLensPage() {
                   {filtered.map(item => {
                     const d = item.data as unknown as EducationArtifact;
                     return (
-                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2630,7 +2630,7 @@ export default function EducationLensPage() {
                 const isExpiring = d.expirationDate && new Date(d.expirationDate) > new Date() &&
                   (new Date(d.expirationDate).getTime() - new Date().getTime()) < 30 * 24 * 60 * 60 * 1000;
                 return (
-                  <div key={item.id} className={cn(ds.panelHover, isExpiring && 'border-amber-400/30')} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={cn(ds.panelHover, isExpiring && 'border-amber-400/30')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2712,7 +2712,7 @@ export default function EducationLensPage() {
                 };
                 const ResIcon = typeIcons[d.resourceType || 'other'] || Library;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <ResIcon className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2867,7 +2867,7 @@ export default function EducationLensPage() {
                 const tfCount = d.quizQuestions?.filter(q => q.type === 'true_false').length || 0;
                 const saCount = d.quizQuestions?.filter(q => q.type === 'short_answer').length || 0;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2911,7 +2911,7 @@ export default function EducationLensPage() {
       {/* ============================================================ */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

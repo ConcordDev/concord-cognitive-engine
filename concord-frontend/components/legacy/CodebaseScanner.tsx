@@ -204,8 +204,7 @@ export function CodebaseScanner() {
                     ? 'border-neon-cyan/50 bg-neon-cyan/10'
                     : 'border-zinc-800 bg-black/40 hover:border-zinc-600'
                 }`}
-                onClick={() => { setActive(cb); setAnalysis({} as Record<Tab, any>); }}
-              >
+                onClick={() => { setActive(cb); setAnalysis({} as Record<Tab, any>); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <span className="text-sm">{cb.name}</span>
                 <span className="text-[10px] text-zinc-500">{cb.summary.fileCount}f · {cb.summary.totalLinesOfCode} LOC</span>
                 <button

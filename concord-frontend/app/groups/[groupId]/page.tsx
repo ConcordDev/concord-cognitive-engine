@@ -246,8 +246,7 @@ function MembersSidebar({
           {/* Mobile backdrop */}
           <div
             className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-            onClick={onClose}
-          />
+            onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <motion.div
             initial={{ x: 300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}

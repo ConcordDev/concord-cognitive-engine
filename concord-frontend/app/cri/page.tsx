@@ -244,12 +244,11 @@ function CreateCRIModal({
   if (!open) return null;
 
   return (
-    <div className={ds.modalContainer} onClick={onClose}>
+    <div className={ds.modalContainer} onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className={ds.modalBackdrop} />
       <div
         className={cn(ds.modalPanel, 'max-w-md relative z-50')}
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h2 className={ds.heading2}>Create New CRI</h2>
           <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
@@ -330,12 +329,11 @@ function AddMemberModal({
   if (!open) return null;
 
   return (
-    <div className={ds.modalContainer} onClick={onClose}>
+    <div className={ds.modalContainer} onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className={ds.modalBackdrop} />
       <div
         className={cn(ds.modalPanel, 'max-w-md relative z-50')}
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h2 className={ds.heading2}>Add Member</h2>
           <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
@@ -414,12 +412,11 @@ function CreateProgramModal({
   if (!open) return null;
 
   return (
-    <div className={ds.modalContainer} onClick={onClose}>
+    <div className={ds.modalContainer} onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className={ds.modalBackdrop} />
       <div
         className={cn(ds.modalPanel, 'max-w-md relative z-50')}
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h2 className={ds.heading2}>Create Research Program</h2>
           <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
@@ -851,8 +848,7 @@ export default function CRIDashboardPage() {
                   <div
                     key={cri.id}
                     onClick={() => setSelectedCRI(cri.id)}
-                    className={cn(ds.panelHover, 'flex items-center gap-4')}
-                  >
+                    className={cn(ds.panelHover, 'flex items-center gap-4')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="p-3 rounded-lg bg-neon-purple/10 shrink-0">
                       <Building2 className="w-5 h-5 text-neon-purple" />
                     </div>
@@ -931,8 +927,7 @@ export default function CRIDashboardPage() {
                     <div
                       key={cri.id}
                       className="flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-lattice-elevated/50 cursor-pointer transition-colors"
-                      onClick={() => setSelectedCRI(cri.id)}
-                    >
+                      onClick={() => setSelectedCRI(cri.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <Building2 className="w-3.5 h-3.5 text-neon-purple shrink-0" />
                       <span className="text-gray-300 truncate">{cri.name}</span>
                       <ChevronRight className="w-3 h-3 text-gray-600 ml-auto shrink-0" />

@@ -255,8 +255,7 @@ function StoryViewer({
             const x = e.clientX - rect.left;
             if (x < rect.width / 3) goPrev();
             else goNext();
-          }}
-        >
+          }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {currentStory.imageUrl ? (
             <Image src={currentStory.imageUrl} alt="" fill className="object-cover" />
           ) : currentStory.content ? (

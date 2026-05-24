@@ -368,8 +368,7 @@ export function BoardWorkspace() {
                             onDragStart={() => setDragCardId(card.id)}
                             onDragEnd={() => setDragCardId(null)}
                             onClick={() => setOpenCardId(card.id)}
-                            className="rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-purple-500/40 cursor-pointer overflow-hidden transition-colors"
-                          >
+                            className="rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-purple-500/40 cursor-pointer overflow-hidden transition-colors" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                             {card.cover &&
                               (card.cover.type === 'color' ? (
                                 <div

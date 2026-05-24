@@ -47,7 +47,7 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
   const ppsf = data.sqft > 0 ? Math.round(data.price / data.sqft) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <aside className="w-full max-w-2xl h-full overflow-y-auto bg-[#0d1117] border-l border-cyan-500/30" onClick={e => e.stopPropagation()}>
         <header className="sticky top-0 z-10 px-4 py-2 border-b border-white/10 bg-[#0d1117]/95 backdrop-blur flex items-center gap-2">
           <MapPin className="w-4 h-4 text-cyan-400" />

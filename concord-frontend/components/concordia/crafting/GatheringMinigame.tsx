@@ -102,8 +102,7 @@ export function GatheringMinigame({ toolTier, resourceName, onComplete, onCancel
         <div
           className="relative h-10 bg-white/5 rounded-xl overflow-hidden cursor-pointer select-none"
           style={{ width: BAR_WIDTH }}
-          onClick={handleClick}
-        >
+          onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {/* Green zone */}
           <div
             className="absolute top-0 h-full rounded bg-green-500/30 border border-green-500/60 transition-all duration-150"

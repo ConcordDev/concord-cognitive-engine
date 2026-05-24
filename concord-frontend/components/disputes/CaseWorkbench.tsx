@@ -433,8 +433,8 @@ function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
           <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
             <Plus className="w-4 h-4 text-indigo-400" /> Open Dispute Case

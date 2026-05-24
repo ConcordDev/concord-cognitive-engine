@@ -86,8 +86,7 @@ export function StrategyLibrary() {
             <div key={s.id} className="lens-card">
               <div
                 className="flex items-center gap-2 cursor-pointer"
-                onClick={() => setExpanded(isExp ? null : s.id)}
-              >
+                onClick={() => setExpanded(isExp ? null : s.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-200">{s.name}</p>
                   <span className="inline-block text-xs bg-neon-purple/10 text-neon-purple px-2 py-0.5 rounded mt-1 capitalize">

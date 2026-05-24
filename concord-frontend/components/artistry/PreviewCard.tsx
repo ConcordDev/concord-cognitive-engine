@@ -225,8 +225,7 @@ function ImagePreviewRender({ preview }: { preview: ImagePreview }) {
   return (
     <div
       className={cn('relative overflow-hidden cursor-pointer', zoomed ? 'max-h-[600px]' : 'aspect-square')}
-      onClick={() => setZoomed(!zoomed)}
-    >
+      onClick={() => setZoomed(!zoomed)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <NextImage
         src={preview.imageUrl}
         alt="Image preview"

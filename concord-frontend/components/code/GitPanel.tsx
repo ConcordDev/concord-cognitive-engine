@@ -208,9 +208,9 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
 
       {diff && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
-          onClick={() => setDiff(null)}>
+          onClick={() => setDiff(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="bg-[#0d1117] border border-white/15 rounded-lg w-full max-w-2xl max-h-[80%] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <FileDiff className="w-3.5 h-3.5 text-blue-400" />
               <span className="text-xs font-mono text-white flex-1 truncate">{diff.path}</span>

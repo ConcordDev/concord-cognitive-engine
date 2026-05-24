@@ -257,8 +257,7 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
                         'rounded-lg border bg-zinc-900/50 transition-all cursor-pointer',
                         expandedDtu === dtu.id ? 'border-neon-cyan/30' : 'border-zinc-800/50 hover:border-zinc-700'
                       )}
-                      onClick={() => setExpandedDtu(expandedDtu === dtu.id ? null : dtu.id)}
-                    >
+                      onClick={() => setExpandedDtu(expandedDtu === dtu.id ? null : dtu.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 px-3 py-2">
                         <Database className="w-3 h-3 text-zinc-500 shrink-0" />
                         <span className="text-xs text-zinc-200 truncate flex-1">{dtu.title}</span>

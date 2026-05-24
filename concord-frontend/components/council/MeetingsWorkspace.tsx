@@ -678,9 +678,9 @@ export function MeetingsWorkspace() {
 
       {/* Schedule meeting modal */}
       {showCreate && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Schedule Meeting</h2>
                 <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Close">

@@ -2404,8 +2404,7 @@ export default function EnvironmentLensPage() {
       <div
         key={item.id}
         className={cn(ds.panelHover, 'group relative')}
-        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)}
-      >
+        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'truncate pr-2')}>{item.title}</h3>
           <div className="flex items-center gap-2 shrink-0">
@@ -2858,8 +2857,7 @@ export default function EnvironmentLensPage() {
         {detailItem === item.id && (
           <div
             className="mt-3 pt-3 border-t border-lattice-border space-y-2"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             {Boolean(d.notes) && (
               <div>
                 <p className={cn(ds.label, 'mb-0.5')}>Notes</p>
@@ -2878,7 +2876,7 @@ export default function EnvironmentLensPage() {
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}>
             <Edit3 className="w-3.5 h-3.5" /> Edit
           </button>
@@ -3627,9 +3625,9 @@ export default function EnvironmentLensPage() {
 
       {/* ---- Editor Modal ---- */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>

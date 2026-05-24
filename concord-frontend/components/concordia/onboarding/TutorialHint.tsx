@@ -83,12 +83,10 @@ function HelpMenu({
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="bg-black/90 border border-white/10 rounded-2xl p-5 min-w-[280px]"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex justify-between items-center mb-3">
           <h3 className="font-semibold text-white">Tutorials</h3>
           <button onClick={onClose} className="text-white/40 hover:text-white">

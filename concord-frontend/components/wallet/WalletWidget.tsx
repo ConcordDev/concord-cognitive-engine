@@ -121,8 +121,7 @@ function WalletWidget({ className, compact = false }: WalletWidgetProps) {
               <div
                 className="fixed inset-0 z-40"
                 onClick={() => setDropdownOpen(false)}
-                aria-hidden="true"
-              />
+                aria-hidden="true" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
               <motion.div
                 initial={{ opacity: 0, y: -8, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}

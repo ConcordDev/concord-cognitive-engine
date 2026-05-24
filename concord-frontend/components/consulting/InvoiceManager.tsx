@@ -143,8 +143,8 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
       </ul>
 
       {exportDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setExportDoc(null)}>
-          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setExportDoc(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-bold text-zinc-100">{exportDoc.number}</h4>
               <button onClick={downloadDoc} className="px-2 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-1">

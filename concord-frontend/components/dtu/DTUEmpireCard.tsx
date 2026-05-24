@@ -127,8 +127,7 @@ function DTUEmpireCardInner({
   return (
     <div
       onClick={() => onClick?.(dtu)}
-      className={`lens-card cursor-pointer border ${config.border} hover:${config.bg} transition-all group`}
-    >
+      className={`lens-card cursor-pointer border ${config.border} hover:${config.bg} transition-all group`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">

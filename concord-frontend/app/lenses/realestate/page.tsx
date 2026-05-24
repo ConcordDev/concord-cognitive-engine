@@ -1502,8 +1502,7 @@ export default function RealEstateLensPage() {
                         setSelectedActionItem(item.id);
                         setActiveTab('Listings');
                         openEditEditor(item);
-                      }}
-                    >
+                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{item.title}</p>
                         <p className="text-xs text-gray-500 truncate">{d.address}</p>
@@ -1548,8 +1547,7 @@ export default function RealEstateLensPage() {
                         setSelectedActionItem(item.id);
                         setActiveTab('Transactions');
                         openEditEditor(item);
-                      }}
-                    >
+                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{item.title}</p>
                         <p className="text-xs text-gray-500">
@@ -1772,8 +1770,7 @@ export default function RealEstateLensPage() {
                     <div key={item.id} className={ds.panel}>
                       <div
                         className="flex items-start justify-between cursor-pointer"
-                        onClick={() => setExpandedTxn(isExpanded ? null : item.id)}
-                      >
+                        onClick={() => setExpandedTxn(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className={cn(ds.heading3, 'text-base truncate')}>{item.title}</h3>
@@ -2224,8 +2221,7 @@ export default function RealEstateLensPage() {
                     <div
                       key={item.id}
                       className={ds.panelHover}
-                      onClick={() => openEditEditor(item)}
-                    >
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
@@ -2388,8 +2384,7 @@ export default function RealEstateLensPage() {
                     <div
                       key={item.id}
                       className={ds.panelHover}
-                      onClick={() => openEditEditor(item)}
-                    >
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
@@ -2565,8 +2560,7 @@ export default function RealEstateLensPage() {
                       key={item.id}
                       data-lens-theme="realestate"
                       className={ds.panelHover}
-                      onClick={() => openEditEditor(item)}
-                    >
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-start justify-between mb-2">
                         <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                           {item.title}
@@ -2652,7 +2646,7 @@ export default function RealEstateLensPage() {
       {/* ==================== EDITOR MODAL ==================== */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-3xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

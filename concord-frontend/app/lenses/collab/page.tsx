@@ -672,8 +672,7 @@ export default function CollabLensPage() {
                 <div
                   key={inv.id}
                   onClick={() => setInviteSessionId(inv.id)}
-                  className="cursor-pointer"
-                >
+                  className="cursor-pointer" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <InvitationCard invitation={inv} />
                 </div>
               ))

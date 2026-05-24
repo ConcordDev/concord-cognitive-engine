@@ -652,12 +652,10 @@ function RecipeDetailModal({ recipe, onClose }: { recipe: RecipeRow; onClose: ()
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="bg-black/95 border border-amber-500/30 rounded-2xl p-5 w-full max-w-md text-white"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-3 gap-2">
           <div>
             <div className={`text-xs inline-flex items-center gap-1 ${meta?.color ?? 'text-white/60'} mb-1`}>
@@ -1260,12 +1258,10 @@ function ListingModal({
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={() => !listSubmitting && onClose()}
-    >
+      onClick={() => !listSubmitting && onClose()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="bg-black/95 border border-amber-500/30 rounded-2xl p-5 w-full max-w-md text-white"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold">List on marketplace</h3>
           <button

@@ -589,9 +589,9 @@ export default function FoodLensPage() {
     const scaledCost = (d.cost || 0) * scaleFactor;
 
     return (
-      <div className={ds.modalBackdrop} onClick={() => setRecipeScaleId(null)}>
+      <div className={ds.modalBackdrop} onClick={() => setRecipeScaleId(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <div>
                 <h2 className={ds.heading2}>Recipe Scaler</h2>
@@ -730,7 +730,7 @@ export default function FoodLensPage() {
                     {quadrants[q].map(({ item, data }) => {
                       const foodCostPct = data.price > 0 ? (data.cost / data.price) * 100 : 0;
                       return (
-                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)}>
+                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div>
                             <p className="text-sm font-medium">{item.title}</p>
                             <p className={cn(ds.textMuted, 'text-xs')}>{data.section || data.category}</p>
@@ -1376,12 +1376,12 @@ export default function FoodLensPage() {
                     <div key={`${day}-${mealType}`}
                       className={cn('p-2 rounded-lg border border-lattice-border bg-lattice-surface min-h-[70px]',
                         'hover:border-neon-cyan/30 transition-colors cursor-pointer')}
-                      onClick={() => addMealQuick(day, mealType)}>
+                      onClick={() => addMealQuick(day, mealType)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       {meals.length > 0 ? meals.map(m => {
                         const md = m.data as unknown as FoodArtifact;
                         return (
                           <div key={m.id} className="group/meal flex items-center gap-1 text-xs p-1.5 rounded bg-neon-cyan/10 text-neon-cyan mb-1"
-                            onClick={e => { e.stopPropagation(); openEdit(m); }}>
+                            onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                             <span className="truncate flex-1">{m.title}</span>
                             {md.calories ? <span className="text-gray-500">{md.calories}cal</span> : null}
                             <button
@@ -1679,7 +1679,7 @@ export default function FoodLensPage() {
               {recipesWithNutrition.map(recipe => {
                 const d = recipe.data as unknown as FoodArtifact;
                 return (
-                  <div key={recipe.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(recipe)}>
+                  <div key={recipe.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(recipe)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div>
                       <p className="font-medium text-white">{recipe.title}</p>
                       <p className={ds.textMuted}>{d.servings || 1} servings - {d.category}</p>
@@ -1796,7 +1796,7 @@ export default function FoodLensPage() {
                   const d = item.data as unknown as FoodArtifact;
                   const daysLeft = d.expiryDate ? Math.ceil((new Date(d.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 999;
                   return (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)}>
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-white">{item.title}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
@@ -2156,9 +2156,9 @@ export default function FoodLensPage() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)}>
+      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <h2 className={ds.heading2}>{editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}</h2>
               <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
@@ -2612,7 +2612,7 @@ export default function FoodLensPage() {
           {items.slice(0, 5).map(item => {
             const d = item.data as unknown as FoodArtifact;
             return (
-              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)}>
+              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.title}</p>
                   <p className={ds.textMuted}>{d.type} {d.category ? `- ${d.category}` : ''}</p>

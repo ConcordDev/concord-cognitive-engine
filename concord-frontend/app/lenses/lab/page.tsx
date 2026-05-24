@@ -220,8 +220,7 @@ export default function LabLensPage() {
                 className={`lens-card cursor-pointer ${
                   selectedOrgan === (organ.name as string) ? 'border-neon-purple' : ''
                 }`}
-                onClick={() => setSelectedOrgan(organ.name as string)}
-              >
+                onClick={() => setSelectedOrgan(organ.name as string)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{String(organ.name)}</span>
                   <span

@@ -81,15 +81,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     <div
       className="fixed inset-0 z-[120] flex items-start justify-center bg-black/70 backdrop-blur-sm pt-[12vh] px-4"
       onClick={onClose}
-      role="presentation"
-    >
+      role="presentation" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="w-full max-w-xl rounded-xl border border-neon-cyan/30 bg-lattice-void shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
-      >
+        aria-label="Command palette" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center gap-2 border-b border-lattice-border px-3 py-2.5">
           <Search className="w-4 h-4 text-neon-cyan shrink-0" />
           <input

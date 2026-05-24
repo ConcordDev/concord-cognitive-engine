@@ -275,8 +275,7 @@ export default function StandardsLibrary() {
                 >
                   <div
                     className="p-4 cursor-pointer hover:bg-white/[0.03] transition-colors"
-                    onClick={() => setExpandedStandard(isExpanded ? null : std.id)}
-                  >
+                    onClick={() => setExpandedStandard(isExpanded ? null : std.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-mono font-bold px-2 py-1 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 whitespace-nowrap">

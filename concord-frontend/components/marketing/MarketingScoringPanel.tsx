@@ -167,9 +167,9 @@ export function MarketingScoringPanel() {
 
       {/* Editor modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-md max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} scoring model</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -210,9 +210,9 @@ export function MarketingScoringPanel() {
 
       {/* Apply modal */}
       {applyModel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setApplyModel(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setApplyModel(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-sm max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">Apply &ldquo;{applyModel.name}&rdquo;</h4>
               <button type="button" onClick={() => setApplyModel(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>

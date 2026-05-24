@@ -689,7 +689,7 @@ export default function NonprofitLensPage() {
     const isLybunt = d.lybunt as boolean;
     const isSybunt = d.sybunt as boolean;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className={cn(
@@ -795,7 +795,7 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const acked = d.acknowledged as boolean;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{d.donorName as string}</h3>
@@ -876,8 +876,7 @@ export default function NonprofitLensPage() {
       <div key={item.id} className={ds.panel}>
         <div
           className="cursor-pointer"
-          onClick={() => setExpandedGrant(isExpanded ? null : item.id)}
-        >
+          onClick={() => setExpandedGrant(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1 min-w-0">
               <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1019,7 +1018,7 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const pct = progressPct(d.raised as number, d.goal as number);
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1106,7 +1105,7 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const checkedIn = d.checkedIn as boolean;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className={cn(
@@ -1197,7 +1196,7 @@ export default function NonprofitLensPage() {
     const pct = progressPct(d.value as number, d.target as number);
     const trend = d.trend as string;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1285,7 +1284,7 @@ export default function NonprofitLensPage() {
     const pct = budgeted > 0 ? progressPct(spent, budgeted) : 0;
 
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1369,7 +1368,7 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const status = item.meta?.status || 'active';
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <h3 className={cn(ds.heading3, 'truncate flex-1')}>{item.title}</h3>
           <span className={ds.badge(STATUS_COLORS[status] || 'gray-400')}>{String(status)}</span>
@@ -1705,7 +1704,7 @@ export default function NonprofitLensPage() {
       {/* Detail Modal */}
       {detailItem && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setDetailItem(null)} />
+          <div className={ds.modalBackdrop} onClick={() => setDetailItem(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1804,7 +1803,7 @@ export default function NonprofitLensPage() {
       {/* Gift Entry Modal */}
       {showGiftEntry && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowGiftEntry(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowGiftEntry(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1887,7 +1886,7 @@ export default function NonprofitLensPage() {
       {/* Editor Modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

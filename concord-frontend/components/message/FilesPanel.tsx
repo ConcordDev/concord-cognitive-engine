@@ -160,8 +160,8 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
       )}
 
       {preview && (
-        <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-6" onClick={() => setPreview(null)}>
-          <div className="bg-[#0d1117] border border-white/10 rounded-lg p-4 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-6" onClick={() => setPreview(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-[#0d1117] border border-white/10 rounded-lg p-4 max-w-2xl w-full" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-semibold text-gray-200 truncate">{preview.name}</span>
               <button onClick={() => setPreview(null)} className="ml-auto text-gray-400 text-lg">×</button>

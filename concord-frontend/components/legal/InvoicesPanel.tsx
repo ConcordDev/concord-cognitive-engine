@@ -102,7 +102,7 @@ export function InvoicesPanel() {
               const isOpen = expanded === inv.id;
               return (
                 <li key={inv.id} className="hover:bg-white/[0.02]">
-                  <div onClick={() => setExpanded(isOpen ? null : inv.id)} className="px-4 py-2.5 cursor-pointer flex items-center gap-3">
+                  <div onClick={() => setExpanded(isOpen ? null : inv.id)} className="px-4 py-2.5 cursor-pointer flex items-center gap-3" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <FileText className={cn('w-3.5 h-3.5', inv.status === 'paid' ? 'text-emerald-400' : overdue ? 'text-rose-400' : 'text-amber-400')} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white flex items-center gap-2">

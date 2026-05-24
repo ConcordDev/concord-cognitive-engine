@@ -218,8 +218,7 @@ export function AutomationView({
                   onClick={(e) => handleCanvasClick(e, lane.id)}
                   onMouseMove={(e) => handlePointDrag(e, lane.id)}
                   onMouseUp={handlePointDragEnd}
-                  onMouseLeave={handlePointDragEnd}
-                >
+                  onMouseLeave={handlePointDragEnd} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   {/* Beat grid */}
                   {Array.from({ length: Math.ceil(lengthBeats / 4) }).map((_, i) => (
                     <div

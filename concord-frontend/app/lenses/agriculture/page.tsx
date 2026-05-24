@@ -675,8 +675,7 @@ export default function AgricultureLensPage() {
                 key={item.id}
                 data-lens-theme="agriculture"
                 className={ds.panelHover}
-                onClick={() => openEdit(item)}
-              >
+                onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start justify-between mb-2">
                   <h3 className={ds.heading3}>{item.title}</h3>
                   {renderStatusBadge(d.status)}
@@ -881,12 +880,11 @@ export default function AgricultureLensPage() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)}>
+      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.modalContainer}>
           <div
             className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')}
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <h2 className={ds.heading2}>
                 {editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}
@@ -1427,8 +1425,7 @@ export default function AgricultureLensPage() {
                 <div
                   key={item.id}
                   className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer"
-                  onClick={() => openEdit(item)}
-                >
+                  onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{item.title}</p>
                     <p className={ds.textMuted}>{d.type}</p>

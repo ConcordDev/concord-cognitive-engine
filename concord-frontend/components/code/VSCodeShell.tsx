@@ -134,8 +134,7 @@ export function VSCodeShell({
                     ? 'bg-[#1e1e1e] text-[#d4d4d4]'
                     : 'bg-[#2d2d30] text-[#858585] hover:text-[#d4d4d4]'
                 )}
-                onClick={() => onSelectTab?.(tab)}
-              >
+                onClick={() => onSelectTab?.(tab)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <span className="truncate max-w-[160px]">
                   {tab.modified && <span className="text-yellow-400">●</span>}
                   {tab.label}

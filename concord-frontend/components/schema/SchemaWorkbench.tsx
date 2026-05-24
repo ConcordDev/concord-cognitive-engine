@@ -340,8 +340,8 @@ function RegistryPanel({
       </div>
 
       {history && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)}>
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{history.name} — version history</h4>
               <button onClick={() => setHistory(null)} className="text-zinc-500 hover:text-zinc-200"><X className="h-4 w-4" /></button>

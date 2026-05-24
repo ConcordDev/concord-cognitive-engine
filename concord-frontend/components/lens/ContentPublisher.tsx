@@ -238,7 +238,7 @@ export function ContentPublisher({
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

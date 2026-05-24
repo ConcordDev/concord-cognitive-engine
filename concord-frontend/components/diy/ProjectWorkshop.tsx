@@ -398,9 +398,8 @@ export function ProjectWorkshop() {
       {showCreate && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowCreate(false)}
-        >
-          <div className={cn(ds.panel, 'w-full max-w-md')} onClick={(e) => e.stopPropagation()}>
+          onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className={cn(ds.panel, 'w-full max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className={ds.heading3}>New Project</h3>
               <button onClick={() => setShowCreate(false)} className={ds.btnGhost} aria-label="Close">

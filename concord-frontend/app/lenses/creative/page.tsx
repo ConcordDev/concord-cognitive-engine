@@ -731,7 +731,7 @@ export default function CreativeLensPage() {
           const d = item.data as Record<string, unknown>;
           const versions = parseSafe<{ v: number; date: string; note: string }[]>(d.versionHistory, []);
           return (
-            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               {/* Asset preview placeholder */}
               <div className="w-full h-28 rounded-lg bg-lattice-elevated/70 flex items-center justify-center mb-3 border border-lattice-border">
                 {categoryIcon(String(d.category))}
@@ -828,7 +828,7 @@ export default function CreativeLensPage() {
                 const fs = String(d.feedbackStatus || 'pending') as FeedbackStatus;
                 const FsIcon = feedbackIcons[fs] || Clock;
                 return (
-                  <div key={item.id} className={cn('p-3 rounded-lg border transition-colors cursor-pointer', fs === 'addressed' ? 'bg-green-500/5 border-green-500/20' : fs === 'rejected' ? 'bg-red-500/5 border-red-500/20' : 'bg-lattice-elevated/30 border-lattice-border hover:border-neon-cyan/50')} onClick={() => openDetail(item)}>
+                  <div key={item.id} className={cn('p-3 rounded-lg border transition-colors cursor-pointer', fs === 'addressed' ? 'bg-green-500/5 border-green-500/20' : fs === 'rejected' ? 'bg-red-500/5 border-red-500/20' : 'bg-lattice-elevated/30 border-lattice-border hover:border-neon-cyan/50')} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={cn(ds.textMono, 'text-xs text-neon-blue')}>v{String(d.version)}</span>
@@ -888,7 +888,7 @@ export default function CreativeLensPage() {
                   {shots.map(item => {
                     const d = item.data as Record<string, unknown>;
                     return (
-                      <div key={item.id} className={cn(ds.panel, 'cursor-pointer hover:border-neon-cyan/50 transition-colors')} onClick={() => openDetail(item)}>
+                      <div key={item.id} className={cn(ds.panel, 'cursor-pointer hover:border-neon-cyan/50 transition-colors')} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-center gap-2 mb-1">
                           <span className={cn(ds.textMono, 'text-xs text-neon-blue')}>#{String(d.shotNumber || '-')}</span>
                           <h4 className="text-sm font-medium text-white truncate">{item.title}</h4>
@@ -961,7 +961,7 @@ export default function CreativeLensPage() {
           const isApproved = d.approvalGate === true;
 
           return (
-            <div key={item.id} className={cn(ds.panelHover, isApproved && 'border-green-500/30')} onClick={() => openDetail(item)}>
+            <div key={item.id} className={cn(ds.panelHover, isApproved && 'border-green-500/30')} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0">
                   <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1286,7 +1286,7 @@ export default function CreativeLensPage() {
 
     return (
       <>
-        <div className={ds.modalBackdrop} onClick={() => setShowDetail(false)} />
+        <div className={ds.modalBackdrop} onClick={() => setShowDetail(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         <div className={ds.modalContainer}>
           <div className={cn(ds.modalPanel, 'max-w-2xl')}>
             <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1558,7 +1558,7 @@ export default function CreativeLensPage() {
       {/* Editor Modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

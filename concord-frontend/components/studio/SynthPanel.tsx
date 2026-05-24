@@ -33,8 +33,7 @@ function Knob({ value, min, max, label, onChange, color = 'neon-cyan' }: {
         onClick={() => {
           const next = normalized + 0.1 > 1 ? 0 : normalized + 0.1;
           onChange(min + next * (max - min));
-        }}
-      >
+        }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div
           className={`absolute w-0.5 h-3 bg-${color} rounded-full left-1/2 -translate-x-1/2 origin-bottom`}
           style={{ bottom: '50%', transform: `translateX(-50%) rotate(${angle}deg)` }}

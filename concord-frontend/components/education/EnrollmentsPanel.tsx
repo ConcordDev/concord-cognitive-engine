@@ -52,7 +52,7 @@ export function EnrollmentsPanel({ onSelectCourse }: { onSelectCourse?: (courseI
                 <div className="w-12 h-10 bg-gradient-to-br from-cyan-900/40 to-violet-900/30 rounded flex items-center justify-center flex-shrink-0">
                   <BookOpen className="w-4 h-4 text-cyan-500/60" />
                 </div>
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelectCourse?.(e.courseId)}>
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelectCourse?.(e.courseId)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="text-sm text-white truncate">{e.course?.title || 'Course'}</div>
                   <div className="text-[10px] text-gray-500 truncate">{e.course?.instructor || e.course?.institution}</div>
                   <div className="mt-1 h-1 bg-white/10 rounded-full overflow-hidden">

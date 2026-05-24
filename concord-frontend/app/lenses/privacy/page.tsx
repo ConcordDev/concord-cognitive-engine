@@ -342,7 +342,7 @@ function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div className={ds.modalBackdrop} onClick={onCancel}>
+    <div className={ds.modalBackdrop} onClick={onCancel} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className={ds.modalContainer}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}

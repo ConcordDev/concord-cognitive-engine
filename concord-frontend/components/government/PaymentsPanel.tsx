@@ -176,8 +176,8 @@ export function PaymentsPanel() {
 
       {/* Checkout modal */}
       {checkout && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCheckout(null)}>
-          <div className="bg-[#0d1117] border border-cyan-500/30 rounded-lg w-full max-w-sm p-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCheckout(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-[#0d1117] border border-cyan-500/30 rounded-lg w-full max-w-sm p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h3 className="text-sm font-semibold text-white mb-1">Checkout</h3>
             <p className="text-xs text-gray-400 mb-3">{checkout.description}</p>
             <div className="text-2xl font-bold text-emerald-300 mb-3">{money(checkout.amountUsd)}</div>

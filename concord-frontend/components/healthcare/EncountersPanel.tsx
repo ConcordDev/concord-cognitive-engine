@@ -228,9 +228,9 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
       </div>
 
       {avsText !== null && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setAvsText(null)}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setAvsText(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <FileText className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-xs font-semibold text-gray-200 flex-1">After-visit summary</span>

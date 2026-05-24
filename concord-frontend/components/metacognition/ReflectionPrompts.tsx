@@ -176,8 +176,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
                 <div key={r.id} className="lens-card">
                   <div
                     className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => setExpanded(isExp ? null : r.id)}
-                  >
+                    onClick={() => setExpanded(isExp ? null : r.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{r.title}</p>
                       <p className="text-xs text-gray-500">

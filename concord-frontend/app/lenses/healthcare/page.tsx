@@ -1183,7 +1183,7 @@ export default function HealthcareLensPage() {
                 : 'bg-gray-600'
           )}
         />
-        <div className={cn(ds.panelHover, 'flex-1')} onClick={() => openEditEditor(item)}>
+        <div className={cn(ds.panelHover, 'flex-1')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <TypeIcon className="w-4 h-4 text-gray-400" />
@@ -1215,7 +1215,7 @@ export default function HealthcareLensPage() {
     const daysLeft = calculateDaysRemaining(d.endDate);
     const adherence = d.adherencePercent ?? 0;
     return (
-      <div className={cn(ds.panelHover, 'space-y-2')} onClick={() => openEditEditor(item)}>
+      <div className={cn(ds.panelHover, 'space-y-2')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
@@ -1325,8 +1325,7 @@ export default function HealthcareLensPage() {
     return (
       <div
         className={cn(ds.panelHover, d.isCritical && 'border-red-500/50 pulse-critical-glow')}
-        onClick={() => openEditEditor(item)}
-      >
+        onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
             <div className="flex items-center gap-2">
@@ -1399,7 +1398,7 @@ export default function HealthcareLensPage() {
     const overallProgress =
       goals.length > 0 ? Math.round(goals.reduce((s, g) => s + g.percent, 0) / goals.length) : 0;
     return (
-      <div className={cn(ds.panelHover, 'space-y-3')} onClick={() => openEditEditor(item)}>
+      <div className={cn(ds.panelHover, 'space-y-3')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between">
           <div>
             <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
@@ -2109,8 +2108,7 @@ export default function HealthcareLensPage() {
                     >
                       <div
                         className={cn(ds.panelHover, 'mb-2')}
-                        onClick={() => openDetailDrawer(item)}
-                      >
+                        onClick={() => openDetailDrawer(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Users className="w-5 h-5 text-neon-blue" />
@@ -2162,8 +2160,7 @@ export default function HealthcareLensPage() {
                       <div
                         key={item.id}
                         className={ds.panelHover}
-                        onClick={() => openDetailDrawer(item)}
-                      >
+                        onClick={() => openDetailDrawer(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                             {item.title}
@@ -2240,8 +2237,7 @@ export default function HealthcareLensPage() {
                       <div
                         key={item.id}
                         className={ds.panelHover}
-                        onClick={() => openEditEditor(item)}
-                      >
+                        onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                             {item.title}
@@ -2294,8 +2290,7 @@ export default function HealthcareLensPage() {
                       <div
                         key={item.id}
                         className={ds.panelHover}
-                        onClick={() => openEditEditor(item)}
-                      >
+                        onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                             {item.title}
@@ -2466,8 +2461,7 @@ export default function HealthcareLensPage() {
                         <div
                           key={item.id}
                           className={cn(ds.panelHover, 'space-y-2')}
-                          onClick={() => openEditEditor(item)}
-                        >
+                          onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div className="flex items-start justify-between">
                             <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
                             <StatusBadge status={d.status} />
@@ -2658,8 +2652,7 @@ export default function HealthcareLensPage() {
                               <div
                                 key={l.id}
                                 className="flex items-center justify-between text-xs p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer"
-                                onClick={() => openEditEditor(l)}
-                              >
+                                onClick={() => openEditEditor(l)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                                 <span className="text-gray-300 truncate flex-1">{l.title}</span>
                                 <StatusBadge status={ld.status} />
                               </div>
@@ -2783,8 +2776,7 @@ export default function HealthcareLensPage() {
                             <div
                               key={med.id}
                               className="p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer text-xs"
-                              onClick={() => openEditEditor(med)}
-                            >
+                              onClick={() => openEditEditor(med)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-gray-200 font-medium">{med.title}</span>
                                 {md.isPRN && <span className={ds.badge('neon-blue')}>PRN</span>}
@@ -2832,8 +2824,7 @@ export default function HealthcareLensPage() {
                                   ? 'bg-red-500/10 border border-red-500/30 pulse-critical-glow'
                                   : 'bg-lattice-surface hover:bg-lattice-elevated'
                               )}
-                              onClick={() => openEditEditor(lab)}
-                            >
+                              onClick={() => openEditEditor(lab)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-gray-200 font-medium">{lab.title}</span>
                                 {ld.isCritical && (
@@ -2946,8 +2937,7 @@ export default function HealthcareLensPage() {
                                 <div
                                   key={enc.id}
                                   className="flex items-center justify-between p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer text-xs"
-                                  onClick={() => openEditEditor(enc)}
-                                >
+                                  onClick={() => openEditEditor(enc)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                                   <div className="flex items-center gap-2">
                                     <Calendar className="w-3 h-3 text-neon-blue" />
                                     <span className="text-gray-200 font-medium">{enc.title}</span>
@@ -2981,7 +2971,7 @@ export default function HealthcareLensPage() {
       {/* ============================================================ */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-3xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

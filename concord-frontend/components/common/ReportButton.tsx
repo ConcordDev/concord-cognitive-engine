@@ -100,7 +100,7 @@ export function ReportButton({
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-50 bg-black/50" onClick={handleClose} />
+            <div className="fixed inset-0 z-50 bg-black/50" onClick={handleClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

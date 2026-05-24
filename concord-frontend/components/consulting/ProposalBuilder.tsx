@@ -131,8 +131,8 @@ export function ProposalBuilder() {
       </ul>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-bold text-zinc-100 mb-3">New Proposal</h4>
             <div className="space-y-2">
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Proposal title"
@@ -162,8 +162,8 @@ export function ProposalBuilder() {
       )}
 
       {signFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSignFor(null)}>
-          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSignFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-bold text-zinc-100 mb-1">E-signature acceptance</h4>
             <p className="text-[10px] text-zinc-500 mb-3">Typing a name records a binding acceptance with a timestamp.</p>
             <input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Signer full name"

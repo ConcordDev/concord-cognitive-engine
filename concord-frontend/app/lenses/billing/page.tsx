@@ -634,8 +634,7 @@ export default function BillingPage() {
                       ? 'border-neon-cyan shadow-lg shadow-neon-cyan/20'
                       : 'border-lattice-border hover:border-gray-600'
                   }`}
-                  onClick={() => setSelectedPackage(pkg.id)}
-                >
+                  onClick={() => setSelectedPackage(pkg.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   {pkg.bonus > 0 && (
                     <div className="absolute -top-2 -right-2 px-2 py-1 bg-neon-green text-white text-xs font-bold rounded-full">
                       +{Math.round(pkg.bonus * 100)}%

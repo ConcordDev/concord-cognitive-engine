@@ -138,7 +138,7 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
           {robots.map(robot => (
             <div key={robot.id}
               className={`panel p-3 flex items-center justify-between cursor-pointer transition-colors ${selectedId === robot.id ? 'ring-1 ring-neon-cyan/50 bg-neon-cyan/5' : 'hover:bg-white/5'}`}
-              onClick={() => onSelect?.(robot)}>
+              onClick={() => onSelect?.(robot)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center gap-3">
                 <Bot className="w-5 h-5 text-neon-cyan shrink-0" />
                 <div>
@@ -154,7 +154,7 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <select value={robot.status} onChange={e => updateStatus(robot.id, e.target.value)}
                   disabled={busy === robot.id}
                   className="bg-black/30 border border-white/10 rounded px-2 py-1 text-[11px]">

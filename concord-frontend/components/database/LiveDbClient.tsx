@@ -510,8 +510,7 @@ export function LiveDbClient() {
                 className={`rounded border p-2 cursor-pointer transition-colors ${activeConnId === c.id
                   ? 'border-neon-cyan/40 bg-neon-cyan/5'
                   : 'border-lattice-border hover:bg-lattice-surface'}`}
-                onClick={() => setActiveConnId(c.id)}
-              >
+                onClick={() => setActiveConnId(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-200">
                     <span className="w-2 h-2 rounded-full" style={{ background: c.color }} />

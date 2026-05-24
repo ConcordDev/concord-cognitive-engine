@@ -124,8 +124,8 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
       </ul>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-bold text-zinc-100 mb-3">Share Deliverable</h4>
             <div className="space-y-2">
               <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Deliverable title"
@@ -152,8 +152,8 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
       )}
 
       {respondFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRespondFor(null)}>
-          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRespondFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-bold text-zinc-100 mb-1">Client reply — {respondFor.title}</h4>
             <p className="text-[10px] text-zinc-500 mb-3">Record the decision a client made on this shared deliverable.</p>
             <div className="space-y-2">

@@ -1066,8 +1066,7 @@ export default function AffectLensPage() {
                       <div key={i} className="lens-card text-sm">
                         <div
                           className="flex items-center gap-3 cursor-pointer"
-                          onClick={() => setExpandedEvent(isExpanded ? null : i)}
-                        >
+                          onClick={() => setExpandedEvent(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div className="w-1 h-8 rounded-full bg-gray-700 shrink-0 relative">
                             <div
                               className={`absolute inset-0 rounded-full ${

@@ -207,8 +207,7 @@ export function QuestGraphEditor() {
                   className={`absolute w-[140px] cursor-move rounded-md border-2 px-2 py-1.5 text-[10px] ${
                     selected === n.id ? 'ring-2 ring-pink-300' : ''
                   } ${linkFrom === n.id ? 'ring-2 ring-amber-400' : ''}`}
-                  style={{ left: n.x, top: n.y, borderColor: KIND_COLOR[n.kind] ?? '#888', background: '#0f172a' }}
-                >
+                  style={{ left: n.x, top: n.y, borderColor: KIND_COLOR[n.kind] ?? '#888', background: '#0f172a' }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="font-semibold text-pink-100">{n.title}</div>
                   <div className="capitalize text-pink-600">{n.kind}</div>
                 </div>

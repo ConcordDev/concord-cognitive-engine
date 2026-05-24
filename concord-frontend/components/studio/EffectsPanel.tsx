@@ -69,7 +69,7 @@ function EffectSlot({
       effect.enabled ? 'bg-white/5 border-neon-purple/20' : 'bg-black/20 border-white/5'
     )}>
       {/* Header */}
-      <div className="flex items-center gap-2 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+      <div className="flex items-center gap-2 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <GripVertical className="w-3 h-3 text-gray-600 cursor-grab" />
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}

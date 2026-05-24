@@ -161,8 +161,7 @@ export function VideoLessonPlayer() {
                 onClick={e => {
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   seek(Math.round(((e.clientX - rect.left) / rect.width) * duration));
-                }}
-              >
+                }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${pct}%` }} />
               </div>
               <div className="flex items-center gap-3">

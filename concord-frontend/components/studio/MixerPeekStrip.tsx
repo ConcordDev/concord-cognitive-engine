@@ -136,8 +136,7 @@ export default function MixerPeekStrip({
                 className={cn(
                   'rounded border p-2 flex flex-col items-center gap-2 cursor-pointer transition-colors',
                   isSelected ? 'border-white/30 bg-white/[0.04]' : 'border-white/10 hover:bg-white/[0.02]'
-                )}
-              >
+                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="text-[10px] font-mono text-zinc-300 truncate w-full text-center">{t.name}</div>
                 <div className="flex gap-1 text-[8px]">
                   <button

@@ -574,8 +574,7 @@ export default function CalendarLensPage() {
                   !isCurrentMonth && 'bg-lattice-deep/30',
                   isSelected && 'bg-neon-cyan/5',
                   isToday(date) && 'bg-neon-blue/10'
-                )}
-              >
+                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between mb-1">
                   <span
                     className={cn(
@@ -691,8 +690,7 @@ export default function CalendarLensPage() {
                         setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
                         setEditingEventId(null);
                         setShowCreateModal(true);
-                      }}
-                    >
+                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       {hourEvents.map((event) => {
                         const start = new Date(event.startDate);
                         const end = new Date(event.endDate);
@@ -792,8 +790,7 @@ export default function CalendarLensPage() {
                     setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
                     setEditingEventId(null);
                     setShowCreateModal(true);
-                  }}
-                >
+                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   {hourEvents.map((event) => {
                     const start = new Date(event.startDate);
                     const end = new Date(event.endDate);
@@ -877,8 +874,7 @@ export default function CalendarLensPage() {
                       onClick={() => {
                         setSelectedEvent(event);
                         setShowEventModal(true);
-                      }}
-                    >
+                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       {/* Artwork gradient */}
                       <div
                         className="w-full h-20 rounded-md mb-2 flex items-center justify-center"

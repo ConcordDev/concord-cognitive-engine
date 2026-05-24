@@ -1077,8 +1077,7 @@ export default function MetacognitionLensPage() {
                     <div key={id} className="lens-card">
                       <div
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setExpandedPrediction(expanded ? null : id)}
-                      >
+                        onClick={() => setExpandedPrediction(expanded ? null : id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         {isResolved ? (
                           isCorrect ? (
                             <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />

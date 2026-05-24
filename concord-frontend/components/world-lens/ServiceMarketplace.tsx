@@ -340,8 +340,7 @@ export default function ServiceMarketplace() {
         onClick={() => setSelectedId(listing.id)}
         className={`bg-white/[0.03] border border-white/10 rounded-xl cursor-pointer hover:border-white/20 hover:bg-white/[0.05] transition-all ${
           isGrid ? 'p-4' : 'p-4 flex items-start gap-4'
-        }`}
-      >
+        }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         {/* Avatar */}
         <div
           className={`${listing.avatarColor} w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0`}

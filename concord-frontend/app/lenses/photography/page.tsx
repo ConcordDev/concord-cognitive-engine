@@ -665,8 +665,7 @@ export default function PhotographyPage() {
               className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center cursor-pointer hover:border-sky-500/30 transition-colors"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
-              onDrop={e => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }}
-            >
+              onDrop={e => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
               {uploadPreview ? (
                 <Image src={uploadPreview} alt="Preview" width={400} height={192} className="max-h-48 mx-auto rounded-lg mb-2 w-auto" />

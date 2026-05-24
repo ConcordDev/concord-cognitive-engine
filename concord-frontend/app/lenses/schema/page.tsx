@@ -395,7 +395,7 @@ function SchemaCard({ schema }: { schema: Record<string, unknown> }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="panel p-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+    <div className="panel p-4 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold">{schema.name as string}</h3>

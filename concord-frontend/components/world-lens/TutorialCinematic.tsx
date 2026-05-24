@@ -109,8 +109,7 @@ export default function TutorialCinematic({ onDone, force = false }: Props) {
     <div
       className="fixed inset-0 z-[80] bg-black flex items-center justify-center pointer-events-auto"
       style={{ opacity, transition: `opacity ${FADE_MS}ms ease-in-out` }}
-      onClick={skip}
-    >
+      onClick={skip} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       {/* Letterbox bars for cinematic feel */}
       <div className="absolute top-0 left-0 right-0 h-16 bg-black z-10" />
       <div className="absolute bottom-0 left-0 right-0 h-16 bg-black z-10" />

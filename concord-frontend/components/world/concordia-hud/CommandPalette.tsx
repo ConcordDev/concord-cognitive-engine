@@ -132,8 +132,7 @@ export function CommandPalette() {
       data-testid="hud-command-palette"
       role="dialog"
       aria-label="Concordia command palette"
-      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
-    >
+      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="w-[28rem] max-h-[60vh] bg-zinc-950 border border-zinc-700/60 rounded-lg shadow-2xl flex flex-col">
         <input
           ref={inputRef}

@@ -76,9 +76,9 @@ export default function SecretsCodex({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className={ds.modalBackdrop} onClick={onClose}>
+    <div className={ds.modalBackdrop} onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className={ds.modalContainer}>
-        <div onClick={(e) => e.stopPropagation()} className={`${ds.modalPanel} max-w-2xl p-6 max-h-[78vh] overflow-y-auto`}>
+        <div onClick={(e) => e.stopPropagation()} className={`${ds.modalPanel} max-w-2xl p-6 max-h-[78vh] overflow-y-auto`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex justify-between items-center mb-3 pb-2 border-b border-lattice-border">
             <h2 className={`${ds.heading2} tracking-wider uppercase`}>Secrets Codex</h2>
             <button onClick={onClose} className={ds.btnGhost}>Close</button>

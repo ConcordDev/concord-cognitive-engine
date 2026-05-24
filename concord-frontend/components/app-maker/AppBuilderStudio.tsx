@@ -345,8 +345,7 @@ function CanvasEditor({ project, run, reload }: SubProps) {
           onMouseLeave={() => setDragId(null)}
           onClick={(e) => { if (e.target === canvasRef.current) setSelected(null); }}
           className="relative bg-[#020617] border border-lattice-edge rounded-lg overflow-hidden h-[460px]"
-          style={{ backgroundImage: 'radial-gradient(circle, #1e293b 1px, transparent 1px)', backgroundSize: '20px 20px' }}
-        >
+          style={{ backgroundImage: 'radial-gradient(circle, #1e293b 1px, transparent 1px)', backgroundSize: '20px 20px' }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {elements.length === 0 && (
             <p className="absolute inset-0 flex items-center justify-center text-xs text-gray-600 pointer-events-none">
               Click an element from the palette to add it, then drag to position.

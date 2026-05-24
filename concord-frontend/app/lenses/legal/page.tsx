@@ -1139,8 +1139,7 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated transition-colors cursor-pointer"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
                         <div className="min-w-0">
@@ -1178,8 +1177,7 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-red-500/5 border border-red-500/20 cursor-pointer hover:bg-red-500/10 transition-colors"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <XCircle className="w-4 h-4 text-red-400 shrink-0" />
                         <div className="min-w-0">
@@ -1217,8 +1215,7 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated transition-colors cursor-pointer"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <Briefcase className="w-4 h-4 text-neon-blue shrink-0" />
                         <div className="min-w-0">
@@ -1256,8 +1253,7 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated transition-colors cursor-pointer"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <AlertCircle
                           className={cn(
@@ -1380,7 +1376,7 @@ export default function LegalLensPage() {
       {filtered.map((item) => {
         const d = item.data as unknown as DocumentData;
         return (
-          <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+          <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2 min-w-0">
                 <FileText className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -1682,8 +1678,7 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className={cn(ds.panelHover, 'flex items-center gap-3')}
-                      onClick={() => openEditEditor(item)}
-                    >
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <EvtIcon className="w-5 h-5 text-neon-blue shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -1750,7 +1745,7 @@ export default function LegalLensPage() {
             const d = item.data as unknown as ContactData;
             const ContactIcon = contactTypeIcons[d.contactType || 'client'] || Users;
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-neon-blue/20 flex items-center justify-center shrink-0">
                     <ContactIcon className="w-5 h-5 text-neon-blue" />
@@ -1813,7 +1808,7 @@ export default function LegalLensPage() {
         filtered.map((item) => {
           const d = item.data as unknown as ContractData;
           return (
-            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between mb-2">
                 <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                 <StatusBadge status={d.status} />
@@ -1923,8 +1918,7 @@ export default function LegalLensPage() {
                   d.status === 'overdue' && 'border-red-500/30',
                   d.status === 'due_soon' && 'border-amber-400/30'
                 )}
-                onClick={() => openEditEditor(item)}
-              >
+                onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <CIcon
@@ -2008,7 +2002,7 @@ export default function LegalLensPage() {
 
     return (
       <>
-        <div className={ds.modalBackdrop} onClick={() => setShowDetailPanel(false)} />
+        <div className={ds.modalBackdrop} onClick={() => setShowDetailPanel(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         <div className={ds.modalContainer}>
           <div className={cn(ds.modalPanel, 'max-w-3xl')}>
             <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -2280,7 +2274,7 @@ export default function LegalLensPage() {
 
     return (
       <>
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         <div className={ds.modalContainer}>
           <div className={cn(ds.modalPanel, 'max-w-2xl')}>
             <div className="flex items-center justify-between p-4 border-b border-lattice-border">

@@ -197,8 +197,7 @@ export default function ReplaySpectator({
                   backgroundColor: evt.type === 'disaster' ? '#f59e0b' : evt.type === 'milestone' ? '#eab308' : evt.type === 'validate' ? '#22c55e' : '#3b82f6',
                 }}
                 title={evt.description}
-                onClick={() => handleSeek(evt.timestamp)}
-              />
+                onClick={() => handleSeek(evt.timestamp)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
             ))}
             {/* Playhead */}
             <div className="absolute w-0.5 h-full bg-white" style={{ left: `${(currentTime / duration) * 100}%` }} />
@@ -215,7 +214,7 @@ export default function ReplaySpectator({
           </div>
           {(currentMode === 'replay' ? visibleEvents : activeReplay.events).map((evt, i) => (
             <div key={i} className={`flex items-start gap-2 p-1.5 rounded text-xs ${evt.timestamp <= currentTime ? 'bg-white/5' : 'opacity-30'}`}
-              onClick={() => currentMode === 'replay' && handleSeek(evt.timestamp)}>
+              onClick={() => currentMode === 'replay' && handleSeek(evt.timestamp)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <span>{eventTypeIcons[evt.type] || '•'}</span>
               <div className="flex-1 min-w-0">
                 <span className={eventTypeColors[evt.type] || 'text-white/60'}>{evt.description}</span>

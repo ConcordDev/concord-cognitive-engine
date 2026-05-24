@@ -235,8 +235,7 @@ export default function ReplayForensics() {
         {/* Timeline bar */}
         <div
           className="relative h-8 bg-white/5 rounded-lg cursor-pointer group"
-          onClick={handleTimelineClick}
-        >
+          onClick={handleTimelineClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {/* Time markers */}
           {[0, 25, 50, 75, 100].map((pct) => (
             <div

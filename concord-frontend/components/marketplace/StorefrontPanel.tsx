@@ -325,11 +325,10 @@ export function StorefrontPanel() {
 
       {/* Cart drawer */}
       {showCart && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setShowCart(false)}>
+        <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setShowCart(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
             className="w-full max-w-md bg-[#0d1117] border-l border-orange-500/20 h-full overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
               <ShoppingCart className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200">Your cart</span>

@@ -524,8 +524,7 @@ export default function SmartNotifications({
                 onClick={() => {
                   handleRead(primary.id);
                   handleClick(primary.id);
-                }}
-              >
+                }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 {/* Score Badge */}
                 <div
                   className={`shrink-0 w-10 h-10 rounded-lg ${scoreBg(primary.importanceScore)} flex flex-col items-center justify-center`}

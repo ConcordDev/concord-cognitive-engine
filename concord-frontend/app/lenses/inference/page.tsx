@@ -560,8 +560,7 @@ export default function InferenceLensPage() {
               <div
                 key={entry.id}
                 className="lens-card cursor-pointer hover:bg-lattice-border/30 transition-colors"
-                onClick={() => setExpandedHistoryId(expandedHistoryId === entry.id ? null : (entry.id ?? null))}
-              >
+                onClick={() => setExpandedHistoryId(expandedHistoryId === entry.id ? null : (entry.id ?? null))} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {entry.status === 'completed' ? (

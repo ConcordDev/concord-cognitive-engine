@@ -565,8 +565,7 @@ export default function VoiceLensPage() {
                   activeTakeId === take.id
                     ? 'bg-neon-cyan/5 border-l-2 border-l-neon-cyan'
                     : 'hover:bg-white/[0.03] border-l-2 border-l-transparent'
-                )}
-              >
+                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between mb-1.5">
                   {renamingId === take.id ? (
                     <div className="flex items-center gap-1 flex-1 mr-2">

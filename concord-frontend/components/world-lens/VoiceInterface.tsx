@@ -463,8 +463,7 @@ export default function VoiceInterface({
               onClick={() => setVoiceConfig(c => ({ ...c, wakeWordEnabled: !c.wakeWordEnabled }))}
               className={`w-7 h-4 rounded-full transition-colors relative ${
                 voiceConfig.wakeWordEnabled ? 'bg-cyan-500' : 'bg-white/20'
-              }`}
-            >
+              }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div
                 className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
                   voiceConfig.wakeWordEnabled ? 'translate-x-3.5' : 'translate-x-0.5'

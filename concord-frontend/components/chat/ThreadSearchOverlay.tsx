@@ -126,8 +126,7 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
   return (
     <div
       className={containerClasses}
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className={panelClasses}
         onClick={(e) => e.stopPropagation()}

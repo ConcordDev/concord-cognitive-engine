@@ -196,8 +196,8 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
 
       {/* View modal */}
       {viewDoc && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setViewDoc(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-[#0d1117] border border-amber-500/30 rounded-lg max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setViewDoc(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-[#0d1117] border border-amber-500/30 rounded-lg max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <FileText className="w-4 h-4 text-amber-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{viewDoc.name}</span>
@@ -210,8 +210,8 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
 
       {/* E-sign envelope modal */}
       {esignDoc && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEsignDoc(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-[#0d1117] border border-amber-500/30 rounded-lg max-w-xl w-full overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEsignDoc(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-[#0d1117] border border-amber-500/30 rounded-lg max-w-xl w-full overflow-hidden" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <Send className="w-4 h-4 text-amber-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">Send for e-signature</span>

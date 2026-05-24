@@ -2815,12 +2815,10 @@ export default function MarketplaceLensPage() {
           onClick={() => setPaletteOpen(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Quick search marketplace"
-        >
+          aria-label="Quick search marketplace" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
             className="bg-[#0d1117] border border-emerald-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
               <ShoppingBag className="w-4 h-4 text-emerald-400" />
               <input

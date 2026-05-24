@@ -364,8 +364,7 @@ export function TrackCard({
         isCurrentTrack && 'bg-white/5',
         isPlaying && 'border-l-2 border-l-neon-cyan bg-neon-cyan/[0.04]',
       )}
-      onClick={handlePlay}
-    >
+      onClick={handlePlay} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="w-4 text-center">
         {isPlaying ? (
           <Pause className="w-3 h-3 text-neon-cyan" />

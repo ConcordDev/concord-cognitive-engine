@@ -172,9 +172,9 @@ export function MarketingWorkflowsPanel() {
 
       {/* Builder modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} workflow</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -230,9 +230,9 @@ export function MarketingWorkflowsPanel() {
 
       {/* Enroll modal */}
       {enrollTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnrollTarget(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnrollTarget(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-semibold text-white">Enroll a contact</h4>
             <input value={contact} onChange={(e) => setContact(e.target.value)}
               placeholder="contact@example.com" className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100" />
@@ -251,9 +251,9 @@ export function MarketingWorkflowsPanel() {
 
       {/* Runs modal */}
       {runsFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setRunsFor(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setRunsFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-md max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">Workflow runs ({runs.length})</h4>
               <button type="button" onClick={() => setRunsFor(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>

@@ -120,7 +120,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                   <div className="w-16 h-12 bg-gradient-to-br from-cyan-900/40 to-violet-900/30 rounded flex items-center justify-center flex-shrink-0">
                     <BookOpen className="w-5 h-5 text-cyan-500/60" />
                   </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(c)}>
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(c)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white truncate">{c.title}</span>
                       <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{c.kind.replace('_', ' ')}</span>

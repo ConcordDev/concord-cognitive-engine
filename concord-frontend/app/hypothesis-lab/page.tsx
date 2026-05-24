@@ -334,12 +334,11 @@ function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className={ds.modalContainer} onClick={onClose}>
+    <div className={ds.modalContainer} onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className={ds.modalBackdrop} />
       <div
         className={cn(ds.modalPanel, maxWidth, 'relative z-10')}
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between p-4 border-b border-lattice-border">
           <h3 className={ds.heading3}>{title}</h3>
           <button onClick={onClose} className={ds.btnGhost} aria-label="Close">

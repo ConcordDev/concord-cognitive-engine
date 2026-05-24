@@ -152,7 +152,7 @@ export function FirstRunTour({ lensId, force = false, onComplete }: FirstRunTour
       aria-label={`${manifest?.label || lensId} first-run guide`}
     >
       {/* Dim backdrop */}
-      <div className="absolute inset-0 bg-black/40 pointer-events-auto" onClick={() => finish('skipped')} />
+      <div className="absolute inset-0 bg-black/40 pointer-events-auto" onClick={() => finish('skipped')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
 
       {/* Spotlight halo */}
       {spotlight && (

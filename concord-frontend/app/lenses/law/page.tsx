@@ -383,8 +383,7 @@ export default function LawLensPage() {
                   {/* Case header */}
                   <div
                     className="flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition-colors"
-                    onClick={() => setExpandedCase(isExpanded ? null : item.id)}
-                  >
+                    onClick={() => setExpandedCase(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <ChevronRight className={`w-3.5 h-3.5 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                       <p className="font-medium text-sm">{item.title}</p>

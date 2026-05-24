@@ -669,8 +669,7 @@ export function PhysicsLab() {
             onMouseUp={endDrag}
             onMouseLeave={endDrag}
             className="relative w-full rounded-lg border border-cyan-500/20 bg-[#070b14] overflow-hidden"
-            style={{ aspectRatio: `${BOUNDS.w} / ${BOUNDS.h}`, cursor: tool === 'select' ? 'default' : 'crosshair' }}
-          >
+            style={{ aspectRatio: `${BOUNDS.w} / ${BOUNDS.h}`, cursor: tool === 'select' ? 'default' : 'crosshair' }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             {/* Fluids */}
             {scene.fluids.map((f) => (
               <div

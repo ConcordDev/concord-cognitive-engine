@@ -39,8 +39,7 @@ export function LensPortalMarker({ portal, isNearby, onEnter }: LensPortalMarker
     <div
       className="relative flex flex-col items-center cursor-pointer group"
       onClick={() => portal.accessible && isNearby && onEnter(portal)}
-      title={portal.label}
-    >
+      title={portal.label} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       {/* Portal building icon */}
       <div
         className={`
