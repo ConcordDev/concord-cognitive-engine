@@ -49,3 +49,6 @@ concord-frontend/node_modules/
 
 # Claude Code internal state (agent worktrees, plan files, etc.)
 .claude/worktrees/
+
+# Runtime-generated detector telemetry (the backend appends every 5 min while running)
+audit/detectors/macro-telemetry.jsonl
