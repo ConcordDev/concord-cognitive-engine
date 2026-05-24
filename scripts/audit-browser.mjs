@@ -66,8 +66,14 @@ for (const lens of lensesToScan) {
     const url = `${FRONTEND_URL}/lenses/${lens}`;
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      // small settle delay for React hydration
-      await page.waitForTimeout(1500);
+      // Wait for network to quiesce so React has fully hydrated + any
+      // initial fetches have resolved before axe inspects computed style.
+      // Falls back to a fixed settle if networkidle times out (some
+      // lenses keep a polling cadence open).
+      try {
+        await page.waitForLoadState('networkidle', { timeout: 5000 });
+      } catch { /* ignore — fall through to fixed settle */ }
+      await page.waitForTimeout(2500);
     } catch (e) {
       lensResult.ok = false;
       lensResult.gotoError = String(e?.message || e).slice(0, 200);

@@ -32,7 +32,8 @@ for (const lens of failing) {
   const page = await context.newPage();
   try {
     await page.goto(`${FRONTEND_URL}/lenses/${lens}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(1500);
+    try { await page.waitForLoadState('networkidle', { timeout: 5000 }); } catch { /* ignore */ }
+    await page.waitForTimeout(2500);
     const axeResults = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
