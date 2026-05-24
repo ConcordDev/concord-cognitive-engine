@@ -204,7 +204,11 @@ function FirstWinWizard() {
               className={cn(
                 'flex items-start gap-2 p-2 rounded text-sm transition-colors',
                 isCurrent ? 'bg-neon-blue/5 border border-neon-blue/20' : '',
-                step.completed ? 'opacity-60' : ''
+                // `line-through` + text-gray-400 already conveys "done"
+                // visually. Adding opacity-60 dropped effective contrast
+                // below WCAG AA 4.5:1 (computed 3.39:1). Keep the strike-
+                // through + dim style without the opacity dim.
+                step.completed ? '' : ''
               )}
             >
               {step.completed ? (

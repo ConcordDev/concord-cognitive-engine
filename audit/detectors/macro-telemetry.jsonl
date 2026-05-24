@@ -12484,3 +12484,8 @@
 {"generatedAt":"2026-05-23T15:42:02.881Z","key":"wrapper.run","total":1,"lastFiredAt":1779550912400,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
 {"generatedAt":"2026-05-23T15:42:02.881Z","key":"[object Object].dtu","total":2,"lastFiredAt":1779550920248,"sources":{"http":0,"heartbeat":0,"internal":0,"system":2}}
 {"generatedAt":"2026-05-23T15:42:02.881Z","key":"council.reviewGlobal","total":1,"lastFiredAt":1779550915555,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-24T17:57:12.083Z","key":"lattice.resonance","total":8,"lastFiredAt":1779645304546,"sources":{"http":8,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-24T18:02:12.026Z","key":"lattice.resonance","total":14,"lastFiredAt":1779645678264,"sources":{"http":14,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-24T18:07:12.026Z","key":"lattice.resonance","total":5,"lastFiredAt":1779645856203,"sources":{"http":5,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-24T18:12:12.026Z","key":"lattice.resonance","total":8,"lastFiredAt":1779646281227,"sources":{"http":8,"heartbeat":0,"internal":0,"system":0}}
+{"generatedAt":"2026-05-24T18:17:12.536Z","key":"lattice.resonance","total":8,"lastFiredAt":1779646523979,"sources":{"http":8,"heartbeat":0,"internal":0,"system":0}}

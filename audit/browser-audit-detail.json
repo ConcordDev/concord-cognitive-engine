@@ -1,0 +1,102 @@
+[
+  {
+    "lens": "analytics",
+    "detail": []
+  },
+  {
+    "lens": "animation",
+    "detail": []
+  },
+  {
+    "lens": "bio",
+    "detail": []
+  },
+  {
+    "lens": "black-market",
+    "detail": []
+  },
+  {
+    "lens": "commonsense",
+    "detail": []
+  },
+  {
+    "lens": "construction",
+    "detail": []
+  },
+  {
+    "lens": "debug",
+    "detail": []
+  },
+  {
+    "lens": "environment",
+    "detail": []
+  },
+  {
+    "lens": "ethics",
+    "detail": []
+  },
+  {
+    "lens": "forge",
+    "detail": []
+  },
+  {
+    "lens": "fork",
+    "detail": []
+  },
+  {
+    "lens": "government",
+    "detail": []
+  },
+  {
+    "lens": "insurance",
+    "detail": []
+  },
+  {
+    "lens": "message",
+    "detail": []
+  },
+  {
+    "lens": "meta",
+    "detail": []
+  },
+  {
+    "lens": "personas",
+    "detail": []
+  },
+  {
+    "lens": "pets",
+    "detail": []
+  },
+  {
+    "lens": "reasoning",
+    "detail": []
+  },
+  {
+    "lens": "reflection",
+    "detail": []
+  },
+  {
+    "lens": "settings",
+    "detail": []
+  },
+  {
+    "lens": "sim",
+    "detail": []
+  },
+  {
+    "lens": "tick",
+    "detail": []
+  },
+  {
+    "lens": "timeline",
+    "detail": []
+  },
+  {
+    "lens": "world",
+    "detail": []
+  },
+  {
+    "lens": "world-creator",
+    "detail": []
+  }
+]
