@@ -1,15 +1,30 @@
 # Spec-vs-Implementation Audit
 
-Generated: 2026-05-23T23:44:35.633Z
+Generated: 2026-05-24T00:19:09.564Z
 
-Specs scanned: 234. Mismatches detected: 21.
+Specs scanned: 234. Mismatches detected: 30.
 
 ## By category
 
-- **STUB-WHERE-INTEGRATION-CLAIMED**: 12
-- **CRUD-WHERE-WORKFLOW-CLAIMED**: 9
+- **STUB-WHERE-INTEGRATION-CLAIMED**: 19
+- **CRUD-WHERE-WORKFLOW-CLAIMED**: 11
 
 ## By lens
+
+### code (6)
+
+- `code.github-remote-status` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/code.js:1901`](../server/domains/code.js#L1901))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
+- `code.liveshare-start` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/code.js:2115`](../server/domains/code.js#L2115))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
+- `code.liveshare-join` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/code.js:2137`](../server/domains/code.js#L2137))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
+- `code.liveshare-edit` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/code.js:2153`](../server/domains/code.js#L2153))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
+- `code.liveshare-poll` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/code.js:2191`](../server/domains/code.js#L2191))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
+- `code.liveshare-end` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/code.js:2210`](../server/domains/code.js#L2210))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
 
 ### offline (6)
 
@@ -25,6 +40,17 @@ Specs scanned: 234. Mismatches detected: 21.
   - Implement the integration with await fetch to the API OR downgrade spec prose.
 - `offline.replicationPull` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/offline.js:379`](../server/domains/offline.js#L379))
   - Implement the integration with await fetch to the API OR downgrade spec prose.
+
+### healthcare (4)
+
+- `healthcare.telehealth-create` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/healthcare.js:1790`](../server/domains/healthcare.js#L1790))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
+- `healthcare.telehealth-create` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/domains/healthcare.js:1790`](../server/domains/healthcare.js#L1790))
+  - Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose.
+- `healthcare.visit-summary` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/healthcare.js:1684`](../server/domains/healthcare.js#L1684))
+  - Implement the integration with await fetch to the API OR downgrade spec prose.
+- `healthcare.visit-summary` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/domains/healthcare.js:1684`](../server/domains/healthcare.js#L1684))
+  - Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose.
 
 ### ingest (4)
 
@@ -52,11 +78,6 @@ Specs scanned: 234. Mismatches detected: 21.
   - Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose.
 - `legal.sign` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/server.js:24201`](../server/server.js#L24201))
   - Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose.
-
-### code (1)
-
-- `code.github-remote-status` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/domains/code.js:1901`](../server/domains/code.js#L1901))
-  - Implement the integration with await fetch to the API OR downgrade spec prose.
 
 ### cognitive-replay (1)
 

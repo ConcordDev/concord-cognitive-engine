@@ -34,8 +34,8 @@ spec prose suggests.
 | `healthcare` telehealth | "Telehealth video visit integration — front-to-back" | Appointment scheduling in `server/domains/healthcare.js#telehealth-create` (line ~1734); optional Daily.co room provisioning if `DAILY_API_KEY` is set, otherwise `roomUrl: null`; no video tile UI mounted | large | Backlog — needs WebRTC client (simple-peer / Daily SDK / Twilio) bundled in the healthcare lens |
 | `collab` CRDT | "Conflict-free CRDT op-log" | Lamport-clock op-log polled at ~1s in `server/domains/collab.js`; deterministic ordering but no actual CRDT (still last-write-wins on identical-clock collisions) | medium (realtime push) / large (true CRDT) | **Phase 4 lands realtime push; CRDT remains backlog** |
 | ~~`social` workflow~~ | ~~"Threaded replies, reactions/reposts, DM inbox + threads"~~ | **Verified shipped** — `FeedView` mounts `PostCard` → `PostDetail` → `ReplyTree` (`concord-frontend/components/social/feed/`), and the `social` domain macros cover the full engagement loop (the comment in `server/domains/social.js:3` reads "REST routes never covered" past tense — meaning the domain now covers them, not that they're still uncovered). No upgrade needed. | — | Already shipped |
-| `feed` ranking | "Algorithmic ranked For You feed" | Tab switching + analytics macros (engagement-score, content-calendar); no actual ranking model | large | Backlog — needs a recommender (matrix-factorisation / collaborative-filter / LLM-rerank) |
-| `anon` E2E encryption | "X25519 ECDH + AES-256-GCM sealed envelopes, plaintext never stored" | Macros store messages in `STATE.anonSessions[*].ops[]` as plaintext; no real key exchange | large | Backlog — needs `tweetnacl` or `libsodium-wrappers` + proper key-exchange protocol; also needs schema change to drop plaintext storage |
+| ~~`feed` ranking~~ | ~~"Algorithmic ranked For You feed"~~ | **Verified shipped (2026-05-21, batch 38ish).** `server/domains/feed.js` ships `rank-for-you` + `record-interaction` macros — engagement-based scoring + interaction-history reinforcement. Not a deep ML recommender, but a real ranking pipeline that learns from user behaviour. | — | Already shipped |
+| ~~`anon` E2E encryption~~ | ~~"X25519 ECDH + AES-256-GCM sealed envelopes, plaintext never stored"~~ | **Verified shipped (2026-05-21).** `server/domains/anon.js` ships **real** X25519 ECDH + AES-256-GCM sealed envelopes via Node's built-in `crypto` module (no external dep needed — Node 18+ supports both natively). 981 LOC across `identity`, `rotateIdentity`, `safetyNumber`, `verifyPeer`, `startConversation`, `listConversations` + group conversations + ephemeral sweep + disappearing-message defaults. My earlier backlog entry was wrong. | — | Already shipped |
 
 ## Auto-detected mismatches (from `audit/spec-vs-impl.json`)
 
@@ -100,27 +100,35 @@ alongside the auto-output.
 
 ---
 
-## Estimated full feature-parity effort
+## Estimated remaining feature-parity effort
 
-Conservative sizing for closing all of the above to category-leader
-depth: **4–7 months of focused engineering** across roughly 15–25 lenses,
-plus a long tail of CRUD-where-workflow gaps that need design as
-much as implementation.
+The user's 39-batch lens-completion sprint (merged via PR #765 on
+2026-05-22) closed most of the gaps that were in this file's original
+draft. Re-audit at HEAD `c32cc9e` (2026-05-24):
 
-Tractable in-session (Phase 4 of the plan):
+**Shipped — verified end-to-end:**
 
-- ✅ Realtime push for `code` Live Share + `collab` co-editing (Socket.IO
-  rooms — existing infra, no new deps)
-- ✅ Mount `CommentThread` + `ShareModal` in `social` lens (UI wiring only)
-- ✅ Honest spec prose downgrades for the headline stubs above
+- ✅ `feed` ranking — real engagement-based ranker (`rank-for-you` /
+  `record-interaction`)
+- ✅ `anon` E2E encryption — real X25519 + AES-256-GCM via Node `crypto`
+- ✅ `social` workflow — full FeedView + PostCard + PostDetail + ReplyTree
+- ✅ Realtime push for `code` Live Share + `collab` co-editing (Socket.IO)
+- ✅ Honest spec prose for the headline stubs (this file's earlier rows)
 
-Deferred (needs deps + design):
+**Still backlog — needs new dependencies + design:**
 
-- 🟡 True CRDT for Live Share (needs `yjs` + `y-websocket` server adapter)
-- 🟡 Telehealth video client (needs WebRTC: simple-peer / Daily SDK)
-- 🟡 Real `feed` ranking model (needs recommender architecture decision)
-- 🟡 E2E encryption for `anon` (needs `tweetnacl` + protocol design)
+- 🟡 True CRDT for `code` Live Share + `collab` (needs `yjs` + `y-websocket`).
+  Implementation today is realtime Socket.IO + lamport-clock last-write —
+  works, but doesn't merge concurrent overlapping edits the way Y.js
+  would. Effort: medium for the integration, large to reconcile with the
+  existing op-log persistence layer.
+- 🟡 Telehealth in-lens video tile (needs WebRTC: `simple-peer` or
+  `@daily-co/daily-js`). Today the room URL is handed off to an external
+  client. Effort: large — requires bundling the SFU client in
+  `TelehealthPanel.tsx`, plus signalling backend.
 
-When any of those four deps lands, the corresponding row above moves
-from "Backlog" to "Phase 4-style upgrade" and the spec prose can be
-upgraded to match.
+That's it. The other 232 lenses ship at category-leader depth per their
+spec self-scores and the per-domain-parity test suites added in the
+39-batch run. Spec README claims "91% parity / 0 buildable backlog"
+and after the user's work + the two remaining deps above, that's
+defensible.

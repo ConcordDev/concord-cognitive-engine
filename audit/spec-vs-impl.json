@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-05-23T23:44:35.633Z",
+  "generatedAt": "2026-05-24T00:19:09.564Z",
   "totals": {
     "specs": 234,
-    "mismatches": 21,
+    "mismatches": 30,
     "byCategory": {
-      "STUB-WHERE-INTEGRATION-CLAIMED": 12,
-      "CRUD-WHERE-WORKFLOW-CLAIMED": 9
+      "STUB-WHERE-INTEGRATION-CLAIMED": 19,
+      "CRUD-WHERE-WORKFLOW-CLAIMED": 11
     }
   },
   "byLens": {
@@ -15,6 +15,71 @@
         "macro": "code.github-remote-status",
         "file": "server/domains/code.js",
         "line": 1901,
+        "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasExternalFetch": false,
+          "hasFrontToBack": true
+        },
+        "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      },
+      {
+        "lens": "code",
+        "macro": "code.liveshare-start",
+        "file": "server/domains/code.js",
+        "line": 2115,
+        "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasExternalFetch": false,
+          "hasFrontToBack": true
+        },
+        "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      },
+      {
+        "lens": "code",
+        "macro": "code.liveshare-join",
+        "file": "server/domains/code.js",
+        "line": 2137,
+        "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasExternalFetch": false,
+          "hasFrontToBack": true
+        },
+        "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      },
+      {
+        "lens": "code",
+        "macro": "code.liveshare-edit",
+        "file": "server/domains/code.js",
+        "line": 2153,
+        "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasExternalFetch": false,
+          "hasFrontToBack": true
+        },
+        "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      },
+      {
+        "lens": "code",
+        "macro": "code.liveshare-poll",
+        "file": "server/domains/code.js",
+        "line": 2191,
+        "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasExternalFetch": false,
+          "hasFrontToBack": true
+        },
+        "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      },
+      {
+        "lens": "code",
+        "macro": "code.liveshare-end",
+        "file": "server/domains/code.js",
+        "line": 2210,
         "category": "STUB-WHERE-INTEGRATION-CLAIMED",
         "evidence": {
           "bodyLoc": 1,
@@ -37,6 +102,58 @@
           "hasFrontToBack": false
         },
         "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      }
+    ],
+    "healthcare": [
+      {
+        "lens": "healthcare",
+        "macro": "healthcare.telehealth-create",
+        "file": "server/domains/healthcare.js",
+        "line": 1790,
+        "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasExternalFetch": false,
+          "hasFrontToBack": false
+        },
+        "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      },
+      {
+        "lens": "healthcare",
+        "macro": "healthcare.telehealth-create",
+        "file": "server/domains/healthcare.js",
+        "line": 1790,
+        "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasFrontToBack": false
+        },
+        "suggestion": "Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose."
+      },
+      {
+        "lens": "healthcare",
+        "macro": "healthcare.visit-summary",
+        "file": "server/domains/healthcare.js",
+        "line": 1684,
+        "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasExternalFetch": false,
+          "hasFrontToBack": true
+        },
+        "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      },
+      {
+        "lens": "healthcare",
+        "macro": "healthcare.visit-summary",
+        "file": "server/domains/healthcare.js",
+        "line": 1684,
+        "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
+        "evidence": {
+          "bodyLoc": 1,
+          "hasFrontToBack": true
+        },
+        "suggestion": "Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose."
       }
     ],
     "ingest": [
@@ -309,6 +426,71 @@
       "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
     },
     {
+      "lens": "code",
+      "macro": "code.liveshare-start",
+      "file": "server/domains/code.js",
+      "line": 2115,
+      "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasExternalFetch": false,
+        "hasFrontToBack": true
+      },
+      "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "code",
+      "macro": "code.liveshare-join",
+      "file": "server/domains/code.js",
+      "line": 2137,
+      "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasExternalFetch": false,
+        "hasFrontToBack": true
+      },
+      "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "code",
+      "macro": "code.liveshare-edit",
+      "file": "server/domains/code.js",
+      "line": 2153,
+      "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasExternalFetch": false,
+        "hasFrontToBack": true
+      },
+      "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "code",
+      "macro": "code.liveshare-poll",
+      "file": "server/domains/code.js",
+      "line": 2191,
+      "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasExternalFetch": false,
+        "hasFrontToBack": true
+      },
+      "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "code",
+      "macro": "code.liveshare-end",
+      "file": "server/domains/code.js",
+      "line": 2210,
+      "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasExternalFetch": false,
+        "hasFrontToBack": true
+      },
+      "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
       "lens": "cognitive-replay",
       "macro": "chat.timeline",
       "file": "server/server.js",
@@ -320,6 +502,56 @@
         "hasFrontToBack": false
       },
       "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "healthcare",
+      "macro": "healthcare.telehealth-create",
+      "file": "server/domains/healthcare.js",
+      "line": 1790,
+      "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasExternalFetch": false,
+        "hasFrontToBack": false
+      },
+      "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "healthcare",
+      "macro": "healthcare.telehealth-create",
+      "file": "server/domains/healthcare.js",
+      "line": 1790,
+      "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasFrontToBack": false
+      },
+      "suggestion": "Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose."
+    },
+    {
+      "lens": "healthcare",
+      "macro": "healthcare.visit-summary",
+      "file": "server/domains/healthcare.js",
+      "line": 1684,
+      "category": "STUB-WHERE-INTEGRATION-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasExternalFetch": false,
+        "hasFrontToBack": true
+      },
+      "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "healthcare",
+      "macro": "healthcare.visit-summary",
+      "file": "server/domains/healthcare.js",
+      "line": 1684,
+      "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
+      "evidence": {
+        "bodyLoc": 1,
+        "hasFrontToBack": true
+      },
+      "suggestion": "Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose."
     },
     {
       "lens": "ingest",
