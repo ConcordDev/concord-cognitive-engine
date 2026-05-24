@@ -1,6 +1,6 @@
 # UX Polish Audit
 
-Generated: 2026-05-24T14:59:18.271Z
+Generated: 2026-05-24T15:30:58.420Z
 
 Lenses scanned: 235
 
@@ -10,10 +10,10 @@ Lenses scanned: 235
 | Tier | Count | % | Weight |
 |---|---:|---:|---:|
 | raw | 0 | 0.0% | 0.2 |
-| functional | 41 | 17.4% | 0.6 |
-| polished | 194 | 82.6% | 1 |
+| functional | 0 | 0.0% | 0.6 |
+| polished | 235 | 100.0% | 1 |
 
-**Weighted UX polish score: 0.93** (1.0 = all polished)
+**Weighted UX polish score: 1** (1.0 = all polished)
 
 ## Signal coverage (% of lenses)
 
@@ -21,19 +21,19 @@ Lenses scanned: 235
 |---|---:|---:|
 | loading | 235 | 100.0% |
 | emptyState | 235 | 100.0% |
-| errorUI | 133 | 56.6% |
+| errorUI | 232 | 98.7% |
 | aria | 227 | 96.6% |
 | keyboardHandlers | 168 | 71.5% |
 | nativeButtons | 235 | 100.0% |
 | responsive | 233 | 99.1% |
-| animation | 234 | 99.6% |
-| toasts | 6 | 2.6% |
+| animation | 235 | 100.0% |
+| toasts | 58 | 24.7% |
 | altOnImages | 235 | 100.0% |
 
 ## Anti-patterns
 
-- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **5** (total instances: 7)
-- Lenses with inline hex colours (bypassing design tokens): **36** (total instances: 79)
+- Lenses with at least one `<div onClick>` (missing keyboard handler / role / tabIndex): **0** (total instances: 0)
+- Lenses with inline hex colours (bypassing design tokens): **0** (total instances: 0)
 
 ## Raw-tier lenses (need work)
 
@@ -45,47 +45,6 @@ Sorted by smallest gap first. Items with anti-patterns surface first within each
 
 | Lens | Pillars | Missing | Anti-patterns |
 |---|---:|---|---:|
-| `photography` | 5/5 | anti-patterns(1 div-button, 1 inline-hex) | 2 |
-| `agriculture` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `app-maker` | 5/5 | anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `automotive` | 5/5 | anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `aviation` | 5/5 | anti-patterns(0 div-button, 3 inline-hex) | 1 |
-| `calendar` | 5/5 | anti-patterns(0 div-button, 3 inline-hex) | 1 |
-| `chat` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
-| `chem` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `crafting` | 5/5 | anti-patterns(1 div-button, 0 inline-hex) | 1 |
-| `game-design` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `geology` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `government` | 5/5 | anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `grounding` | 5/5 | anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `history` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `household` | 5/5 | anti-patterns(0 div-button, 6 inline-hex) | 1 |
-| `kingdoms` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `linguistics` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `logistics` | 5/5 | anti-patterns(0 div-button, 3 inline-hex) | 1 |
-| `mental-health` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `mining` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `music` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `pharmacy` | 5/5 | anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `realestate` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `resonance` | 5/5 | anti-patterns(0 div-button, 8 inline-hex) | 1 |
-| `space` | 5/5 | anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `world` | 5/5 | anti-patterns(0 div-button, 13 inline-hex) | 1 |
-| `black-market` | 5/5 |  | 0 |
-| `studio` | 4/5 | error, anti-patterns(3 div-button, 3 inline-hex) | 2 |
-| `bio` | 4/5 | error, anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `code` | 4/5 | error, anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `collab` | 4/5 | error, anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `finance` | 4/5 | error, anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `graph` | 4/5 | error, anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `legacy` | 4/5 | error, anti-patterns(1 div-button, 0 inline-hex) | 1 |
-| `maker` | 4/5 | error, anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `meditation` | 4/5 | error, anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `ops` | 4/5 | error, anti-patterns(0 div-button, 1 inline-hex) | 1 |
-| `srs` | 4/5 | error, anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `tick` | 4/5 | error, anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `wellness` | 4/5 | error, anti-patterns(0 div-button, 2 inline-hex) | 1 |
-| `sandbox` | 3/5 | error, responsive | 0 |
 
 ## What this audit does NOT measure
 

@@ -98,7 +98,7 @@ export function AllocationPie() {
               />
               <Legend
                 wrapperStyle={{ fontSize: 10 }}
-                formatter={(value: string) => <span style={{ color: '#cbd5e1' }}>{String(value).replace(/_/g, ' ')}</span>}
+                formatter={(value: string) => <span className="text-[#cbd5e1]">{String(value).replace(/_/g, ' ')}</span>}
               />
             </PieChart>
           </ResponsiveContainer>

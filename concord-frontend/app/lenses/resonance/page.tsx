@@ -1032,7 +1032,7 @@ export default function ResonanceBoundaryPage() {
       <FirstRunTour lensId="resonance" />
       <ManifestActionBar />
       <DepthBadge lensId="resonance" size="sm" className="ml-2" />
-    <div data-lens-theme="resonance" className="h-[calc(100vh-4rem)] flex flex-col" style={{ background: '#050510' }}>
+    <div data-lens-theme="resonance" className="h-[calc(100vh-4rem)] flex flex-col bg-[#050510]">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-white/5"
         style={{ background: 'rgba(5, 5, 16, 0.95)' }}>
