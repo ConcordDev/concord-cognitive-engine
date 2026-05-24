@@ -20,6 +20,7 @@ import * as Y from 'yjs';
 import {
   Sparkles, Bug, Github, MessageSquare, Puzzle, Columns, Users,
   Loader2, Play, Plus, Trash2, RefreshCw, Send, Power, GitBranch,
+  Terminal as TerminalIcon, MapPin,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ProjectSwitcher } from './ProjectSwitcher';
@@ -1001,6 +1002,8 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
           </button>
         </div>
       </div>
+      {/* Shared awareness — breakpoints from peers + shared terminal. */}
+      <SharedDebugTerminalTile code={session.code} />
       <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
         <p className="text-[10px] uppercase text-gray-400 mb-2">Session activity ({ops.length})</p>
         {ops.length === 0 ? (
@@ -1021,6 +1024,149 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
         )}
       </div>
       {err && <div className="text-xs text-red-400 px-2 py-1.5 bg-red-500/10 rounded">{err}</div>}
+    </div>
+  );
+}
+
+// Shared debugger awareness + shared terminal tile.
+// Subscribes to `liveshare:debug:*` and `liveshare:terminal:*` events on
+// the Live Share session's Socket.IO room (handled server-side by
+// server/lib/code-liveshare-bus.js). Pure pub-sub: the server doesn't
+// run debuggers or PTYs, it just relays state between participants so
+// each client sees what the others have set / executed.
+function SharedDebugTerminalTile({ code }: { code: string }) {
+  type Bp = { path: string; line: number; fromPeerId?: string };
+  type TermLine = { kind: 'in' | 'out'; data: string; from: string; at: number };
+  const [breakpoints, setBreakpoints] = useState<Bp[]>([]);
+  const [currentLine, setCurrentLine] = useState<{ path: string; line: number; peerId: string } | null>(null);
+  const [debugState, setDebugState] = useState<'running' | 'paused' | 'stopped' | null>(null);
+  const [terminalLog, setTerminalLog] = useState<TermLine[]>([]);
+  const [terminalInput, setTerminalInput] = useState('');
+  const socketRef = useRef<unknown>(null);
+  const terminalId = 'shared-1';
+
+  useEffect(() => {
+    let s: { emit: (e: string, p: unknown) => void; on: (e: string, fn: (p: unknown) => void) => void; disconnect: () => void } | null = null;
+    let disposed = false;
+    (async () => {
+      try {
+        const { io } = await import('socket.io-client');
+        if (disposed) return;
+        s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true }) as never;
+        socketRef.current = s;
+        s!.emit('room:join', { room: `code:liveshare:${code}` });
+        s!.emit('liveshare:debug:state-request', { code });
+        s!.on('liveshare:debug:state-snapshot', (p: unknown) => {
+          const data = p as { breakpoints: Bp[]; currentLine: typeof currentLine };
+          setBreakpoints(data.breakpoints || []);
+          setCurrentLine(data.currentLine || null);
+        });
+        s!.on('liveshare:debug:breakpoint-set', (p: unknown) => {
+          const d = p as Bp;
+          setBreakpoints(prev => prev.find(b => b.path === d.path && b.line === d.line)
+            ? prev
+            : [...prev, { path: d.path, line: d.line, fromPeerId: d.fromPeerId }]);
+        });
+        s!.on('liveshare:debug:breakpoint-cleared', (p: unknown) => {
+          const d = p as Bp;
+          setBreakpoints(prev => prev.filter(b => !(b.path === d.path && b.line === d.line)));
+        });
+        s!.on('liveshare:debug:current-line', (p: unknown) => {
+          const d = p as { path: string; line: number; fromPeerId: string };
+          setCurrentLine({ path: d.path, line: d.line, peerId: d.fromPeerId });
+        });
+        s!.on('liveshare:debug:state', (p: unknown) => {
+          const d = p as { state: typeof debugState };
+          setDebugState(d.state || null);
+        });
+        s!.on('liveshare:terminal:input', (p: unknown) => {
+          const d = p as { data: string; fromPeerId: string };
+          setTerminalLog(prev => [...prev, { kind: 'in', data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
+        });
+        s!.on('liveshare:terminal:output', (p: unknown) => {
+          const d = p as { data: string; fromPeerId: string };
+          setTerminalLog(prev => [...prev, { kind: 'out', data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
+        });
+      } catch { /* graceful: tile shows empty state */ }
+    })();
+    return () => {
+      disposed = true;
+      try { s?.disconnect(); } catch { /* ignore */ }
+      socketRef.current = null;
+    };
+  }, [code]);
+
+  const sendInput = useCallback(() => {
+    const s = socketRef.current as { emit: (e: string, p: unknown) => void } | null;
+    if (!s || !terminalInput.trim()) return;
+    s.emit('liveshare:terminal:input', { code, terminalId, data: terminalInput + '\n' });
+    setTerminalInput('');
+  }, [code, terminalInput]);
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-3">
+      <div className="flex items-center gap-2">
+        <Bug className="w-3.5 h-3.5 text-amber-400" />
+        <p className="text-[10px] uppercase text-gray-400">Shared debug awareness</p>
+        {debugState && (
+          <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded font-mono ${
+            debugState === 'running' ? 'bg-emerald-500/20 text-emerald-300' :
+            debugState === 'paused' ? 'bg-amber-500/20 text-amber-300' :
+            'bg-gray-500/20 text-gray-300'
+          }`}>{debugState}</span>
+        )}
+      </div>
+      {currentLine && (
+        <div className="text-[11px] text-amber-300 flex items-center gap-1.5">
+          <MapPin className="w-3 h-3" />
+          <span>peer <span className="font-mono">{currentLine.peerId.slice(0, 6)}</span> paused at</span>
+          <span className="font-mono text-gray-300">{currentLine.path}:{currentLine.line}</span>
+        </div>
+      )}
+      {breakpoints.length === 0 ? (
+        <p className="text-[11px] text-gray-400">No shared breakpoints yet — setting one in your local debugger broadcasts it to the session.</p>
+      ) : (
+        <ul className="space-y-1 max-h-24 overflow-y-auto">
+          {breakpoints.slice(0, 20).map((b, i) => (
+            <li key={`${b.path}:${b.line}:${i}`} className="text-[11px] text-gray-300 flex items-center gap-2 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              <span className="truncate">{b.path}:{b.line}</span>
+              {b.fromPeerId && <span className="ml-auto text-[10px] text-gray-400">{b.fromPeerId.slice(0, 6)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+        <TerminalIcon className="w-3.5 h-3.5 text-green-400" />
+        <p className="text-[10px] uppercase text-gray-400">Shared terminal</p>
+        <span className="ml-auto text-[10px] text-gray-400">{terminalLog.length} lines</span>
+      </div>
+      <div className="bg-black border border-white/5 rounded p-2 max-h-32 overflow-y-auto font-mono text-[11px]">
+        {terminalLog.length === 0 ? (
+          <p className="text-gray-400">No terminal traffic yet. Type below to broadcast input to participants.</p>
+        ) : (
+          terminalLog.map((line, i) => (
+            <div key={i} className={line.kind === 'in' ? 'text-cyan-300' : 'text-gray-200'}>
+              <span className="text-gray-400 mr-1">{line.kind === 'in' ? '›' : '·'}</span>
+              <span>{line.data.replace(/\n$/, '')}</span>
+              <span className="text-gray-500 ml-2 text-[9px]">{line.from}</span>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={terminalInput}
+          onChange={(e) => setTerminalInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') sendInput(); }}
+          placeholder="Type and Enter to broadcast to participants"
+          className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono"
+        />
+        <button onClick={sendInput} disabled={!terminalInput.trim()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
+          <Send className="w-3.5 h-3.5" /> Send
+        </button>
+      </div>
     </div>
   );
 }

@@ -5,22 +5,23 @@
  *
  * Uses `simple-peer` for the WebRTC plumbing and Concord's existing
  * Socket.IO connection for signalling (handlers in
- * `server/lib/webrtc-signalling.js`). 1:1 calls today (patient ↔
- * provider); multi-party is straightforward to extend by keeping a
- * Map<peerId, SimplePeer> instead of a single peer ref.
+ * `server/lib/webrtc-signalling.js`). Supports multi-party visits
+ * (patient + provider + optional consult specialist, family member, or
+ * interpreter) via a `Map<peerId, SimplePeer>` — one peer connection per
+ * remote participant, each tile rendered separately.
  *
  * Media: local camera + microphone via getUserMedia. The user is asked
- * for permission on `Start call`; until then no media stream is acquired.
- * The local tile shows a self-view; the remote tile fills in once the
- * other party joins + ICE negotiation completes.
+ * for permission on mount; until then no media stream is acquired.
+ * The local tile shows a self-view; each remote tile fills in once a
+ * peer joins + ICE negotiation completes.
  *
  * Tear-down is rigorous: on unmount or `End call` we stop every local
- * track, destroy the peer connection, and emit `webrtc:leave` so the
+ * track, destroy every peer connection, and emit `webrtc:leave` so the
  * other side tears down cleanly too.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Loader2, AlertCircle } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Loader2, AlertCircle, Users } from 'lucide-react';
 import type { Socket } from 'socket.io-client';
 import SimplePeer from 'simple-peer';
 
@@ -30,19 +31,26 @@ interface Props {
   onEnd: () => void;
 }
 
+interface RemoteTile {
+  peerId: string;
+  stream: MediaStream | null;
+  state: 'connecting' | 'live' | 'closed' | 'error';
+}
+
 export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  // Map keyed by peerId so re-renders see new tiles arrive/leave.
+  const [remotes, setRemotes] = useState<Map<string, RemoteTile>>(new Map());
   const [status, setStatus] = useState<'idle' | 'connecting' | 'live' | 'ended' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const peerRef = useRef<SimplePeer.Instance | null>(null);
+  // peerId → SimplePeer; one connection per remote participant.
+  const peersRef = useRef<Map<string, SimplePeer.Instance>>(new Map());
   const socketRef = useRef<Socket | null>(null);
-  const targetPeerIdRef = useRef<string | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
   // ── Start the call: acquire media + open socket + signalling ─────────────
   const start = useCallback(async () => {
@@ -59,6 +67,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
       return;
     }
     setLocalStream(stream);
+    localStreamRef.current = stream;
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
     let socket: Socket;
@@ -72,9 +81,20 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
     }
     socketRef.current = socket;
 
-    const buildPeer = (isInitiator: boolean, targetId: string | null) => {
-      if (peerRef.current) return peerRef.current;
-      targetPeerIdRef.current = targetId;
+    // Build a peer connection for a specific remote participant. Each
+    // remote gets its own SimplePeer instance; signalling messages
+    // route via the explicit `target` field so a 3-way (or N-way) call
+    // doesn't cross-talk.
+    const buildPeer = (peerId: string, isInitiator: boolean) => {
+      const existing = peersRef.current.get(peerId);
+      if (existing) return existing;
+      // Seed a tile immediately so the user sees a "connecting" slot
+      // even before ICE completes.
+      setRemotes(prev => {
+        const next = new Map(prev);
+        next.set(peerId, { peerId, stream: null, state: 'connecting' });
+        return next;
+      });
       const peer = new SimplePeer({
         initiator: isInitiator,
         trickle: true,
@@ -89,25 +109,56 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
       peer.on('signal', (data: SimplePeer.SignalData) => {
         if ('sdp' in data && data.sdp) {
           const event = data.type === 'offer' ? 'webrtc:offer' : 'webrtc:answer';
-          socket.emit(event, { visitId, sdp: data, target: targetPeerIdRef.current ?? undefined });
+          socket.emit(event, { visitId, sdp: data, target: peerId });
         } else if ('candidate' in data) {
-          socket.emit('webrtc:ice', { visitId, candidate: data, target: targetPeerIdRef.current ?? undefined });
+          socket.emit('webrtc:ice', { visitId, candidate: data, target: peerId });
         }
       });
       peer.on('stream', (remote: MediaStream) => {
-        setRemoteStream(remote);
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remote;
+        setRemotes(prev => {
+          const next = new Map(prev);
+          const existing = next.get(peerId);
+          next.set(peerId, {
+            peerId,
+            stream: remote,
+            state: 'live',
+          });
+          void existing;
+          return next;
+        });
         setStatus('live');
       });
-      peer.on('connect', () => setStatus('live'));
+      peer.on('connect', () => {
+        setRemotes(prev => {
+          const next = new Map(prev);
+          const t = next.get(peerId);
+          if (t && t.state !== 'live') next.set(peerId, { ...t, state: 'live' });
+          return next;
+        });
+        setStatus('live');
+      });
       peer.on('error', (err: Error) => {
-        setError(`Peer error: ${err.message}`);
-        setStatus('error');
+        setRemotes(prev => {
+          const next = new Map(prev);
+          const t = next.get(peerId);
+          if (t) next.set(peerId, { ...t, state: 'error' });
+          return next;
+        });
+        // Don't blow up the whole call on a single peer error; just
+        // surface the latest error message.
+        setError(`Peer ${peerId.slice(0, 6)} error: ${err.message}`);
       });
       peer.on('close', () => {
-        setStatus('ended');
+        setRemotes(prev => {
+          const next = new Map(prev);
+          next.delete(peerId);
+          return next;
+        });
+        peersRef.current.delete(peerId);
+        // If every peer has left, the call is over.
+        if (peersRef.current.size === 0) setStatus('ended');
       });
-      peerRef.current = peer;
+      peersRef.current.set(peerId, peer);
       return peer;
     };
 
@@ -116,32 +167,48 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
     });
 
     socket.on('webrtc:peer-list', ({ peers }: { peers: string[] }) => {
-      // If we're the initiator AND a peer is already here, open an offer.
-      // If no peer is here yet, wait for `webrtc:peer-joined`.
-      if (initiator && peers.length > 0) {
-        buildPeer(true, peers[0]);
-      }
+      // Open offers to every existing peer in the room. Whichever side
+      // joined first is the "initiator" for each pairwise connection;
+      // here we initiate to everyone already present.
+      for (const peerId of peers) buildPeer(peerId, true);
     });
     socket.on('webrtc:peer-joined', ({ peerId }: { peerId: string }) => {
-      // Non-initiators construct on incoming offer; initiators construct
-      // here when the other side arrives after us.
-      if (initiator && !peerRef.current) buildPeer(true, peerId);
+      // A new peer arrived after us. We are NOT the initiator for them
+      // — they will send the offer (their `webrtc:peer-list` includes
+      // us). Pre-seed the tile so the UI shows a connecting slot.
+      setRemotes(prev => {
+        if (prev.has(peerId)) return prev;
+        const next = new Map(prev);
+        next.set(peerId, { peerId, stream: null, state: 'connecting' });
+        return next;
+      });
     });
     socket.on('webrtc:offer', ({ sdp, fromPeerId }: { sdp: SimplePeer.SignalData; fromPeerId: string }) => {
-      const peer = peerRef.current || buildPeer(false, fromPeerId);
+      // Build (as non-initiator) the peer entry for whoever sent us the
+      // offer, then feed them the SDP.
+      const peer = peersRef.current.get(fromPeerId) || buildPeer(fromPeerId, false);
       try { peer.signal(sdp); } catch { /* ignore */ }
     });
-    socket.on('webrtc:answer', ({ sdp }: { sdp: SimplePeer.SignalData }) => {
-      try { peerRef.current?.signal(sdp); } catch { /* ignore */ }
+    socket.on('webrtc:answer', ({ sdp, fromPeerId }: { sdp: SimplePeer.SignalData; fromPeerId: string }) => {
+      const peer = peersRef.current.get(fromPeerId);
+      try { peer?.signal(sdp); } catch { /* ignore */ }
     });
-    socket.on('webrtc:ice', ({ candidate }: { candidate: SimplePeer.SignalData }) => {
-      try { peerRef.current?.signal(candidate); } catch { /* ignore */ }
+    socket.on('webrtc:ice', ({ candidate, fromPeerId }: { candidate: SimplePeer.SignalData; fromPeerId: string }) => {
+      const peer = peersRef.current.get(fromPeerId);
+      try { peer?.signal(candidate); } catch { /* ignore */ }
     });
-    socket.on('webrtc:peer-left', () => {
-      setStatus('ended');
-      setRemoteStream(null);
+    socket.on('webrtc:peer-left', ({ peerId }: { peerId: string }) => {
+      const peer = peersRef.current.get(peerId);
+      try { peer?.destroy(); } catch { /* ignore */ }
+      peersRef.current.delete(peerId);
+      setRemotes(prev => {
+        const next = new Map(prev);
+        next.delete(peerId);
+        return next;
+      });
+      if (peersRef.current.size === 0) setStatus('ended');
     });
-  }, [visitId, initiator, status]);
+  }, [visitId, status]);
 
   // ── End the call ─────────────────────────────────────────────────────────
   const endCall = useCallback(() => {
@@ -149,17 +216,20 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
       socketRef.current?.emit('webrtc:leave', { visitId });
       socketRef.current?.disconnect();
     } catch { /* ignore */ }
-    try { peerRef.current?.destroy(); } catch { /* ignore */ }
+    for (const peer of peersRef.current.values()) {
+      try { peer.destroy(); } catch { /* ignore */ }
+    }
+    peersRef.current.clear();
     try {
-      localStream?.getTracks().forEach(t => t.stop());
+      localStreamRef.current?.getTracks().forEach(t => t.stop());
     } catch { /* ignore */ }
     socketRef.current = null;
-    peerRef.current = null;
+    localStreamRef.current = null;
     setLocalStream(null);
-    setRemoteStream(null);
+    setRemotes(new Map());
     setStatus('ended');
     onEnd();
-  }, [visitId, localStream, onEnd]);
+  }, [visitId, onEnd]);
 
   // Auto-start once on mount.
   useEffect(() => {
@@ -168,25 +238,32 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
       // Tear down on unmount.
       try { socketRef.current?.emit('webrtc:leave', { visitId }); } catch { /* ignore */ }
       try { socketRef.current?.disconnect(); } catch { /* ignore */ }
-      try { peerRef.current?.destroy(); } catch { /* ignore */ }
-      try { localStream?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      for (const peer of peersRef.current.values()) {
+        try { peer.destroy(); } catch { /* ignore */ }
+      }
+      peersRef.current.clear();
+      try { localStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Camera / mic toggles ─────────────────────────────────────────────────
+  // Toggle the local track enabled flag — every remote peer is sharing
+  // the same MediaStream, so muting once propagates to all of them.
   const toggleCamera = useCallback(() => {
-    if (!localStream) return;
+    const stream = localStreamRef.current;
+    if (!stream) return;
     const next = !cameraOn;
-    localStream.getVideoTracks().forEach(t => { t.enabled = next; });
+    stream.getVideoTracks().forEach(t => { t.enabled = next; });
     setCameraOn(next);
-  }, [localStream, cameraOn]);
+  }, [cameraOn]);
   const toggleMic = useCallback(() => {
-    if (!localStream) return;
+    const stream = localStreamRef.current;
+    if (!stream) return;
     const next = !micOn;
-    localStream.getAudioTracks().forEach(t => { t.enabled = next; });
+    stream.getAudioTracks().forEach(t => { t.enabled = next; });
     setMicOn(next);
-  }, [localStream, micOn]);
+  }, [micOn]);
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-black p-3 space-y-3">
@@ -215,23 +292,14 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="relative aspect-video rounded-lg bg-zinc-950 overflow-hidden">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-          />
-          {!remoteStream && (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" /> Waiting for other party…
-            </div>
-          )}
-          <p className="absolute bottom-1 left-2 text-[10px] text-zinc-300 bg-black/40 px-1.5 py-0.5 rounded">
-            {initiator ? 'Patient' : 'Provider'}
-          </p>
-        </div>
+      {/* Tile grid — local self-view first, then one tile per remote
+          participant. Layout adapts from 2-up (1:1 call) to 3+-up (multi-
+          party) using a responsive auto-grid. */}
+      <div className={`grid gap-3 ${
+        remotes.size <= 1 ? 'grid-cols-1 md:grid-cols-2' :
+        remotes.size === 2 ? 'grid-cols-1 md:grid-cols-3' :
+        'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+      }`}>
         <div className="relative aspect-video rounded-lg bg-zinc-950 overflow-hidden">
           <video
             ref={localVideoRef}
@@ -247,7 +315,25 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
           )}
           <p className="absolute bottom-1 left-2 text-[10px] text-zinc-300 bg-black/40 px-1.5 py-0.5 rounded">You</p>
         </div>
+        {Array.from(remotes.values()).map(tile => (
+          <RemoteTile key={tile.peerId} tile={tile} />
+        ))}
+        {remotes.size === 0 && (
+          <div className="relative aspect-video rounded-lg bg-zinc-950 overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
+              <Loader2 className="w-4 h-4 animate-spin mr-2" /> Waiting for other participants…
+            </div>
+            <p className="absolute bottom-1 left-2 text-[10px] text-zinc-300 bg-black/40 px-1.5 py-0.5 rounded">
+              {initiator ? 'Patient' : 'Provider'}
+            </p>
+          </div>
+        )}
       </div>
+      {remotes.size > 1 && (
+        <p className="text-[10px] text-zinc-400 flex items-center gap-1.5">
+          <Users className="w-3 h-3" /> {remotes.size + 1}-way visit · all peers connected mesh-style (no SFU)
+        </p>
+      )}
 
       <div className="flex items-center justify-center gap-3 pt-1">
         <button
@@ -280,6 +366,38 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
           <PhoneOff className="w-4 h-4" /> End call
         </button>
       </div>
+    </div>
+  );
+}
+
+// Per-remote-participant tile. Uses a private <video> element so each
+// stream binds to its own DOM node — sharing a single ref across N
+// streams overwrites srcObject and shows only the last-attached one.
+function RemoteTile({ tile }: { tile: RemoteTile }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (videoRef.current && tile.stream) {
+      videoRef.current.srcObject = tile.stream;
+    }
+  }, [tile.stream]);
+  return (
+    <div className="relative aspect-video rounded-lg bg-zinc-950 overflow-hidden">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className="w-full h-full object-cover"
+      />
+      {!tile.stream && (
+        <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-xs">
+          {tile.state === 'error' ? 'Connection error' : (
+            <><Loader2 className="w-4 h-4 animate-spin mr-2" />Connecting…</>
+          )}
+        </div>
+      )}
+      <p className="absolute bottom-1 left-2 text-[10px] text-zinc-300 bg-black/40 px-1.5 py-0.5 rounded font-mono">
+        peer · {tile.peerId.slice(0, 6)}
+      </p>
     </div>
   );
 }

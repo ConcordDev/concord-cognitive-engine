@@ -7279,6 +7279,16 @@ async function tryInitWebSockets(server) {
     structuredLog("warn", "webrtc_signalling_attach_failed", { error: String(rtcErr?.message || rtcErr) });
   }
 
+  // Code Live Share extensions — shared debugger awareness (breakpoints,
+  // current line) + shared terminal I/O over the same room as Yjs sync.
+  // Pure pub-sub; server doesn't run debuggers or PTYs.
+  try {
+    const { attachLiveShareBus } = await import("./lib/code-liveshare-bus.js");
+    attachLiveShareBus(io);
+  } catch (lsErr) {
+    structuredLog("warn", "liveshare_bus_attach_failed", { error: String(lsErr?.message || lsErr) });
+  }
+
   // DX Platform Phase A3 — attach the /dx namespace for editor-plugin
   // clients. Plugin clients connect with a JWT or a `csk_*` API key,
   // join `codebase:${id}` rooms, and receive detector/repair events

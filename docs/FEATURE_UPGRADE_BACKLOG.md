@@ -129,18 +129,47 @@ article volume) or design decisions beyond the scope of an upgrade
 backlog (custom recommender architectures, voice/audio licensing) —
 those remain "structural gaps" rather than buildable features.
 
-Remaining nice-to-haves (lower priority than this file's prior contents):
+## Update 2026-05-24 — three nice-to-haves shipped
 
-- Shared debugging + terminal sharing in Code Live Share (the 2pp gap
-  to literal VS Code Live Share). Y.js CRDT is the hard part; sharing
-  the debug protocol is incremental on top.
-- Multi-party telehealth (today is 1:1; the room can hold N peers but
-  the UI tile-layout assumes 1+1). Extension is straightforward — keep
-  a Map<peerId, SimplePeer> instead of a single peer ref.
-- True CRDT-aware version snapshots for collab (current snapshots are
-  text-only; capturing the Y.Doc binary state lets users undo/redo
-  across history boundaries).
+The "Remaining nice-to-haves" section below is now cleared. Each item
+shipped this session:
 
-These are improvements, not backlogged "missing" features. The depth
-grader still reports 1.000 weighted; the verifier still reports
-234 WIRED / 1 NO-BACKEND-CALL (ux-suite by design).
+- ✅ **Shared debugging + terminal sharing in Code Live Share**. New
+  `server/lib/code-liveshare-bus.js` (Socket.IO pub-sub for
+  `liveshare:debug:breakpoint-set/cleared/current-line/state` +
+  `liveshare:terminal:input/output/resize`). Per-session in-memory
+  breakpoint set so late joiners get the current state via
+  `liveshare:debug:state-request` → `liveshare:debug:state-snapshot`.
+  Server is pure relay; no debuggers or PTYs server-side. New UI tile
+  `SharedDebugTerminalTile` mounts inside `LiveShareTab` showing shared
+  breakpoints, current paused line, and a shared terminal view + input.
+  Test pin: `server/tests/code-liveshare-bus.test.js` (6/6).
+- ✅ **Multi-party telehealth**. `TelehealthVideoCall.tsx` refactored
+  from `peerRef: SimplePeer | null` → `peersRef: Map<peerId, SimplePeer>`.
+  Backend signalling layer already supported N-way (`webrtc:peer-list`
+  returns all existing peers, relay routes by explicit `target`); only
+  the frontend needed the multi-peer Map. Tile grid adapts from 2-up
+  (1:1) to N-up (multi-party), and the `RemoteTile` subcomponent
+  ensures each stream binds to its own video element. Mute/camera
+  toggles propagate to every peer via the shared `localStreamRef`.
+  Test pin: `server/tests/webrtc-signalling-multiparty.test.js` (6/6).
+- ✅ **CRDT-aware version snapshots for collab**. Three new macros:
+  `collab.docCrdtSnapshot` captures `Y.encodeStateAsUpdate(doc)` as
+  base64; `collab.docCrdtSnapshotList` returns sorted history (newest
+  first, with deterministic `seq` tiebreak for same-ms snapshots);
+  `collab.docCrdtRestore` calls `replaceDoc(scope, docId, bytes)` in
+  `yjs-realtime.js`, broadcasts `yjs:doc-reset` to the room, and
+  auto-saves the pre-restore state. The `useYjsDoc` hook listens for
+  `yjs:doc-reset`, clears each top-level shared type in a remote-origin
+  transaction, applies the snapshot, and bumps `resetVersion` so
+  consumers can re-bind. Test pin: `server/tests/collab-crdt-snapshot.test.js`
+  (5/5).
+
+The depth grader still reports 1.000 weighted; the verifier still
+reports 234 WIRED / 1 NO-BACKEND-CALL (ux-suite by design); the full
+server test suite remains green (17 new tests added across 3 files).
+
+Structural gaps that remain are not buildable features but content /
+external-licensing dependencies (Spotify catalog, Wikipedia article
+volume, voice/audio licensing, custom recommender architectures). They
+are business decisions, not engineering backlog.

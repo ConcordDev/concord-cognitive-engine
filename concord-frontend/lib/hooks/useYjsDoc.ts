@@ -35,11 +35,14 @@ export interface UseYjsDocReturn {
   doc: Y.Doc | null;
   synced: boolean;   // true after server sync-state received
   socketReady: boolean;
+  /** Bumps each time the server emits `yjs:doc-reset` (CRDT-restore). */
+  resetVersion: number;
 }
 
 export function useYjsDoc({ scope, docId, enabled = true }: UseYjsDocOptions): UseYjsDocReturn {
   const [synced, setSynced] = useState(false);
   const [socketReady, setSocketReady] = useState(false);
+  const [resetVersion, setResetVersion] = useState(0);
   const docRef = useRef<Y.Doc | null>(null);
 
   useEffect(() => {
@@ -93,6 +96,37 @@ export function useYjsDoc({ scope, docId, enabled = true }: UseYjsDocOptions): U
             Y.applyUpdate(doc, bytes, 'remote');
           } catch { /* malformed update */ }
         });
+        // CRDT-aware snapshot restore: server says "throw away your
+        // local state, here is the new state". We can't rewind a Y.Doc
+        // in place (Yjs merges are monotonic), so the cleanest move is
+        // to bump `resetVersion` and let callers remount their UI
+        // bindings against the freshly-replaced doc. We also apply the
+        // new state so the doc is immediately consistent for callers
+        // that read `doc.getText(...)` synchronously.
+        socket.on('yjs:doc-reset', (payload: { scope: string; docId: string; update: string }) => {
+          if (disposed || payload?.scope !== scope || payload?.docId !== docId) return;
+          try {
+            // Drop existing state by recreating the doc. We swap the ref
+            // contents so consumers that hold the same Y.Doc reference
+            // keep working — Yjs supports applying a "reset" by clearing
+            // shared types in a transaction, then applying the snapshot.
+            const bytes = Uint8Array.from(atob(payload.update), c => c.charCodeAt(0));
+            doc.transact(() => {
+              for (const [key, shared] of doc.share) {
+                // Clear each top-level shared type so the snapshot's
+                // structure becomes authoritative.
+                try {
+                  if (shared instanceof Y.Text) shared.delete(0, shared.length);
+                  else if (shared instanceof Y.Array) shared.delete(0, shared.length);
+                  else if (shared instanceof Y.Map) shared.clear();
+                } catch { /* ignore unknown type */ }
+                void key;
+              }
+            }, 'remote');
+            Y.applyUpdate(doc, bytes, 'remote');
+            setResetVersion(v => v + 1);
+          } catch { /* malformed reset */ }
+        });
         socket.on('disconnect', () => {
           if (!disposed) setSocketReady(false);
         });
@@ -111,5 +145,5 @@ export function useYjsDoc({ scope, docId, enabled = true }: UseYjsDocOptions): U
     };
   }, [enabled, scope, docId]);
 
-  return { doc: docRef.current, synced, socketReady };
+  return { doc: docRef.current, synced, socketReady, resetVersion };
 }

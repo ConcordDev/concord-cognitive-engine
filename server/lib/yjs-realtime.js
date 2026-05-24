@@ -133,6 +133,46 @@ export function getDocText(scope, docId, key = "content") {
   } catch { return ""; }
 }
 
+/**
+ * Replace the in-memory doc with a fresh one initialised from the given
+ * binary update. Used by CRDT-aware snapshot restore: rewinding a Y.Doc
+ * in place isn't well-defined (merges are monotonic), so we dispose the
+ * existing doc and rebuild it from the snapshot bytes.
+ *
+ * Returns the new state's binary so the caller can broadcast it to
+ * clients. Clients should listen for `yjs:doc-reset`, drop their local
+ * doc, and re-bind to the new state.
+ */
+export function replaceDoc(scope, docId, updateBytes) {
+  const b = bucket(scope);
+  const old = b.get(docId);
+  if (old) { try { old.destroy(); } catch (_) { /* ignore */ } }
+  const fresh = new Y.Doc();
+  try { Y.applyUpdate(fresh, updateBytes); } catch (e) {
+    // If the update is malformed, restore the old doc to avoid losing state.
+    if (old) b.set(docId, old);
+    return { ok: false, error: String(e?.message || e) };
+  }
+  b.set(docId, fresh);
+  return { ok: true, state: Y.encodeStateAsUpdate(fresh) };
+}
+
+/**
+ * Emit a `yjs:doc-reset` to every client in the room. Each client should
+ * drop its local Y.Doc, request a fresh sync, and re-bind any UI state
+ * (textarea content, cursor positions) from the new doc.
+ */
+export function broadcastDocReset(io, scope, docId, newStateBytes) {
+  if (!io) return;
+  const room = `${scope}:${docId}`;
+  try {
+    io.to(room).emit("yjs:doc-reset", {
+      scope, docId,
+      update: Buffer.from(newStateBytes).toString("base64"),
+    });
+  } catch (_) { /* best effort */ }
+}
+
 /** Diagnostics — total live doc count per scope. */
 export function stats() {
   const out = {};

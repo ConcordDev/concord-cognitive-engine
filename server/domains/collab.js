@@ -357,6 +357,123 @@ export default function registerCollabActions(registerLensAction) {
   });
 
   // ═══════════════════════════════════════════════════════════════════
+  //  CRDT-aware snapshots (capture Y.Doc binary state)
+  //
+  // The text-only snapshots above lose Y.Doc structure: cursor
+  // positions, formatting, nested types. These macros capture the
+  // FULL CRDT state via `Y.encodeStateAsUpdate(doc)` so restore is
+  // exact and lets users undo/redo across history boundaries.
+  // Restore replaces the in-memory Y.Doc and emits `yjs:doc-reset`
+  // to every connected client; the useYjsDoc hook re-binds.
+  // ═══════════════════════════════════════════════════════════════════
+
+  registerLensAction("collab", "docCrdtSnapshot", async (ctx, _artifact, params) => {
+    try {
+      const s = getCollabState();
+      const docId = cbClean(params?.docId, 80);
+      const doc = s.documents.get(docId);
+      if (!doc) return { ok: false, error: "document not found" };
+      const uid = cbUid(ctx);
+      if (!canEdit(doc, uid)) return { ok: false, error: "permission denied: edit tier required" };
+      const { encodeStateAsUpdate } = await import("../lib/yjs-realtime.js");
+      const bytes = encodeStateAsUpdate("collab:doc", docId);
+      const b64 = Buffer.from(bytes).toString("base64");
+      if (!Array.isArray(doc.crdtSnapshots)) doc.crdtSnapshots = [];
+      // `seq` is a monotonic counter per doc so newest-first sort is
+      // deterministic even when two snapshots share a `createdAt` ms
+      // (Date.now resolution is 1ms; rapid back-to-back snapshots can
+      // tie). `crdtSnapshotSeq` lives on the doc and survives restart
+      // because the whole doc is saved to STATE.
+      doc.crdtSnapshotSeq = (doc.crdtSnapshotSeq | 0) + 1;
+      const snap = {
+        id: cbId("csnap"),
+        seq: doc.crdtSnapshotSeq,
+        label: cbClean(params?.label, 160) || `CRDT v${doc.crdtSnapshots.length + 1}`,
+        update: b64,
+        bytes: bytes.length,
+        textPreview: materialize(doc).slice(0, 200),
+        authorId: uid, authorName: cbName(ctx),
+        createdAt: cbNow(),
+      };
+      doc.crdtSnapshots.push(snap);
+      // Keep the last 50 — Y.Doc updates compound, so each snapshot is
+      // larger than the previous; 50 is a sane upper bound.
+      if (doc.crdtSnapshots.length > 50) doc.crdtSnapshots = doc.crdtSnapshots.slice(-50);
+      saveCollabState();
+      emitToDoc(doc.id, "collab:doc-crdt-snapshot", { snapshotId: snap.id, label: snap.label });
+      return {
+        ok: true,
+        result: { id: snap.id, label: snap.label, bytes: snap.bytes, createdAt: snap.createdAt, totalSnapshots: doc.crdtSnapshots.length },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("collab", "docCrdtSnapshotList", (ctx, _artifact, params) => {
+    try {
+      const s = getCollabState();
+      const doc = s.documents.get(cbClean(params?.docId, 80));
+      if (!doc) return { ok: false, error: "document not found" };
+      const snaps = (doc.crdtSnapshots || []).map(sn => ({
+        id: sn.id, seq: sn.seq | 0, label: sn.label, bytes: sn.bytes,
+        authorId: sn.authorId, authorName: sn.authorName,
+        createdAt: sn.createdAt,
+        preview: sn.textPreview || "",
+      })).sort((a, b) =>
+        b.createdAt !== a.createdAt ? b.createdAt - a.createdAt : b.seq - a.seq
+      );
+      return { ok: true, result: { snapshots: snaps, total: snaps.length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("collab", "docCrdtRestore", async (ctx, _artifact, params) => {
+    try {
+      const s = getCollabState();
+      const docId = cbClean(params?.docId, 80);
+      const doc = s.documents.get(docId);
+      if (!doc) return { ok: false, error: "document not found" };
+      const uid = cbUid(ctx);
+      if (!canEdit(doc, uid)) return { ok: false, error: "permission denied: edit tier required" };
+      const snap = (doc.crdtSnapshots || []).find(sn => sn.id === cbClean(params?.snapshotId, 80));
+      if (!snap) return { ok: false, error: "snapshot not found" };
+      // Auto-snapshot current state before destructive restore (so the
+      // user can re-restore if they change their mind).
+      const yjs = await import("../lib/yjs-realtime.js");
+      const currentBytes = yjs.encodeStateAsUpdate("collab:doc", docId);
+      if (!Array.isArray(doc.crdtSnapshots)) doc.crdtSnapshots = [];
+      doc.crdtSnapshotSeq = (doc.crdtSnapshotSeq | 0) + 1;
+      doc.crdtSnapshots.push({
+        id: cbId("csnap"),
+        seq: doc.crdtSnapshotSeq,
+        label: `Auto-save before CRDT restore`,
+        update: Buffer.from(currentBytes).toString("base64"),
+        bytes: currentBytes.length,
+        textPreview: materialize(doc).slice(0, 200),
+        authorId: uid, authorName: cbName(ctx),
+        createdAt: cbNow(),
+      });
+      // Replace the in-memory Y.Doc with the snapshot state.
+      const snapshotBytes = Buffer.from(snap.update, "base64");
+      const res = yjs.replaceDoc("collab:doc", docId, snapshotBytes);
+      if (!res.ok) return { ok: false, error: res.error || "replaceDoc failed" };
+      // Broadcast a reset so every connected client drops its local doc
+      // and re-binds to the new state.
+      const REALTIME = globalThis._concordREALTIME;
+      yjs.broadcastDocReset(REALTIME?.io, "collab:doc", docId, res.state);
+      // Also align the legacy text path so non-CRDT snapshots stay coherent.
+      try {
+        const text = yjs.getDocText("collab:doc", docId, "content");
+        doc.baseText = text;
+        doc.ops = [];
+        doc.lamport += 1;
+        doc.updatedAt = cbNow();
+      } catch { /* ignore — Y.Text may not be 'content' for some docs */ }
+      saveCollabState();
+      emitToDoc(doc.id, "collab:doc-crdt-restored", { snapshotId: snap.id, label: snap.label });
+      return { ok: true, result: { restoredTo: snap.label, bytes: snap.bytes } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
   //  Live presence + multiplayer cursors + follow-mode
   // ═══════════════════════════════════════════════════════════════════
 
