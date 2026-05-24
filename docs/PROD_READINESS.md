@@ -32,6 +32,24 @@ hitting protected routes, not actual bugs:
 A logged-in user does not see these. They are the cost of the audit running
 as an unauthenticated browser.
 
+## WebRTC TURN (telehealth + multi-party visits)
+
+For real telehealth deployment, set these env vars to enable Cloudflare
+TURN credential minting. Without them, the call relies on STUN-only and
+fails for users behind symmetric NAT or strict corporate firewalls
+(~20% of network configurations):
+
+```
+CF_TURN_KEY_ID            # UUID from Cloudflare dash → Calls → TURN key
+CF_TURN_KEY_API_TOKEN     # API token scoped to "Calls: Edit"
+```
+
+When both are set, `GET /api/webrtc/ice-servers` returns the STUN
+baseline + short-lived Cloudflare TURN credentials (default TTL 1h).
+`TelehealthVideoCall.tsx` fetches this before opening peer connections.
+Tested by `server/tests/cloudflare-turn.test.js` (10/10) — mock
+Cloudflare API, request-shape contract, TTL clamping, error fallback.
+
 ## What this measurement does NOT cover
 
 - **External LLM calls** are stubbed by `CONCORD_NO_LISTEN`-test boots and

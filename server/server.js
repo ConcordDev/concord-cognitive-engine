@@ -5630,6 +5630,8 @@ function authMiddleware(req, res, next) {
     "/api/inspect", "/api/worldmodel", "/api/council", "/api/resonance",
     // Chat & AI
     "/api/chat", "/api/ask", "/api/forge",
+    // WebRTC ICE-server config — short-lived TURN creds minted per request.
+    "/api/webrtc/ice-servers",
     // Atlas & Signal Cortex
     "/api/atlas",
     "/api/atlas/signals", "/api/atlas/privacy",
@@ -29400,6 +29402,43 @@ app.get("/api/promotion/queue", asyncHandler(async (req, res) => {
   let queue = result?.queue || [];
   if (statusFilter) queue = queue.filter(prop => prop.status === statusFilter);
   res.json({ ok: true, queue, total: queue.length });
+}));
+
+// WebRTC ICE-server config — STUN baked in, plus Cloudflare TURN credentials
+// minted on demand when CF_TURN_KEY_ID + CF_TURN_KEY_API_TOKEN are set in env.
+// The browser fetches this before opening a peer connection so telehealth
+// visits behind symmetric NAT or strict firewalls can fall back to relayed
+// media via Cloudflare's TURN. Auth is not required — credentials are
+// short-lived and visit-specific (the room ACL is the actual privacy layer,
+// not the TURN handshake).
+app.get("/api/webrtc/ice-servers", asyncHandler(async (_req, res) => {
+  // Static STUN baseline — works for ~80% of users without any external
+  // dependency. STUN is free; Google's public servers are the de-facto
+  // reference. We always include these.
+  const baseline = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+  ];
+  try {
+    const { mintIceServers, isConfigured, lastError } = await import("./lib/cloudflare-turn.js");
+    if (!isConfigured()) {
+      return res.json({ ok: true, iceServers: baseline, source: "stun-only" });
+    }
+    const minted = await mintIceServers({ ttl: 3600 });
+    if (!minted) {
+      structuredLog("warn", "cloudflare_turn_mint_failed", { error: lastError() });
+      return res.json({ ok: true, iceServers: baseline, source: "stun-only-fallback" });
+    }
+    return res.json({
+      ok: true,
+      iceServers: [...baseline, ...minted.iceServers],
+      expiresAt: minted.expiresAt,
+      source: "cloudflare-turn",
+    });
+  } catch (e) {
+    structuredLog("warn", "ice_servers_route_error", { error: String(e?.message || e) });
+    return res.json({ ok: true, iceServers: baseline, source: "stun-only-error" });
+  }
 }));
 
 app.get("/api/promotion/history", asyncHandler(async (req, res) => {

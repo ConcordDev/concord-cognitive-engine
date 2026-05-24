@@ -70,6 +70,28 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
     localStreamRef.current = stream;
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
+    // Fetch the dynamic ICE-server config from the backend. Includes the
+    // STUN baseline always, plus Cloudflare TURN credentials (short-lived)
+    // when CF_TURN_KEY_ID is set server-side. TURN is what makes calls
+    // succeed for users behind strict NAT / corporate firewalls where
+    // direct peer-to-peer can't connect. If the fetch fails for any
+    // reason we still build peers with the STUN-only baseline; users
+    // behind permissive NAT will still connect.
+    type IceServersResponse = { ok: boolean; iceServers?: RTCIceServer[]; source?: string };
+    let iceServers: RTCIceServer[] = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ];
+    try {
+      const r = await fetch('/api/webrtc/ice-servers');
+      if (r.ok) {
+        const data = (await r.json()) as IceServersResponse;
+        if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+          iceServers = data.iceServers;
+        }
+      }
+    } catch { /* fall back to STUN baseline above */ }
+
     let socket: Socket;
     try {
       const { io } = await import('socket.io-client');
@@ -99,12 +121,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
         initiator: isInitiator,
         trickle: true,
         stream,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-          ],
-        },
+        config: { iceServers: iceServers as unknown as Array<{ urls: string | string[] }> },
       });
       peer.on('signal', (data: SimplePeer.SignalData) => {
         if ('sdp' in data && data.sdp) {
