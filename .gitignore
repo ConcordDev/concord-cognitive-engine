@@ -52,3 +52,6 @@ concord-frontend/node_modules/
 
 # Runtime-generated detector telemetry (the backend appends every 5 min while running)
 audit/detectors/macro-telemetry.jsonl
+audit/detectors/runtime-history.jsonl
+server/audit/detectors/macro-telemetry.jsonl
+server/audit/detectors/runtime-history.jsonl
