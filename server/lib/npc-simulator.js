@@ -910,15 +910,32 @@ export class NPCSimulator {
     const autonomousAgents = this._agents.filter(a => !a.isConscious);
     const consciousAgents  = this._agents.filter(a =>  a.isConscious);
 
+    // Chunked fan-out: process agents in batches of 8 and yield to the
+    // event loop between batches. Without this, 200+ agents resolving
+    // sync SQLite ops in parallel pin the loop for up to 26s (observed
+    // in the 2026-05-25 dev-server sweep), which makes HTTP requests
+    // hang and the world-lens loader stall on "Arriving at...".
+    // `setImmediate` lets pending I/O callbacks (HTTP req handlers,
+    // socket frames, timers) drain between batches.
+    const AGENT_BATCH = Number(process.env.CONCORD_NPC_TICK_BATCH || 8);
+    const yieldLoop = () => new Promise(r => setImmediate(r));
+    const processBatched = async (list, fn) => {
+      for (let i = 0; i < list.length; i += AGENT_BATCH) {
+        const chunk = list.slice(i, i + AGENT_BATCH);
+        await Promise.allSettled(chunk.map(fn));
+        if (i + AGENT_BATCH < list.length) await yieldLoop();
+      }
+    };
+
     // Autonomous NPCs: needs-based tick + faction coordination
-    await Promise.allSettled(autonomousAgents.map(a => a.tick()));
-    await Promise.allSettled(autonomousAgents.map(a => a._maybeGenerateQuests()));
+    await processBatched(autonomousAgents, a => a.tick());
+    await processBatched(autonomousAgents, a => a._maybeGenerateQuests());
 
     // Faction coordination: enemy NPCs strategize together + leader gear enforcement
     await this._tickFactionCoordination(autonomousAgents);
 
     // Conscious emergents: emergent-AI tick (lighter — just goal updates)
-    await Promise.allSettled(consciousAgents.map(a => a.tickConscious()));
+    await processBatched(consciousAgents, a => a.tickConscious());
 
     // NPC ↔ NPC / NPC ↔ Emergent conversations (5% chance per tick group)
     if (Math.random() < 0.05) {

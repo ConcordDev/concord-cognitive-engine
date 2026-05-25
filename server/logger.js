@@ -143,14 +143,27 @@ function getBuffer() {
   return logBuffer;
 }
 
+// Normalise both calling conventions so neither produces `[object Object]`:
+//   (1) positional:  logger.info(source, msg, meta?)        — canonical
+//   (2) Pino-style:  logger.info(metaObject, msg)           — found at 27
+//       call sites that imported logger expecting Pino's shape.
+// (2) is detected when arg0 is an object and arg1 is a string. We fold
+// it into (1) with source defaulted to a sensible "lib" tag.
+function normaliseArgs(a, b, c) {
+  if (a && typeof a === "object" && typeof b === "string" && c === undefined) {
+    return { source: "lib", msg: b, meta: a };
+  }
+  return { source: a, msg: b, meta: c };
+}
+
 export default {
   log,
   query,
   getBuffer,
-  error: (source, msg, meta) => log('error', source, msg, meta),
-  warn: (source, msg, meta) => log('warn', source, msg, meta),
-  info: (source, msg, meta) => log('info', source, msg, meta),
-  debug: (source, msg, meta) => log('debug', source, msg, meta),
+  error: (a, b, c) => { const n = normaliseArgs(a, b, c); return log('error', n.source, n.msg, n.meta); },
+  warn:  (a, b, c) => { const n = normaliseArgs(a, b, c); return log('warn',  n.source, n.msg, n.meta); },
+  info:  (a, b, c) => { const n = normaliseArgs(a, b, c); return log('info',  n.source, n.msg, n.meta); },
+  debug: (a, b, c) => { const n = normaliseArgs(a, b, c); return log('debug', n.source, n.msg, n.meta); },
 };
 
 export { log, query, getBuffer, LEVELS };

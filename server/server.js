@@ -24181,26 +24181,15 @@ register("slides", "compile", (_ctx, input = {}) => {
 }, { description: "Compile a presentation deck spec from slide DTUs" });
 
 // ── tools.web_search ─────────────────────────────────────────────────────
-// Surfaces the chat-web-search infrastructure as a one-shot macro for
-// any lens. Falls back to documenting the fetch path if the chat web
-// adapter isn't loaded.
-register("tools", "web_search", async (_ctx, input = {}) => {
-  const query = String(input.query ?? "").slice(0, 500);
-  if (!query) return { ok: false, error: "query required" };
-  // Try existing web-search infra
-  try {
-    const mod = await import("./lib/web-search.js").catch(() => null);
-    if (mod?.searchWeb) {
-      const results = await mod.searchWeb(query, { limit: input.limit ?? 5 });
-      return { ok: true, query, results };
-    }
-  } catch (_e) { /* fall through */ }
-  // Fallback: return query + hint so the lens can still show something
-  return {
-    ok: true, query, results: [],
-    note: "web-search adapter not available on this build; chat lens emits chat:web_results socket events directly",
-  };
-}, { description: "One-shot web search returning DTU-ingestible results" });
+// The canonical `tools.web_search` is the gated implementation registered
+// at server.js:11078 — it enforces ethos invariants + chicken3 toolsOptIn
+// for external network egress, which is the correct security default.
+// A second ungated registration that used to live here was silently
+// shadowing the gated one (last-write-wins on duplicate registrations);
+// removed 2026-05-25 dev-sweep so the gate is actually load-bearing.
+// If a lens needs an ungated fast-path web search, call
+// `runMacro("discovery", "search", ...)` instead — that searches the
+// local DTU corpus without external egress.
 
 // ── compile.transpile ────────────────────────────────────────────────────
 // TypeScript / modern-JS transpile via esbuild if available. Falls back
@@ -26085,7 +26074,12 @@ register("org","create", (ctx, input) => {
   return { ok:true, org };
 }, { summary:"Create a new org owned by current user." });
 
-register("jobs","enqueue", (ctx, input) => {
+// Renamed jobs.* → background_jobs.* (2026-05-25 dev-sweep). The
+// `jobs` domain is now owned by `server/domains/jobs.js` (Tunyan
+// in-world employment); the background-queue admin macros live under
+// `background_jobs` to avoid the silent override that used to lose
+// either feature depending on load order.
+register("background_jobs","enqueue", (ctx, input) => {
   const kind = String(input.kind || "").trim(); // domain.name
   if (!kind.includes(".")) return { ok:false, error:"kind must be domain.name" };
   const payload = (input.payload && typeof input.payload==="object") ? input.payload : {};
@@ -26093,18 +26087,18 @@ register("jobs","enqueue", (ctx, input) => {
   return { ok:true, job };
 }, { summary:"Enqueue a background job (domain.name)." });
 
-register("jobs","get", (ctx, input) => {
+register("background_jobs","get", (ctx, input) => {
   const id = String(input.id||"");
   const j = STATE.jobs.get(id);
   if (!j) return { ok:false, error:"job not found" };
   return { ok:true, job: j };
 }, { summary:"Get a job by id." });
 
-register("jobs","list", (ctx, input) => {
+register("background_jobs","list", (ctx, input) => {
   const limit = clamp(Number(input.limit||50), 1, 200);
   const jobs = Array.from(STATE.jobs.values()).slice(-limit).reverse();
   return { ok:true, jobs };
-}, { summary:"List recent jobs." });
+}, { summary:"List recent background-queue jobs." });
 
 // ---- Agents ----
 register("agent","create", (ctx, input) => {
@@ -27712,10 +27706,18 @@ try {
 // ===== END GRC =====
 
 // ── Validate required secrets at startup ──────────────────────────────────────
+// `[FATAL]` means "the process is about to exit" — only log it as fatal
+// when we're actually exiting. In dev the same condition is a warning
+// (we generated a random secret; sessions won't survive restart), not a
+// crash. The prior code logged [FATAL] in both cases, which made boot
+// logs deceptively scary.
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
-  console.error("[FATAL] JWT_SECRET must be set and at least 16 characters. Generate with: openssl rand -hex 32");
-  if (process.env.NODE_ENV === "production") process.exit(1);
-  else console.warn("[WARN] Using insecure default JWT_SECRET for development");
+  if (process.env.NODE_ENV === "production") {
+    console.error("[FATAL] JWT_SECRET must be set and at least 16 characters. Generate with: openssl rand -hex 32");
+    process.exit(1);
+  } else {
+    console.warn("[WARN] JWT_SECRET not set or <16 chars — using insecure dev default. Sessions will not persist across restarts. Generate with: openssl rand -hex 32");
+  }
 }
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 16) {
   if (process.env.NODE_ENV === "production") {
@@ -33775,7 +33777,13 @@ const _ALERTING = {
           // Fire webhooks
           this.fireWebhooks(alert);
 
-          structuredLog("warn", "alert_fired", alert);
+          // Honour the alert's declared severity instead of hard-coding
+          // [WARN]. Info-severity alerts (e.g. WebSocket reconnect noise)
+          // now log at info level; warn/critical alerts still warn.
+          const sev = alert.severity === "info" ? "info"
+                    : alert.severity === "critical" ? "error"
+                    : "warn";
+          structuredLog(sev, "alert_fired", alert);
         } else if (!triggered && this.activeAlerts.has(rule.id)) {
           // Alert resolved
           const resolved = { ruleId: rule.id, name: rule.name, resolvedAt: nowISO() };
