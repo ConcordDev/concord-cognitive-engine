@@ -1,0 +1,324 @@
+[
+  {
+    "name": "landing",
+    "url": "/",
+    "finalUrl": "http://127.0.0.1:3000/",
+    "title": "Concordos — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Your PersonalCognitive Engine",
+        "Your PersonalCognitive Engine"
+      ],
+      "h2": [
+        "Architecture",
+        "A Complete Cognitive Architecture",
+        "The 70% Sovereignty Lock",
+        "Cognitive Architecture",
+        "Ready to Own Your Mind?"
+      ],
+      "h3": [
+        "175 Domain Lenses",
+        "DTU-Based Memory",
+        "Local-First AI",
+        "Sovereign by Design",
+        "DTU-Based Memory",
+        "175 Domain Lenses"
+      ]
+    },
+    "buttons": [
+      "📖"
+    ],
+    "links": [
+      "Features → #features",
+      "Sovereignty → #sovereignty",
+      "Architecture → #architecture",
+      "Sign In → /login",
+      "Get Started → /register",
+      "Get Started → /register",
+      "Learn More → #features",
+      "Create Your Account → /register"
+    ],
+    "sample": "Concordos | Features | Sovereignty | Architecture | Sign In | Get Started | 70% Sovereignty Lock - Your Mind, Your Rules | Your Personal | Cognitive Engine | A sovereign knowledge operating system that grows with you. Your thoughts never leave your control. | No ads. Ever. | No subscriptions. | No data extraction. | Free for all services. | Not a promise — it's architecture. The sovereignty lock makes it mathematically enforced. | Get Started | Learn More | 175 | Domain Lenses | 110+ | Neural Organs | 70% | Sovereignty Lock | 100% | Local Control | A Complete Cognitive Architecture | Concordos combines knowledge management, AI reasoning, a",
+    "consoleErrors": 6
+  },
+  {
+    "name": "chat",
+    "url": "/lenses/chat",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Flenses%2Fchat",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights reserved. | Terms of Service | | | Privacy Policy | | | DMCA | S",
+    "consoleErrors": 5
+  },
+  {
+    "name": "world",
+    "url": "/lenses/world",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Flenses%2Fworld",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights reserved. | Terms of Service | | | Privacy Policy | | | DMCA | S",
+    "consoleErrors": 5
+  },
+  {
+    "name": "code",
+    "url": "/lenses/code",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Flenses%2Fcode",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Connection lost. Working offline with cached data. | Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights re",
+    "consoleErrors": 16
+  },
+  {
+    "name": "music",
+    "url": "/lenses/music",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Flenses%2Fmusic",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Connection lost. Working offline with cached data. | Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights re",
+    "consoleErrors": 21
+  },
+  {
+    "name": "marketplace",
+    "url": "/lenses/marketplace",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Flenses%2Fmarketplace",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Connection lost. Working offline with cached data. | Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights re",
+    "consoleErrors": 21
+  },
+  {
+    "name": "healthcare",
+    "url": "/lenses/healthcare",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Flenses%2Fhealthcare",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Connection lost. Working offline with cached data. | Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights re",
+    "consoleErrors": 21
+  },
+  {
+    "name": "atlas",
+    "url": "/lenses/atlas",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Flenses%2Fatlas",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Connection lost. Working offline with cached data. | Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights re",
+    "consoleErrors": 21
+  },
+  {
+    "name": "global",
+    "url": "/global",
+    "finalUrl": "http://127.0.0.1:3000/login?from=%2Fglobal",
+    "title": "Concord OS — Sovereign Cognitive Engine",
+    "headings": {
+      "h1": [
+        "Chat"
+      ],
+      "h2": [
+        "Welcome to Concord"
+      ],
+      "h3": []
+    },
+    "buttons": [
+      "Extensions",
+      "Search...K"
+    ],
+    "links": [
+      "Skip to main content → #main-content",
+      "🧠Concord → /",
+      "Dashboard → /",
+      "Chat → /lenses/chat",
+      "Board → /lenses/board",
+      "Graph → /lenses/graph",
+      "Code → /lenses/code",
+      "Studio → /lenses/studio",
+      "Lens Hub → /hub",
+      "Global Library → /global",
+      "Profile → /profile",
+      "Hypothesis Lab → /hypothesis-lab"
+    ],
+    "sample": "Connection lost. Working offline with cached data. | Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Sub-lens tree unavailable | Lens Hub | SYSTEMS | Global Library | Profile | Hypothesis Lab | Research | Council | Agents | CRI | Ingest | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | Chat | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | Concordos | Sign in to your sovereign cognitive engine | Username or Email | Password | Forgot password? | Sign In | Don't have an account? Create one | Sovereign by design. Your data never leaves your control. | © 2026 Concord OS. All rights re",
+    "consoleErrors": 21
+  }
+]
